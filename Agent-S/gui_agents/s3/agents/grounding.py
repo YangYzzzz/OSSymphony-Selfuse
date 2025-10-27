@@ -442,7 +442,7 @@ class OSWorldACI(ACI):
             "import subprocess",
             # 注意：这个安装命令每次执行都会尝试运行，可能效率不高且需要sudo权限
             # 最好确保环境已经预先配置好
-            "subprocess.run('echo \"password\" | sudo -ES apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\"=\"http://10.1.8.5:23128\", \"https_proxy\"=\"http://10.1.8.5:23128\"})",
+            "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
             # 存储原始剪贴板
             "original_clipboard = pyperclip.paste()"
         ]
