@@ -65,4 +65,5 @@
 3. 实验名称需要规范一下：
    * 参考 `nogdrive-gpt-5-mini-uitars1.5-step50-nocode-20251019-ybw`
    * {任务配置} + {模型配置} + {步数} + {动作配置} + {日期} + {执行人} + {自定义信息}(可选)
-4. GoGoGo
+4. Github 提交信息也可以尽量规范一下，可以参考 https://zhuanlan.zhihu.com/p/1939296458219189328, e.g. fix(desktopenv): 修改环境初始化代理配置
+4. GoGoGo！
