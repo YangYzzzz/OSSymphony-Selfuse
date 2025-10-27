@@ -13,7 +13,8 @@ import sys
 import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
-
+from gui_agents.interngui.agents.agent_s import AgentS3
+from gui_agents.interngui.agents.grounding import OSWorldACI
 
 import agents3_lib_run_single as lib_run_single
 from desktop_env.desktop_env import DesktopEnv
@@ -109,8 +110,6 @@ def run_env_tasks(
             except Exception as e:
                 logger.error(f"Failed to get snapshot_name from IMAGE_ID_MAP: {e}")
                 snapshot_name = None
-        from gui_agents.s3.agents.agent_s import AgentS3
-        from gui_agents.s3.agents.grounding import OSWorldACI
 
         env = DesktopEnv(
             path_to_vm=args.path_to_vm,

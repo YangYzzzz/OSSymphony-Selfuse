@@ -7,12 +7,12 @@ import pytesseract
 from PIL import Image
 from pytesseract import Output
 
-from gui_agents.s3.memory.procedural_memory import PROCEDURAL_MEMORY
-from gui_agents.s3.core.mllm import LMMAgent
-from gui_agents.s3.utils.common_utils import call_llm_safe, smart_resize
-from gui_agents.s3.agents.code_agent import CodeAgent
-from gui_agents.s3.agents.search_agent import SearchAgent
-from gui_agents.s3.agents.parser_agent import ParserAgent
+from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
+from gui_agents.interngui.core.mllm import LMMAgent
+from gui_agents.interngui.utils.common_utils import call_llm_safe, smart_resize
+from gui_agents.interngui.agents.code_agent import CodeAgent
+from gui_agents.interngui.agents.search_agent import SearchAgent
+from gui_agents.interngui.agents.parser_agent import ParserAgent
 import logging
 
 logger = logging.getLogger("desktopenv.agent")
