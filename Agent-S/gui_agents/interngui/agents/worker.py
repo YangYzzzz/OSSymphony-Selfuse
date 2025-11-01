@@ -17,6 +17,8 @@ from gui_agents.interngui.utils.formatters import (
     SINGLE_ACTION_FORMATTER,
     CODE_VALID_FORMATTER,
 )
+from gui_agents.interngui.agents.memory_agent import ReflectionMemoryAgent
+
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -26,6 +28,7 @@ class Worker(BaseModule):
         self,
         worker_engine_params: Dict,
         grounding_agent: ACI,
+        memory_agent: ReflectionMemoryAgent,
         platform: str = "ubuntu",
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
@@ -55,6 +58,7 @@ class Worker(BaseModule):
             "claude-sonnet-4-5-20250929",
         ]
         self.grounding_agent = grounding_agent
+        self.memory_agent = memory_agent
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
         self.enable_rewrite_instruction = enable_rewrite_instruction
@@ -85,12 +89,14 @@ class Worker(BaseModule):
         self.rewrite_agent = self._create_agent(
             PROCEDURAL_MEMORY.REWRITE_GUI_INSTRUCTION
         )
+
         self.instruction = None
         self.turn_count = 0
         self.worker_history = []
         self.reflections = []
         self.cost_this_turn = 0
         self.screenshot_inputs = []
+        self.coords_history = []
 
     def flush_messages(self):
         """Flush messages based on the model's context limits.
@@ -127,60 +133,60 @@ class Worker(BaseModule):
             if len(self.reflection_agent.messages) > self.max_trajectory_length + 1:
                 self.reflection_agent.messages.pop(1)
 
-    def _generate_reflection(self, instruction: str, obs: Dict) -> Tuple[str, str]:
-        """
-        Generate a reflection based on the current observation and instruction.
+    # def _generate_reflection(self, instruction: str, obs: Dict) -> Tuple[str, str]:
+    #     """
+    #     Generate a reflection based on the current observation and instruction.
 
-        Args:
-            instruction (str): The task instruction.
-            obs (Dict): The current observation containing the screenshot.
+    #     Args:
+    #         instruction (str): The task instruction.
+    #         obs (Dict): The current observation containing the screenshot.
 
-        Returns:
-            Optional[str, str]: The generated reflection text and thoughts, if any (turn_count > 0).
+    #     Returns:
+    #         Optional[str, str]: The generated reflection text and thoughts, if any (turn_count > 0).
 
-        Side Effects:
-            - Updates reflection agent's history
-            - Generates reflection response with API call
-        """
-        reflection = None
-        reflection_thoughts = None
-        if self.enable_reflection:
-            # Load the initial message
-            if self.turn_count == 0:
-                text_content = textwrap.dedent(
-                    f"""
-                    Task Description: {instruction}
-                    Current Trajectory below:
-                    """
-                )
-                updated_sys_prompt = (
-                    self.reflection_agent.system_prompt + "\n" + text_content
-                )
-                self.reflection_agent.add_system_prompt(updated_sys_prompt)
-                self.reflection_agent.add_message(
-                    text_content="The initial screen is provided. No action has been taken yet.",
-                    image_content=obs["screenshot"],
-                    role="user",
-                )
-            # Load the latest action
-            else:
-                self.reflection_agent.add_message(
-                    text_content=self.worker_history[-1],
-                    image_content=obs["screenshot"],
-                    role="user",
-                )
-                full_reflection = call_llm_safe(
-                    self.reflection_agent,
-                    temperature=self.temperature,
-                    use_thinking=self.use_thinking,
-                )
-                reflection, reflection_thoughts = split_thinking_response(
-                    full_reflection
-                )
-                self.reflections.append(reflection)
-                logger.info("REFLECTION THOUGHTS: %s", reflection_thoughts)
-                logger.info("REFLECTION: %s", reflection)
-        return reflection, reflection_thoughts
+    #     Side Effects:
+    #         - Updates reflection agent's history
+    #         - Generates reflection response with API call
+    #     """
+    #     reflection = None
+    #     reflection_thoughts = None
+    #     if self.enable_reflection:
+    #         # Load the initial message
+    #         if self.turn_count == 0:
+    #             text_content = textwrap.dedent(
+    #                 f"""
+    #                 Task Description: {instruction}
+    #                 Current Trajectory below:
+    #                 """
+    #             )
+    #             updated_sys_prompt = (
+    #                 self.reflection_agent.system_prompt + "\n" + text_content
+    #             )
+    #             self.reflection_agent.add_system_prompt(updated_sys_prompt)
+    #             self.reflection_agent.add_message(
+    #                 text_content="The initial screen is provided. No action has been taken yet.",
+    #                 image_content=obs["screenshot"],
+    #                 role="user",
+    #             )
+    #         # Load the latest action
+    #         else:
+    #             self.reflection_agent.add_message(
+    #                 text_content=self.worker_history[-1],
+    #                 image_content=obs["screenshot"],
+    #                 role="user",
+    #             )
+    #             full_reflection = call_llm_safe(
+    #                 self.reflection_agent,
+    #                 temperature=self.temperature,
+    #                 use_thinking=self.use_thinking,
+    #             )
+    #             reflection, reflection_thoughts = split_thinking_response(
+    #                 full_reflection
+    #             )
+    #             self.reflections.append(reflection)
+    #             logger.info("REFLECTION THOUGHTS: %s", reflection_thoughts)
+    #             logger.info("REFLECTION: %s", reflection)
+    #     return reflection, reflection_thoughts
 
     def generate_next_action(self, instruction: str, obs: Dict) -> Tuple[Dict, List]:
         """
@@ -200,6 +206,9 @@ class Worker(BaseModule):
         self.grounding_agent.assign_screenshot(obs)
         self.grounding_agent.set_task_instruction(instruction)
 
+        # set instruction to memory agent
+        self.memory_agent.add_instruction(instruction)
+
         generator_message = (
             ""
             if self.turn_count > 0
@@ -214,7 +223,17 @@ class Worker(BaseModule):
             self.generator_agent.add_system_prompt(prompt_with_instructions)
 
         # Get the per-step reflection
-        reflection, reflection_thoughts = self._generate_reflection(instruction, obs)
+        # reflection, reflection_thoughts = self._generate_reflection(instruction, obs)
+            
+        reflection = None
+        reflection_thoughts = None
+        if self.turn_count != 0:
+            reflection, reflection_thoughts = self.memory_agent.get_reflection(         # 新设计的reflection!!!
+                cur_obs=obs, 
+                generator_output=self.worker_history[-1], 
+                coordinates=self.coords_history[-1]
+            ) 
+    
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
 
@@ -272,88 +291,6 @@ class Worker(BaseModule):
             generator_message += "\n"
             # Reset the code agent result after adding it to context
             self.grounding_agent.last_code_agent_result = None
-            # Save code agent result to text file
-            # try:
-            #     import os
-            #     from datetime import datetime
-
-            #     # Create logs directory if it doesn't exist
-            #     logs_dir = "logs"
-            #     if not os.path.exists(logs_dir):
-            #         os.makedirs(logs_dir)
-
-            #     # Generate filename with timestamp
-            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            #     filename = (
-            #         f"logs/code_agent_result_step_{self.turn_count + 1}_{timestamp}.txt"
-            #     )
-
-            #     with open(filename, "w") as f:
-            #         f.write(f"CODE AGENT RESULT - Step {self.turn_count + 1}\n")
-            #         f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-            #         f.write(
-            #             f"Task/Subtask Instruction: {code_result['task_instruction']}\n"
-            #         )
-            #         f.write(f"Steps Completed: {code_result['steps_executed']}\n")
-            #         f.write(f"Max Steps: {code_result['budget']}\n")
-            #         f.write(f"Completion Reason: {code_result['completion_reason']}\n")
-            #         f.write(f"Summary: {code_result['summary']}\n")
-            #         if code_result["execution_history"]:
-            #             f.write(f"\nExecution History:\n")
-            #             for i, step in enumerate(code_result["execution_history"]):
-            #                 f.write(f"\nStep {i+1}:\n")
-            #                 f.write(f"Action: {step['action']}\n")
-            #                 if "thoughts" in step:
-            #                     f.write(f"Thoughts: {step['thoughts']}\n")
-
-            #     logger.info(f"Code agent result saved to: {filename}")
-            # except Exception as e:
-            #     logger.error(f"Failed to save code agent result to file: {e}")
-
-            # Log the code agent result section for debugging (truncated execution history)
-            # log_message = f"\nCODE AGENT RESULT:\n"
-            # log_message += (
-            #     f"Task/Subtask Instruction: {code_result['task_instruction']}\n"
-            # )
-            # log_message += f"Steps Completed: {code_result['steps_executed']}\n"
-            # log_message += f"Max Steps: {code_result['budget']}\n"
-            # log_message += f"Completion Reason: {code_result['completion_reason']}\n"
-            # log_message += f"Summary: {code_result['summary']}\n"
-            # if code_result["execution_history"]:
-            #     log_message += f"Execution History (truncated):\n"
-            #     # Only log first 3 steps and last 2 steps to keep logs manageable
-            #     total_steps = len(code_result["execution_history"])
-            #     for i, step in enumerate(code_result["execution_history"]):
-            #         if i < 3 or i >= total_steps - 2:  # First 3 and last 2 steps
-            #             action = step["action"]
-            #             if "```python" in action:
-            #                 code_start = action.find("```python") + 9
-            #                 code_end = action.find("```", code_start)
-            #                 if code_end != -1:
-            #                     python_code = action[code_start:code_end].strip()
-            #                     log_message += (
-            #                         f"Step {i+1}: ```python\n{python_code}\n```\n"
-            #                     )
-            #                 else:
-            #                     log_message += f"Step {i+1}: {action}\n"
-            #             elif "```bash" in action:
-            #                 code_start = action.find("```bash") + 7
-            #                 code_end = action.find("```", code_start)
-            #                 if code_end != -1:
-            #                     bash_code = action[code_start:code_end].strip()
-            #                     log_message += (
-            #                         f"Step {i+1}: ```bash\n{bash_code}\n```\n"
-            #                     )
-            #                 else:
-            #                     log_message += f"Step {i+1}: {action}\n"
-            #             else:
-            #                 log_message += f"Step {i+1}: {action}\n"
-            #         elif i == 3 and total_steps > 5:
-            #             log_message += f"... (truncated {total_steps - 5} steps) ...\n"
-
-            # logger.info(
-            #     f"WORKER_CODE_AGENT_RESULT_SECTION - Step {self.turn_count + 1}: Code agent result added to generator message:\n{log_message}"
-            # )
 
         if (
             hasattr(self.grounding_agent, "last_search_or_parser_agent_result")
@@ -414,6 +351,7 @@ class Worker(BaseModule):
             ),
         }
         self.turn_count += 1
+        self.coords_history.append(coordinates)
         self.screenshot_inputs.append(obs["screenshot"])
         self.flush_messages()
         return executor_info, [exec_code]

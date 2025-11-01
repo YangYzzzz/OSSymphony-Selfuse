@@ -1,5 +1,6 @@
 """This file contains various formatting checks used to reprompt an agent for correctly formatted responses."""
-
+from typing import Tuple, List, Callable
+import json
 from gui_agents.interngui.utils.common_utils import (
     extract_agent_functions,
     parse_code_from_string,
@@ -55,4 +56,42 @@ integer_answer_error_msg = (
 INTEGER_ANSWER_FORMATTER = lambda response: (
     integer_answer_check(response),
     integer_answer_error_msg,
+)
+
+def json_answer_check(response: str, required_fields: List[str]) -> bool:
+    """
+    一个只返回 True/False 的检查函数。
+    """
+    try:
+        # 1. 分离 <answer>
+        answer_str, _ = split_thinking_response(response)
+        
+        if not answer_str:
+            return False
+
+        # 2. 检查 JSON
+        data = json.loads(answer_str)
+
+        # 3. 检查是否为字典
+        if not isinstance(data, dict):
+            return False
+
+        # 4. 检查字段
+        if set(required_fields) - set(data.keys()):
+            return False
+        
+        # 所有检查都通过
+        return True
+        
+    except Exception:
+        print("##############")
+        return False
+
+json_answer_error_msg = (
+    "Incorrect response: The <answer>...</answer> tag must contain a valid JSON object that includes all required keys"
+)
+
+JSON_ANSWER_FORMATTER = lambda response, required_fields: (
+    json_answer_check(required_fields, response),
+    json_answer_error_msg,
 )

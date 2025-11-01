@@ -15,6 +15,8 @@ import time
 from multiprocessing import Process, Manager, current_process, Queue
 from gui_agents.interngui.agents.agent_s import AgentS3
 from gui_agents.interngui.agents.grounding import OSWorldACI
+from gui_agents.interngui.agents.memory_agent import ReflectionMemoryAgent
+
 
 import agents3_lib_run_single as lib_run_single
 from desktop_env.desktop_env import DesktopEnv
@@ -91,7 +93,8 @@ def run_env_tasks(
     engine_params,
     engine_params_for_grounding,
     engine_params_for_search,
-    engine_params_for_parser
+    engine_params_for_parser,
+    engine_params_for_memory
 ):
     active_environments = []
     env = None
@@ -125,6 +128,7 @@ def run_env_tasks(
             enable_proxy=True,
             client_password=getattr(args, "client_password", ""),
         )
+
         grounding_agent = OSWorldACI(
             env=env,
             platform="linux",
@@ -135,9 +139,13 @@ def run_env_tasks(
             width=args.screen_width,
             height=args.screen_height,
         )
+
+        memory_agent = ReflectionMemoryAgent(engine_params_for_memory)
+
         agent = AgentS3(
             engine_params,
             grounding_agent,
+            memory_agent,
             platform="linux",
             max_trajectory_length=args.max_trajectory_length,
             enable_reflection=args.enable_reflection,
@@ -392,7 +400,7 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--search_api_key",
         type=str,
-        default="",
+        default="none",
         help="Search api key for Jina AI",
     )
     parser.add_argument(
@@ -415,19 +423,43 @@ def config() -> argparse.Namespace:
         default="readerlmv2",
         help="jina_ai / readerlmv2 / crawl4ai",
     )
-
     parser.add_argument(
         "--parser_api",
         type=str,
         default="http://127.0.0.1:9000/visit",
         help="Crawl4ai api service's url",
     )
-
     parser.add_argument(
         "--parser_api_key",
         type=str,
         default="",
         help="Parser(PageRead) api key for Jina AI"
+    )
+
+    # Memory agent
+    parser.add_argument(
+        "--memory_provider",
+        type=str,
+        required=False,
+        help="The provider for the memory agent",
+    )
+    parser.add_argument(
+        "--memory_url",
+        type=str,
+        required=False,
+        help="The URL of the memory agent",
+    )
+    parser.add_argument(
+        "--memory_api_key",
+        type=str,
+        default="",
+        help="The API key of the memory agent.",
+    )
+    parser.add_argument(
+        "--memory_model",
+        type=str,
+        required=False,
+        help="The model name for the memory agent",
     )
 
     # 实验名
@@ -479,6 +511,19 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "parser_api_key": args.parser_api_key
     }
 
+    # 若不指定memory的配置，则和main agent用一样的
+    if args.memory_provider:
+        engine_params_for_memory = {
+            "engine_type": args.ground_provider,
+            "model": args.ground_model,
+            "base_url": args.ground_url,
+            "api_key": args.ground_api_key,
+            "grounding_width": args.grounding_width,
+            "grounding_height": args.grounding_height,
+        }
+    else:       # use the same model with main agent
+        engine_params_for_memory = engine_params
+
     with Manager() as manager:
         shared_scores = manager.list()
         task_queue = manager.Queue()
@@ -496,7 +541,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                     engine_params,
                     engine_params_for_grounding,
                     engine_params_for_search,
-                    engine_params_for_parser
+                    engine_params_for_parser,
+                    engine_params_for_memory
                 ),
                 name=f"EnvProcess-{i+1}",
             )
@@ -519,7 +565,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                                 engine_params,
                                 engine_params_for_grounding,
                                 engine_params_for_search,
-                                engine_params_for_parser
+                                engine_params_for_parser,
+                                engine_params_for_memory
                             ),
                             name=f"EnvProcess-Restart-{idx+1}",
                         )

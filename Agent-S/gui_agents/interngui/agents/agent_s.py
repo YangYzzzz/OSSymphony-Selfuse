@@ -4,6 +4,8 @@ from typing import Dict, List, Tuple
 
 from gui_agents.interngui.agents.grounding import ACI
 from gui_agents.interngui.agents.worker import Worker
+from gui_agents.interngui.agents.memory_agent import ReflectionMemoryAgent
+
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -54,6 +56,7 @@ class AgentS3(UIAgent):
         self,
         worker_engine_params: Dict,
         grounding_agent: ACI,
+        memory_agent: ReflectionMemoryAgent,
         platform: str = platform.system().lower(),
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
@@ -70,6 +73,7 @@ class AgentS3(UIAgent):
         """
 
         super().__init__(worker_engine_params, grounding_agent, platform)
+        self.memory_agent = memory_agent
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
         self.enable_rewrite_instruction = enable_rewrite_instruction
@@ -80,6 +84,7 @@ class AgentS3(UIAgent):
         self.executor = Worker(
             worker_engine_params=self.worker_engine_params,
             grounding_agent=self.grounding_agent,
+            memory_agent=self.memory_agent,
             platform=self.platform,
             max_trajectory_length=self.max_trajectory_length,
             enable_reflection=self.enable_reflection,

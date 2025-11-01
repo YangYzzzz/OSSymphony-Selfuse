@@ -296,6 +296,7 @@ def main():
         help="Height of screenshot image after processor rescaling",
     )
 
+
     # AgentS3 specific arguments
     parser.add_argument(
         "--max_trajectory_length",
@@ -342,6 +343,7 @@ def main():
         "grounding_width": args.grounding_width,
         "grounding_height": args.grounding_height,
     }
+
 
     # Initialize environment based on user preference
     local_env = None

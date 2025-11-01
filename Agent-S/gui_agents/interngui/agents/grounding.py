@@ -229,9 +229,11 @@ class OSWorldACI(ACI):
         self.current_task_instruction = None
         self.last_code_agent_result = None
         self.last_search_or_parser_agent_result = None
+        
         # Configure search agent
         self.search_agent = SearchAgent.create(engine_params=engine_params_for_search)
         self.parser_agent = ParserAgent.create(engine_params=engine_params_for_parser)
+
         
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
     def generate_coords(self, ref_expr: str, obs: Dict) -> List[int]:
@@ -388,7 +390,7 @@ class OSWorldACI(ACI):
         # Return pyautoguicode to click on the element
         return (command, [x, y])
 
-    @agent_action
+    # @agent_action
     def switch_applications(self, app_code):
         """Switch to a different application that is already open
         Args:
