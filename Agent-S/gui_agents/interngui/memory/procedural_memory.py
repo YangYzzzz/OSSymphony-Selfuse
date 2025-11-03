@@ -218,7 +218,7 @@ class PROCEDURAL_MEMORY:
     - user_instruction (Text): The high-level, ultimate goal the agent is trying to achieve.
     - action_history (List of Text Summaries): A summary of all steps taken by the agent up to this point. The last item in this list is the most recent action.
     - latest_action (Text): The most recent chain-of-thoughts and GUI action taken by agent.
-    - latest_screenshot (Image): The screenshot of the screen after the most recent action was performed.
+    - latest_screenshot (Image): The screenshot of the screen AFTER the most recent action was performed.
 
     **Task 1: Trajectory Reflection**
     First, you must generate a reflection on the entire action_history in the context of the user_instruction. Your reflection must be one of the four cases below.
@@ -242,7 +242,7 @@ class PROCEDURAL_MEMORY:
     - Any response that falls under Case 1 should explain why the trajectory is not going according to plan.
     - Any response that falls under Case 2 should be concise, since you just need to affirm the agent to continue with the current trajectory.
     - You should be very certain to give any response that falls under Case 4. It is a very DANGEROUS case!
-    - IMPORTANT: Do not assume file modifications or application restarts are errors - they may be legitimate code agent actions
+    - IMPORTANT: Do not assume file modifications or application restarts are errors - they may be legitimate code agent actions.
 
 
     **Task 2: Milestone Evaluation**
@@ -282,40 +282,48 @@ class PROCEDURAL_MEMORY:
         """
     You are an expert in computer usage responsible for analyzing what happened after every step taken by a "Computer Use Agent". 
 
-    **Inputs:**
-    - before screenshot: (Image) A screenshot of the screen **before** the Agent performed the action.
-    - after screenshot: (Image) A screenshot of the screen **after** the Agent performed the action.
+    **Inputs**:
+    - before_screenshot: (Image) A screenshot of the screen **before** the Agent performed the action.
+    - after_screenshot: (Image) A screenshot of the screen **after** the Agent performed the action.
     - zoomed-in view: (Image, Optional) If any mouse action occurred, the before screenshot will be accompanied with a zoomed-in view of the area around the action to help you see changes more clearly.
-    - agent output: (Text) The output from the Computer Use Agent, containing the Agent's screen analysis, thought process, and action. 
-
-
+    - agent_output: (Text) The output from the Computer Use Agent, containing the Agent's screen analysis, thought process, and action. 
+    
+    **Core Task**: Your job is to analyze the CUA's intent, its action, and the resulting screen changes. Based on this, you will generate a concise JSON report detailing what happened and whether it was successful.
+    
     **Reasoning Guidelines:**
+    1. **Analyze Intent vs. Outcome**: First, understand the CUA's thought process from the agent_output. Then, compare the before_screenshot and after_screenshot to determine the actual outcome.
     For each step taken by the Computer Use Agent, you need to analyze its intent, specific action, and the resulting screen changes. Then, you must generate a JSON report strictly adhering to the required format.
-    - Notes of zoomed-in image:
-        - This is intended to help with small details that are unclear in the full screenshot so make sure to refer to it.
-        - The zoomed-in view will be centered around the operational area and may mark the precise coordinates.
-        - Pay attention to any visual markers that may suggest where clicks, mouse movements, or drags occurred.
-            - Clicks will be marked with a red cross indicating the pixel point to click.
-            - The "drag_and_drop" and "highlight_text_span" action will have an initial red cross denoting start point, a blue cross denoting the end point, and a green line connecting the two cross.
-    - Focus on the changes that were induced by the action, rather than irrelevant details (e.g. the time change in the system clock).
-        - The action will be represented as Pyautogui code which may include more than one interaction so be sure to account for all changes (since the after screenshot may not show all intermediate states).
-        - Note that even if the action is expected to cause a change, it may have not. Never assume that the action was successful without clear evidence in the screenshots.
-        - Do not rely on the coordinates of the action to determine what changed; always refer to the visual marker as the true location of the action.
-    - Your response will be used to caption the differences between before and after screenshots so they must be extremely precise.
-    - Make sure to include the <thoughts>...</thoughts> and <answer>...</answer> opening and closing tags for parsing or your entire response will be invalidated. In answer part, you must strictly output in the following JSON format, with fields summary and evaluation.
-    - No Planning: Absolutely do not propose any plans, suggestions, or predictions for the Computer Use Agent's subsequent steps. Your role is to record history, not to guide the future.
-
+    2. **Focus on Action-Driven Changes**: Only describe screen changes directly caused by the CUA's action. Ignore irrelevant changes (e.g., the system clock).
+    3. **Trust Visual Markers**: If a zoomed-in view is provided, it may contain markers. These are the ground truth for the action's location:
+        - Red Cross: Marks a click point.
+        - Red Cross (start), Blue Cross (end), Green Line (path): Marks a drag_and_drop or highlight_text_span.
+    4. **Verify Success**: Never assume an action was successful. You must find clear visual evidence in the after_screenshot that validates the CUA's intended action. If the screen did not change as expected, the action failed.
+    5. **Handle Multi-Step Actions**: The Pyautogui action might involve multiple interactions (e.g., click then type). Ensure your summary accounts for the entire sequence described in the action.
+     
+    **Additional Tips**: 
+    - IMPORTANT: Do not assume file modifications or application restarts are errors - they may be legitimate code agent actions.
+    - Your role is to record history, not to guide the future. Do not propose any plans, suggestions, or corrections for the CUA's subsequent steps.
 
     **Output Format**: Please format your response as follows below.
     <thoughts>
-    [Your detailed reasoning about the before screenshot, the action being taken, and the changes in the after screenshot and zoomed-in view with any visual markers (if present).]
+    [Your detailed reasoning. First, state the CUA's thought process and intended action. Second, analyze the screenshots (using the zoomed-in view if available) to identify all visual changes. Finally, conclude whether the visual changes match the CUA's intent.]
     </thoughts>
     <answer>
     {
-        "summary": "(Fill in the summary here)",
-        "evaluation": "(Fill in the evaluation here)"
+        "summary": "(A summary of the CUA's step. See the rules below.)",
+        "evaluation": "(An evaluation of the action's success. See rules below.)"
     }
     </answer>
+
+    
+    **Output Field Definitions**:
+    - summary: (String) A comprehensive summary of the CUA's step. It must include:
+        - CUA's Thought: What did the agent think?
+        - CUA's Action: What action did it perform?
+        - Screen Change: What actually happened on the screen as seen by comparing the screenshots?
+    - evaluation: (String) An assessment of whether the step was successful.
+        - For GUI Actions (e.g., click, type, drag_and_drop): You MUST evaluate the action as "successful" or "failed" based on visual evidence, and then give a short explaination.
+        - For Non-GUI Actions (e.g., call_code_agent, call_search_agent): You MUST respond with "Cannot evaluate based on the provided inputs".
         """
     )
     

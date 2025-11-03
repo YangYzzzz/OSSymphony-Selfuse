@@ -192,6 +192,7 @@ class Worker(BaseModule):
         """
         Predict the next action(s) based on the current observation.
         """
+        print("=" * 30, f"Turn {self.turn_count}", "=" * 30)
         # Query Rewrite First
         if self.instruction is None and self.enable_rewrite_instruction:
             self.rewrite_agent.add_message(
@@ -227,12 +228,12 @@ class Worker(BaseModule):
             
         reflection = None
         reflection_thoughts = None
-        if self.turn_count != 0:
-            reflection, reflection_thoughts = self.memory_agent.get_reflection(         # 新设计的reflection!!!
-                cur_obs=obs, 
-                generator_output=self.worker_history[-1], 
-                coordinates=self.coords_history[-1]
-            ) 
+        
+        reflection, reflection_thoughts = self.memory_agent.get_reflection(         # 新设计的reflection!!!
+            cur_obs=obs, 
+            generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
+            coordinates=self.coords_history[-1] if self.turn_count != 0 else []
+        ) 
     
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"

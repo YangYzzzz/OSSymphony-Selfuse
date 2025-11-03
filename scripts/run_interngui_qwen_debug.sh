@@ -15,19 +15,19 @@ python run_agents3.py \
   --num_envs 1 \
   --max_steps 20 \
   --domain "all" \
-  --test_all_meta_path evaluation_examples/test_chromesearchbug.json \
+  --test_all_meta_path evaluation_examples/test_docs_debug.json \
   --result_dir "results" \
   --region "us-east-1" \
   --sleep_after_execution 3 \
   --model_provider "vllm" \
   --model "Qwen3-VL-30B-A3B-Instruct" \
-  --model_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-jrnjs-606527-worker-0.yangbowen/8001/v1" \
+  --model_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-cs8ng-1170936-worker-0.yangbowen/8001/v1" \
   --model_api_key "none" \
   --model_temperature 0 \
   --ground_provider "openai" \
   --ground_model "ui-tars-1.5-7b" \
   --ground_api_key "none" \
-  --ground_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-mmpxn-470377-worker-0.yangbowen/8000/v1" \
+  --ground_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-65pfw-1176830-worker-0.yangbowen/8000/v1" \
   --grounding_width 1920 \
   --grounding_height 1080 \
   --grounding_smart_resize True \

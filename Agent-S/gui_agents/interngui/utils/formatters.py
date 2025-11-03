@@ -84,7 +84,6 @@ def json_answer_check(response: str, required_fields: List[str]) -> bool:
         return True
         
     except Exception:
-        print("##############")
         return False
 
 json_answer_error_msg = (
