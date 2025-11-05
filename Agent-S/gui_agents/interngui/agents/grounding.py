@@ -372,7 +372,7 @@ class OSWorldACI(ACI):
     ):
         """Click on the element
         Args:
-            element_description:str, a detailed descriptions of which element to click on. This description should be at least a full sentence.
+            element_description:str, a detailed descriptions of which element to click on. This description needs to be VERY unambiguous. If the page contains many similar elements, ensure the description uniquely identifies the target element.
             num_clicks:int, number of times to click the element
             button_type:str, which mouse button to press can be "left", "middle", or "right"
             hold_keys:List, list of keys to hold while clicking
@@ -492,7 +492,7 @@ class OSWorldACI(ACI):
         else:
             return final_command
         
-    @agent_action
+    # @agent_action
     def save_to_knowledge(self, text: List[str]):
         """Save facts, elements, texts, etc. to a long-term knowledge bank for reuse during this task. Can be used for copy-pasting text, saving elements, etc.
         Args:
@@ -569,7 +569,7 @@ class OSWorldACI(ACI):
             cell_values=cell_values, app_name=app_name, sheet_name=sheet_name
         )
 
-    # @agent_action
+    @agent_action
     def call_code_agent(self, task: str = None):
         """Call the code agent to execute code for tasks or subtasks that can be completed solely with coding.
 

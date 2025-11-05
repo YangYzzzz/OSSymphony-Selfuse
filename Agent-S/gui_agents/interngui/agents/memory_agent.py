@@ -11,8 +11,8 @@ from gui_agents.interngui.utils.formatters import JSON_ANSWER_FORMATTER
 from gui_agents.interngui.core.mllm import LMMAgent
 from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 import textwrap
-import base64
 import io
+import os
 from PIL import Image, ImageDraw
 
 
@@ -44,8 +44,7 @@ class ReflectionMemoryAgent:
     Responsible for maintaining long-term memory, extracting narratives from trajectories,
     providing reflections to the Main Agent, and validating task completion status.
     """
-    
-    def __init__(self, engine_params: Dict, max_img_len: int = 8):
+    def __init__(self, engine_params: Dict, max_img_len: int = 9):
         """
         Initialize the RMA.
 
@@ -77,7 +76,13 @@ class ReflectionMemoryAgent:
 
         self.trajectory: List[StepBehavior] = []
 
-        self.active_milestone = []        # 用于控制图片数量，始终存放max_img_len张图片，更新逻辑是第0张始终保留，从索引为1开始FIFO
+        self.knowledge_base: List[str] = []
+
+        '''
+        用于控制图片数量，始终存放max_img_len张图片
+        更新逻辑是第0张screenshot始终保留。总图片数量小于max_img_len，保留全部；大于max_img_len，milestone从索引为1开始进行FIFO。
+        '''
+        self.active_img_idx = []        
 
         self.reflection_agent = LMMAgent(
             engine_params=self.engine_params,
@@ -97,10 +102,14 @@ class ReflectionMemoryAgent:
 
     def _update_trajectory(self, step_behavior):
         self.trajectory.append(step_behavior)
-        self.active_milestone.append(len(self.trajectory) - 1)      # 记录index
-        if len(self.active_milestone) > self.max_img_len:
-            self.active_milestone.remove(1)     # 从索引为1开始FIFO
-        assert len(self.active_milestone) <= self.max_img_len, "[RMA] StepBehavior更新逻辑有问题!!"
+        if len(self.active_img_idx) >= self.max_img_len:
+            if step_behavior.is_milestone:
+                self.active_img_idx.append(len(self.trajectory) - 1)      # 超过max_img_len，只喂milestone的图片
+                del self.active_img_idx[1]          # 从索引为1开始FIFO
+        else:
+            self.active_img_idx.append(len(self.trajectory) - 1)        # 不足max_img_len, 全塞入
+            
+        assert len(self.active_img_idx) <= self.max_img_len, "[RMA] StepBehavior更新逻辑有问题!!"
 
 
     def _enhance_observation(self, obs: Dict, coordinates: List, expansion_pixels: int = 400) -> bytes:
@@ -242,24 +251,26 @@ class ReflectionMemoryAgent:
             role="user"
         )
 
-        required_fields = ["summary", "evaluation"]
-        format_checkers = [
-            partial(JSON_ANSWER_FORMATTER, required_fields)
-        ]
+        # required_fields = ["summary", "evaluation"]
+        # format_checkers = [
+        #     partial(JSON_ANSWER_FORMATTER, required_fields)
+        # ]
 
-        response = call_llm_formatted(
-            self.behavior_agent,
-            format_checkers
-        )
+        # response = call_llm_formatted(
+        #     self.behavior_agent,
+        #     format_checkers
+        # )
+
+        response = call_llm_safe(self.behavior_agent)
 
         behavior_summary, _ = split_thinking_response(response)
 
-        print("@@@@@@@@@@ Summary Response: ", response)
+        # print("@@@@@@@@@@ Summary Response: ", response)
 
         step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs)
 
         self._update_trajectory(step_behavior)
-        return
+        return behavior_summary
 
     def get_reflection(self, cur_obs: Dict, generator_output: str, coordinates: List) -> Tuple[str, str]:
         """
@@ -268,15 +279,13 @@ class ReflectionMemoryAgent:
         
         Args:
         - cur_obs (Dict): The Main Agent's current observation (o_k).
-        - generator_output (str): The thoughts, screen analysis and action of generator.
-        - coordinates (List): coordinates in the last operation step of generator.
+        - generator_output (str): The thoughts, screen analysis and action of Main Agent.
+        - coordinates (List): coordinates in the last operation step of Main Agent.
         
         Returns:
         - reflection (str): RMA's reflection. 
         - reflection_thoughts: RMA's thoughts.
-        """
-        logger.info(f"\n--- [Main Agent requesting reflection from RMA] ---")
-        
+        """        
         reflection = ""
         reflection_thought = ""
         if len(self.trajectory) == 0:
@@ -286,45 +295,59 @@ class ReflectionMemoryAgent:
                 "The initial screen is provided. No action has been taken yet.", 
                 cur_obs
             )
-            self.trajectory.append(step_behavior)
+            self._update_trajectory(step_behavior)
             
         else: 
             self.reflection_agent.reset()
 
             updated_sys_prompt = (
-                self.reflection_agent.system_prompt + "\n" + f"user_instruction: {self.instruction}"
+                PROCEDURAL_MEMORY.REFLECTION_SYSTEM_PROMPT + "\n\n" + f"---\n**user instruction**: {self.instruction}\n" + "**existing knowledge**: \n" + "\n".join(self.knowledge_base) + "\n---"
             )
 
             self.reflection_agent.add_system_prompt(updated_sys_prompt)
 
-            print("=" * 10)
+
+            # print("=" * 10)
             for i, step in enumerate(self.trajectory):
 
-                text_content = textwrap.dedent(
-                    f"""(Step {i}) action_history:\n{step.summary}"""
-                )
-                print(text_content)
+                text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
+
+                if i in self.active_img_idx:
+                    if i == 0:
+                        text_content += f"\ninitial screenshot:"
+                    else: 
+                        text_content += f"\nscreenshot (after executing action): (attached below)"
+                
+                # debug
+                # print(text_content)
+                # if i in self.active_img_idx:
+                #     print(f"image content: step_{i + 1}.png")
+
                 self.reflection_agent.add_message(
                     text_content=text_content,
-                    image_content=step.obs['screenshot'] if step.is_milestone and i in self.active_milestone else None,     # 不仅检查是否为milestone，也控制图像数量
+                    image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
                     role="user",
                 )
+                
+                # if i in self.active_img_idx:
+                #     image = Image.open(io.BytesIO(step.obs['screenshot'])).convert("RGBA")
+                #     os.makedirs(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}', exist_ok=True)
+                #     image.save(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}/step_{i + 1}_prompt.png')
             
-            print("=" * 10)
-            text_content = textwrap.dedent(
-                f"""
-                latest_action:
-                {generator_output}
-                latest_screenshot:
-                """
-            )
+            text_content = f"""### (Last Step) CUA's output (has been finished):\n---\n{generator_output}\n---\n\nlatest_screenshot:  (attached below)"""
             self.reflection_agent.add_message(
                 text_content=text_content,
                 image_content=cur_obs['screenshot'],
                 role="user",
             )
+            # print(text_content)
+            # print("=" * 10)
+
+            # image = Image.open(io.BytesIO(cur_obs['screenshot'])).convert("RGBA")
+            # os.makedirs(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}', exist_ok=True)
+            # image.save(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}/step_latest_prompt.png')
             
-            required_fields = ["is_milestone", "reflection"]
+            required_fields = ["is_milestone", "reflection", "knowledge"]
         
             format_checkers = [
                 partial(JSON_ANSWER_FORMATTER, required_fields)
@@ -334,13 +357,16 @@ class ReflectionMemoryAgent:
                 self.reflection_agent,
                 format_checkers
             )
-            print("@@@@@@@@@@ Reflection Response: \n", response)
 
             response, reflection_thought = split_thinking_response(response)
             
             data = json.loads(response)
             reflection = data['reflection']
             is_milestone = data["is_milestone"]
+            knowledge = data['knowledge']
+
+            if len(knowledge) > 0:
+                self.knowledge_base.append(knowledge)
             
             if isinstance(is_milestone, str):
                 is_milestone = True if "true" in data['is_milestone'].lower() else False
@@ -350,11 +376,22 @@ class ReflectionMemoryAgent:
             prev_obs = self.trajectory[-1].obs
             enhanced_obs = self._enhance_observation(prev_obs, coordinates) if coordinates else None
             
-            if enhanced_obs:        # debug 记得把这段代码和文件夹都删了
-                image = Image.open(io.BytesIO(enhanced_obs)).convert("RGBA")
-                image.save(f'tmp_enhance_obs/step_{len(self.trajectory)}_enhanced.png')
+            # if enhanced_obs:        # debug 记得把这段代码和文件夹都删了
+            #     image = Image.open(io.BytesIO(enhanced_obs)).convert("RGBA")
+            #     image.save(f'tmp_enhance_obs/step_{len(self.trajectory)}_enhanced.png')
 
-            self._summarize_step_behavior(generator_output, cur_obs, enhanced_obs, is_milestone)     
+            step_summary = self._summarize_step_behavior(generator_output, cur_obs, enhanced_obs, is_milestone)    
+
+
+            supp_info = {
+                "step_num": len(self.trajectory),
+                "existing_knowledge": "\n".join(self.knowledge_base),
+                "is_milestone": data["is_milestone"],
+                "new_knowledge": data['knowledge'],
+                "step_summary": step_summary
+            } 
+            with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
+                json.dump(supp_info, f, indent=4, ensure_ascii=False)
         
         return reflection, reflection_thought
 

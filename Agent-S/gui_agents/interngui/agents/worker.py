@@ -81,11 +81,12 @@ class Worker(BaseModule):
             type(self.grounding_agent), skipped_actions=skipped_actions
         ).replace("CURRENT_OS", self.platform)
 
+
         # Worker 内设置了生成 Agent 和 反思 Agent 两个智能体
         self.generator_agent = self._create_agent(sys_prompt)
-        self.reflection_agent = self._create_agent(
-            PROCEDURAL_MEMORY.REFLECTION_ON_TRAJECTORY
-        )
+        # self.reflection_agent = self._create_agent(
+        #     PROCEDURAL_MEMORY.REFLECTION_ON_TRAJECTORY
+        # )
         self.rewrite_agent = self._create_agent(
             PROCEDURAL_MEMORY.REWRITE_GUI_INSTRUCTION
         )
@@ -111,7 +112,8 @@ class Worker(BaseModule):
         # Flush strategy for long-context models: keep all text, only keep latest images
         if engine_type in ["anthropic", "openai", "gemini"]:
             max_images = self.max_trajectory_length
-            for agent in [self.generator_agent, self.reflection_agent]:
+            # for agent in [self.generator_agent, self.reflection_agent]:
+            for agent in [self.generator_agent]:
                 if agent is None:
                     continue
                 # keep latest k images
@@ -130,8 +132,8 @@ class Worker(BaseModule):
                 self.generator_agent.messages.pop(1)
                 self.generator_agent.messages.pop(1)
             # reflector msgs are all [(user text, user image)], so 1 per round
-            if len(self.reflection_agent.messages) > self.max_trajectory_length + 1:
-                self.reflection_agent.messages.pop(1)
+            # if len(self.reflection_agent.messages) > self.max_trajectory_length + 1:
+            #     self.reflection_agent.messages.pop(1)
 
     # def _generate_reflection(self, instruction: str, obs: Dict) -> Tuple[str, str]:
     #     """
@@ -192,7 +194,7 @@ class Worker(BaseModule):
         """
         Predict the next action(s) based on the current observation.
         """
-        print("=" * 30, f"Turn {self.turn_count}", "=" * 30)
+        print("=" * 30, f"Turn {self.turn_count + 1}", "=" * 30)
         # Query Rewrite First
         if self.instruction is None and self.enable_rewrite_instruction:
             self.rewrite_agent.add_message(
@@ -240,9 +242,9 @@ class Worker(BaseModule):
 
         # Get the grounding agent's knowledge base buffer
         # Important By Yang! 有一个专门的“记笔记”的操作，目的是解决上下文过少的问题，即可以将重要的文字信息记录在列表内，即使长距离也能保有。
-        generator_message += (
-            f"\nCurrent Text Buffer = [{','.join(self.grounding_agent.notes)}]\n"
-        )
+        # generator_message += (
+        #     f"\nCurrent Text Buffer = [{','.join(self.grounding_agent.notes)}]\n"
+        # )
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (

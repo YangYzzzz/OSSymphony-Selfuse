@@ -13,12 +13,12 @@ python run_agents3.py \
   --provider_name "docker" \
   --headless \
   --num_envs 1 \
-  --max_steps 20 \
+  --max_steps 50 \
   --domain "all" \
-  --test_all_meta_path evaluation_examples/test_docs_debug.json \
+  --test_all_meta_path evaluation_examples/test_multiapps_debug.json \
   --result_dir "results" \
   --region "us-east-1" \
-  --sleep_after_execution 3 \
+  --sleep_after_execution 7 \
   --model_provider "vllm" \
   --model "Qwen3-VL-30B-A3B-Instruct" \
   --model_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-cs8ng-1170936-worker-0.yangbowen/8001/v1" \
