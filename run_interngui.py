@@ -15,7 +15,7 @@ import time
 from multiprocessing import Process, Manager, current_process, Queue
 from gui_agents.interngui.agents.interngui import InternGUI
 from gui_agents.interngui.agents.os_aci import OSWorldACI
-
+import shutil
 import lib_run_single
 from desktop_env.desktop_env import DesktopEnv
 
@@ -91,8 +91,8 @@ def run_env_tasks(
     engine_params_for_orchestrator,
     engine_params_for_grounder,
     engine_params_for_coder,
-    engine_params_for_reflector,
-    engine_params_for_searcher
+    engine_params_for_memoryer,
+    engine_params_for_searcher,
 ):
     active_environments = []
     env = None
@@ -156,7 +156,7 @@ def run_env_tasks(
         )
         agent = InternGUI(
             engine_params_for_orchestrator,
-            engine_params_for_reflector,
+            engine_params_for_memoryer,
             os_aci,
             platform="linux",
             max_trajectory_length=args.max_trajectory_length,
@@ -395,25 +395,25 @@ def config() -> argparse.Namespace:
     )
 
     # reflection and memory model config
-    parser.add_argument("--reflector_provider", type=str, default="openai")
-    parser.add_argument("--reflector_model", type=str, default="gpt-4o")
+    parser.add_argument("--memoryer_provider", type=str, default="openai")
+    parser.add_argument("--memoryer_model", type=str, default="gpt-4o")
     parser.add_argument(
-        "--reflector_url",
+        "--memoryer_url",
         type=str,
         default="",
-        help="The URL of the reflector model API.",
+        help="The URL of the memoryer model API.",
     )
     parser.add_argument(
-        "--reflector_api_key",
+        "--memoryer_api_key",
         type=str,
         default="",
-        help="The API key of the reflector model.",
+        help="The API key of the memoryer model.",
     )
     parser.add_argument(
-        "--reflector_temperature",
+        "--memoryer_temperature",
         type=float,
         default=None,
-        help="Temperature to fix the reflector model at (e.g. o3 can only be run with 1.0)",
+        help="Temperature to fix the memoryer model at (e.g. o3 can only be run with 1.0)",
     )
 
     # search model config
@@ -571,12 +571,12 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "budget": args.coder_budget,
     }
 
-    engine_params_for_reflector = {
-        "engine_type": args.reflector_provider,
-        "model": args.reflector_model,
-        "base_url": getattr(args, "reflector_url", ""),
-        "api_key": getattr(args, "reflector_api_key", ""),
-        "temperature": getattr(args, "reflector_temperature", None),
+    engine_params_for_memoryer = {
+        "engine_type": args.memoryer_provider,
+        "model": args.memoryer_model,
+        "base_url": getattr(args, "memoryer_url", ""),
+        "api_key": getattr(args, "memoryer_api_key", ""),
+        "temperature": getattr(args, "memoryer_temperature", None),
     }
 
     engine_params_for_searcher = {
@@ -606,7 +606,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                     engine_params_for_orchestrator,
                     engine_params_for_grounder,
                     engine_params_for_coder,
-                    engine_params_for_reflector,
+                    engine_params_for_memoryer,
                     engine_params_for_searcher
                 ),
                 name=f"EnvProcess-{i+1}",
@@ -630,7 +630,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                                 engine_params_for_orchestrator,
                                 engine_params_for_grounder,
                                 engine_params_for_coder,
-                                engine_params_for_reflector,
+                                engine_params_for_memoryer,
                                 engine_params_for_searcher
                             ),
                             name=f"EnvProcess-Restart-{idx+1}",
@@ -692,8 +692,7 @@ def get_unfinished(
                 if os.path.isdir(example_path):
                     if "result.txt" not in os.listdir(example_path):
                         # empty all files under example_id
-                        for file in os.listdir(example_path):
-                            os.remove(os.path.join(example_path, file))
+                        shutil.rmtree(path=example_path, ignore_errors=True)
                     else:
                         finished[domain].append(example_id)
 

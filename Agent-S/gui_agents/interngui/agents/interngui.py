@@ -16,7 +16,7 @@ class InternGUI:
     def __init__(
         self,
         engine_params_for_orchestrator: Dict,
-        engine_params_for_reflector: Dict,
+        engine_params_for_memoryer: Dict,
         os_aci: OSWorldACI,
         platform: str = platform.system().lower(),
         max_trajectory_length: int = 8,
@@ -35,7 +35,7 @@ class InternGUI:
         """
 
         self.engine_params_for_orchestrator = engine_params_for_orchestrator
-        self.engine_params_for_reflector = engine_params_for_reflector
+        self.engine_params_for_memoryer = engine_params_for_memoryer
         self.os_aci: OSWorldACI = os_aci
         self.platform =platform
         self.max_trajectory_length = max_trajectory_length
@@ -51,7 +51,7 @@ class InternGUI:
         self.os_aci.result_dir = result_dir
         self.executor = Worker(
             engine_params_for_orchestrator=self.engine_params_for_orchestrator,
-            engine_params_for_reflector=self.engine_params_for_reflector,
+            engine_params_for_memoryer=self.engine_params_for_memoryer,
             os_aci=self.os_aci,
             platform=self.platform,
             max_trajectory_length=self.max_trajectory_length,

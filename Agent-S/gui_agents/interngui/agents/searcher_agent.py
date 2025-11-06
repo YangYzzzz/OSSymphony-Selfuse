@@ -361,14 +361,13 @@ class VLMSearcherAgent(SearcherAgent):
         element_description: Optional[str] = None,
         text: str = "",
         overwrite: bool = False,
-        enter: bool = False,
-        is_terminal = False
+        enter: bool = False
     ):
         """Type text/unicode into a specific element
         Args:
             element_description:str, a detailed description of which element to enter text in. This description should be at least a full sentence.
             text:str, the text to type
-            overwrite:bool, Assign it to True if the text should overwrite the existing text, otherwise assign it to False. Using this argument clears all text in an element.
+            overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing the text, otherwise assign it to False.
             is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
@@ -390,21 +389,17 @@ class VLMSearcherAgent(SearcherAgent):
             click_coords = [x, y]
 
         if overwrite:
-            if not is_terminal:
-                # 使用 repr() 来确保 'command' 或 'ctrl' 字符串被正确引用
-                hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-                commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
-                commands.append("pyautogui.press('backspace')")
-            else:
-                # 在终端中，Ctrl+A/Backspace 可能不总是清空行，Ctrl+U 更常用
-                # 但 Ctrl+C 是中断，这里可能有逻辑错误，假设意图是清空行
-                commands.append("pyautogui.hotkey('ctrl', 'u')") # Ctrl+U 通常用于清空光标前的内容
+            # 使用 repr() 来确保 'command' 或 'ctrl' 字符串被正确引用
+            hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
+            commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
+            commands.append("pyautogui.press('backspace')")
+
 
         # 使用剪贴板方法进行输入
         # repr(text) 会正确处理文本中的引号和特殊字符
         commands.append(f"pyperclip.copy({repr(text)})")
         
-        if not is_terminal or self.platform == 'darwin':
+        if self.platform == 'darwin':
             hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
             commands.append(f"pyautogui.hotkey({hotkey_mod}, 'v')")
         else:

@@ -3,6 +3,7 @@ import logging
 import textwrap
 from typing import Dict, List, Tuple
 
+from gui_agents.interngui.agents.memoryer_agent import ReflectionMemoryAgent
 from gui_agents.interngui.agents.os_aci import OSWorldACI
 from gui_agents.interngui.core.module import BaseModule
 from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
@@ -18,6 +19,7 @@ from gui_agents.interngui.utils.formatters import (
     CODE_VALID_FORMATTER,
 )
 
+
 logger = logging.getLogger("desktopenv.agent")
 
 
@@ -25,7 +27,7 @@ class Worker(BaseModule):
     def __init__(
         self,
         engine_params_for_orchestrator: Dict,
-        engine_params_for_reflector: Dict,
+        engine_params_for_memoryer: Dict,
         os_aci: OSWorldACI,
         platform: str = "ubuntu",
         max_trajectory_length: int = 8,
@@ -59,8 +61,9 @@ class Worker(BaseModule):
             "claude-sonnet-4-5-20250929",
         ]
         self.engine_params_for_orchestrator = engine_params_for_orchestrator
-        self.engine_params_for_reflector = engine_params_for_reflector
+        self.engine_params_for_memoryer = engine_params_for_memoryer
         self.os_aci: OSWorldACI = os_aci
+
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
         self.enable_rewrite_instruction = enable_rewrite_instruction
@@ -86,26 +89,26 @@ class Worker(BaseModule):
             tool_config=self.tool_config
         ).replace("CURRENT_OS", self.platform)
 
+
         # Worker 内设置了 重写Agent，反思Agent，规划Agent 三个智能体
         self.orchestrator_agent = self._create_agent(
             engine_params=self.engine_params_for_orchestrator, 
             system_prompt=sys_prompt
         )
-        self.reflector_agent = self._create_agent(
-            engine_params=self.engine_params_for_reflector,
-            system_prompt=PROCEDURAL_MEMORY.REFLECTION_ON_TRAJECTORY
-        )
-        # 复用规划者的配置即可, 仅使用一次
+        self.memoryer_agent = ReflectionMemoryAgent(self.engine_params_for_memoryer)
+
         self.rewrite_agent = self._create_agent(
             engine_params=self.engine_params_for_orchestrator,
             system_prompt=PROCEDURAL_MEMORY.REWRITE_GUI_INSTRUCTION
         )
+
         self.instruction = None
         self.turn_count = 0
         self.worker_history = []
         self.reflections = []
         self.cost_this_turn = 0
         self.screenshot_inputs = []
+        self.coords_history = []
 
     def flush_messages(self):
         """Flush messages based on the model's context limits.
@@ -120,7 +123,8 @@ class Worker(BaseModule):
         # Flush strategy for long-context models: keep all text, only keep latest images
         if engine_type in ["anthropic", "openai", "gemini"]:
             max_images = self.max_trajectory_length
-            for agent in [self.orchestrator_agent, self.reflector_agent]:
+            # for agent in [self.generator_agent, self.reflection_agent]:
+            for agent in [self.orchestrator_agent]:
                 if agent is None:
                     continue
                 # keep latest k images
@@ -138,69 +142,13 @@ class Worker(BaseModule):
             if len(self.orchestrator_agent.messages) > 2 * self.max_trajectory_length + 1:
                 self.orchestrator_agent.messages.pop(1)
                 self.orchestrator_agent.messages.pop(1)
-            # reflector msgs are all [(user text, user image)], so 1 per round
-            if len(self.reflector_agent.messages) > self.max_trajectory_length + 1:
-                self.reflector_agent.messages.pop(1)
 
-    def _generate_reflection(self, instruction: str, obs: Dict):
-        """
-        Generate a reflection based on the current observation and instruction.
-
-        Args:
-            instruction (str): The task instruction.
-            obs (Dict): The current observation containing the screenshot.
-
-        Returns:
-            Optional[str, str]: The generated reflection text and thoughts, if any (turn_count > 0).
-
-        Side Effects:
-            - Updates reflection agent's history
-            - Generates reflection response with API call
-        """
-        reflection = None
-        reflection_thoughts = None
-        if self.enable_reflection:
-            # Load the initial message
-            if self.turn_count == 0:
-                text_content = textwrap.dedent(
-                    f"""
-                    Task Description: {instruction}
-                    Current Trajectory below:
-                    """
-                )
-                updated_sys_prompt = (
-                    self.reflector_agent.system_prompt + "\n" + text_content
-                )
-                self.reflector_agent.add_system_prompt(updated_sys_prompt)
-                self.reflector_agent.add_message(
-                    text_content="The initial screen is provided. No action has been taken yet.",
-                    image_content=obs["screenshot"],
-                    role="user",
-                )
-            # Load the latest action
-            else:
-                self.reflector_agent.add_message(
-                    text_content=self.worker_history[-1],
-                    image_content=obs["screenshot"],
-                    role="user"
-                )
-                full_reflection = call_llm_safe(
-                    self.reflector_agent,
-                    temperature=self.engine_params_for_reflector.get("temperture", 0.1),
-                    use_thinking=self.use_thinking,
-                )
-                reflection, reflection_thoughts = split_thinking_response(
-                    full_reflection
-                )
-                self.reflections.append(reflection)
-                logger.info("REFLECTION THOUGHTS: %s", reflection_thoughts)
-                logger.info("REFLECTION: %s", reflection)
-        return reflection, reflection_thoughts
 
     def generate_next_action(self, instruction: str, obs: Dict, is_last_step: bool) -> Tuple[Dict, List]:
         """
         Predict the next action(s) based on the current observation.
         """
+        print("=" * 30, f"Turn {self.turn_count + 1}", "=" * 30)
         # Query Rewrite First
         if self.instruction is None and self.enable_rewrite_instruction:
             self.rewrite_agent.add_message(
@@ -211,9 +159,16 @@ class Worker(BaseModule):
             self.instruction = call_llm_safe(self.rewrite_agent)
         if self.instruction:
             instruction = self.instruction
+        
+        print("=" * 10)
+        print(instruction)
+        print("=" * 10)
             
         self.os_aci.assign_screenshot(obs)
         self.os_aci.set_task_instruction(instruction)
+
+        # set instruction to memory agent
+        self.memoryer_agent.add_instruction(instruction)
 
         generator_message = (
             ""
@@ -247,15 +202,19 @@ class Worker(BaseModule):
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
 
         # Get the per-step reflection
-        reflection, reflection_thoughts = self._generate_reflection(instruction, obs)
+        # reflection, reflection_thoughts = self._generate_reflection(instruction, obs)
+            
+        reflection = None
+        
+        reflection_info = self.memoryer_agent.get_reflection(         # 新设计的reflection!!!
+            cur_obs=obs, 
+            generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
+            coordinates=self.coords_history[-1] if self.turn_count != 0 else []
+        ) 
+        reflection = reflection_info['reflection']
+    
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
-
-        # Get the grounding agent's knowledge base buffer
-        # Important By Yang! 有一个专门的“记笔记”的操作，目的是解决上下文过少的问题，即可以将重要的文字信息记录在列表内，即使长距离也能保有。
-        generator_message += (
-            f"\nCurrent Text Buffer = [{','.join(self.os_aci.notes)}]\n"
-        )
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (
@@ -273,35 +232,6 @@ class Worker(BaseModule):
                 f"Completion Reason: {code_result['completion_reason']}\n"
             )
             generator_message += f"Summary: {code_result['summary']}\n"
-            # if code_result["execution_history"]:
-            #     generator_message += f"Execution History:\n"
-            #     for i, step in enumerate(code_result["execution_history"]):
-            #         action = step["action"]
-            #         # Format code snippets with proper backticks
-            #         if "```python" in action:
-            #             # Extract Python code and format it
-            #             code_start = action.find("```python") + 9
-            #             code_end = action.find("```", code_start)
-            #             if code_end != -1:
-            #                 python_code = action[code_start:code_end].strip()
-            #                 generator_message += (
-            #                     f"Step {i+1}: \n```python\n{python_code}\n```\n"
-            #                 )
-            #             else:
-            #                 generator_message += f"Step {i+1}: \n{action}\n"
-            #         elif "```bash" in action:
-            #             # Extract Bash code and format it
-            #             code_start = action.find("```bash") + 7
-            #             code_end = action.find("```", code_start)
-            #             if code_end != -1:
-            #                 bash_code = action[code_start:code_end].strip()
-            #                 generator_message += (
-            #                     f"Step {i+1}: \n```bash\n{bash_code}\n```\n"
-            #                 )
-            #             else:
-            #                 generator_message += f"Step {i+1}: \n{action}\n"
-            #         else:
-            #             generator_message += f"Step {i+1}: \n{action}\n"
             generator_message += "\n"
             # Reset the code agent result after adding it to context
             self.os_aci.last_code_agent_result = None
@@ -374,8 +304,7 @@ class Worker(BaseModule):
             "plan_code": plan_code,
             "exec_code": exec_code,
             "coordinates": coordinates,
-            "reflection": reflection,
-            "reflection_thoughts": reflection_thoughts,
+            "reflection": reflection_info,
             "code_agent_output": (
                 self.os_aci.last_code_agent_result
                 if hasattr(self.os_aci, "last_code_agent_result")
@@ -384,6 +313,7 @@ class Worker(BaseModule):
             ),
         }
         self.turn_count += 1
+        self.coords_history.append(coordinates)
         self.screenshot_inputs.append(obs["screenshot"])
         self.flush_messages()
         return executor_info, [exec_code]

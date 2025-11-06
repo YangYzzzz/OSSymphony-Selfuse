@@ -317,7 +317,7 @@ class OSWorldACI:
     ):
         """Click on the element
         Args:
-            element_description:str, a detailed descriptions of which element to click on. This description should be at least a full sentence.
+            element_description:str, a detailed descriptions of which element to click on. This description needs to be VERY unambiguous. If the page contains many similar elements, ensure the description uniquely identifies the target element.
             num_clicks:int, number of times to click the element
             button_type:str, which mouse button to press can be "left", "middle", or "right"
             hold_keys:List, list of keys to hold while clicking
@@ -335,7 +335,7 @@ class OSWorldACI:
         # Return pyautoguicode to click on the element
         return (command, [x, y])
 
-    @agent_action
+    # @agent_action
     def switch_applications(self, app_code):
         """Switch to a different application that is already open
         Args:
@@ -379,7 +379,7 @@ class OSWorldACI:
         Args:
             element_description:str, a detailed description of which element to enter text in. This description should be at least a full sentence.
             text:str, the text to type
-            overwrite:bool, Assign it to True if the text should overwrite the existing text, otherwise assign it to False. Using this argument clears all text in an element.
+            overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing the text, otherwise assign it to False.
             is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
@@ -437,14 +437,14 @@ class OSWorldACI:
         else:
             return final_command
         
-    @agent_action
-    def save_to_knowledge(self, text: List[str]):
-        """Save facts, elements, texts, etc. to a long-term knowledge bank for reuse during this task. Can be used for copy-pasting text, saving elements, etc.
-        Args:
-            text:List[str] the text to save to the knowledge
-        """
-        self.notes.extend(text)
-        return """WAIT"""
+    # @agent_action
+    # def save_to_knowledge(self, text: List[str]):
+    #     """Save facts, elements, texts, etc. to a long-term knowledge bank for reuse during this task. Can be used for copy-pasting text, saving elements, etc.
+    #     Args:
+    #         text:List[str] the text to save to the knowledge
+    #     """
+    #     self.notes.extend(text)
+    #     return """WAIT"""
 
     @agent_action
     def drag_and_drop(
@@ -539,27 +539,7 @@ class OSWorldACI:
             cell_values=cell_values, app_name=app_name, sheet_name=sheet_name
         )
 
-    # TODO: @Yang 需要修改Code提示词的逻辑
-    """Origin:
-    Call the code agent to execute code for tasks or subtasks that can be completed solely with coding.
 
-        Args:
-            task: str, the task or subtask to execute. If None, uses the current full task instruction.
-
-        **🚨 CRITICAL GUIDELINES:**
-        - **ONLY pass a task parameter for SPECIFIC subtasks** (e.g., "Calculate sum of column B", "Filter data by date")
-        - **NEVER pass a task parameter for full tasks** - let it default to the original task instruction
-        - **NEVER rephrase or modify the original task** - this prevents hallucination corruption
-        - **If unsure, omit the task parameter entirely** to use the original task instruction
-
-        Use this for tasks that can be fully accomplished through code execution, particularly for:
-        - Spreadsheet applications (LibreOffice Calc, Excel): data processing, filtering, sorting, calculations, formulas, data analysis
-        - Document editors (LibreOffice Writer, Word): text processing, content editing, formatting, document manipulation
-        - Code editors (VS Code, text editors): code editing, file processing, text manipulation, configuration
-        - Data analysis tools: statistical analysis, data transformation, reporting
-        - File management: bulk operations, file processing, content extraction
-        - System utilities: configuration, setup, automation
-    """
     @agent_action
     def call_code_agent(self, task: str):
         """Calls the code agent to execute a well-defined, self-contained goal that can be completed with code.
@@ -744,23 +724,3 @@ class OSWorldACI:
                 self.tutorials.append(result["final_answer"])
         return "import time; time.sleep(2.222)"
     
-    # @agent_action
-    # def parse(
-    #     self,
-    #     url: str,
-    #     need_open: bool = False
-    # ):
-    #     """
-    #     Parses and extracts textual content and other hyperlink from a webpage.
-
-    #     Args:
-    #         url: str, The full URL of the web page to be read (e.g., 'https://example.com/article').
-
-    #     **Note:**
-    #     This action is typically used after finding a relevant URL with the 'search' tool, or in situations where it is necessary to further examine the hyperlinks on a page. 
-    #     """
-    #     logger.info("=" * 50)
-    #     logger.info(f"GROUNDING AGENT: Calling Parser Agent(url={url})")
-    #     logger.info("=" * 50)
-    #     self.last_search_agent_result = self.parser_agent.parse(url)
-    #     return "import time; time.sleep(2.222)"

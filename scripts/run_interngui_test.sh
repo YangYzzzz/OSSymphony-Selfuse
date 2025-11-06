@@ -15,7 +15,7 @@ python run_interngui.py \
   --num_envs 2 \
   --max_steps 50 \
   --domain "all" \
-  --test_all_meta_path evaluation_examples/test_search.json \
+  --test_all_meta_path evaluation_examples/test_gimp.json \
   --result_dir "results" \
   --region "us-east-1" \
   --tool_config "/nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml" \
@@ -37,11 +37,11 @@ python run_interngui.py \
   --coder_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
   --coder_temperature 0.1 \
   --coder_budget 20 \
-  --reflector_provider "openai" \
-  --reflector_model "gpt-5-mini" \
-  --reflector_url "https://api.boyuerichdata.opensphereai.com/v1" \
-  --reflector_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
-  --reflector_temperature 0.1 \
+  --memoryer_provider "openai" \
+  --memoryer_model "gpt-5-mini" \
+  --memoryer_url "https://api.boyuerichdata.opensphereai.com/v1" \
+  --memoryer_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
+  --memoryer_temperature 0.1 \
   --searcher_provider "openai" \
   --searcher_model "gpt-5-mini" \
   --searcher_url "https://api.boyuerichdata.opensphereai.com/v1" \
@@ -52,7 +52,7 @@ python run_interngui.py \
   --sleep_after_execution 3 \
   --enable_reflection True \
   --enable_rewrite_instruction False \
-  --use_search_first True \
-  --exp_name "searcher_use_search_first_test"
+  --use_search_first False \
+  --exp_name "search_memory_combine_test"
 
 # bash scripts/remove_all_osworld_container.sh
