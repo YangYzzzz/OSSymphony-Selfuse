@@ -233,6 +233,11 @@ class PROCEDURAL_MEMORY:
         - existing_knowledge = "Ming Pavilion Address: Level 8, Pacific Place, Supreme Court Road, Central"
         - latest_screenshot shows "Address: Level 8, Pacific Place, Supreme Court Road, Central; Phone: (852) 2820 8580".
         - Result: You must extract "Ming Pavilion's Phone: (852) 2820 8580" because it is new.
+    - Example (Duplicate Info):
+        - user_instruction = "Find the email of 'Tao Yu'."
+        - existing_knowledge = "Tao Yu's email: tao.yu.nlp@gmail.com"
+        - latest_screenshot shows "Contact me: tao.yu.nlp [AT] gmail.com".
+        - Result: You must extract nothing because it is NOT new.
 
     ---     
     **Task 2: Trajectory Reflection & Knowledge Recall**
@@ -242,7 +247,7 @@ class PROCEDURAL_MEMORY:
     - Case 1. **Off-Track**: The trajectory is not going according to plan.
         - **Loop Detection (Priority 1)**: Your first check must be for non-productive loops. Analyze the action_history. Is the agent repeating the same sequence of actions (e.g., click A, click B, go back, click A, click B...) without making progress? If so, advise the agent to stop taking the specific actions that cause the loop.
         - **Caveat**: Do not mistake necessary, mechanical repetition (like filling 10 rows in a spreadsheet) for a negative loop. A loop is repetitive action without progress.
-        - **Other Off-Track Reasons**: If no loop is found, check for other issues: deviating from the goal, filling in wrong information that conflicts with knowledge, etc. Explicitly highlight why it is incorrect.
+        - **Other Off-Track Reasons**: If no loop is found, check for other issues: deviating from the goal, filling in wrong information that conflicts with knowledge, etc. Explicitly highlight why it is incorrect and give a possible new plan.
     - Case 2. **Task Completed**: You believe the current task has been successfully completed. Tell the agent to stop.
     - Case 3. **Task Infeasible**: You are **highly certain** the task cannot be completed. This may be due to a required file not existing, or the OS/software lacking a feature necessary to complete the task. In this case, tell the agent to choose "fail" action.
     - Case 4. **On-Track**: (If Cases 1, 2, and 3 do not apply) The trajectory is going according to plan. Now, you must perform a sub-check to see if Knowledge Recall is needed.

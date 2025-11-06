@@ -205,6 +205,10 @@ class Worker(BaseModule):
             self.instruction = call_llm_safe(self.rewrite_agent)
         if self.instruction:
             instruction = self.instruction
+        
+        print("=" * 10)
+        print(instruction)
+        print("=" * 10)
             
         self.grounding_agent.assign_screenshot(obs)
         self.grounding_agent.set_task_instruction(instruction)
