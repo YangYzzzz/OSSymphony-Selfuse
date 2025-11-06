@@ -41,7 +41,6 @@ class PROCEDURAL_MEMORY:
                 * **Subtask**: Use agent.call_code_agent("specific subtask") for focused data tasks.
                 * CRITICAL: When calling for the full task, pass the original TASK DESCRIPTION without modification.
             * **CRITICAL CONSTRAINTS**:
-                * For formatting tasks, always use the code agent for proper data/text formatting.
                 * Never use the code agent for charts, graphs, pivot tables, or visual elements—always use the GUI for those.
                     
             ## 1.3 **CRITICAL: Code Agent Verification (MANDATORY)**

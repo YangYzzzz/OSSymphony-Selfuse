@@ -11,7 +11,7 @@ python run_agents3.py \
   --num_envs 1 \
   --max_steps 50 \
   --domain "all" \
-  --test_all_meta_path evaluation_examples/test_multiapps_debug.json \
+  --test_all_meta_path evaluation_examples/test_docs_debug.json \
   --result_dir "results" \
   --region "us-east-1" \
   --sleep_after_execution 7 \

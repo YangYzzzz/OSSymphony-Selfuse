@@ -235,11 +235,13 @@ class Worker(BaseModule):
         reflection = None
         reflection_thoughts = None
         
-        reflection, reflection_thoughts = self.memory_agent.get_reflection(         # 新设计的reflection!!!
+        reflection_info = self.memory_agent.get_reflection(         # 新设计的reflection!!!
             cur_obs=obs, 
             generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
             coordinates=self.coords_history[-1] if self.turn_count != 0 else []
         ) 
+        reflection = reflection_info['reflection']
+        reflection_thoughts = reflection_info['reflection_thoughts']
     
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"

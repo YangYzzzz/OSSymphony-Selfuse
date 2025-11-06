@@ -272,7 +272,7 @@ class ReflectionMemoryAgent:
         self._update_trajectory(step_behavior)
         return behavior_summary
 
-    def get_reflection(self, cur_obs: Dict, generator_output: str, coordinates: List) -> Tuple[str, str]:
+    def get_reflection(self, cur_obs: Dict, generator_output: str, coordinates: List) -> Dict:
         """
         [Interface] RMA -> Main
         The Main Agent (MA) calls this method to get RMA's reflection before deciding the next action.
@@ -286,8 +286,8 @@ class ReflectionMemoryAgent:
         - reflection (str): RMA's reflection. 
         - reflection_thoughts: RMA's thoughts.
         """        
-        reflection = ""
-        reflection_thought = ""
+        reflection = None
+        reflection_thought = None
         if len(self.trajectory) == 0:
             step_behavior = StepBehavior(
                 True, 
@@ -296,7 +296,14 @@ class ReflectionMemoryAgent:
                 cur_obs
             )
             self._update_trajectory(step_behavior)
-            
+            reflection_info = {
+                "reflection": reflection,
+                "reflection_thoughts": reflection_thought,
+                "existing_knowledge": "\n".join(self.knowledge_base),
+                "is_milestone": True,
+                "new_knowledge": "",
+                "step_summary": ""
+            } 
         else: 
             self.reflection_agent.reset()
 
@@ -383,17 +390,18 @@ class ReflectionMemoryAgent:
             step_summary = self._summarize_step_behavior(generator_output, cur_obs, enhanced_obs, is_milestone)    
 
 
-            supp_info = {
-                "step_num": len(self.trajectory),
+            reflection_info = {
+                "reflection": reflection,
+                "reflection_thoughts": reflection_thought,
                 "existing_knowledge": "\n".join(self.knowledge_base),
                 "is_milestone": data["is_milestone"],
                 "new_knowledge": data['knowledge'],
                 "step_summary": step_summary
             } 
-            with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
-                json.dump(supp_info, f, indent=4, ensure_ascii=False)
+            # with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
+            #     json.dump(supp_info, f, indent=4, ensure_ascii=False)
         
-        return reflection, reflection_thought
+        return reflection_info
 
 
     
