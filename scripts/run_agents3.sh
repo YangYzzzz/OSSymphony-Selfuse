@@ -7,14 +7,14 @@ export HTTPS_PROXY=http://10.1.8.5:23128;
 export no_proxy=localhost,127.0.0.1,10.140.52.51,172.17.0.0/16,20.20.20.0/24,0.0.0.0,10.140.60.25,.pjlab.org.cn; 
 export NO_PROXY=localhost,127.0.0.1,10.140.52.51,172.17.0.0/16,20.20.20.0/24,0.0.0.0,10.140.60.25,.pjlab.org.cn;
 EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-step50-20251106-ybw"
-EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-testgimp"
+# EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-testgimp"
 python run_agents3.py \
   --provider_name "docker" \
   --headless \
   --num_envs 12 \
   --max_steps 50 \
   --domain "all" \
-  --test_all_meta_path evaluation_examples/test_gimp.json \
+  --test_all_meta_path evaluation_examples/test_nogdrive.json \
   --result_dir "results" \
   --region "us-east-1" \
   --tool_config "/nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml" \
