@@ -151,7 +151,7 @@ class DesktopEnv(gym.Env):
         
         # Initialize with default (no proxy) provider
         self.current_use_proxy = False
-        self.manager, self.provider = create_vm_manager_and_provider(provider_name, region, use_proxy=False)
+        self.manager, self.provider = None, None
 
         self.os_type = os_type
 
@@ -166,11 +166,12 @@ class DesktopEnv(gym.Env):
             raise ValueError(f"Invalid provider name: {self.provider_name}")
 
         # Initialize environment variables
-        if path_to_vm:
-            self.path_to_vm = os.path.abspath(os.path.expandvars(os.path.expanduser(path_to_vm))) \
-                if provider_name in {"vmware", "virtualbox"} else path_to_vm
-        else:
-            self.path_to_vm = self.manager.get_vm_path(os_type=self.os_type, region=region, screen_size=(self.screen_width, self.screen_height))
+        self.path_to_vm = path_to_vm
+        # if path_to_vm:
+        #     self.path_to_vm = os.path.abspath(os.path.expandvars(os.path.expanduser(path_to_vm))) \
+        #         if provider_name in {"vmware", "virtualbox"} else path_to_vm
+        # else:
+        #     self.path_to_vm = self.manager.get_vm_path(os_type=self.os_type, region=region, screen_size=(self.screen_width, self.screen_height))
         
         self.snapshot_name = snapshot_name
         self.cache_dir_base: str = cache_dir
@@ -180,8 +181,8 @@ class DesktopEnv(gym.Env):
         self.require_terminal = require_terminal
 
         # Initialize emulator and controller
-        logger.info("Initializing...")
-        self._start_emulator()
+        # logger.info("Initializing...")
+        # self._start_emulator() # Start the emulator, we should seperate it with another method
 
         # mode: human or machine
         self.instruction = None
@@ -194,8 +195,21 @@ class DesktopEnv(gym.Env):
         self._step_no: int = 0
         self.action_history: List[Dict[str, any]] = []
 
+    # 将物理上的初始化和逻辑上的初始化解耦，便于传参
+    def start(self):
+        # Initialize emulator and controller
+        if not self.manager and not self.provider:
+            logger.info("Initializing...")
+            self.manager, self.provider = create_vm_manager_and_provider(self.provider_name, self.region, use_proxy=False)
+            if self.path_to_vm:
+                self.path_to_vm = os.path.abspath(os.path.expandvars(os.path.expanduser(self.path_to_vm))) \
+                    if self.provider_name in {"vmware", "virtualbox"} else self.path_to_vm
+            else:
+                self.path_to_vm = self.manager.get_vm_path(os_type=self.os_type, region=self.region, screen_size=(self.screen_width, self.screen_height))
+            self._start_emulator()
 
     def _start_emulator(self):
+        assert self.manager and self.provider and self.path_to_vm
         try:
             # Power on the virtual machine
             self.provider.start_emulator(self.path_to_vm, self.headless, self.os_type)
@@ -237,7 +251,8 @@ class DesktopEnv(gym.Env):
 
     def close(self):
         # Close (release) the virtual machine
-        self.provider.stop_emulator(self.path_to_vm)
+        if self.provider:
+            self.provider.stop_emulator(self.path_to_vm)
 
     # 每次新任务时先执行该函数
     def reset(self, task_config: Optional[Dict[str, Any]] = None, seed=None, options=None) -> Dict[str, Any]:
@@ -355,6 +370,9 @@ class DesktopEnv(gym.Env):
         # options (optional) -> metric options, or list of metric options
         # if func is a str list, then result, expected (if exists), options (if exists) should also be lists of the same length
         # even if one of the metrics does not need expected or options field, it should be included in the list with None
+        if "evaluator" not in task_config.keys():
+            return
+        
         self.evaluator = task_config["evaluator"]
         self.metric: Metric = [getattr(metrics, func) for func in self.evaluator["func"]] \
             if isinstance(self.evaluator["func"], list) \

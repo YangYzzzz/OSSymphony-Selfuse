@@ -9,10 +9,8 @@ from pytesseract import Output
 
 from gui_agents.s3.memory.procedural_memory import PROCEDURAL_MEMORY
 from gui_agents.s3.core.mllm import LMMAgent
-from gui_agents.s3.utils.common_utils import call_llm_safe, smart_resize
+from gui_agents.s3.utils.common_utils import call_llm_safe
 from gui_agents.s3.agents.code_agent import CodeAgent
-from gui_agents.s3.agents.search_agent import SearchAgent
-from gui_agents.s3.agents.parser_agent import ParserAgent
 import logging
 
 logger = logging.getLogger("desktopenv.agent")
@@ -105,7 +103,7 @@ def set_cell_values(new_cell_values: dict[str, str], app_name: str = "Untitled 1
 
     # Clean up previous TCP connections.
     subprocess.run(
-        'echo \"password\" | sudo -S ss --kill --tcp state TIME-WAIT sport = :2002',
+        'echo \"osworld-public-evaluation\" | sudo -S ss --kill --tcp state TIME-WAIT sport = :2002',
         shell=True,
         check=True,
         text=True,
@@ -185,12 +183,10 @@ class OSWorldACI(ACI):
         platform: str,
         engine_params_for_generation: Dict,
         engine_params_for_grounding: Dict,
-        engine_params_for_search: Dict,
-        engine_params_for_parser: Dict,
         width: int = 1920,
         height: int = 1080,
         code_agent_budget: int = 20,
-        code_agent_engine_params: Dict = None
+        code_agent_engine_params: Dict = None,
     ):
         super().__init__()
 
@@ -212,7 +208,7 @@ class OSWorldACI(ACI):
         # Configure the visual grounding model responsible for coordinate generation
         self.grounding_model = LMMAgent(engine_params_for_grounding)
         self.engine_params_for_grounding = engine_params_for_grounding
-        
+
         # Configure text grounding agent
         self.text_span_agent = LMMAgent(
             engine_params=engine_params_for_generation,
@@ -228,11 +224,7 @@ class OSWorldACI(ACI):
         # Store task instruction for code agent
         self.current_task_instruction = None
         self.last_code_agent_result = None
-        self.last_search_or_parser_agent_result = None
-        # Configure search agent
-        self.search_agent = SearchAgent.create(engine_params=engine_params_for_search)
-        self.parser_agent = ParserAgent.create(engine_params=engine_params_for_parser)
-        
+
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
     def generate_coords(self, ref_expr: str, obs: Dict) -> List[int]:
 
@@ -344,21 +336,11 @@ class OSWorldACI(ACI):
     def resize_coordinates(self, coordinates: List[int]) -> List[int]:
         grounding_width = self.engine_params_for_grounding["grounding_width"]
         grounding_height = self.engine_params_for_grounding["grounding_height"]
-        grounding_smart_resize = self.engine_params_for_grounding["grounding_smart_resize"]
 
-        # Important：这段逻辑很重要，当不需要smart_resize时，grounding_width/height 代表图像坐标归一化系数，有 1 的(很少有了)，有 1000 的(QWen2.5以前都是1000)
-        # 当需要 smart_resize 时, 使用 smart_resize 动态计算归一化系数
-        if not grounding_smart_resize:
-            return [
-                round(coordinates[0] * self.width / grounding_width),
-                round(coordinates[1] * self.height / grounding_height),
-            ]
-        else:
-            smart_height, smart_width = smart_resize(self.height, self.width)
-            return [
-                round(coordinates[0] * self.width / smart_width),
-                round(coordinates[1] * self.height / smart_height)
-            ]
+        return [
+            round(coordinates[0] * self.width / grounding_width),
+            round(coordinates[1] * self.height / grounding_height),
+        ]
 
     @agent_action
     def click(
@@ -366,7 +348,7 @@ class OSWorldACI(ACI):
         element_description: str,
         num_clicks: int = 1,
         button_type: str = "left",
-        hold_keys: List = []
+        hold_keys: List = [],
     ):
         """Click on the element
         Args:
@@ -386,7 +368,7 @@ class OSWorldACI(ACI):
         for k in hold_keys:
             command += f"pyautogui.keyUp({repr(k)}); "
         # Return pyautoguicode to click on the element
-        return (command, [x, y])
+        return command
 
     @agent_action
     def switch_applications(self, app_code):
@@ -405,19 +387,27 @@ class OSWorldACI(ACI):
                 False
             ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
 
-    # @agent_action
+    @agent_action
     def open(self, app_or_filename: str):
         """Open any application or file with name app_or_filename. Use this action to open applications or files on the desktop, do not open manually.
         Args:
             app_or_filename:str, the name of the application or filename to open
-        
-        **Important**: 
-        Provide only the name of the application or file. Do not include the full path (e.g., "/home/user/Desktop/my_report.docx"). The function works by searching for the name, not by accessing a file path directly.
         """
         if self.platform == "linux":
             return f"import pyautogui; pyautogui.hotkey('win'); time.sleep(0.5); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(0.5)"
         elif self.platform == "darwin":
             return f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)"
+        elif self.platform == "windows":
+            return (
+                "import pyautogui; import time; "
+                "pyautogui.hotkey('win'); time.sleep(0.5); "
+                f"pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); "
+                "pyautogui.press('enter'); time.sleep(0.5)"
+            )
+        else:
+            assert (
+                False
+            ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
 
     @agent_action
     def type(
@@ -426,7 +416,6 @@ class OSWorldACI(ACI):
         text: str = "",
         overwrite: bool = False,
         enter: bool = False,
-        is_terminal = False
     ):
         """Type text/unicode into a specific element
         Args:
@@ -434,62 +423,44 @@ class OSWorldACI(ACI):
             text:str, the text to type
             overwrite:bool, Assign it to True if the text should overwrite the existing text, otherwise assign it to False. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing the text, otherwise assign it to False.
-            is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
-        commands = [
-            "import pyautogui",
-            "import pyperclip",
-            "import subprocess",
-            # 注意：这个安装命令每次执行都会尝试运行，可能效率不高且需要sudo权限
-            # 最好确保环境已经预先配置好
-            "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
-            # 存储原始剪贴板
-            "original_clipboard = pyperclip.paste()"
-        ]
-        
-        click_coords = None
+        command = "import pyautogui; "
+        command += (
+            "\ntry:\n"
+            "    import pyperclip\n"
+            "except ImportError:\n"
+            "    import subprocess\n"
+            "    subprocess.run('echo \"osworld-public-evaluation\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True)\n"
+            "    subprocess.check_call([subprocess.sys.executable, '-m', 'pip', 'install', 'pyperclip'])\n"
+            "    import pyperclip\n\n"
+        )
+
         if element_description is not None:
             coords1 = self.generate_coords(element_description, self.obs)
             x, y = self.resize_coordinates(coords1)
-            commands.append(f"pyautogui.click({x}, {y})")
-            click_coords = [x, y]
+            command += f"pyautogui.click({x}, {y}); "
 
         if overwrite:
-            if not is_terminal:
-                # 使用 repr() 来确保 'command' 或 'ctrl' 字符串被正确引用
-                hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-                commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
-                commands.append("pyautogui.press('backspace')")
-            else:
-                # 在终端中，Ctrl+A/Backspace 可能不总是清空行，Ctrl+U 更常用
-                # 但 Ctrl+C 是中断，这里可能有逻辑错误，假设意图是清空行
-                commands.append("pyautogui.hotkey('ctrl', 'u')") # Ctrl+U 通常用于清空光标前的内容
+            command += (
+                f"pyautogui.hotkey({repr('command' if self.platform == 'darwin' else 'ctrl')}, 'a'); "
+                "pyautogui.press('backspace'); "
+            )
 
-        # 使用剪贴板方法进行输入
-        # repr(text) 会正确处理文本中的引号和特殊字符
-        commands.append(f"pyperclip.copy({repr(text)})")
-        
-        if not is_terminal or self.platform == 'darwin':
-            hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-            commands.append(f"pyautogui.hotkey({hotkey_mod}, 'v')")
+        # Check if text contains Unicode characters that pyautogui.write() can't handle
+        has_unicode = any(ord(char) > 127 for char in text)
+
+        if has_unicode:
+            # Use clipboard method for Unicode characters
+            command += f"pyperclip.copy({repr(text)}); "
+            command += f"pyautogui.hotkey({repr('command' if self.platform == 'darwin' else 'ctrl')}, 'v'); "
         else:
-            # Linux 终端的粘贴
-            commands.append("pyautogui.hotkey('shift', 'ctrl', 'v')")
+            # Use regular pyautogui.write() for ASCII text
+            command += f"pyautogui.write({repr(text)}); "
 
-        # 恢复原始剪贴板
-        commands.append("pyperclip.copy(original_clipboard)")
-        
         if enter:
-            commands.append("pyautogui.press('enter')")
+            command += "pyautogui.press('enter'); "
+        return command
 
-        # 最后，将所有命令用分号和空格连接成一个最终的字符串
-        final_command = "; ".join(commands)
-
-        if click_coords is not None:
-            return (final_command, click_coords)
-        else:
-            return final_command
-        
     @agent_action
     def save_to_knowledge(self, text: List[str]):
         """Save facts, elements, texts, etc. to a long-term knowledge bank for reuse during this task. Can be used for copy-pasting text, saving elements, etc.
@@ -526,7 +497,7 @@ class OSWorldACI(ACI):
 
         # Return pyautoguicode to drag and drop the elements
 
-        return (command, [x1, y1, x2, y2])
+        return command
 
     @agent_action
     def highlight_text_span(
@@ -550,8 +521,8 @@ class OSWorldACI(ACI):
         command += f"pyautogui.dragTo({x2}, {y2}, duration=1., button='{button}'); pyautogui.mouseUp(); "
 
         # Return pyautoguicode to drag and drop the elements
-        return (command, [x1, y1, x2, y2])
-    
+        return command
+
     @agent_action
     def set_cell_values(
         self, cell_values: Dict[str, Any], app_name: str, sheet_name: str
@@ -567,7 +538,7 @@ class OSWorldACI(ACI):
             cell_values=cell_values, app_name=app_name, sheet_name=sheet_name
         )
 
-    # @agent_action
+    @agent_action
     def call_code_agent(self, task: str = None):
         """Call the code agent to execute code for tasks or subtasks that can be completed solely with coding.
 
@@ -608,8 +579,6 @@ class OSWorldACI(ACI):
             logger.info(f"Screenshot available: {'Yes' if screenshot else 'No'}")
 
             logger.info("Executing code agent...")
-
-            # 在一个动作内部能够执行
             result = self.code_agent.execute(
                 task_to_execute, screenshot, self.env.controller
             )
@@ -644,9 +613,9 @@ class OSWorldACI(ACI):
         x, y = self.resize_coordinates(coords1)
 
         if shift:
-            return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})", [x, y])
+            return f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})"
         else:
-            return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.vscroll({clicks})", [x, y])
+            return f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.vscroll({clicks})"
 
     @agent_action
     def hotkey(self, keys: List):
@@ -695,72 +664,3 @@ class OSWorldACI(ACI):
     def fail(self):
         """End the current task with a failure. Use this when you believe the entire task is impossible to complete."""
         return """FAIL"""
-    
-    # TODO:
-    # @agent_action
-    def search(
-        self, 
-        query: str,
-        specified_url: Optional[str]=None
-    ):
-        """
-        Use a search engine to find relevant GUI Guidance on the internet.
-
-        Args:
-            query (str): The search term, phrase, or question to look up on the internet.
-
-        **Query Formulation Guidelines:**
-
-        Your query must be a well-defined question targeting a **single, specific action**. The goal is to find a precise tutorial from our professional documentation library. To achieve this, follow these rules:
-
-        1.  **Focus on a Single Intent:** The query should represent one clear goal. Do not combine multiple steps or tasks into one query.
-
-        2.  **Be Specific, Not Abstract:** Ask a concrete "how-to" question. Avoid repeating the user's high-level or abstract instructions.
-
-        3.  **Decompose Complex Tasks:** If the user's overall instruction involves multiple actions (e.g., "download a file and then email it"), and you are stuck on one part, search *only for that specific part*.
-
-        **Examples:**
-
-        *   **User's Overall Instruction:** "Please help me download my latest bank statement and then send it to my accountant."
-
-            *   **Correct Query (if stuck on downloading):** "How to download a bank statement from the Bank of America website?"
-            *   **Correct Query (if stuck on attaching a file in Gmail):** "How to attach a file to an email in Gmail?"
-            *   **Incorrect Query:** "Download my bank statement and email it to my accountant"  *(This query is too broad and contains multiple sub-tasks.)*
-
-        **Note:**
-        This is a critical problem-solving action. Use it to perform a web search whenever you encounter a difficult task, are uncertain about the next steps, or are stuck. It is the primary method for finding external documentation and tutorials to help you proceed.
-        """
-        logger.info("=" * 50)
-        logger.info(f"GROUNDING AGENT: Calling Search Agent(query={query})")
-        logger.info("=" * 50)
-        self.last_search_or_parser_agent_result = self.search_agent.search(query)
-        return "import time; time.sleep(2.222)"
-    
-    # TODO:
-    # @agent_action
-    def parse(
-        self,
-        url: str,
-        need_open: bool = False
-    ):
-        """
-        Parses and extracts textual content and other hyperlink from a webpage.
-
-        Args:
-            url: str, The full URL of the web page to be read (e.g., 'https://example.com/article').
-
-        **Note:**
-        This action is typically used after finding a relevant URL with the 'search' tool, or in situations where it is necessary to further examine the hyperlinks on a page. 
-        """
-        logger.info("=" * 50)
-        logger.info(f"GROUNDING AGENT: Calling Parser Agent(url={url})")
-        logger.info("=" * 50)
-        self.last_search_or_parser_agent_result = self.parser_agent.parse(url)
-        return "import time; time.sleep(2.222)"
-    
-    # TODO:
-    # @agent_action
-    def locate_cursor(
-        self,
-    ):
-        pass

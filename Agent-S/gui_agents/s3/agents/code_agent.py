@@ -134,7 +134,7 @@ class CodeAgent:
 
         step_count = 0
         execution_history = []
-        execution_result_history = []
+
         while step_count < self.budget:
             logger.info(f"Step {step_count + 1}/{self.budget}")
 
@@ -189,9 +189,6 @@ class CodeAgent:
 
             if code:
                 result = execute_code(code_type, code, env_controller)
-                execution_result_history.append(
-                    {"step": step_count + 1, "result": result}
-                )
                 # Prepare formatted output and error for logging
                 output = result.get("output", "")
                 error = result.get("error", "")
@@ -271,9 +268,8 @@ class CodeAgent:
             "completion_reason": completion_reason,
             "summary": summary,
             "execution_history": execution_history,
-            "execution_result_history": execution_result_history,
             "steps_executed": step_count,
-            "budget": self.budget
+            "budget": self.budget,
         }
 
         logger.info(f"Code execution completed: steps={step_count}")

@@ -6,22 +6,20 @@ export HTTP_PROXY=http://10.1.8.5:23128;
 export HTTPS_PROXY=http://10.1.8.5:23128; 
 export no_proxy=localhost,127.0.0.1,10.140.52.51,172.17.0.0/16,20.20.20.0/24,0.0.0.0,10.140.60.25,.pjlab.org.cn; 
 export NO_PROXY=localhost,127.0.0.1,10.140.52.51,172.17.0.0/16,20.20.20.0/24,0.0.0.0,10.140.60.25,.pjlab.org.cn;
-EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-step50-20251106-ybw"
-EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-testgimp"
+EXP_NAME="interngui-nogdrive-gpt-5-mini-uitars1.5-step50-nocode-20251025"
 python run_agents3.py \
   --provider_name "docker" \
   --headless \
   --num_envs 12 \
   --max_steps 50 \
   --domain "all" \
-  --test_all_meta_path evaluation_examples/test_gimp.json \
+  --test_all_meta_path evaluation_examples/test_nogdrive.json \
   --result_dir "results" \
   --region "us-east-1" \
-  --tool_config "/nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml" \
   --orchestrator_provider "openai" \
-  --orchestrator_model "Qwen3-VL-30B-A3B-Instruct" \
-  --orchestrator_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10000/v1" \
-  --orchestrator_api_key "none" \
+  --orchestrator_model "gpt-5-mini" \
+  --orchestrator_url "https://api.boyuerichdata.opensphereai.com/v1" \
+  --orchestrator_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
   --orchestrator_temperature 0.1 \
   --grounder_provider "openai" \
   --grounder_model "ui-tars-1.5-7b" \
@@ -31,13 +29,26 @@ python run_agents3.py \
   --grounding_height 1080 \
   --grounding_smart_resize True \
   --coder_provider "openai" \
-  --coder_model "Qwen3-VL-30B-A3B-Instruct" \
-  --coder_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10000/v1" \
-  --coder_api_key "none" \
+  --coder_model "gpt-5-mini" \
+  --coder_url "https://api.boyuerichdata.opensphereai.com/v1" \
+  --coder_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
   --coder_temperature 0.1 \
   --coder_budget 20 \
+  --reflector_provider "openai" \
+  --reflector_model "gpt-5-mini" \
+  --reflector_url "https://api.boyuerichdata.opensphereai.com/v1" \
+  --reflector_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
+  --reflector_temperature 0.1 \
+  --searcher_provider "openai" \
+  --searcher_model "gpt-5-mini" \
+  --searcher_url "https://api.boyuerichdata.opensphereai.com/v1" \
+  --searcher_api_key "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D" \
+  --searcher_temperature 0.1 \
+  --searcher_type "vlm" \
+  --searcher_budget 20\
   --sleep_after_execution 3 \
   --exp_name ${EXP_NAME} \
-  --enable_reflection True
+  --enable_reflection True \
+  --enable_rewrite_instruction False > logs/${EXP_NAME}.log 2>&1 &
 
 # bash scripts/remove_all_osworld_container.sh

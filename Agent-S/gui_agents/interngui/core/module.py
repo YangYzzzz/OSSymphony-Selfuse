@@ -3,7 +3,7 @@ from gui_agents.interngui.core.mllm import LMMAgent
 
 
 class BaseModule:
-    def __init__(self, engine_params: Dict, platform: str):
+    def __init__(self, engine_params: Dict = None, platform: str = "Linux"):
         self.engine_params = engine_params
         self.platform = platform
 

@@ -1,36 +1,13 @@
 import requests
 import urllib.parse
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 from requests.auth import HTTPBasicAuth
+from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
+from gui_agents.interngui.utils.common_utils import call_llm_safe, split_thinking_response
+from gui_agents.interngui.core.mllm import LMMAgent
+from gui_agents.interngui.agents.aci import ACI
 
-# --- Abstract Base Class and Factory ---
-"""
-[Result 1]
-Title:
-URL: https://www.reddit.com/r/chrome/comments/15mp7ys/creating_shortcuts_on_desktop_no_longer_available/
-Description:
-
-[Result 2]
-Title: How to Create a Desktop Shortcut in Google Chrome
-URL: https://www.youtube.com/watch?v=sZ3lg5lYY_w
-Description: How to Create a Desktop Shortcut in Google Chrome If you need a VPN check out NordVPN: https://go.nordvpn.net/SH6D1 PLAYLISTS:Reviews:https://youtube.com/play...
-
-[Result 3]
-Title: How to create website shortcuts on the desktop / in a folder using Chrome?
-URL: https://askubuntu.com/questions/83875/how-to-create-website-shortcuts-on-the-desktop-in-a-folder-using-chrome
-Description:
-
-[Result 4]
-Title: Tips for using tabs & shortcuts in Chrome browser
-URL: https://support.google.com/a/users/answer/13293027?hl=en
-Description: Google Workspace productivity guide On this page
-
-[Result 5]
-Title: Create a Shortcut in Chrome is gone in the latest version - Windows 10 Help Forums
-URL: https://www.tenforums.com/browsers-email/210407-create-shortcut-chrome-gone-latest-version.htm1
-Description: I realize this isn't the right forum for this issue but please forgive me because I can't get it resolved any other way. There are probably many of you that have this problem so I'm posting here. I use 'Create a Shortcut' very frequently in th
-"""
-class SearchAgent:
+class PastSearcherAgent:
     """
     Abstract base class for search agents.
     Defines a common interface that all search agents must adhere to.
@@ -112,19 +89,19 @@ class SearchAgent:
         return "\n".join(result_parts)
     
     @staticmethod
-    def create(engine_params: dict) -> 'SearchAgent':
+    def create(engine_params: dict) -> 'PastSearcherAgent':
         """
         Factory method to create and return a concrete search agent instance
         based on the provided parameters.
         """
-        if engine_params.get("search_type", "searxng") == "searxng":
-            return SearchAgentSearXNG(engine_params=engine_params)
+        if engine_params.get("searcher_type", "searxng") == "searxng":
+            return SearcherAgentSearXNG(engine_params=engine_params)
         else:
-            return SearchAgentJinaAI(engine_params=engine_params)
+            return SearcherAgentJinaAI(engine_params=engine_params)
 
 # --- JinaAI Search Agent Implementation ---
 
-class SearchAgentJinaAI(SearchAgent):
+class SearcherAgentJinaAI(PastSearcherAgent):
     """
     A search agent that uses the Jina AI Search API (s.jina.ai).
     """
@@ -140,7 +117,7 @@ class SearchAgentJinaAI(SearchAgent):
                 - "search_top_k" (int): The number of results to return, defaults to 10.
         """
         super().__init__(
-            search_api="https://s.jina.ai/", 
+            search_api="https://s.jina.ai/",
             search_top_k=engine_params.get("search_top_k", 10), 
             search_enable_reranker=engine_params.get("search_enable_reranker", False),
             search_reranker_api=engine_params.get("search_reranker_api", "")
@@ -180,7 +157,7 @@ class SearchAgentJinaAI(SearchAgent):
         except requests.exceptions.RequestException as e:
             return f"Error: Jina AI search request failed. Details: {e}"
 
-class SearchAgentSearXNG(SearchAgent):
+class SearcherAgentSearXNG(PastSearcherAgent):
     """
     A search agent that uses a SearXNG instance as its backend.
     """
@@ -288,7 +265,7 @@ def jina_search_test():
         print("Please replace 'jina_...YOUR_API_KEY_HERE...' with your actual Jina AI API key to run this test.")
         return
 
-    search_agent = SearchAgent.create(engine_params=engine_params)
+    search_agent = SearcherAgent.create(engine_params=engine_params)
     results = search_agent.search("How to create a webpage shortcut using Chrome on the desktop?")
     print(results)
 

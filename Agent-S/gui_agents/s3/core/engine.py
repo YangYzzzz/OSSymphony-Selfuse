@@ -48,7 +48,7 @@ class LMMEngineOpenAI(LMMEngine):
         organization = self.organization or os.getenv("OPENAI_ORG_ID")
 
         # H 集群认证
-        if self.model.startswith("ui"):
+        if self.model.lower().startswith("ui") or self.model.lower().startswith("qwen"):
             custom_headers = {
                 "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
             }

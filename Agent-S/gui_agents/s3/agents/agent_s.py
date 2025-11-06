@@ -44,9 +44,7 @@ class UIAgent:
         """
         pass
 
-'''
-    最外层 Agent 没啥用
-'''
+
 class AgentS3(UIAgent):
     """Agent that uses no hierarchy for less inference time"""
 
@@ -57,7 +55,6 @@ class AgentS3(UIAgent):
         platform: str = platform.system().lower(),
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
-        enable_rewrite_instruction: bool = False
     ):
         """Initialize a minimalist AgentS2 without hierarchy
 
@@ -72,7 +69,7 @@ class AgentS3(UIAgent):
         super().__init__(worker_engine_params, grounding_agent, platform)
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
-        self.enable_rewrite_instruction = enable_rewrite_instruction
+
         self.reset()
 
     def reset(self) -> None:
@@ -83,7 +80,6 @@ class AgentS3(UIAgent):
             platform=self.platform,
             max_trajectory_length=self.max_trajectory_length,
             enable_reflection=self.enable_reflection,
-            enable_rewrite_instruction=self.enable_rewrite_instruction
         )
 
     def predict(self, instruction: str, observation: Dict) -> Tuple[Dict, List[str]]:

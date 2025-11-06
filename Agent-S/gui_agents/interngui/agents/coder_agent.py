@@ -5,7 +5,7 @@ from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 from gui_agents.interngui.utils.common_utils import call_llm_safe, split_thinking_response
 from gui_agents.interngui.core.mllm import LMMAgent
 
-logger = logging.getLogger("desktopenv.agent")
+logger = logging.getLogger("desktopenv.coder_agent")
 
 
 def extract_code_block(action: str) -> Tuple[Optional[str], Optional[str]]:
@@ -87,19 +87,20 @@ Error: No result returned from execution
     return result_text
 
 
-class CodeAgent:
+class CoderAgent:
     """A dedicated agent for executing code with a budget of steps."""
 
-    def __init__(self, engine_params: Dict, budget: int = 20):
+    def __init__(self, engine_params: Dict):
         """Initialize the CodeAgent."""
         if not engine_params:
             raise ValueError("engine_params cannot be None or empty")
 
         self.engine_params = engine_params
-        self.budget = budget
+        self.budget = engine_params.get("budget", 20)
+        self.temperature = engine_params.get("temperature", 0.1)
         self.agent = None
 
-        logger.info(f"CodeAgent initialized with budget={budget}")
+        logger.info(f"CodeAgent initialized with budget={self.budget}")
         self.reset()
 
     def reset(self):
@@ -139,7 +140,7 @@ class CodeAgent:
             logger.info(f"Step {step_count + 1}/{self.budget}")
 
             # Get assistant response (thoughts and code)
-            response = call_llm_safe(self.agent, temperature=1)
+            response = call_llm_safe(self.agent, temperature=self.temperature)
 
             # Print to terminal for immediate visibility
             print(f"\n🤖 CODING AGENT RESPONSE - Step {step_count + 1}/{self.budget}")
@@ -324,7 +325,7 @@ Keep the summary under 150 words and use clear, factual language.
                 system_prompt=PROCEDURAL_MEMORY.CODE_SUMMARY_AGENT_PROMPT,
             )
             summary_agent.add_message(summary_prompt, role="user")
-            summary = call_llm_safe(summary_agent, temperature=1)
+            summary = call_llm_safe(summary_agent, temperature=self.temperature)
 
             if not summary or summary.strip() == "":
                 summary = "Summary generation failed - no response from LLM"

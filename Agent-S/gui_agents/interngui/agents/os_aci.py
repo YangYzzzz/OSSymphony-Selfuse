@@ -10,24 +10,17 @@ from pytesseract import Output
 from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 from gui_agents.interngui.core.mllm import LMMAgent
 from gui_agents.interngui.utils.common_utils import call_llm_safe, smart_resize
-from gui_agents.interngui.agents.code_agent import CodeAgent
-from gui_agents.interngui.agents.search_agent import SearchAgent
-from gui_agents.interngui.agents.parser_agent import ParserAgent
+from gui_agents.interngui.agents.coder_agent import CoderAgent
+from gui_agents.interngui.agents.grounder_agent import GrounderAgent
+from gui_agents.interngui.agents.searcher_agent import SearcherAgent, VLMSearcherAgent
 import logging
 
 logger = logging.getLogger("desktopenv.agent")
-
-
-class ACI:
-    def __init__(self):
-        self.notes: List[str] = []
-
 
 # Agent action decorator
 def agent_action(func):
     func.is_agent_action = True
     return func
-
 
 UBUNTU_APP_SETUP = f"""import subprocess;
 import difflib;
@@ -177,80 +170,57 @@ set_cell_values(new_cell_values={cell_values}, app_name="{app_name}", sheet_name
 """
 
 
-# ACI primitives are parameterized by description, and coordinate generation uses a pretrained grounding model
-class OSWorldACI(ACI):
+# GrounderAgent primitives are parameterized by description, and coordinate generation uses a pretrained grounding model
+class OSWorldACI:
     def __init__(
         self,
         env,
+        search_env,
         platform: str,
-        engine_params_for_generation: Dict,
-        engine_params_for_grounding: Dict,
-        engine_params_for_search: Dict,
-        engine_params_for_parser: Dict,
+        engine_params_for_ocr: Dict,
+        engine_params_for_grounder: Dict,
+        engine_params_for_coder: Dict,
+        engine_params_for_searcher: Dict,
         width: int = 1920,
-        height: int = 1080,
-        code_agent_budget: int = 20,
-        code_agent_engine_params: Dict = None
+        height: int = 1080
     ):
-        super().__init__()
 
+        # 独属于 OSWorldACI 的主环境
         self.env = env
-        self.platform = (
-            platform  # Dictates how the switch_applications agent action works.
-        )
+        self.platform = platform
 
-        # Configure scaling
-        self.width = width
-        self.height = height
-
-        # Maintain state for save_to_knowledge
-        self.notes = []
-
-        # Screenshot used during ACI execution
-        self.obs = None
-
-        # Configure the visual grounding model responsible for coordinate generation
-        self.grounding_model = LMMAgent(engine_params_for_grounding)
-        self.engine_params_for_grounding = engine_params_for_grounding
+        # 结果目录
+        self.result_dir = ""
         
+        self.grounder_agent = GrounderAgent(engine_params=engine_params_for_grounder, width=width, height=height)
+
         # Configure text grounding agent
         self.text_span_agent = LMMAgent(
-            engine_params=engine_params_for_generation,
+            engine_params=engine_params_for_ocr,
             system_prompt=PROCEDURAL_MEMORY.PHRASE_TO_WORD_COORDS_PROMPT,
         )
 
         # Configure code agent
-        code_agent_engine_params = (
-            code_agent_engine_params or engine_params_for_generation
+        self.coder_agent = CoderAgent(
+            engine_params=engine_params_for_coder
         )
-        self.code_agent = CodeAgent(code_agent_engine_params, code_agent_budget)
+
+        # Configure search agent, TODO: @Yang
+        self.searcher_agent = SearcherAgent.create(
+            engine_params=engine_params_for_searcher, search_env=search_env, grounder_agent=self.grounder_agent, platform=self.platform
+        )
 
         # Store task instruction for code agent
         self.current_task_instruction = None
         self.last_code_agent_result = None
-        self.last_search_or_parser_agent_result = None
-        # Configure search agent
-        self.search_agent = SearchAgent.create(engine_params=engine_params_for_search)
-        self.parser_agent = ParserAgent.create(engine_params=engine_params_for_parser)
-        
-    # Given the state and worker's referring expression, use the grounding model to generate (x,y)
-    def generate_coords(self, ref_expr: str, obs: Dict) -> List[int]:
+        self.last_search_agent_result = None
+        self.notes: List[str] = []
+        # Tutorial should be a global info, not a local context, so how to add it to the global info
+        self.tutorials = []
 
-        # Reset the grounding model state
-        self.grounding_model.reset()
 
-        # Configure the context, UI-TARS demo does not use system prompt
-        prompt = f"Query:{ref_expr}\nOutput only the coordinate of one point in your response.\n"
-        self.grounding_model.add_message(
-            text_content=prompt, image_content=obs["screenshot"], put_text_last=True
-        )
-
-        # Generate and parse coordinates
-        response = call_llm_safe(self.grounding_model)
-        print("RAW GROUNDING MODEL RESPONSE:", response)
-        numericals = re.findall(r"\d+", response)
-        assert len(numericals) >= 2
-        return [int(numericals[0]), int(numericals[1])]
+    def assign_screenshot(self, obs):
+        self.obs = obs
 
     # Calls pytesseract to generate word level bounding boxes for text grounding
     def get_ocr_elements(self, b64_image_data: str) -> Tuple[str, List]:
@@ -333,32 +303,9 @@ class OSWorldACI(ACI):
             ]
         return coords
 
-    def assign_screenshot(self, obs: Dict):
-        self.obs = obs
-
     def set_task_instruction(self, task_instruction: str):
         """Set the current task instruction for the code agent."""
         self.current_task_instruction = task_instruction
-
-    # Resize from grounding model dim into OSWorld dim (1920 * 1080)
-    def resize_coordinates(self, coordinates: List[int]) -> List[int]:
-        grounding_width = self.engine_params_for_grounding["grounding_width"]
-        grounding_height = self.engine_params_for_grounding["grounding_height"]
-        grounding_smart_resize = self.engine_params_for_grounding["grounding_smart_resize"]
-
-        # Important：这段逻辑很重要，当不需要smart_resize时，grounding_width/height 代表图像坐标归一化系数，有 1 的(很少有了)，有 1000 的(QWen2.5以前都是1000)
-        # 当需要 smart_resize 时, 使用 smart_resize 动态计算归一化系数
-        if not grounding_smart_resize:
-            return [
-                round(coordinates[0] * self.width / grounding_width),
-                round(coordinates[1] * self.height / grounding_height),
-            ]
-        else:
-            smart_height, smart_width = smart_resize(self.height, self.width)
-            return [
-                round(coordinates[0] * self.width / smart_width),
-                round(coordinates[1] * self.height / smart_height)
-            ]
 
     @agent_action
     def click(
@@ -375,8 +322,8 @@ class OSWorldACI(ACI):
             button_type:str, which mouse button to press can be "left", "middle", or "right"
             hold_keys:List, list of keys to hold while clicking
         """
-        coords1 = self.generate_coords(element_description, self.obs)
-        x, y = self.resize_coordinates(coords1)
+        coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
+        x, y = self.grounder_agent.resize_coordinates(coords1)
         command = "import pyautogui; "
 
         # TODO: specified duration?
@@ -405,7 +352,7 @@ class OSWorldACI(ACI):
                 False
             ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
 
-    # @agent_action
+    @agent_action
     def open(self, app_or_filename: str):
         """Open any application or file with name app_or_filename. Use this action to open applications or files on the desktop, do not open manually.
         Args:
@@ -449,8 +396,8 @@ class OSWorldACI(ACI):
         
         click_coords = None
         if element_description is not None:
-            coords1 = self.generate_coords(element_description, self.obs)
-            x, y = self.resize_coordinates(coords1)
+            coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
+            x, y = self.grounder_agent.resize_coordinates(coords1)
             commands.append(f"pyautogui.click({x}, {y})")
             click_coords = [x, y]
 
@@ -509,10 +456,10 @@ class OSWorldACI(ACI):
             ending_description:str, a very detailed description of where to end the drag action. This description should be at least a full sentence.
             hold_keys:List list of keys to hold while dragging
         """
-        coords1 = self.generate_coords(starting_description, self.obs)
-        coords2 = self.generate_coords(ending_description, self.obs)
-        x1, y1 = self.resize_coordinates(coords1)
-        x2, y2 = self.resize_coordinates(coords2)
+        coords1 = self.grounder_agent.generate_coords(starting_description, self.obs)
+        coords2 = self.grounder_agent.generate_coords(ending_description, self.obs)
+        x1, y1 = self.grounder_agent.resize_coordinates(coords1)
+        x2, y2 = self.grounder_agent.resize_coordinates(coords2)
 
         command = "import pyautogui; "
 
@@ -528,6 +475,7 @@ class OSWorldACI(ACI):
 
         return (command, [x1, y1, x2, y2])
 
+    # TODO: @Yang 如何消除重复字符的歧义? 对于复杂的Grounding任务，使用 CodeAgent 处理
     @agent_action
     def highlight_text_span(
         self, starting_phrase: str, ending_phrase: str, button: str = "left"
@@ -541,7 +489,9 @@ class OSWorldACI(ACI):
         coords1 = self.generate_text_coords(
             starting_phrase, self.obs, alignment="start"
         )
-        coords2 = self.generate_text_coords(ending_phrase, self.obs, alignment="end")
+        coords2 = self.generate_text_coords(
+            ending_phrase, self.obs, alignment="end"
+        )
         x1, y1 = coords1
         x2, y2 = coords2
 
@@ -552,6 +502,28 @@ class OSWorldACI(ACI):
         # Return pyautoguicode to drag and drop the elements
         return (command, [x1, y1, x2, y2])
     
+    # TODO: @Yang, locate the cursor in a specified location
+    @agent_action
+    def locate_cursor(
+        self,
+        phrase: str,
+        start_or_end: str="start"
+    ):
+        """Click at the beginning or end of a specific text phrase to precisely control cursor positioning.
+        Please prefer using the "click" action in general situations, and use this action only in text-intensive software such as libreoffice_writer, impress, etc.
+
+        Args:
+            phrase: str, The text phrase where you want to position the cursor. Provide enough context to make the phrase unambiguous. If there are multiple instances of the same phrase, use a longer or more specific text segment to ensure accurate targeting.
+            start_or_end: str, Whether to click at the "start" (beginning) or "end" (trailing edge) of the identified text phrase. Use "start" to position before the text, "end" to position after it.
+        """
+        coords = self.generate_text_coords(
+            phrase, self.obs, alignment=start_or_end
+        )
+        x, y = coords
+        command = "import pyautogui; "
+        command += f"pyautogui.click({x}, {y}, button='left'); "
+        return (command, [x, y])
+
     @agent_action
     def set_cell_values(
         self, cell_values: Dict[str, Any], app_name: str, sheet_name: str
@@ -567,9 +539,9 @@ class OSWorldACI(ACI):
             cell_values=cell_values, app_name=app_name, sheet_name=sheet_name
         )
 
-    # @agent_action
-    def call_code_agent(self, task: str = None):
-        """Call the code agent to execute code for tasks or subtasks that can be completed solely with coding.
+    # TODO: @Yang 需要修改Code提示词的逻辑
+    """Origin:
+    Call the code agent to execute code for tasks or subtasks that can be completed solely with coding.
 
         Args:
             task: str, the task or subtask to execute. If None, uses the current full task instruction.
@@ -587,9 +559,39 @@ class OSWorldACI(ACI):
         - Data analysis tools: statistical analysis, data transformation, reporting
         - File management: bulk operations, file processing, content extraction
         - System utilities: configuration, setup, automation
+    """
+    @agent_action
+    def call_code_agent(self, task: str):
+        """Calls the code agent to execute a well-defined, self-contained goal that can be completed with code.
+
+        Args:
+            task: str, A specific, self-contained goal that the code agent can work on until completion.
+
+        **🚨 CRITICAL GUIDELINES:**
+
+        **Decompose the Main Objective into Logical Goals:**
+        - You **MUST** break down the overall mission into distinct, logical goals or stages.
+        - Your role is to define *what* needs to be done for a specific stage. The code agent's role is to figure out *how* to do it with code.
+        - Pass only one logical goal at a time. The `task` parameter is **REQUIRED**.
+
+        **Define a Self-Contained, Continuous Goal:**
+        - The `task` you provide should be a single, continuous goal. The code agent is capable of handling a multi-step process internally (e.g., opening a file, processing its data, and then saving it) to achieve this one goal.
+        - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, create a chart, AND email the result," you should first pass the self-contained goal: "Analyze the sales data and create a chart." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
+        - **If unsure, err on the side of caution.** If a task feels like it has two separate parts, break it down and pass only the first part.
+
+        **Instruction Purity is Essential:**
+        - **NEVER** rephrase, paraphrase, or modify the subtask instruction you have decided on. Pass the exact, original wording of the subtask to prevent instruction drift and hallucination.
+
+        Use this for tasks that can be fully accomplished through code execution, particularly for:
+        - Spreadsheet applications (LibreOffice Calc, Excel): data processing, filtering, sorting, calculations, formulas, data analysis
+        - Document editors (LibreOffice Writer, Word): text processing, content editing, formatting, document manipulation
+        - Code editors (VS Code, text editors): code editing, file processing, text manipulation, configuration
+        - Data analysis tools: statistical analysis, data transformation, reporting
+        - File management: bulk operations, file processing, content extraction
+        - System utilities: configuration, setup, automation
         """
         logger.info("=" * 50)
-        logger.info("GROUNDING AGENT: Calling Code Agent")
+        logger.info("ACI: Calling Code Agent")
         logger.info("=" * 50)
 
         # **CRITICAL**: Only use provided task for specific subtasks, otherwise use original task instruction
@@ -610,7 +612,7 @@ class OSWorldACI(ACI):
             logger.info("Executing code agent...")
 
             # 在一个动作内部能够执行
-            result = self.code_agent.execute(
+            result = self.coder_agent.execute(
                 task_to_execute, screenshot, self.env.controller
             )
 
@@ -640,8 +642,8 @@ class OSWorldACI(ACI):
             clicks:int, the number of clicks to scroll can be positive (up) or negative (down).
             shift:bool, whether to use shift+scroll for horizontal scrolling
         """
-        coords1 = self.generate_coords(element_description, self.obs)
-        x, y = self.resize_coordinates(coords1)
+        coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
+        x, y = self.grounder_agent.resize_coordinates(coords1)
 
         if shift:
             return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})", [x, y])
@@ -650,9 +652,9 @@ class OSWorldACI(ACI):
 
     @agent_action
     def hotkey(self, keys: List):
-        """Press a hotkey combination
+        """Press a hotkey combination (can press a single key as well)
         Args:
-            keys:List the keys to press in combination in a list format (e.g. ['ctrl', 'c'])
+            keys:List the keys to press in combination in a list format (e.g. ['ctrl', 'c'], ['enter'])
         """
         # add quotes around the keys
         keys = [f"'{key}'" for key in keys]
@@ -680,7 +682,7 @@ class OSWorldACI(ACI):
     def wait(self, time: float):
         """Wait for a specified amount of time
         Args:
-            time:float the amount of time to wait in seconds
+            time:float, the amount of time to wait in seconds
         """
         return f"""import time; time.sleep({time})"""
 
@@ -696,71 +698,69 @@ class OSWorldACI(ACI):
         """End the current task with a failure. Use this when you believe the entire task is impossible to complete."""
         return """FAIL"""
     
-    # TODO:
-    # @agent_action
-    def search(
+    @agent_action
+    def call_search_agent(
         self, 
         query: str,
-        specified_url: Optional[str]=None
     ):
         """
-        Use a search engine to find relevant GUI Guidance on the internet.
-
+        Calls a specialized 'Searcher Agent' to find a detailed, step-by-step tutorial on the internet for a specific GUI action.
         Args:
-            query (str): The search term, phrase, or question to look up on the internet.
+            query:str, the search phrase or question for the tutorial. The formulation of this query is critical for success and must follow the guidelines below.
 
         **Query Formulation Guidelines:**
 
-        Your query must be a well-defined question targeting a **single, specific action**. The goal is to find a precise tutorial from our professional documentation library. To achieve this, follow these rules:
+        Your query must be a well-defined question targeting a **single, specific action** within a **specific application**. To get the best results, adhere to these rules:
 
-        1.  **Focus on a Single Intent:** The query should represent one clear goal. Do not combine multiple steps or tasks into one query.
-
-        2.  **Be Specific, Not Abstract:** Ask a concrete "how-to" question. Avoid repeating the user's high-level or abstract instructions.
-
-        3.  **Decompose Complex Tasks:** If the user's overall instruction involves multiple actions (e.g., "download a file and then email it"), and you are stuck on one part, search *only for that specific part*.
+        1.  **Start with "How to":** Your query must begin with the phrase "How to" to frame it as a request for instructions.
+        2.  **Include the Application Name:** Always specify the name of the software you are working in (e.g., "GIMP", "Google Chrome", "Libreoffice Writer").
+        3.  **Focus on a Single Intent:** The query should represent one clear goal. Do not combine multiple steps or tasks into one query.
+        4.  **Be Specific, Not Abstract:** Ask a concrete question. Avoid repeating the user's high-level or abstract instructions.
+        5.  **Decompose Complex Tasks:** If the user's overall instruction involves multiple actions (e.g., "download a file and then email it"), and you are stuck on one part, search *only for that specific part*.
 
         **Examples:**
 
         *   **User's Overall Instruction:** "Please help me download my latest bank statement and then send it to my accountant."
-
             *   **Correct Query (if stuck on downloading):** "How to download a bank statement from the Bank of America website?"
-            *   **Correct Query (if stuck on attaching a file in Gmail):** "How to attach a file to an email in Gmail?"
-            *   **Incorrect Query:** "Download my bank statement and email it to my accountant"  *(This query is too broad and contains multiple sub-tasks.)*
+            *   **Correct Query (if stuck on attaching a file):** "How to attach a file to an email in Gmail?"
+            *   **Incorrect Query:** "Download my bank statement and email it to my accountant" *(This query is too broad, contains multiple sub-tasks, and does not start with "How to".)*
 
-        **Note:**
-        This is a critical problem-solving action. Use it to perform a web search whenever you encounter a difficult task, are uncertain about the next steps, or are stuck. It is the primary method for finding external documentation and tutorials to help you proceed.
+        **Interpreting the Returned Tutorial:**
+
+        The Searcher Agent aims to find a *complete* tutorial, often starting from the very beginning. This means the returned guide may contain steps you have already completed.
+        It is **your responsibility** to analyze the tutorial in conjunction with your current screen context to determine the correct step to begin with. **Do not blindly follow the tutorial from step 1.**
+
+        **Execution Effect:**
+        This action pauses the current agent's execution and delegates the search task to an independent Searcher Agent. The resulting tutorial will be made available to you as context to guide your subsequent actions.
         """
         logger.info("=" * 50)
-        logger.info(f"GROUNDING AGENT: Calling Search Agent(query={query})")
+        logger.info(f"ACI: Calling Search Agent(query={query})")
         logger.info("=" * 50)
-        self.last_search_or_parser_agent_result = self.search_agent.search(query)
+        if isinstance(self.searcher_agent, VLMSearcherAgent):
+            self.searcher_agent.result_dir = self.result_dir
+            result = self.searcher_agent.search(query=query, main_obs=self.obs)
+            self.last_search_agent_result = result
+            if result["completion_reason"] == "DONE":
+                self.tutorials.append(result["final_answer"])
         return "import time; time.sleep(2.222)"
     
-    # TODO:
     # @agent_action
-    def parse(
-        self,
-        url: str,
-        need_open: bool = False
-    ):
-        """
-        Parses and extracts textual content and other hyperlink from a webpage.
+    # def parse(
+    #     self,
+    #     url: str,
+    #     need_open: bool = False
+    # ):
+    #     """
+    #     Parses and extracts textual content and other hyperlink from a webpage.
 
-        Args:
-            url: str, The full URL of the web page to be read (e.g., 'https://example.com/article').
+    #     Args:
+    #         url: str, The full URL of the web page to be read (e.g., 'https://example.com/article').
 
-        **Note:**
-        This action is typically used after finding a relevant URL with the 'search' tool, or in situations where it is necessary to further examine the hyperlinks on a page. 
-        """
-        logger.info("=" * 50)
-        logger.info(f"GROUNDING AGENT: Calling Parser Agent(url={url})")
-        logger.info("=" * 50)
-        self.last_search_or_parser_agent_result = self.parser_agent.parse(url)
-        return "import time; time.sleep(2.222)"
-    
-    # TODO:
-    # @agent_action
-    def locate_cursor(
-        self,
-    ):
-        pass
+    #     **Note:**
+    #     This action is typically used after finding a relevant URL with the 'search' tool, or in situations where it is necessary to further examine the hyperlinks on a page. 
+    #     """
+    #     logger.info("=" * 50)
+    #     logger.info(f"GROUNDING AGENT: Calling Parser Agent(url={url})")
+    #     logger.info("=" * 50)
+    #     self.last_search_agent_result = self.parser_agent.parse(url)
+    #     return "import time; time.sleep(2.222)"

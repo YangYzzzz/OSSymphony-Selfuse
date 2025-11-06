@@ -1,10 +1,10 @@
 import re
 import time
 from io import BytesIO
-from PIL import Image
-
-from typing import Tuple, Dict
-
+from typing import Tuple, Dict, List, Union
+import io
+import os
+from PIL import Image, ImageDraw
 from gui_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 
 import logging
@@ -37,6 +37,59 @@ def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple:
         exec_code = response
     return exec_code, coords
 
+def draw_coordinates(image_bytes: bytes, coordinates: List[Union[int, float]], save_path: str):
+    """
+    在给定的图像上绘制坐标点，并将其保存到新文件。
+
+    该函数接收一个以字节流形式存在的图像，一个包含 [x1, y1, x2, y2, ...] 格式的坐标列表，
+    并在每个 (x, y) 坐标点上绘制一个红色的叉。最后将结果图像保存到指定的路径。
+
+    Args:
+        image_bytes (bytes): 图像的原始字节数据 (例如，从PNG或JPEG文件读取的内容)。
+        coordinates (List[Union[int, float]]): 扁平化的坐标列表，必须为偶数个元素。
+                                                例如: [x1, y1, x2, y2]。
+        save_path (str): 绘制了标记后，新图像的保存路径。
+    """
+    # --- 步骤 1: 从字节流加载图像 ---
+    # Pillow 的 Image.open() 可以直接处理文件路径，但不能直接处理字节流。
+    # 我们使用 io.BytesIO 将内存中的字节数据包装成一个类似文件的对象，
+    # 这样 Image.open() 就可以像读取文件一样读取它。
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+        # 确保图像是 RGB 模式，这样才能绘制彩色标记。PNG 可能有 RGBA（带透明度）模式。
+        image = image.convert("RGB")
+    except Exception as e:
+        return
+
+    # --- 步骤 2: 创建一个绘图对象 ---
+    # ImageDraw.Draw() 会返回一个可以在该图像上进行2D绘图的对象。
+    draw = ImageDraw.Draw(image)
+
+    # 定义叉的样式
+    cross_size = 15      # 叉的臂长的一半（整个叉的大小为 30x30 像素）
+    cross_color = "red"  # 颜色
+    cross_width = 3      # 线条宽度
+
+    # 每次迭代步长为 2，以同时获取 x 和 y
+    for i in range(0, len(coordinates) - 1, 2):
+        x, y = coordinates[i], coordinates[i+1]
+
+        # 计算构成叉的两条线的端点
+        # 线1: 从左上到右下
+        line1_start = (x - cross_size, y - cross_size)
+        line1_end = (x + cross_size, y + cross_size)
+        
+        # 线2: 从右上到左下
+        line2_start = (x + cross_size, y - cross_size)
+        line2_end = (x - cross_size, y + cross_size)
+
+        # 使用 draw.line() 绘制两条线来形成一个叉
+        draw.line([line1_start, line1_end], fill=cross_color, width=cross_width)
+        draw.line([line2_start, line2_end], fill=cross_color, width=cross_width)
+
+    # --- 步骤 4: 保存修改后的图像 ---
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    image.save(save_path)
 
 def call_llm_safe(
     agent, temperature: float = 0.0, use_thinking: bool = False, **kwargs

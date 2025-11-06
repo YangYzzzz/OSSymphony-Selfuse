@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger("desktopenv.agent")
 
 
-def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple:
+def create_pyautogui_code(agent, code: str, obs: Dict):
     """
     Attempts to evaluate the code into a pyautogui code snippet with grounded actions using the observation screenshot.
 
@@ -30,12 +30,8 @@ def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple:
     """
     agent.assign_screenshot(obs)  # Necessary for grounding
     response = eval(code)
-    coords = None
-    if isinstance(response, tuple):
-        exec_code, coords = response
-    else:
-        exec_code = response
-    return exec_code, coords
+    exec_code = response
+    return exec_code
 
 
 def call_llm_safe(

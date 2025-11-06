@@ -13,8 +13,8 @@ import sys
 import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
-from gui_agents.s3.agents.agent_s import AgentS3
-from gui_agents.s3.agents.grounding import OSWorldACI
+from gui_agents.interngui.agents.interngui import InternGUI
+from gui_agents.interngui.agents.os_aci import OSWorldACI
 
 import lib_run_single
 from desktop_env.desktop_env import DesktopEnv
@@ -91,6 +91,8 @@ def run_env_tasks(
     engine_params_for_orchestrator,
     engine_params_for_grounder,
     engine_params_for_coder,
+    engine_params_for_reflector,
+    engine_params_for_searcher
 ):
     active_environments = []
     env = None
@@ -126,22 +128,41 @@ def run_env_tasks(
         )
         env.start()
 
-        os_aci = OSWorldACI(
-            env, # 主环境
-            "linux",
-            engine_params_for_orchestrator,
-            engine_params_for_grounder,
-            args.screen_width,
-            args.screen_height,
-            args.coder_budget,
-            engine_params_for_coder,
+        search_env = DesktopEnv(
+            path_to_vm=args.path_to_vm,
+            action_space=args.action_space,
+            provider_name=args.provider_name,
+            region=region,
+            snapshot_name=snapshot_name,
+            screen_size=(args.screen_width, args.screen_height),
+            headless=args.headless,
+            os_type="Ubuntu",
+            require_a11y_tree=args.observation_type
+            in ["a11y_tree", "screenshot_a11y_tree", "som"],
+            enable_proxy=True,
+            client_password=getattr(args, "client_password", ""),
         )
-        agent = AgentS3(
+
+        os_aci = OSWorldACI(
+            env=env, # 主环境
+            search_env=search_env,
+            platform="linux",
+            engine_params_for_ocr=engine_params_for_orchestrator, # 用于OCR总结的VLM使用OrchestratorConfig的配置即可
+            engine_params_for_grounder=engine_params_for_grounder,
+            engine_params_for_coder=engine_params_for_coder,
+            engine_params_for_searcher=engine_params_for_searcher,
+            width=args.screen_width,
+            height=args.screen_height,
+        )
+        agent = InternGUI(
             engine_params_for_orchestrator,
+            engine_params_for_reflector,
             os_aci,
             platform="linux",
             max_trajectory_length=args.max_trajectory_length,
-            enable_reflection=args.enable_reflection
+            enable_reflection=args.enable_reflection,
+            enable_rewrite_instruction=args.enable_rewrite_instruction,
+            use_search_first=args.use_search_first,
         )
 
         active_environments.append(env)
@@ -170,7 +191,7 @@ def run_env_tasks(
                 logger.info(f"[{current_process().name}][Example ID]: {example_id}")
                 logger.info(f"[{current_process().name}][Instruction]: {instruction}")
                 try:
-                    lib_run_single.run_single_example_agents3(
+                    lib_run_single.run_single_example(
                         agent,
                         env,
                         example,
@@ -216,6 +237,9 @@ def run_env_tasks(
             if env:
                 env.close()
                 logger.info(f"{current_process().name} environment closed successfully")
+            if search_env:
+                search_env.close()
+                logger.info(f"{current_process().name} searcher environment closed successfully")
         except Exception as e:
             logger.error(
                 f"{current_process().name} error during environment cleanup: {e}"
@@ -311,7 +335,8 @@ def config() -> argparse.Namespace:
     # agent config
     parser.add_argument("--max_trajectory_length", type=int, default=8)
     parser.add_argument("--enable_reflection", type=bool, default=True)
-
+    parser.add_argument("--enable_rewrite_instruction", type=bool, default=False)
+    parser.add_argument("--use_search_first", type=bool, default=False)
     parser.add_argument(
         "--tool_config", 
         type=str, 
@@ -369,6 +394,62 @@ def config() -> argparse.Namespace:
         help="Max inner loop steps of coder agent",
     )
 
+    # reflection and memory model config
+    parser.add_argument("--reflector_provider", type=str, default="openai")
+    parser.add_argument("--reflector_model", type=str, default="gpt-4o")
+    parser.add_argument(
+        "--reflector_url",
+        type=str,
+        default="",
+        help="The URL of the reflector model API.",
+    )
+    parser.add_argument(
+        "--reflector_api_key",
+        type=str,
+        default="",
+        help="The API key of the reflector model.",
+    )
+    parser.add_argument(
+        "--reflector_temperature",
+        type=float,
+        default=None,
+        help="Temperature to fix the reflector model at (e.g. o3 can only be run with 1.0)",
+    )
+
+    # search model config
+    parser.add_argument("--searcher_provider", type=str, default="openai")
+    parser.add_argument("--searcher_model", type=str, default="gpt-4o")
+    parser.add_argument(
+        "--searcher_url",
+        type=str,
+        default="",
+        help="The URL of the searcher model API.",
+    )
+    parser.add_argument(
+        "--searcher_api_key",
+        type=str,
+        default="",
+        help="The API key of the searcher model.",
+    )
+    parser.add_argument(
+        "--searcher_temperature",
+        type=float,
+        default=None,
+        help="Temperature to fix searcher model at (e.g. o3 can only be run with 1.0)",
+    )
+    parser.add_argument(
+        "--searcher_type",
+        type=str,
+        default="vlm",
+        help="Type of search agent, vlm/google_ai/llm(all in search action), default is vlm",
+    )
+    parser.add_argument(
+        "--searcher_budget",
+        type=int,
+        default=20,
+        help="Max inner loop steps of search agent",
+    )
+
     # grounding model config, temperture is 0 with hardcode
     parser.add_argument(
         "--grounder_provider",
@@ -409,6 +490,39 @@ def config() -> argparse.Namespace:
         required=True,
         help="UI-TARS-1.5 and ScaleCUA needs smart resize, if this set, grounding_width and grounding_height is no use.",
     )
+
+    # # Search Agent
+    # parser.add_argument(
+    #     "--search_type",
+    #     type=str,
+    #     default="jina_ai",
+    #     help="jina_ai / searxng",
+    # )
+    # parser.add_argument(
+    #     "--search_api",
+    #     type=str,
+    #     default="http://127.0.0.1:8999/search",
+    #     help="Search api service's url",
+    # )
+    # parser.add_argument(
+    #     "--search_api_key",
+    #     type=str,
+    #     default="",
+    #     help="Search api key for Jina AI",
+    # )
+    # parser.add_argument(
+    #     "--search_engines",
+    #     type=str,
+    #     default="chrome",
+    #     help="Search engine name for SearXNG",
+    # )
+    # parser.add_argument(
+    #     "--search_top_k",
+    #     type=int,
+    #     default=20,
+    #     help="Search top k urls of recall",
+    # )
+
 
     # 实验名
     parser.add_argument(
@@ -457,6 +571,24 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "budget": args.coder_budget,
     }
 
+    engine_params_for_reflector = {
+        "engine_type": args.reflector_provider,
+        "model": args.reflector_model,
+        "base_url": getattr(args, "reflector_url", ""),
+        "api_key": getattr(args, "reflector_api_key", ""),
+        "temperature": getattr(args, "reflector_temperature", None),
+    }
+
+    engine_params_for_searcher = {
+        "engine_type": args.searcher_provider,
+        "model": args.searcher_model,
+        "base_url": getattr(args, "searcher_url", ""),
+        "api_key": getattr(args, "searcher_api_key", ""),
+        "temperature": getattr(args, "searcher_temperature", None),
+        "budget": args.searcher_budget,
+        "type": args.searcher_type,
+    }
+
     with Manager() as manager:
         shared_scores = manager.list()
         task_queue = manager.Queue()
@@ -474,6 +606,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                     engine_params_for_orchestrator,
                     engine_params_for_grounder,
                     engine_params_for_coder,
+                    engine_params_for_reflector,
+                    engine_params_for_searcher
                 ),
                 name=f"EnvProcess-{i+1}",
             )
