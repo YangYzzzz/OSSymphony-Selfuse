@@ -14,7 +14,7 @@ python run_agents3.py \
   --test_all_meta_path evaluation_examples/test_docs_debug.json \
   --result_dir "results" \
   --region "us-east-1" \
-  --sleep_after_execution 7 \
+  --sleep_after_execution 5 \
   --model_provider "openai" \
   --model "gpt-5-mini" \
   --model_url "https://api.boyuerichdata.opensphereai.com/v1" \

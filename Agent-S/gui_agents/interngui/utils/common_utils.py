@@ -107,7 +107,6 @@ def call_llm_formatted(generator, format_checkers, **kwargs):
         del kwargs["messages"]  # Remove messages from kwargs to avoid passing it twice
     while attempt < max_retries:
         response = call_llm_safe(generator, messages=messages, **kwargs)
-
         # Prepare feedback messages for incorrect formatting
         feedback_msgs = []
         for format_checker in format_checkers:
