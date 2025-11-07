@@ -12,7 +12,7 @@
 
 # 容器和镜像名称
 IMAGE_NAME="happysixd/osworld-docker"
-CONTAINER_NAME="os-world-jkm2" # 为容器指定一个唯一的名称
+# CONTAINER_NAME="os-world-jkm" # 为容器指定一个唯一的名称
 
 # 资源配置 (对应 Python 中的 self.environment)
 DISK_SIZE="32G"
@@ -25,7 +25,7 @@ PATH_TO_VM_QCOW2="/nvme/yangbowen/osworld/docker_vm_data/Ubuntu.qcow2"
 
 # 端口映射 (对应 Python 中的 ports)
 # 格式: <宿主机端口>:<容器端口>
-HOST_VNC_PORT=5914     # VNC 端口, 对应 self.vnc_port
+HOST_VNC_PORT=5912     # VNC 端口, 对应 self.vnc_port
 HOST_SERVER_PORT=5026    # Server 端口, 对应 self.server_port
 HOST_CHROMIUM_PORT=9246  # Chromium 调试端口, 对应 self.chromium_port
 HOST_VLC_PORT=8106       # VLC 端口, 对应 self.vlc_port
@@ -48,7 +48,6 @@ echo "Starting a new container named '$CONTAINER_NAME'..."
 docker run \
     -d \
     --rm \
-    --name "$CONTAINER_NAME" \
     -e "DISK_SIZE=${DISK_SIZE}" \
     -e "RAM_SIZE=${RAM_SIZE}" \
     -e "CPU_CORES=${CPU_CORES}" \
