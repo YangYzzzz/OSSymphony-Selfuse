@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 from wrapt_timeout_decorator import *
 import io
 from typing import List, Union
-from gui_agents.interngui.utils.common_utils import draw_coordinates
+from mm_agents.interngui.utils.common_utils import draw_coordinates
 
 logger = logging.getLogger("desktopenv.experiment")
 

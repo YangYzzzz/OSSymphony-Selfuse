@@ -13,8 +13,8 @@ import sys
 import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
-from gui_agents.interngui.agents.interngui import InternGUI
-from gui_agents.interngui.agents.os_aci import OSWorldACI
+from mm_agents.interngui.agents.interngui import InternGUI
+from mm_agents.interngui.agents.os_aci import OSWorldACI
 import shutil
 import lib_run_single
 from desktop_env.desktop_env import DesktopEnv

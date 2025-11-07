@@ -6,7 +6,7 @@ export HTTP_PROXY=http://10.1.8.5:23128;
 export HTTPS_PROXY=http://10.1.8.5:23128; 
 export no_proxy=localhost,127.0.0.1,10.140.52.51,172.17.0.0/16,20.20.20.0/24,0.0.0.0,10.140.60.25,.pjlab.org.cn; 
 export NO_PROXY=localhost,127.0.0.1,10.140.52.51,172.17.0.0/16,20.20.20.0/24,0.0.0.0,10.140.60.25,.pjlab.org.cn;
-EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-step50-20251106-ybw"
+EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-step50-20251107-ybw"
 # EXP_NAME="agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-testgimp"
 python run_agents3.py \
   --provider_name "docker" \

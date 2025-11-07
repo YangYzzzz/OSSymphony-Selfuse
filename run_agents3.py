@@ -13,15 +13,8 @@ import sys
 import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
-<<<<<<< HEAD
-from gui_agents.s3.agents.agent_s import AgentS3
-from gui_agents.s3.agents.grounding import OSWorldACI
-=======
-from gui_agents.interngui.agents.agent_s import AgentS3
-from gui_agents.interngui.agents.grounding import OSWorldACI
-from gui_agents.interngui.agents.memory_agent import ReflectionMemoryAgent
-
->>>>>>> jkm
+from mm_agents.s3.agents.agent_s import AgentS3
+from mm_agents.s3.agents.grounding import OSWorldACI
 
 import lib_run_single
 from desktop_env.desktop_env import DesktopEnv
@@ -95,17 +88,9 @@ def run_env_tasks(
     task_queue: Queue,
     args: argparse.Namespace,
     shared_scores: list,
-<<<<<<< HEAD
     engine_params_for_orchestrator,
     engine_params_for_grounder,
     engine_params_for_coder,
-=======
-    engine_params,
-    engine_params_for_grounding,
-    engine_params_for_search,
-    engine_params_for_parser,
-    engine_params_for_memory
->>>>>>> jkm
 ):
     active_environments = []
     env = None
@@ -139,7 +124,7 @@ def run_env_tasks(
             enable_proxy=True,
             client_password=getattr(args, "client_password", ""),
         )
-<<<<<<< HEAD
+
         env.start()
 
         os_aci = OSWorldACI(
@@ -151,31 +136,13 @@ def run_env_tasks(
             args.screen_height,
             args.coder_budget,
             engine_params_for_coder,
-=======
-
-        grounding_agent = OSWorldACI(
-            env=env,
-            platform="linux",
-            engine_params_for_generation=engine_params,
-            engine_params_for_grounding=engine_params_for_grounding,
-            engine_params_for_search=engine_params_for_search,
-            engine_params_for_parser=engine_params_for_parser,
-            width=args.screen_width,
-            height=args.screen_height,
->>>>>>> jkm
         )
 
         memory_agent = ReflectionMemoryAgent(engine_params_for_memory)
 
         agent = AgentS3(
-<<<<<<< HEAD
             engine_params_for_orchestrator,
             os_aci,
-=======
-            engine_params,
-            grounding_agent,
-            memory_agent,
->>>>>>> jkm
             platform="linux",
             max_trajectory_length=args.max_trajectory_length,
             enable_reflection=args.enable_reflection
@@ -419,13 +386,8 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--grounder_api_key",
         type=str,
-<<<<<<< HEAD
         default="",
         help="The API key of the grounder model.",
-=======
-        default="none",
-        help="Search api key for Jina AI",
->>>>>>> jkm
     )
     parser.add_argument(
         "--grounder_model",
@@ -525,18 +487,6 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "budget": args.coder_budget,
     }
 
-    # 若不指定memory的配置，则和main agent用一样的
-    if args.memory_provider:
-        engine_params_for_memory = {
-            "engine_type": args.ground_provider,
-            "model": args.ground_model,
-            "base_url": args.ground_url,
-            "api_key": args.ground_api_key,
-            "grounding_width": args.grounding_width,
-            "grounding_height": args.grounding_height,
-        }
-    else:       # use the same model with main agent
-        engine_params_for_memory = engine_params
 
     with Manager() as manager:
         shared_scores = manager.list()
@@ -552,17 +502,9 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                     task_queue,
                     args,
                     shared_scores,
-<<<<<<< HEAD
                     engine_params_for_orchestrator,
                     engine_params_for_grounder,
                     engine_params_for_coder,
-=======
-                    engine_params,
-                    engine_params_for_grounding,
-                    engine_params_for_search,
-                    engine_params_for_parser,
-                    engine_params_for_memory
->>>>>>> jkm
                 ),
                 name=f"EnvProcess-{i+1}",
             )
@@ -582,19 +524,9 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                                 task_queue,
                                 args,
                                 shared_scores,
-<<<<<<< HEAD
                                 engine_params_for_orchestrator,
                                 engine_params_for_grounder,
                                 engine_params_for_coder,
-                                engine_params_for_reflector,
-                                engine_params_for_searcher
-=======
-                                engine_params,
-                                engine_params_for_grounding,
-                                engine_params_for_search,
-                                engine_params_for_parser,
-                                engine_params_for_memory
->>>>>>> jkm
                             ),
                             name=f"EnvProcess-Restart-{idx+1}",
                         )
