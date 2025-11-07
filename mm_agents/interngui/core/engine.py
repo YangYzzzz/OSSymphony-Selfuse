@@ -353,7 +353,7 @@ class LMMEnginevLLM(LMMEngine):
         temperature=0.0,
         top_p=0.8,
         repetition_penalty=1.05,
-        max_new_tokens=512,
+        max_new_tokens=4096,
         **kwargs,
     ):
         api_key = self.api_key or os.getenv("vLLM_API_KEY")

@@ -365,6 +365,7 @@ def config() -> argparse.Namespace:
         default=None,
         help="Temperature to fix the orchestrator model at (e.g. o3 can only be run with 1.0)",
     )
+    parser.add_argument("--orchestrator_keep_first_image", type=bool, default=False, help="Whether keep the first image(first state) in the orchestrator agent")
 
     # code model config
     parser.add_argument("--coder_provider", type=str, default="openai")
@@ -549,6 +550,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "api_key": getattr(args, "orchestrator_api_key", ""),
         "temperature": getattr(args, "orchestrator_temperature", None),
         "tool_config": args.tool_config,
+        "keep_first_image": args.orchestrator_keep_first_image
     }
 
 

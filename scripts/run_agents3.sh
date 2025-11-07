@@ -18,7 +18,7 @@ python run_agents3.py \
   --result_dir "results" \
   --region "us-east-1" \
   --tool_config "/nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml" \
-  --orchestrator_provider "openai" \
+  --orchestrator_provider "vllm" \
   --orchestrator_model "Qwen3-VL-30B-A3B-Instruct" \
   --orchestrator_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10000/v1" \
   --orchestrator_api_key "none" \
@@ -26,11 +26,11 @@ python run_agents3.py \
   --grounder_provider "openai" \
   --grounder_model "ui-tars-1.5-7b" \
   --grounder_api_key "none" \
-  --grounder_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-65pfw-1176830-worker-0.yangbowen/8000/v1" \
+  --grounder_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10001/v1" \
   --grounding_width 1920 \
   --grounding_height 1080 \
   --grounding_smart_resize True \
-  --coder_provider "openai" \
+  --coder_provider "vllm" \
   --coder_model "Qwen3-VL-30B-A3B-Instruct" \
   --coder_url "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10000/v1" \
   --coder_api_key "none" \
