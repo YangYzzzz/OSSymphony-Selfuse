@@ -68,15 +68,9 @@ class VLMSearcherAgent(SearcherAgent):
         self.budget = engine_params.get("budget", 20)
         self.platform = platform
         self.max_trajectory_length = 8 # 这部分有待优化，searcher似乎不需要这么多截图?
-        self.tutorial_notes = []
-
         self.env: DesktopEnv = search_env
-        self.system_prompt = PROCEDURAL_MEMORY.construct_searcher_procedural_memory(
-            agent_class=type(self)
-        ).replace("CURRENT_OS", self.platform)
 
         self.result_dir = ""
-        self.search_time = 0
 
         self.use_thinking = engine_params.get("model", "") in [
             "claude-opus-4-20250514",
@@ -132,6 +126,9 @@ class VLMSearcherAgent(SearcherAgent):
     def reset(self, query):
         # 当调用search函数时, 创建新的智能体, 当第一次调用时再实例化环境, 但是每次都要reset
         # 重置智能体上下文
+        self.system_prompt = PROCEDURAL_MEMORY.construct_searcher_procedural_memory(
+            agent_class=type(self)
+        ).replace("CURRENT_OS", self.platform)
         self.searcher_agent = LMMAgent(
             engine_params=self.engine_params,
             system_prompt=self.system_prompt
@@ -180,12 +177,32 @@ class VLMSearcherAgent(SearcherAgent):
     def assign_screenshot(self, obs):
         self.obs = obs
 
+    def _get_search_time(self) -> int:
+        """
+        查找 self.result_dir 文件夹下的 search_{search_time} 文件夹, 返回当前最大的 search_time + 1。
+        """
+        search_times: list[int] = []
+        
+        for item_name in os.listdir(self.result_dir):
+            full_path = os.path.join(self.result_dir, item_name)
+            
+            if os.path.isdir(full_path) and item_name.startswith("search_"):
+                try:
+                    time_val = int(item_name.split('_', 1)[1])
+                    search_times.append(time_val)
+                except (ValueError, IndexError):
+                    continue
+
+        if not search_times:
+            return 1
+        
+        return max(search_times) + 1
+        
     # TODO: @Yang 结合主Agent与Coder Agent实现
     def search(self, query: str, main_obs):
         # search 触发时再创建虚拟机，以防浪费资源
         self.reset(query=query) # 重置
-        self.search_time += 1
-        search_result_dir = os.path.join(self.result_dir, f"search_{self.search_time}")
+        search_result_dir = os.path.join(self.result_dir, f"search_{self._get_search_time()}")
         os.makedirs(search_result_dir, exist_ok=True)
 
         obs = self.env._get_obs() # Get the initial observation
@@ -204,28 +221,32 @@ class VLMSearcherAgent(SearcherAgent):
             role="user"
         )
         execution_history = []
+        tutorial_notes = []
         completion_reason = ""
         final_answer = ""
 
         while step_idx < self.budget:
+            # 动态更新 system_prompt
+            tutorial_notes_str = ""
+            if len(tutorial_notes) > 0:
+                for i, note in enumerate(tutorial_notes, 1):
+                    tutorial_notes_str += f"Tutorial Note {i}: {note}\n\n"
+
             if step_idx == self.budget - 1:
                 # 最后一舞
-                last_system_prompt = PROCEDURAL_MEMORY.construct_searcher_eager_mode_procedural_memory(
+                self.system_prompt = PROCEDURAL_MEMORY.construct_searcher_eager_mode_procedural_memory(
                     agent_class=type(self)
                 ).replace("CURRENT_OS", self.platform).replace("QUERY", query)
-                self.searcher_agent.add_system_prompt(system_prompt=last_system_prompt)
+            
+            system_prompt = self.system_prompt.replace("TUTORIAL_PLACEHOLDER", tutorial_notes_str)
+            self.searcher_agent.add_system_prompt(system_prompt=system_prompt)
 
             # 开始一轮新的对话
             self.assign_screenshot(obs=obs)
             generator_message = ""
 
-            if len(self.tutorial_notes) > 0:
-                generator_message += f"\n(Current Tutorial Notes)\n"
-                for i, note in enumerate(self.tutorial_notes, 1):
-                    generator_message += f"Tutorial Note {i}: {note}\n\n"
-
             self.searcher_agent.add_message(
-                    generator_message, image_content=obs["screenshot"], role="user"
+                generator_message, image_content=obs["screenshot"], role="user"
             )
             format_checkers = [
                 partial(CODE_VALID_FORMATTER, self, obs),
@@ -320,7 +341,7 @@ class VLMSearcherAgent(SearcherAgent):
         return {
             "query": query,
             "completion_reason": completion_reason,
-            "tutorial_notes": self.tutorial_notes,
+            "tutorial_notes": tutorial_notes,
             "execution_history": execution_history,
             "steps_executed": step_idx,
             "budget": self.budget,
@@ -360,16 +381,15 @@ class VLMSearcherAgent(SearcherAgent):
         self,
         element_description: Optional[str] = None,
         text: str = "",
-        overwrite: bool = False,
+        overwrite: bool = True,
         enter: bool = False
     ):
         """Type text/unicode into a specific element
         Args:
             element_description:str, a detailed description of which element to enter text in. This description should be at least a full sentence.
             text:str, the text to type
-            overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
+            overwrite:bool, Default is True, assign it to False if the text should not overwrite the existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing the text, otherwise assign it to False.
-            is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
         commands = [
             "import pyautogui",
@@ -451,7 +471,7 @@ class VLMSearcherAgent(SearcherAgent):
         """Save high quality and useful information to a long-term knowledge bank for reuse during this search task.
             text:str, the text to save to the tutorial notes
         """
-        self.tutorial_notes.append(text)
+        tutorial_notes.append(text)
         return """WAIT"""
     
     @searcher_agent_action

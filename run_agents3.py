@@ -138,7 +138,6 @@ def run_env_tasks(
             engine_params_for_coder,
         )
 
-        memory_agent = ReflectionMemoryAgent(engine_params_for_memory)
 
         agent = AgentS3(
             engine_params_for_orchestrator,

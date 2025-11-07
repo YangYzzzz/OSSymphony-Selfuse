@@ -108,7 +108,7 @@ class PROCEDURAL_MEMORY:
     
         # has_code_agent = "call_code_agent" in config.get("tools", {}).keys()
         # if has_code_agent:
-        has_search_agent = "search" in config.get("tools", {}).keys() and config["tools"]["search"].get("enabled", False)
+        has_search_agent = "call_search_agent" in config.get("tools", {}).keys() and config["tools"]["call_search_agent"].get("enabled", False)
         if not has_search_agent:
             procedural_memory = textwrap.dedent(
             f"""\
@@ -771,8 +771,14 @@ class PROCEDURAL_MEMORY:
             -   When you are confident you have gathered enough information to create a complete and accurate tutorial, use the `agent.done()` action. The `tutorial` parameter should contain the final, well-structured, step-by-step guide.
             -   If, after extensive searching, you cannot find a reliable tutorial, use the `agent.fail()` action. Provide a hint explaining why the search was unsuccessful.
 
-            # AVAILABLE ACTIONS
-            You have access to the following class and methods to interact with the UI. You must only use these actions.
+            **You are provided with**:
+            1. A screenshot of the current time step.
+            2. The history of your previous interactions with the UI.
+            3. Tutorials notes you have already found.
+            --- TUTORIAL NOTES START ---
+            TUTORIAL_PLACEHOLDER
+            --- TUTORIAL NOTES END ---
+            4. Access to the following class and methods to interact with the UI. You must only use these actions.
             class Agent:
             """
         )
@@ -853,8 +859,14 @@ class PROCEDURAL_MEMORY:
             -   **If you choose `agent.done()`:** You MUST provide the complete, well-structured tutorial in the `tutorial` parameter. Compile all your useful notes into a final guide. Do NOT use `done` unless you are highly confident in the tutorial's accuracy and completeness.
             -   **If you choose `agent.fail()`:** Use this if you could not find enough information, or if the information you found is contradictory, unreliable, or incomplete. Provide a reason in the `hint` parameter.
 
-            # AVAILABLE ACTIONS
-            You have access to ONLY the following two methods for your final decision.
+            **You are provided with**:
+            1. A screenshot of the current time step.
+            2. The history of your previous interactions with the UI.
+            3. Tutorials notes you have already found.
+            --- TUTORIAL NOTES START ---
+            TUTORIAL_PLACEHOLDER
+            --- TUTORIAL NOTES END ---
+            4. Access to the following class and methods to interact with the UI. You must only use these two actions.
             class Agent:
             """
         )
@@ -892,7 +904,9 @@ class PROCEDURAL_MEMORY:
             ```python
             agent.done(tutorial="xxxx")
             ```
-
+            ```python
+            agent.fail(hint="xxxx")
+            ```
             **CRITICAL**: You MUST choose one of the following two actions. No other actions are allowed.
             """
         )

@@ -32,7 +32,11 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
             # Capture the timestamp before executing the action
 
             # Save screenshot and trajectory information
-            with open(os.path.join(example_result_dir, f"step_{step_idx + 1}.png"),
+            if "reflection" in response and response["reflection"].get("is_milestone"):
+                img_name = f"step_{step_idx + 1}_milestone.png"
+            else:
+                img_name = f"step_{step_idx + 1}.png"
+            with open(os.path.join(example_result_dir, img_name),
                       "wb") as _f:
                 _f.write(obs['screenshot'])
             if "coordinates" in response and response["coordinates"] is not None:

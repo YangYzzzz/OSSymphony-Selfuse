@@ -71,7 +71,6 @@ class Worker(BaseModule):
         self.reset()
 
     def reset(self):
-        # 根据环境动态调整 Agent，我们也要编写出来这种代码！
         if self.platform != "linux":
             skipped_actions = ["set_cell_values"]
         else:
@@ -121,7 +120,7 @@ class Worker(BaseModule):
         engine_type = self.engine_params_for_orchestrator.get("engine_type", "")
 
         # Flush strategy for long-context models: keep all text, only keep latest images
-        if engine_type in ["anthropic", "openai", "gemini"]:
+        if engine_type in ["anthropic", "openai", "gemini", "vllm"]:
             max_images = self.max_trajectory_length
             # for agent in [self.generator_agent, self.reflection_agent]:
             for agent in [self.orchestrator_agent]:
@@ -129,7 +128,8 @@ class Worker(BaseModule):
                     continue
                 # keep latest k images
                 img_count = 0
-                for i in range(len(agent.messages) - 1, -1, -1):
+                stop_idx = -1 if self.engine_params_for_orchestrator.get("keep_first_image",False) else 1
+                for i in range(len(agent.messages) - 1, stop_idx, -1):
                     for j in range(len(agent.messages[i]["content"])):
                         if "image" in agent.messages[i]["content"][j].get("type", ""):
                             img_count += 1
@@ -137,6 +137,7 @@ class Worker(BaseModule):
                                 del agent.messages[i]["content"][j]
 
         # Flush strategy for non-long-context models: drop full turns
+        # 这块可能得验证下并改改
         else:
             # generator msgs are alternating [user, assistant], so 2 per round
             if len(self.orchestrator_agent.messages) > 2 * self.max_trajectory_length + 1:
