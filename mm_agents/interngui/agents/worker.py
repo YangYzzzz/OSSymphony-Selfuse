@@ -312,6 +312,12 @@ class Worker(BaseModule):
                 and self.os_aci.last_code_agent_result is not None
                 else None
             ),
+            "search_agent_output": (
+                self.os_aci.last_search_agent_result
+                if hasattr(self.os_aci, "last_search_agent_result")
+                and self.os_aci.last_search_agent_result is not None
+                else None
+            )
         }
         self.turn_count += 1
         self.coords_history.append(coordinates)

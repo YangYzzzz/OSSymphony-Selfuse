@@ -120,12 +120,14 @@ class VLMSearcherAgent(SearcherAgent):
             ],
             "proxy": True
         }
-
+        self.tutorial_notes = []
         self.obs = None
 
     def reset(self, query):
         # 当调用search函数时, 创建新的智能体, 当第一次调用时再实例化环境, 但是每次都要reset
         # 重置智能体上下文
+        self.tutorial_notes = []
+        self.tutorial_or_hint = ""
         self.system_prompt = PROCEDURAL_MEMORY.construct_searcher_procedural_memory(
             agent_class=type(self)
         ).replace("CURRENT_OS", self.platform)
@@ -167,7 +169,6 @@ class VLMSearcherAgent(SearcherAgent):
                                 del agent.messages[i]["content"][j]
 
         # Flush strategy for non-long-context models: drop full turns
-        # 这部分是否有问题? 连系统提示词都会去除么
         else:
             # generator msgs are alternating [user, assistant], so 2 per round
             if len(self.searcher_agent.messages) > 2 * self.max_trajectory_length + 1:
@@ -221,15 +222,14 @@ class VLMSearcherAgent(SearcherAgent):
             role="user"
         )
         execution_history = []
-        tutorial_notes = []
         completion_reason = ""
         final_answer = ""
 
         while step_idx < self.budget:
             # 动态更新 system_prompt
             tutorial_notes_str = ""
-            if len(tutorial_notes) > 0:
-                for i, note in enumerate(tutorial_notes, 1):
+            if len(self.tutorial_notes) > 0:
+                for i, note in enumerate(self.tutorial_notes, 1):
                     tutorial_notes_str += f"Tutorial Note {i}: {note}\n\n"
 
             if step_idx == self.budget - 1:
@@ -265,11 +265,10 @@ class VLMSearcherAgent(SearcherAgent):
             logger.info("SEARCHER PLAN:\n %s", plan)
 
             plan_code = parse_code_from_string(plan)
-            info = None
             try:
                 assert plan_code, "Plan code should not be empty"
                 # 此时的exec_code e.g. import pyautogui; pyautogui.click(1, 2);
-                exec_code, info = create_pyautogui_code(self, plan_code, obs)
+                exec_code, coords = create_pyautogui_code(self, plan_code, obs)
             except Exception as e:
                 logger.error(
                     f"Could not evaluate the following plan code:\n{plan_code}\nError: {e}"
@@ -289,11 +288,10 @@ class VLMSearcherAgent(SearcherAgent):
                     "wb") as _f:
                 _f.write(obs['screenshot'])
 
-            # 此时 info 为坐标信息
-            if info is not None and isinstance(info, list):
+            if coords is not None and isinstance(coords, list):
                 draw_coordinates(
                     image_bytes=obs['screenshot'], 
-                    coordinates=info, 
+                    coordinates=coords, 
                     save_path=os.path.join(search_result_dir, f"step_{step_idx + 1}_draw.png")
                 )
                             
@@ -305,7 +303,7 @@ class VLMSearcherAgent(SearcherAgent):
                     "response": {
                         "plan": plan,
                         "plan_code": plan_code,
-                        "info(coords/tutorial)": info
+                        "coordinates": coords
                     },
                     "screenshot_file": f"step_{step_idx + 1}.png"
                 }, ensure_ascii=False))
@@ -319,7 +317,7 @@ class VLMSearcherAgent(SearcherAgent):
                     "response": {
                         "plan": plan,
                         "plan_code": plan_code,
-                        "info(coords/tutorial)": info
+                        "coordinates": coords
                     },
                     "screenshot_file": f"step_{step_idx + 1}.png"
                 }, f, indent=4, ensure_ascii=False)
@@ -327,7 +325,7 @@ class VLMSearcherAgent(SearcherAgent):
             if exec_code in ["DONE", "FAIL"]:
                 # 中断循环
                 completion_reason = exec_code
-                final_answer = info
+                final_answer = self.tutorial_or_hint
                 break
             else:
                 obs, _, _, _ = self.env.step(action, 5)
@@ -341,7 +339,7 @@ class VLMSearcherAgent(SearcherAgent):
         return {
             "query": query,
             "completion_reason": completion_reason,
-            "tutorial_notes": tutorial_notes,
+            "tutorial_notes": self.tutorial_notes,
             "execution_history": execution_history,
             "steps_executed": step_idx,
             "budget": self.budget,
@@ -354,25 +352,18 @@ class VLMSearcherAgent(SearcherAgent):
         element_description: str,
         num_clicks: int = 1,
         button_type: str = "left",
-        hold_keys: List = []
     ):
         """Click on the element
         Args:
             element_description:str, a detailed descriptions of which element to click on. This description should be at least a full sentence.
             num_clicks:int, number of times to click the element
             button_type:str, which mouse button to press can be "left", "middle", or "right"
-            hold_keys:List, list of keys to hold while clicking
         """
         coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
         x, y = self.grounder_agent.resize_coordinates(coords1)
         command = "import pyautogui; "
-
-        # TODO: specified duration?
-        for k in hold_keys:
-            command += f"pyautogui.keyDown({repr(k)}); "
         command += f"""import pyautogui; pyautogui.click({x}, {y}, clicks={num_clicks}, button={repr(button_type)}); """
-        for k in hold_keys:
-            command += f"pyautogui.keyUp({repr(k)}); "
+
         # Return pyautoguicode to click on the element
         return (command, [x, y])
     
@@ -471,7 +462,7 @@ class VLMSearcherAgent(SearcherAgent):
         """Save high quality and useful information to a long-term knowledge bank for reuse during this search task.
             text:str, the text to save to the tutorial notes
         """
-        tutorial_notes.append(text)
+        self.tutorial_notes.append(text)
         return """WAIT"""
     
     @searcher_agent_action
@@ -491,7 +482,8 @@ class VLMSearcherAgent(SearcherAgent):
         Args:
             tutorial:str, A detailed, step-by-step tutorial compiled from the search results to be passed to the main agent.
         """
-        return ("""DONE""", tutorial)
+        self.tutorial_or_hint = tutorial
+        return """DONE"""
 
     @searcher_agent_action
     def fail(
@@ -502,7 +494,8 @@ class VLMSearcherAgent(SearcherAgent):
         Args:
             hint:str, A hint or reason explaining why the search failed, or what kind of information was missing.
         """
-        return ("""FAIL""", hint)
+        self.tutorial_or_hint = hint
+        return """FAIL"""
         
 
 # TODO: @Yang 后续完成

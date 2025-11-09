@@ -278,6 +278,9 @@ def create_gradio_app(root_dir):
                             interactive=False,
                             elem_classes=["code-wrap-container"] # 复用自动换行样式
                         )
+                    with gr.Accordion(label="Search Agent Tutorials", open=True, visible=False) as search_agent_accordion:
+                        tutorial_text = gr.Textbox(label="Tutorials", lines=8, interactive=False) # Summary 可能会比较长
+
         # =================================================================
         # 函数与事件处理
         # =================================================================
@@ -352,13 +355,15 @@ def create_gradio_app(root_dir):
             response = step_data.get("response", {})
             img_path = Path(root_dir) / domain / task / step_data.get("screenshot_file", "")
             
-            img_name_phase = step_data.get("screenshot_file").split("_")
-            if len(img_name_phase) == 3:
-                annotated_img_path = Path(root_dir) / domain / task / (img_name_phase[0] + "_" + img_name_phase[1] + "_draw_" + img_name_phase[2])
-            else:
-                annotated_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file")[:-4] + "_draw.png")
+            # img_name_phase = step_data.get("screenshot_file").split("_")
+            annotated_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file")[:-4] + "_draw.png")
+            # 临时修改，后续用不上
+            milestone_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file")[:-4] + "_milestone.png")
             if annotated_img_path.exists():
                 img_path = annotated_img_path
+            elif milestone_img_path.exists():
+                img_path = milestone_img_path
+
             # 原有的更新字典
             updates = {
                 step_counter: gr.update(value=f"步骤 {index + 1} / {len(steps)}"),
@@ -373,7 +378,11 @@ def create_gradio_app(root_dir):
             # --- 新增: 处理并更新 Code Agent UI ---
             code_agent_output = response.get("code_agent_output")
             (task_instruction, completion_reason, summary, 
-            history_json, is_visible) = process_code_agent_output(code_agent_output)
+            history_json, is_code_visible) = process_code_agent_output(code_agent_output)
+
+            # 处理 Search Agent 教程输出
+            is_search_visible = True
+            tutorial = "This is a placeholder"
 
             evaluator_path = os.path.join("/nvme/yangbowen/yangbowen/OSWorld/evaluation_examples/examples", domain, f"{task}.json")
             evaluator_data = json.load(open(evaluator_path, "r", encoding="utf-8"))["evaluator"]
@@ -383,11 +392,13 @@ def create_gradio_app(root_dir):
             print(evaluator_data)
 
             updates.update({
-                code_agent_accordion: gr.update(visible=is_visible),
+                code_agent_accordion: gr.update(visible=is_code_visible),
+                search_agent_accordion: gr.update(visible=is_search_visible),
                 task_instruction_text: gr.update(value=task_instruction),
                 completion_reason_text: gr.update(value=completion_reason),
                 summary_text: gr.update(value=summary),
                 execution_history_json: gr.update(value=history_json),
+                tutorial_text: gr.update(value=tutorial),
                 evaluator_json: gr.update(value=json.dumps(evaluator_data, indent=2))
             })
             # json.dumps(evaluator_data, indent=2)
@@ -421,7 +432,7 @@ def create_gradio_app(root_dir):
         task_select_outputs = [
             state_selected_task, state_steps_data, state_current_step_index, task_view, viewer_view, viewer_title,
             step_counter, screenshot_img, plan_text, plan_code_text, reflection_text, prev_step_btn, next_step_btn,
-            code_agent_accordion, task_instruction_text, completion_reason_text, summary_text, execution_history_json, evaluator_json
+            code_agent_accordion, search_agent_accordion, task_instruction_text, completion_reason_text, summary_text, execution_history_json, tutorial_text, evaluator_json
         ]
         for btn in task_buttons: 
             btn.click(
@@ -433,7 +444,7 @@ def create_gradio_app(root_dir):
         step_change_outputs = [
             state_current_step_index, step_counter, screenshot_img, plan_text, plan_code_text, reflection_text,
             prev_step_btn, next_step_btn,
-            code_agent_accordion, task_instruction_text, completion_reason_text, summary_text, execution_history_json, evaluator_json
+            code_agent_accordion, search_agent_accordion, task_instruction_text, completion_reason_text, summary_text, execution_history_json, tutorial_text, evaluator_json
         ]
         prev_step_btn.click(
             fn=change_step, 
@@ -519,9 +530,6 @@ def plot_step_histogram(success_steps, failure_steps, title, save_path):
     ax1.set_title('Successful Tasks')
     ax1.set_ylabel('Number of Tasks')
     
-    # 【修改 1】: 删除了 ax1.invert_yaxis()，使Y轴正向显示
-    
-    # 【修改 2】: 即使共享X轴，也强制显示上子图的X轴刻度标签
     ax1.tick_params(axis='x', labelbottom=True)
     
     # 确保Y轴刻度为整数
@@ -686,39 +694,39 @@ def get_result(target_dir):
     if overall_action_counts:
         try:
             save_path = os.path.join(target_dir, "overall_action_usage.png")
-            if not os.path.exists(save_path):
-                plt.figure(figsize=(12, 8))
-                sorted_actions = overall_action_counts.most_common()
-                actions = [item[0] for item in sorted_actions]
-                counts = [item[1] for item in sorted_actions]
-                
-                # 捕获 bar 对象
-                bars = plt.barh(actions, counts, color='skyblue')
-                
-                plt.xlabel('Usage Count')
-                plt.ylabel('Action Type')
-                plt.title('Overall Action Usage Frequency')
-                plt.gca().invert_yaxis()
-                
-                # 【新增】为标签腾出空间，将X轴范围扩大15%
-                if counts:
-                    plt.xlim(right=max(counts) * 1.15)
+            # if not os.path.exists(save_path):
+            plt.figure(figsize=(12, 8))
+            sorted_actions = overall_action_counts.most_common()
+            actions = [item[0] for item in sorted_actions]
+            counts = [item[1] for item in sorted_actions]
+            
+            # 捕获 bar 对象
+            bars = plt.barh(actions, counts, color='skyblue')
+            
+            plt.xlabel('Usage Count')
+            plt.ylabel('Action Type')
+            plt.title('Overall Action Usage Frequency')
+            plt.gca().invert_yaxis()
+            
+            # 【新增】为标签腾出空间，将X轴范围扩大15%
+            if counts:
+                plt.xlim(right=max(counts) * 1.15)
 
-                # 【新增】在每个条形图的末尾添加计数值
-                for bar in bars:
-                    xval = bar.get_width()
-                    plt.text(
-                        xval + (max(counts) * 0.01),  # X坐标: 条形末端再往右一点
-                        bar.get_y() + bar.get_height() / 2.0, # Y坐标: 条形垂直中心
-                        f' {int(xval)}({int(xval) / sum(counts):.2f}%)', # 显示的文本 (整数)
-                        ha='left',      # 水平对齐: 左
-                        va='center'     # 垂直对齐: 中
-                    )
+            # 【新增】在每个条形图的末尾添加计数值
+            for bar in bars:
+                xval = bar.get_width()
+                plt.text(
+                    xval + (max(counts) * 0.01),  # X坐标: 条形末端再往右一点
+                    bar.get_y() + bar.get_height() / 2.0, # Y坐标: 条形垂直中心
+                    f' {int(xval)}({int(xval) / sum(counts):.2f}%)', # 显示的文本 (整数)
+                    ha='left',      # 水平对齐: 左
+                    va='center'     # 垂直对齐: 中
+                )
 
-                plt.tight_layout()
-                plt.savefig(save_path)
-                plt.close()
-                print(f"Saved overall action usage plot to {save_path}")
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            print(f"Saved overall action usage plot to {save_path}")
         except Exception as e:
             print(f"Error generating overall action usage plot: {e}")
 
@@ -728,75 +736,75 @@ def get_result(target_dir):
             continue
         try:
             save_path = os.path.join(target_dir, f"action_usage_{domain}.png")
-            if not os.path.exists(save_path):
-                plt.figure(figsize=(10, 6))
-                sorted_actions = counts.most_common()
-                actions = [item[0] for item in sorted_actions]
-                action_counts = [item[1] for item in sorted_actions]
+            # if not os.path.exists(save_path):
+            plt.figure(figsize=(10, 6))
+            sorted_actions = counts.most_common()
+            actions = [item[0] for item in sorted_actions]
+            action_counts = [item[1] for item in sorted_actions]
 
-                # 捕获 bar 对象
-                bars = plt.barh(actions, action_counts, color='lightgreen')
-                
-                plt.xlabel('Usage Count')
-                plt.ylabel('Action Type')
-                plt.title(f'Action Usage Frequency in Domain: {domain}')
-                plt.gca().invert_yaxis()
+            # 捕获 bar 对象
+            bars = plt.barh(actions, action_counts, color='lightgreen')
+            
+            plt.xlabel('Usage Count')
+            plt.ylabel('Action Type')
+            plt.title(f'Action Usage Frequency in Domain: {domain}')
+            plt.gca().invert_yaxis()
 
-                # 【新增】为标签腾出空间，将X轴范围扩大15%
-                if action_counts:
-                    plt.xlim(right=max(action_counts) * 1.15)
+            # 【新增】为标签腾出空间，将X轴范围扩大15%
+            if action_counts:
+                plt.xlim(right=max(action_counts) * 1.15)
 
-                # 【新增】在每个条形图的末尾添加计数值
-                for bar in bars:
-                    xval = bar.get_width()
-                    plt.text(
-                        xval + (max(action_counts) * 0.01), # X坐标
-                        bar.get_y() + bar.get_height() / 2.0, # Y坐标
-                        f' {int(xval)}({int(xval) / sum(action_counts) * 100:.2f}%)', # 显示的文本
-                        ha='left',      # 水平对齐
-                        va='center'     # 垂直对齐
-                    )
+            # 【新增】在每个条形图的末尾添加计数值
+            for bar in bars:
+                xval = bar.get_width()
+                plt.text(
+                    xval + (max(action_counts) * 0.01), # X坐标
+                    bar.get_y() + bar.get_height() / 2.0, # Y坐标
+                    f' {int(xval)}({int(xval) / sum(action_counts) * 100:.2f}%)', # 显示的文本
+                    ha='left',      # 水平对齐
+                    va='center'     # 垂直对齐
+                )
 
-                plt.tight_layout()
-                plt.savefig(save_path)
-                plt.close()
-                print(f"Saved action usage plot for domain '{domain}' to {save_path}")
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            print(f"Saved action usage plot for domain '{domain}' to {save_path}")
         except Exception as e:
             print(f"Error generating action usage plot for domain {domain}: {e}")
 
     # Plot 3: Success Rate by Domain
     if domain_success_rate:
         try:
-            save_path = os.path.join(target_dir, "domain_success_rates.png")
-            if not os.path.exists(save_path):
+            # save_path = os.path.join(target_dir, "domain_success_rates.png")
+            # if not os.path.exists(save_path):
                 # Prepare data including the average
-                domains_sorted = sorted(domain_success_rate.keys())
-                rates_sorted = [domain_success_rate[d] for d in domains_sorted]
-                
-                # Add average rate
-                plot_labels = domains_sorted + ['Average']
-                plot_values = rates_sorted + [overall_rate]
-                
-                colors = ['#87CEEB'] * len(domains_sorted) + ['#FF6347'] # SkyBlue for domains, Tomato for Average
+            domains_sorted = sorted(domain_success_rate.keys())
+            rates_sorted = [domain_success_rate[d] for d in domains_sorted]
+            
+            # Add average rate
+            plot_labels = domains_sorted + ['Average']
+            plot_values = rates_sorted + [overall_rate]
+            
+            colors = ['#87CEEB'] * len(domains_sorted) + ['#FF6347'] # SkyBlue for domains, Tomato for Average
 
-                plt.figure(figsize=(max(10, len(plot_labels) * 0.8), 7))
-                bars = plt.bar(plot_labels, plot_values, color=colors)
-                
-                plt.ylabel('Success Rate (%)')
-                plt.title('Success Rate by Domain and Overall Average')
-                plt.xticks(rotation=45, ha='right')
-                plt.ylim(0, 110) # Set y-limit to 110% for better visualization
-                plt.grid(axis='y', linestyle='--', alpha=0.7)
+            plt.figure(figsize=(max(10, len(plot_labels) * 0.8), 7))
+            bars = plt.bar(plot_labels, plot_values, color=colors)
+            
+            plt.ylabel('Success Rate (%)')
+            plt.title('Success Rate by Domain and Overall Average')
+            plt.xticks(rotation=45, ha='right')
+            plt.ylim(0, 110) # Set y-limit to 110% for better visualization
+            plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-                # Add percentage text on top of each bar
-                for bar in bars:
-                    yval = bar.get_height()
-                    plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
+            # Add percentage text on top of each bar
+            for bar in bars:
+                yval = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
 
-                plt.tight_layout()
-                plt.savefig(save_path)
-                plt.close()
-                print(f"Saved success rate plot to {save_path}")
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            print(f"Saved success rate plot to {save_path}")
         except Exception as e:
             print(f"Error generating success rate plot: {e}")
 
