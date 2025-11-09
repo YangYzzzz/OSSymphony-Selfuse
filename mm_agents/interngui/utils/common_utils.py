@@ -232,7 +232,7 @@ def parse_code_from_string(input_string):
     # This regular expression will match both ```code``` and ```python code```
     # and capture the `code` part. It uses a non-greedy match for the content inside.
     pattern = r"```(?:\w+\s+)?(.*?)```"
-    print(f'[parse_code_from_string].input_string: {input_string}')
+    # print(f'[parse_code_from_string].input_string: {input_string}')
     # Find all non-overlapping matches in the string
     matches = re.findall(pattern, input_string, re.DOTALL)
     if len(matches) == 0:
@@ -241,7 +241,7 @@ def parse_code_from_string(input_string):
     relevant_code = matches[
         -1
     ]  # We only care about the last match given it is the grounded action
-    print(f'[parse_code_from_string].relevant_code: {relevant_code}')
+    # print(f'[parse_code_from_string].relevant_code: {relevant_code}')
     return relevant_code
 
 

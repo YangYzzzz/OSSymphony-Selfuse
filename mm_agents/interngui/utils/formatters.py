@@ -37,11 +37,11 @@ def _attempt_code_creation(agent, code, obs):
 # )
 def code_valid_check(agent, obs, response):
     code = parse_code_from_string(response)
-    print(f'[code_valid_check]: {code}')
+    # print(f'[code_valid_check]: {code}')
     result = _attempt_code_creation(
         agent, code, obs
     ) is not None
-    print(f"[code_valid_check]: {result}")
+    # print(f"[code_valid_check]: {result}")
     return result
 
 code_valid_error_msg = "Incorrect code: The agent action must be a valid function and use valid parameters from the docstring list."
