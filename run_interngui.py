@@ -1,9 +1,3 @@
-"""OSWorld's run.py with AgentS2."""
-
-"""Script to run end-to-end evaluation on the benchmark.
-Utils and basic architecture credit to https://github.com/web-arena-x/webarena/blob/main/run.py.
-"""
-
 import argparse
 import datetime
 import json

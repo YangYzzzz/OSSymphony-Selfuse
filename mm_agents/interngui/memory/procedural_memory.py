@@ -149,8 +149,9 @@ class PROCEDURAL_MEMORY:
                 5. **Default Sheet Names**: If creating a new sheet and no name is specified, use default names (e.g., "Sheet1", "Sheet2").
                 6. **Completion**: Only use agent.done() when you have **actively verified** (e.g., via GUI) that the task is 100% complete and correct. Never assume a task is done based on appearances-always ensure the specific requested action has been performed and verify the modification.
                 7. **Infeasible**: Use agent.fail() if the task is infeasible (e.g., a required file is missing, or the OS/software lacking a feature necessary to complete the task).
-                8. **Password**: Your sudo password is "password".
-                9. **Your Location**: If you encounter any task related to your location (e.g. find somewhere in Google Maps), remember you are in Hong Kong.
+                8. **Password**: Your sudo password is "password". Feel free to use "sudo" command.
+                9. **Open Browser**: please just click on the Chrome icon.  Note, Chrome is what is installed on your system.
+                10. **Your Location**: If you encounter any task related to your location (e.g. find somewhere in Google Maps), remember you are in Hong Kong.
 
                 ---
 
@@ -213,7 +214,8 @@ class PROCEDURAL_MEMORY:
                 6. **Completion**: Only use agent.done() when you have **actively verified** (e.g., via GUI) that the task is 100% complete and correct. Never assume a task is done based on appearances-always ensure the specific requested action has been performed and verify the modification.
                 7. **Infeasible**: Use agent.fail() if the task is infeasible (e.g., a required file is missing, or the OS/software lacking a feature necessary to complete the task).
                 8. **Password**: Your sudo password is "password".
-                9. **Your Location**: If you encounter any task related to your location (e.g. find somewhere in Google Maps), remember you are in Hong Kong.
+                9. **Open Browser**: please just click on the Chrome icon.  Note, Chrome is what is installed on your system.
+                10. **Your Location**: If you encounter any task related to your location (e.g. find somewhere in Google Maps), remember you are in Hong Kong.
 
                 ---
 
@@ -230,6 +232,7 @@ class PROCEDURAL_MEMORY:
                 class Agent:
                 """
             )
+
 
         for tool_name, tool_config in config.get('tools', {}).items():
             # 如果工具被显式禁用，则跳过
@@ -371,7 +374,7 @@ class PROCEDURAL_MEMORY:
     - Case 1. **Off-Track**: The trajectory is not going according to plan.
         - **Loop Detection (Priority 1)**: Your first check must be for non-productive loops. Analyze the action_history. Is the agent repeating the same sequence of actions (e.g., click A, click B, go back, click A, click B...) without making progress? If so, advise the agent to stop taking the specific actions that cause the loop.
         - **Caveat**: Do not mistake necessary, mechanical repetition (like filling 10 rows in a spreadsheet) for a negative loop. A loop is repetitive action without progress.
-        - **Other Off-Track Reasons**: If no loop is found, check for other issues: deviating from the goal, filling in wrong information that conflicts with knowledge, etc. Explicitly highlight why it is incorrect and give a possible new plan.
+        - **Other Off-Track Reasons**: If no loop is found, check for other issues: deviating from the goal, filling in wrong information that conflicts with knowledge, etc. Explicitly highlight why it is incorrect!
     - Case 2. **Task Completed**: You believe the current task has been successfully completed. Tell the agent to stop.
     - Case 3. **Task Infeasible**: You are **highly certain** the task cannot be completed. This may be due to a required file not existing, or the OS/software lacking a feature necessary to complete the task. In this case, tell the agent to choose "fail" action.
     - Case 4. **On-Track**: (If Cases 1, 2, and 3 do not apply) The trajectory is going according to plan. Now, you must perform a sub-check to see if Knowledge Recall is needed.
@@ -382,8 +385,9 @@ class PROCEDURAL_MEMORY:
 
     Rules for Trajectory Feedback (Cases 1-4):
     - **Your output MUST be based on one of the case options above**.
+    - NEVER give a specific future plan or action! Your job is NOT to give suggestions!
     - Be very certain for Case 4 (it is a DANGEROUS case).
-    - IMPORTANT: The system includes a "Code Agent" and "Search Agent" that can modify files and applications programmatically. When you see:
+    - IMPORTANT: The system includes a "Code Agent" that can modify files and applications programmatically. When you see:
         - Files with different content than expected.
         - Applications being closed and reopened.
         - Documents with fewer lines or modified content.
@@ -408,7 +412,7 @@ class PROCEDURAL_MEMORY:
     [
         Your detailed reasoning.
         Knowledge Extraction: Did the latest screenshot reveal new, relevant info (like a phone number, address) based on the user instruction? Is thats info really new? Check the existing knowledge and determine! If so, what is it?
-        Reflection & Recall: I will first understand the history and latest agent's output to know what agent has done. If latest screenshot denotes the task is finished, I should response according to Case 2 (Completed). For Case 4, I will then check if the current screenshot (e.g., open Excel) and history (e.g., intent to fill) mean it's time to recall knowledge from the knowledge input. I will then formulate my reflection based on this.
+        Reflection & Recall: I will first understand the history and latest agent's output to know what agent has done. If latest screenshot denotes the task is finished, I should response according to Case 2 (Completed). For Case 4, I will then check if the current screenshot (e.g., open Excel) and history (e.g., intent to fill) mean it's time to recall knowledge from the knowledge input. I will then formulate my reflection based on this. But I should NOT give any advice about next step.
         Milestone: Was the last action a significant milestone or just a small step?
     ]
     </thoughts>

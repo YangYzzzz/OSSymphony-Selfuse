@@ -58,6 +58,7 @@ class Qwen3VLAgent:
         self,
         platform: str = "ubuntu",
         model: str = "qwen3-vl",
+        base_url: str = "",
         max_tokens: int = 1500,
         top_p: float = 0.9,
         temperature: float = 0.0,
@@ -69,6 +70,7 @@ class Qwen3VLAgent:
     ):
         self.platform = platform
         self.model = model
+        self.base_url = base_url
         self.max_tokens = max_tokens
         self.top_p = top_p
         self.temperature = temperature
@@ -87,7 +89,7 @@ class Qwen3VLAgent:
         self.responses = []
         self.screenshots = []
 
-    def predict(self, instruction: str, obs: Dict) -> List:
+    def predict(self, instruction: str, obs: Dict, is_last_step: bool) -> List:
         """
         Predict the next action(s) based on the current observation.
         Returns (response, pyautogui_code).
@@ -545,9 +547,19 @@ Previous actions:
     def call_llm(self, payload, model):
         messages = payload["messages"]
 
-        base_url = "https://poc-dashscope.aliyuncs.com/compatible-mode/v1"
-        api_key = "sk-123"
-        client = openai.OpenAI(base_url=base_url, api_key=api_key)
+        USERNAME = "5ad34100ee055a4bae66370a5e683bac"
+        PASSWORD = "607de8249657a3b3bd036dc96d4c0b2f"
+        auth_string = f"{USERNAME}:{PASSWORD}".encode("utf-8")
+        basic_auth_encoded = base64.b64encode(auth_string).decode("utf-8")
+        basic_auth_header = f"Basic {basic_auth_encoded}"
+
+        base_url = self.base_url
+
+        client = openai.OpenAI(base_url=base_url, api_key="none", default_headers={"Authorization": basic_auth_header},)
+        
+        # base_url = "https://poc-dashscope.aliyuncs.com/compatible-mode/v1"
+        # api_key = "sk-123"
+        # client = openai.OpenAI(base_url=base_url, api_key=api_key)
 
         for _ in range(MAX_RETRY_TIMES):
             logger.info("Generating content with Qwen model: %s", model)
@@ -566,7 +578,7 @@ Previous actions:
                 continue
         return ""
 
-    def reset(self, _logger=None):
+    def reset(self, _logger=None, result_dir=""):
         global logger
         logger = (
             _logger if _logger is not None
