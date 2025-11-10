@@ -25,15 +25,25 @@ def _attempt_code_creation(agent, code, obs):
     try:
         return create_pyautogui_code(agent, code, obs)
     except Exception as e:
+        print(f'[Attempt code creation error]: {e}')
         return None
 
 
-code_valid_check = (
-    lambda agent, obs, response: _attempt_code_creation(
-        agent, parse_code_from_string(response), obs
-    )
-    is not None
-)
+# code_valid_check = (
+#     lambda agent, obs, response: _attempt_code_creation(
+#         agent, parse_code_from_string(response), obs
+#     )
+#     is not None
+# )
+def code_valid_check(agent, obs, response):
+    code = parse_code_from_string(response)
+    # print(f'[code_valid_check]: {code}')
+    result = _attempt_code_creation(
+        agent, code, obs
+    ) is not None
+    # print(f"[code_valid_check]: {result}")
+    return result
+
 code_valid_error_msg = "Incorrect code: The agent action must be a valid function and use valid parameters from the docstring list."
 CODE_VALID_FORMATTER = lambda agent, obs, response: (
     code_valid_check(agent, obs, response),

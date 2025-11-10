@@ -36,6 +36,7 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
                 img_name = f"step_{step_idx + 1}_milestone.png"
             else:
                 img_name = f"step_{step_idx + 1}.png"
+                
             with open(os.path.join(example_result_dir, img_name),
                       "wb") as _f:
                 _f.write(obs['screenshot'])
@@ -43,10 +44,9 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
                 draw_coordinates(
                     image_bytes=obs['screenshot'], 
                     coordinates=response["coordinates"], 
-                    save_path=os.path.join(example_result_dir, f"step_{step_idx + 1}_draw.png")
+                    save_path=os.path.join(example_result_dir, img_name[:-4] + "_draw.png")
                 )
 
-            action_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
             logger.info("Step %d: %s", step_idx + 1, action)
             obs, reward, done, info = env.step(action, args.sleep_after_execution)
 
@@ -57,25 +57,23 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
                 f.write(json.dumps({
                     "instruction": instruction,
                     "step_num": step_idx + 1,
-                    "action_timestamp": action_timestamp,
                     "action": action,
                     "response": response,
                     "reward": reward,
                     "done": done,
                     "info": info,
-                    "screenshot_file": f"step_{step_idx + 1}.png"
+                    "screenshot_file": img_name
                 }))
                 f.write("\n")
             with open(os.path.join(example_result_dir, f"traj_{step_idx+1}.json"), "w", encoding="utf-8") as f:
                 json.dump({
                     "step_num": step_idx + 1,
-                    "action_timestamp": action_timestamp,
                     "action": action,
                     "response": response,
                     "reward": reward,
                     "done": done,
                     "info": info,
-                    "screenshot_file": f"step_{step_idx + 1}.png"
+                    "screenshot_file": img_name
                 }, f, indent=4, ensure_ascii=False)
             if done:
                 logger.info("The episode is done.")

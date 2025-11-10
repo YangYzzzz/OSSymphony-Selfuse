@@ -197,7 +197,6 @@ def run_env_tasks(
                         shared_scores,
                     )
                 except Exception as e:
-                    # 出错了默认得分为 0.0? 先遵循原先的评测逻辑吧
                     import traceback
 
                     logger.error(
@@ -210,7 +209,7 @@ def run_env_tasks(
                     #     )
                     # except Exception as rec_e:
                     #     logger.error(f"Failed to end recording: {rec_e}")
-                    with open(os.path.join(example_result_dir, "traj.jsonl"), "a") as f:
+                    with open(os.path.join(os.path.dirname(example_result_dir), "error.jsonl"), "a") as f:
                         f.write(json.dumps({"Error": f"{domain}/{example_id} - {e}"}))
                         f.write("\n")
                     # with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
@@ -329,9 +328,9 @@ def config() -> argparse.Namespace:
 
     # agent config
     parser.add_argument("--max_trajectory_length", type=int, default=8)
-    parser.add_argument("--enable_reflection", type=bool, default=True)
-    parser.add_argument("--enable_rewrite_instruction", type=bool, default=False)
-    parser.add_argument("--use_search_first", type=bool, default=False)
+    parser.add_argument("--enable_reflection", action="store_true", default=False)
+    parser.add_argument("--enable_rewrite_instruction", action="store_true", default=False)
+    parser.add_argument("--use_search_first", action="store_true", default=False)
     parser.add_argument(
         "--tool_config", 
         type=str, 
@@ -360,7 +359,7 @@ def config() -> argparse.Namespace:
         default=None,
         help="Temperature to fix the orchestrator model at (e.g. o3 can only be run with 1.0)",
     )
-    parser.add_argument("--orchestrator_keep_first_image", type=bool, default=False, help="Whether keep the first image(first state) in the orchestrator agent")
+    parser.add_argument("--orchestrator_keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
 
     # code model config
     parser.add_argument("--coder_provider", type=str, default="openai")
