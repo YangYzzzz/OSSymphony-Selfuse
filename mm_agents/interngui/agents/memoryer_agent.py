@@ -1,13 +1,17 @@
+from ast import parse
 import logging
 import json
 from typing import List, Dict, Any, Optional, Tuple
+
+from sympy import false
 from mm_agents.interngui.utils.common_utils import (
     call_llm_safe,
     call_llm_formatted,
     split_thinking_response,
+    parse_code_from_string
 )
 from functools import partial
-from mm_agents.interngui.utils.formatters import JSON_ANSWER_FORMATTER
+from mm_agents.interngui.utils.formatters import JSON_ANSWER_FORMATTER, THOUGHTS_ANSWER_TAG_FORMATTER
 from mm_agents.interngui.core.mllm import LMMAgent
 from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 import textwrap
@@ -360,23 +364,36 @@ class ReflectionMemoryAgent:
                 partial(JSON_ANSWER_FORMATTER, required_fields)
             ]
 
-            response = call_llm_formatted(
+            full_response = call_llm_formatted(
                 self.reflection_agent,
                 format_checkers
             )
 
-            response, reflection_thought = split_thinking_response(response)
+            print("=" * 30)
+            print(full_response)
+            print("=" * 30)
+
+            reflection_thought = full_response      # 这里直接传full response了，反正也没有实际用途
+
+            response = parse_code_from_string(full_response)
             
-            data = json.loads(response)
-            reflection = data['reflection']
-            is_milestone = data["is_milestone"]
-            knowledge = data['knowledge']
+            try:
+                data = json.loads(response)
+                reflection = data['reflection']
+                is_milestone = data["is_milestone"]
+                knowledge = data['knowledge']
+            except Exception as e:
+                print("[RMA] 处理reflection时遇到错误: ", e)
+                logger.info("Response is not a JSON object or miss required keys!")
+                reflection = response           # 把所有内容都当作reflection
+                is_milestone = False
+                knowledge = ""
 
             if len(knowledge) > 0:
                 self.knowledge_base.append(knowledge)
             
             if isinstance(is_milestone, str):
-                is_milestone = True if "true" in data['is_milestone'].lower() else False
+                is_milestone = True if "true" in is_milestone.lower() else False
             
 
             # 图像增强，coordinates可能包含了一个或两个坐标，以他们为中心，向周围外扩一些
@@ -394,8 +411,8 @@ class ReflectionMemoryAgent:
                 "reflection": reflection,
                 "reflection_thoughts": reflection_thought,
                 "existing_knowledge": "\n".join(self.knowledge_base),
-                "is_milestone": data["is_milestone"],
-                "new_knowledge": data['knowledge'],
+                "is_milestone": is_milestone,
+                "new_knowledge": knowledge,
                 "step_summary": step_summary
             } 
             # with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:

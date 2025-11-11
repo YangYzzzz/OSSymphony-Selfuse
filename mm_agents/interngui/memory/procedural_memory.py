@@ -406,23 +406,24 @@ class PROCEDURAL_MEMORY:
     2. **What is NOT a "Milestone"?** Most successful actions are not milestones. They are just small, incremental steps towards a milestone. 
     - Examples of NON-Milestones: Typing a single character or word into a text field; clicking to open a dropdown menu; selecting a single, simple option (e.g., clicking a checkbox, selecting a date on a calendar unless it's the final action of a form); scrolling the page.
 
-
-    **Output Format**: Please format your response as follows below. You must output a valid JSON object on <answer></answer> part.
-    <thoughts>
+    ---
+    **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
+    (Thought)
     [
         Your detailed reasoning.
         Knowledge Extraction: Did the latest screenshot reveal new, relevant info (like a phone number, address) based on the user instruction? Is thats info really new? Check the existing knowledge and determine! If so, what is it?
         Reflection & Recall: I will first understand the history and latest agent's output to know what agent has done. If latest screenshot denotes the task is finished, I should response according to Case 2 (Completed). For Case 4, I will then check if the current screenshot (e.g., open Excel) and history (e.g., intent to fill) mean it's time to recall knowledge from the knowledge input. I will then formulate my reflection based on this. But I should NOT give any advice about next step.
         Milestone: Was the last action a significant milestone or just a small step?
     ]
-    </thoughts>
-    <answer>
+
+    (Answer)
+    ```json
     {
         "is_milestone": true / false,
         "reflection": "(Fill in the reflection here)",
         "knowledge": "(Fill in any newly extracted knowledge from Task 1. If no new knowledge was found in this step, this MUST be an empty string)"
     }
-    </answer>
+    ```
         """
     )
 
