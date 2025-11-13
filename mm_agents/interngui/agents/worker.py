@@ -82,7 +82,7 @@ class Worker(BaseModule):
         ):
             skipped_actions.append("call_code_agent")
 
-        sys_prompt = PROCEDURAL_MEMORY.construct_simple_worker_procedural_memory(
+        self.original_sys_prompt = PROCEDURAL_MEMORY.construct_simple_worker_procedural_memory(
             agent_class=type(self.os_aci), 
             skipped_actions=skipped_actions,
             tool_config=self.tool_config
@@ -92,7 +92,7 @@ class Worker(BaseModule):
         # Worker 内设置了 重写Agent，反思Agent，规划Agent 三个智能体
         self.orchestrator_agent = self._create_agent(
             engine_params=self.engine_params_for_orchestrator, 
-            system_prompt=sys_prompt
+            system_prompt=self.original_sys_prompt
         )
         self.memoryer_agent = ReflectionMemoryAgent(self.engine_params_for_memoryer)
 
@@ -190,9 +190,9 @@ class Worker(BaseModule):
         else:
             tutorials = ""
             for idx, t in enumerate(self.os_aci.tutorials, start=1):
-                tutorials += f"Tutorial {idx}: {t}\n"
+                tutorials += f"### Tutorial {idx}:\n {t}\n"
             
-            prompt_with_instructions = self.orchestrator_agent.system_prompt.replace(
+            prompt_with_instructions = self.original_sys_prompt.replace(
                 "TASK_DESCRIPTION", instruction
             ).replace(
                 "TUTORIAL_PLACEHOLDER", tutorials
@@ -200,9 +200,6 @@ class Worker(BaseModule):
 
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
         
-        # print("-" * 10)
-        # print(self.orchestrator_agent.system_prompt)
-        # print("-" * 10)
 
         
         ### 获取reflection
@@ -276,7 +273,7 @@ class Worker(BaseModule):
             # Add the most important part: the tutorial found by the agent.
             # This is given a prominent sub-header so the LLM knows to pay close attention.
             if search_result["completion_reason"] == "DONE":
-                generator_message += f'Search is completed, the tutorial it found has already add to your system prompt.\n'
+                generator_message += f'Search is completed, the tutorial it found has been already added to your system prompt.\n'
             elif search_result["completion_reason"] == "FAIL":
                 generator_message += f"Search is fail, the failure reason or the hint is as follow: {search_result['final_answer']}\n"
         

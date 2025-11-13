@@ -183,7 +183,7 @@ class PROCEDURAL_MEMORY:
                     * **Subtask**: Use `agent.call_code_agent("specific subtask")` for focused data tasks
                     * **CRITICAL**: When calling the code agent for the full task, do not simply pass the original instruction. First, assess if the entire task can be coherently executed from start to finish by code alone. If it can, you should rephrase the task to be as clear and actionable as possible for the code agent. Your goal is to provide a self-contained, logical instruction that focuses on the core data manipulation requirements and removes any ambiguity from the original user request.
                 * **CRITICAL CONSTRAINTS**:
-                    * Never use the code agent for charts, graphs, pivot tables, or visual elements—always use the GUI for those.
+                    * **Never** use the code agent for charts, graphs, pivot tables, or visual elements—always use the GUI for those.
                         
                 ## 1.3 **CRITICAL: Code Agent Verification (MANDATORY)**
                 * The code agent works in the background. You CANNOT trust its output report alone. Your job is to verify its work via the GUI.
@@ -208,9 +208,9 @@ class PROCEDURAL_MEMORY:
                 * **Result Interpretation**:
                     - **DONE**: The search agent will return a step-by-step tutorial. This tutorial will be injected into your guidelines for you to follow in subsequent steps. You can then follow this tutorial using GUI actions.
                     - **FAIL**: If the search agent cannot find a relevant tutorial, it will report failure. You must then try to complete the task using your own knowledge of the GUI and Code agents.
-
+                    - If the result is done, it is highly recommended to follow the tutorial with GUI operations.
+                    
                 ---
-
                 # 2. ACTION RULES
                 Here are some important notes:
                 1. **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
@@ -227,7 +227,6 @@ class PROCEDURAL_MEMORY:
                 8. **Password**: Your sudo password is "password".
                 9. **Open Browser**: please just click on the Chrome icon. Note, Chrome is what is installed on your system.
                 10. **Your Location**: If you encounter any task related to your location (e.g. find somewhere in Google Maps), remember you are in Hong Kong.
-
                 ---
 
                 # 3. INPUT & OUTPUT FORMAT
@@ -416,6 +415,7 @@ class PROCEDURAL_MEMORY:
     - **Your output MUST be based on one of the case options above**.
     - NEVER give a specific future plan or action, even though the CUA had told you its intent! Your job is NOT to give suggestions!
     - Be very certain for Case 4 (it is a DANGEROUS case).
+    - Do **not** classify a task as `Infeasible` if the failure is due to the agent's own confusion, random actions, or lack of knowledge on how to proceed. That is **`Case 1 (Lack of Tutorial)`**. `Infeasible` means the task is *externally* impossible (e.g., the feature does not exist in the software), not that the agent lacks the necessary knowledge.
     - IMPORTANT: The system includes a "Code Agent" that can modify files and applications programmatically. When you see:
         - Files with different content than expected.
         - Applications being closed and reopened.
@@ -499,8 +499,8 @@ class PROCEDURAL_MEMORY:
     (Answer)
     ```json
     {
-        "summary": [A summary of the CUA's step. See the rules above.],
-        "evaluation": [fail / successful]
+        "summary": "A summary of the CUA's step. See the rules above.",
+        "evaluation": "fail / successful"
     }
     ```
         """

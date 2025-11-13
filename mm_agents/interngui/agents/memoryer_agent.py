@@ -376,9 +376,6 @@ class ReflectionMemoryAgent:
             for i, step in enumerate(self.trajectory):
 
                 text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
-                print("+" * 10)
-                print(text_content)
-                print("+" * 10)
 
                 if i in self.active_img_idx:
                     if i == 0:
@@ -426,9 +423,9 @@ class ReflectionMemoryAgent:
                 format_checkers
             )
 
-            print("=" * 30)
-            print(full_response)
-            print("=" * 30)
+            # print("=" * 30)
+            # print(full_response)
+            # print("=" * 30)
 
             reflection_thought = full_response      # 这里直接传full response了，反正也没有实际用途
 
