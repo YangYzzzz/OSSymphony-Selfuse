@@ -336,21 +336,21 @@ class OSWorldACI:
         return (command, [x, y])
 
     # @agent_action
-    def switch_applications(self, app_code):
-        """Switch to a different application that is already open
-        Args:
-            app_code:str the code name of the application to switch to from the provided list of open applications
-        """
-        if self.platform == "darwin":
-            return f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_code)}); pyautogui.press('enter'); time.sleep(1.0)"
-        elif self.platform == "linux":
-            return UBUNTU_APP_SETUP.replace("APP_NAME", app_code)
-        elif self.platform == "windows":
-            return f"import pyautogui; import time; pyautogui.hotkey('win', 'd', interval=0.5); pyautogui.typewrite({repr(app_code)}); pyautogui.press('enter'); time.sleep(1.0)"
-        else:
-            assert (
-                False
-            ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
+    # def switch_applications(self, app_code):
+    #     """Switch to a different application that is already open
+    #     Args:
+    #         app_code:str the code name of the application to switch to from the provided list of open applications
+    #     """
+    #     if self.platform == "darwin":
+    #         return f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_code)}); pyautogui.press('enter'); time.sleep(1.0)"
+    #     elif self.platform == "linux":
+    #         return UBUNTU_APP_SETUP.replace("APP_NAME", app_code)
+    #     elif self.platform == "windows":
+    #         return f"import pyautogui; import time; pyautogui.hotkey('win', 'd', interval=0.5); pyautogui.typewrite({repr(app_code)}); pyautogui.press('enter'); time.sleep(1.0)"
+    #     else:
+    #         assert (
+    #             False
+    #         ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
 
     @agent_action
     def open(self, app_or_filename: str):
@@ -362,7 +362,7 @@ class OSWorldACI:
         Provide only the name of the application or file. Do not include the full path (e.g., "/home/user/Desktop/my_report.docx"). The function works by searching for the name, not by accessing a file path directly.
         """
         if self.platform == "linux":
-            return f"import pyautogui; pyautogui.hotkey('win'); time.sleep(0.5); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(0.5)"
+            return f"import pyautogui; pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)"
         elif self.platform == "darwin":
             return f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)"
 

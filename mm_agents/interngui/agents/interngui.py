@@ -46,8 +46,6 @@ class InternGUI:
     def reset(self, result_dir) -> None:
         """Reset agent state and initialize components"""
         # Reset the search time per task
-        if isinstance(self.os_aci.searcher_agent, VLMSearcherAgent):
-            self.os_aci.searcher_agent.search_time = 0
         self.os_aci.result_dir = result_dir
         self.executor = Worker(
             engine_params_for_orchestrator=self.engine_params_for_orchestrator,

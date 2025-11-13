@@ -90,24 +90,65 @@ def get_domains(root_dir):
         return []
     return [d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))]
 
-def get_tasks(root_dir, domain):
-    """获取指定domain下的所有task目录"""
+def _get_result_status(result_file):
+    """
+    一个内部辅助函数，用于读取result.txt并返回一个状态码。
+    返回: 1 (成功), 0 (失败), -1 (未知)
+    """
+    if not result_file.exists():
+        return -1
+    try:
+        result_num = float(result_file.read_text().strip())
+        if result_num > 0:
+            return 1
+        elif result_num == 0:
+            return 0
+    except (ValueError, TypeError):
+        return -1
+    return -1
+
+def get_tasks(root_dir, domain, compare_dir=None):
+    """
+    获取指定domain下的所有task目录，并根据对比模式生成样式。
+    - compare_dir: 可选的对比结果路径。
+    返回: (任务名列表, 主任务成功信息列表, CSS类名列表)
+    """
     domain_path = os.path.join(root_dir, domain)
     if not os.path.isdir(domain_path):
-        return []
+        return [], [], []
+    
     task_name_list = [t for t in os.listdir(domain_path) if os.path.isdir(os.path.join(domain_path, t))]
+    
     success_list = []
-    for i, task_name in enumerate(task_name_list):
-        result_file = Path(domain_path) / task_name / "result.txt"
+    css_class_list = []
+
+    for task_name in task_name_list:
+        # 1. 获取主体任务的结果
+        main_result_file = Path(root_dir) / domain / task_name / "result.txt"
+        main_status = _get_result_status(main_result_file)
+        
         result_text = "未知"
-        if result_file.exists():
-            result_num = float(result_file.read_text().strip())
-        if result_num > 0:
-            result_text = f'✅成功 {result_num}✅'
-        elif result_num == 0:
+        if main_status == 1:
+            result_text = f'✅成功 {main_result_file.read_text().strip()}✅'
+        elif main_status == 0:
             result_text = '❌失败 0.0❌'
         success_list.append(result_text)
-    return task_name_list, success_list
+
+        # 2. 如果开启了对比模式，则进行比较
+        current_css_class = ""
+        if compare_dir and os.path.isdir(compare_dir):
+            compare_result_file = Path(compare_dir) / domain / task_name / "result.txt"
+            compare_status = _get_result_status(compare_result_file)
+            
+            # 应用颜色规则
+            if main_status == 1 and compare_status == 0:
+                current_css_class = "compare-main-win" # 主体赢: 绿色背景
+            elif main_status == 0 and compare_status == 1:
+                current_css_class = "compare-comp-win" # 对比赢: 红色背景
+        
+        css_class_list.append(current_css_class)
+
+    return task_name_list, success_list, css_class_list
 
 def load_task_data(root_dir, domain, task):
     """加载一个任务的所有步骤数据和结果"""
@@ -125,7 +166,6 @@ def load_task_data(root_dir, domain, task):
                     print(f"警告: 在 {traj_file} 中发现无效的JSON行")
 
     # 加载 result.txt
-    print(steps)
     result_file = task_path / "result.txt"
     result_text = "未知"
     if result_file.exists():
@@ -181,49 +221,68 @@ def create_gradio_app(root_dir):
     
     domains = get_domains(root_dir)
 
-    with gr.Blocks(theme=gr.themes.Soft(), css="""
+    # --- 新增CSS样式 ---
+    # compare-main-win: 主体任务成功, 对比任务失败 (绿色)
+    # compare-comp-win: 主体任务失败, 对比任务成功 (红色)
+    CUSTOM_CSS = """
         .gr-button-group { display: flex; flex-wrap: wrap; gap: 10px; }
         .gr-button-group > button { flex-grow: 1; }
-        .success-text { color: #28a745; font-weight: bold; } /* 成功的绿色，加粗 */
-        .failure-text { color: #dc3545; font-weight: bold; } /* 失败的红色，加粗 */
-                   
-        #sticky-image-column {
-            position: -webkit-sticky; /* 兼容旧版 Safari */
-            position: sticky;
-            top: 20px; /* 距离视口顶部的距离，可以按需调整 */
-            align-self: flex-start; /* 确保列在 flex 容器顶部对齐 */
-            /* 设置一个最大高度，防止图片本身过高导致无法查看全部 */
-            max-height: 95vh; 
+        .success-text { color: #28a745; font-weight: bold; }
+        .failure-text { color: #dc3545; font-weight: bold; }
+        #screenshot-container.milestone .gradio-label {
+            color: red !important;
+            font-weight: bold !important;
         }
-    """) as app:
-        # --- 状态存储 ---
+        .compare-main-win {
+            background: #d4edda !important; /* 淡绿色背景 */
+            border-color: #c3e6cb !important;
+        }
+        .compare-comp-win {
+            background: #f8d7da !important; /* 淡红色背景 */
+            border-color: #f5c6cb !important;
+        }
+    """
+
+    with gr.Blocks(theme=gr.themes.Soft(), css=CUSTOM_CSS) as app:
+        # --- 状态存储 (新增对比路径状态) ---
         state_root_dir = gr.State(root_dir)
+        state_compare_root_dir = gr.State(None) # 用于存储对比路径
         state_selected_domain = gr.State()
         state_selected_task = gr.State()
         state_steps_data = gr.State()
         state_current_step_index = gr.State(0)
 
-        # --- 视图1: Domain选择 ---
+        # --- 视图1: Domain选择 (新增对比功能UI) ---
         with gr.Column(visible=True) as domain_view:
             gr.Markdown(f"# 任务轨迹浏览器({os.path.basename(root_dir)})\n请选择一个 Domain：")
+            
+            # --- 新增: 对比功能区域 ---
+            with gr.Accordion("📊 对比模式 (可选)", open=False):
+                compare_path_input = gr.Textbox(
+                    label="输入对比结果路径", 
+                    placeholder="例如: /nvme/yangbowen/yangbowen/OSWorld/results/agents3-nogdrive-qwen3vl-30ba3b-uitars1.5-step50-20251106-ybw",
+                    info="输入另一个实验结果的根目录，然后点击开启对比。"
+                )
+                compare_toggle_btn = gr.Button("🚀 开启对比模式")
+                compare_status_text = gr.Markdown("", visible=False)
+
             with gr.Row():
                 gr.Image(label="成功率", value=os.path.join(root_dir, "domain_success_rates.png"), type="filepath", interactive=False)
                 gr.Image(label="动作使用率", value=os.path.join(root_dir, "overall_action_usage.png"), type="filepath", interactive=False)
                 gr.Image(label="步长/成功率", value=os.path.join(root_dir, "overall_step_distribution.png"), type="filepath", interactive=False)
+            
             with gr.Group(elem_classes="gr-button-group"):
                 domain_buttons = []
                 for i in range(MAX_BUTTONS):
                     btn = gr.Button(visible=False)
                     domain_buttons.append(btn)
             
-            # 动态填充Domain按钮
             for i, domain_name in enumerate(domains):
                 if i < MAX_BUTTONS:
                     domain_buttons[i].value = domain_name
                     domain_buttons[i].visible = True
 
-
-        # --- 视图2: Task选择 ---
+        # --- 视图2: Task选择 (保持不变) ---
         with gr.Column(visible=False) as task_view:
             task_view_title = gr.Markdown("# 请选择一个 Task")
             with gr.Row():
@@ -241,8 +300,9 @@ def create_gradio_app(root_dir):
                     success_buttons.append(success)
                     task_buttons.append(btn)
 
-        # --- 视图3: 轨迹查看器 ---
+        # --- 视图3: 轨迹查看器 (保持不变) ---
         with gr.Column(visible=False) as viewer_view:
+            # ... (这部分代码与您原来的一样，无需改动)
             viewer_title = gr.Markdown("# 正在查看任务")
             with gr.Row():
                 back_to_tasks_btn = gr.Button("⬅️ 返回 Task 选择")
@@ -253,13 +313,11 @@ def create_gradio_app(root_dir):
                 next_step_btn = gr.Button("▶️ 下一步")
 
             with gr.Row():
-                with gr.Column(scale=4, elem_id="sticky-image-column"):
-                    screenshot_img = gr.Image(label="步骤截图", type="filepath", interactive=False)
-                    evaluator_json = gr.Code(
-                        label="Evaluator",
-                        language="json",
-                        interactive=False
-                    )
+                with gr.Column(scale=4):
+                    screenshot_img = gr.Image(
+                        label="步骤截图", type="filepath", interactive=False, elem_id="screenshot-container"
+                    )                    
+                    evaluator_json = gr.Code(label="Evaluator", language="json", interactive=False)
                     
                 with gr.Column(scale=2):
                     plan_text = gr.Textbox(label="Plan", lines=8, interactive=False)
@@ -269,25 +327,43 @@ def create_gradio_app(root_dir):
                     with gr.Accordion(label="Code Agent Plan Details", open=True, visible=False) as code_agent_accordion:
                         task_instruction_text = gr.Textbox(label="Task Instruction", lines=3, interactive=False)
                         completion_reason_text = gr.Textbox(label="Completion Reason", lines=1, interactive=False)
-                        summary_text = gr.Textbox(label="Summary", lines=8, interactive=False) # Summary 可能会比较长
-                        
-                        # 用于显示合并后的历史记录
-                        execution_history_json = gr.Code(
-                            label="Combined Execution History",
-                            language="json",
-                            interactive=False,
-                            elem_classes=["code-wrap-container"] # 复用自动换行样式
-                        )
+                        summary_text = gr.Textbox(label="Summary", lines=8, interactive=False)
+                        execution_history_json = gr.Code(label="Combined Execution History", language="json", interactive=False)
                     with gr.Accordion(label="Search Agent Tutorials", open=True, visible=False) as search_agent_accordion:
-                        tutorial_text = gr.Textbox(label="Tutorials", lines=8, interactive=False) # Summary 可能会比较长
+                        tutorial_text = gr.Textbox(label="Tutorials", lines=8, interactive=False)
 
         # =================================================================
-        # 函数与事件处理
+        # 函数与事件处理 (已修改)
         # =================================================================
 
-        def select_domain(domain_name, current_root_dir):
-            """当一个domain按钮被点击时触发"""
-            tasks, success_list = get_tasks(current_root_dir, domain_name)
+        def toggle_comparison(path):
+            """处理“开启对比”按钮点击事件"""
+            if path and os.path.isdir(path):
+                status_md = f"✅ **对比模式已开启。** 对比路径: `{path}`"
+                return {
+                    state_compare_root_dir: path,
+                    compare_status_text: gr.update(value=status_md, visible=True),
+                    compare_toggle_btn: gr.update(value="🔄 更改对比路径"),
+                }
+            elif not path:
+                return {
+                    state_compare_root_dir: None,
+                    compare_status_text: gr.update(value="❌ **对比模式已关闭。**", visible=True),
+                    compare_toggle_btn: gr.update(value="🚀 开启对比模式"),
+                }
+            else:
+                status_md = f"❌ **路径无效或不存在:** `{path}`. 请检查路径后重试。"
+                return {
+                    state_compare_root_dir: None,
+                    compare_status_text: gr.update(value=status_md, visible=True),
+                    compare_toggle_btn: gr.update(value="🚀 开启对比模式"),
+                }
+
+        def select_domain(domain_name, current_root_dir, compare_root_dir):
+            """当一个domain按钮被点击时触发 (已修改以处理对比逻辑)"""
+            # 调用修改后的 get_tasks 函数
+            tasks, success_list, css_classes = get_tasks(current_root_dir, domain_name, compare_dir=compare_root_dir)
+            
             updates = {
                 state_selected_domain: domain_name,
                 domain_view: gr.update(visible=False),
@@ -296,22 +372,30 @@ def create_gradio_app(root_dir):
                 domain_action_img: gr.update(value=f"{os.path.join(root_dir, f'action_usage_{domain_name}.png')}"),
                 domain_step_img: gr.update(value=f"{os.path.join(root_dir, f'step_distribution_{domain_name}.png')}"),
             }
-            # 更新并显示Task按钮
-            for i, btn in enumerate(task_buttons):
+            
+            # 更新并显示Task按钮，同时应用CSS类
+            for i in range(MAX_BUTTONS):
                 if i < len(tasks):
-                    updates[btn] = gr.update(value=tasks[i], visible=True)
-
-            for i, su in enumerate(success_buttons):
-                if i < len(tasks):
-                    updates[su] = gr.update(value=success_list[i], visible=True)
+                    updates[task_buttons[i]] = gr.update(
+                        value=tasks[i], 
+                        visible=True,
+                        elem_classes=css_classes[i] # <-- 关键改动：应用CSS类
+                    )
+                    updates[success_buttons[i]] = gr.update(
+                        value=success_list[i], 
+                        visible=True
+                    )
+                else:
+                    # 隐藏并重置不用的按钮
+                    updates[task_buttons[i]] = gr.update(visible=False, elem_classes="")
+                    updates[success_buttons[i]] = gr.update(visible=False)
 
             return updates
-
+        
+        # select_task, change_step, _get_step_display_updates 等函数保持不变
         def select_task(task_name, current_root_dir, selected_domain):
             """当一个task按钮被点击时触发"""
-
             steps, result, instruction = load_task_data(current_root_dir, selected_domain, task_name)
-            
             updates = {
                 state_selected_task: task_name,
                 state_steps_data: steps,
@@ -320,32 +404,22 @@ def create_gradio_app(root_dir):
                 viewer_view: gr.update(visible=True),
                 viewer_title: gr.update(value=f"## {task_name}: {instruction}\n### 最终结果: {result}")
             }
-
             if not steps:
-                # 如果没有步骤数据
                 updates.update({
-                    step_counter: "没有可显示的步骤。",
-                    screenshot_img: None,
-                    plan_text: "无数据",
-                    plan_code_text: "无数据",
-                    reflection_text: "无数据",
-                    prev_step_btn: gr.update(interactive=False),
-                    next_step_btn: gr.update(interactive=False),
+                    step_counter: "没有可显示的步骤。", screenshot_img: None, plan_text: "无数据",
+                    plan_code_text: "无数据", reflection_text: "无数据",
+                    prev_step_btn: gr.update(interactive=False), next_step_btn: gr.update(interactive=False),
                 })
             else:
-                # 显示第一步的数据
                 step_updates = _get_step_display_updates(steps, 0, current_root_dir, selected_domain, task_name)
                 updates.update(step_updates)
-
             return updates
 
         def change_step(index, change, steps, root_dir, domain, task):
             """处理上一步/下一步按钮点击"""
             new_index = index + change
             if not (0 <= new_index < len(steps)):
-                # 如果索引越界，则不更新
                 return {state_current_step_index: index}
-
             updates = _get_step_display_updates(steps, new_index, root_dir, domain, task)
             updates[state_current_step_index] = new_index
             return updates
@@ -354,43 +428,32 @@ def create_gradio_app(root_dir):
             step_data = steps[index]
             response = step_data.get("response", {})
             img_path = Path(root_dir) / domain / task / step_data.get("screenshot_file", "")
-            
-            # img_name_phase = step_data.get("screenshot_file").split("_")
-            annotated_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file")[:-4] + "_draw.png")
-            # 临时修改，后续用不上
-            milestone_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file")[:-4] + "_milestone.png")
+            annotated_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file", "")[:-4] + "_draw.png")
+            milestone_img_path = Path(root_dir) / domain / task / (step_data.get("screenshot_file", "")[:-4] + "_milestone.png")
             if annotated_img_path.exists():
                 img_path = annotated_img_path
             elif milestone_img_path.exists():
                 img_path = milestone_img_path
-
-            # 原有的更新字典
+            is_milestone = "milestone" in str(img_path)
+            new_label = "Milestone!" if is_milestone else "步骤截图"
+            new_classes = ["milestone"] if is_milestone else []
             updates = {
                 step_counter: gr.update(value=f"步骤 {index + 1} / {len(steps)}"),
-                screenshot_img: gr.update(value=str(img_path) if img_path.exists() else None),
+                screenshot_img: gr.update(value=str(img_path) if img_path.exists() else None, label=new_label, elem_classes=new_classes),
                 plan_text: gr.update(value=response.get("plan", "N/A")),
                 plan_code_text: gr.update(value=response.get("plan_code", "N/A")),
                 reflection_text: gr.update(value=response.get("reflection", "N/A")),
                 prev_step_btn: gr.update(interactive=index > 0),
                 next_step_btn: gr.update(interactive=index < len(steps) - 1),
             }
-
-            # --- 新增: 处理并更新 Code Agent UI ---
             code_agent_output = response.get("code_agent_output")
-            (task_instruction, completion_reason, summary, 
-            history_json, is_code_visible) = process_code_agent_output(code_agent_output)
-
-            # 处理 Search Agent 教程输出
-            is_search_visible = True
-            tutorial = "This is a placeholder"
-
+            (task_instruction, completion_reason, summary, history_json, is_code_visible) = process_code_agent_output(code_agent_output)
+            is_search_visible, tutorial = (True, response["search_agent_output"]["final_answer"]) if response.get("search_agent_output") else (False, "N/A")
             evaluator_path = os.path.join("/nvme/yangbowen/yangbowen/OSWorld/evaluation_examples/examples", domain, f"{task}.json")
-            evaluator_data = json.load(open(evaluator_path, "r", encoding="utf-8"))["evaluator"]
-            # print(evaluator_data)
-            if "postconfig" in evaluator_data:
-                del evaluator_data["postconfig"]
-            print(evaluator_data)
-
+            if os.path.exists(evaluator_path):
+                evaluator_data = json.load(open(evaluator_path, "r", encoding="utf-8"))["evaluator"]
+                if "postconfig" in evaluator_data: del evaluator_data["postconfig"]
+                updates[evaluator_json] = gr.update(value=json.dumps(evaluator_data, indent=2))
             updates.update({
                 code_agent_accordion: gr.update(visible=is_code_visible),
                 search_agent_accordion: gr.update(visible=is_search_visible),
@@ -399,36 +462,34 @@ def create_gradio_app(root_dir):
                 summary_text: gr.update(value=summary),
                 execution_history_json: gr.update(value=history_json),
                 tutorial_text: gr.update(value=tutorial),
-                evaluator_json: gr.update(value=json.dumps(evaluator_data, indent=2))
             })
-            # json.dumps(evaluator_data, indent=2)
-            # -----------------------------------------
-
             return updates
 
         def back_to_domains_fn():
-            """返回Domain选择视图"""
-            return {
-                domain_view: gr.update(visible=True),
-                task_view: gr.update(visible=False),
-            }
+            return {domain_view: gr.update(visible=True), task_view: gr.update(visible=False)}
 
         def back_to_tasks_fn(selected_domain):
-            """返回Task选择视图"""
-            return {
-                task_view: gr.update(visible=True),
-                viewer_view: gr.update(visible=False),
-                task_view_title: gr.update(value=f"# Domain: {selected_domain}\n请选择一个 Task：")
-            }
+            return {task_view: gr.update(visible=True), viewer_view: gr.update(visible=False), task_view_title: gr.update(value=f"# Domain: {selected_domain}\n请选择一个 Task：")}
 
-        # --- 绑定事件 ---
+        # --- 绑定事件 (已修改) ---
+        
+        # 1. 绑定“开启对比”按钮
+        compare_toggle_btn.click(
+            fn=toggle_comparison,
+            inputs=[compare_path_input],
+            outputs=[state_compare_root_dir, compare_status_text, compare_toggle_btn]
+        )
+
+        # 2. 修改 Domain 按钮的点击事件，传入对比路径状态
+        domain_click_outputs = [state_selected_domain, domain_view, task_view, task_view_title, domain_action_img, domain_step_img] + task_buttons + success_buttons
         for btn in domain_buttons:
             btn.click(
                 fn=select_domain,
-                inputs=[btn, state_root_dir],
-                outputs=[state_selected_domain, domain_view, task_view, task_view_title, domain_action_img, domain_step_img] + task_buttons + success_buttons
+                inputs=[btn, state_root_dir, state_compare_root_dir], # <-- 新增输入
+                outputs=domain_click_outputs
             )
         
+        # 3. 其他事件绑定保持不变
         task_select_outputs = [
             state_selected_task, state_steps_data, state_current_step_index, task_view, viewer_view, viewer_title,
             step_counter, screenshot_img, plan_text, plan_code_text, reflection_text, prev_step_btn, next_step_btn,
@@ -462,6 +523,7 @@ def create_gradio_app(root_dir):
         back_to_tasks_btn.click(fn=back_to_tasks_fn, inputs=[state_selected_domain], outputs=[task_view, viewer_view, task_view_title])
 
     return app
+
 
 # Helper function to safely extract action from plan_code string
 def extract_action_from_plan(plan_code):
@@ -775,7 +837,7 @@ def get_result(target_dir):
     # Plot 3: Success Rate by Domain
     if domain_success_rate:
         try:
-            # save_path = os.path.join(target_dir, "domain_success_rates.png")
+            save_path = os.path.join(target_dir, "domain_success_rates.png")
             # if not os.path.exists(save_path):
                 # Prepare data including the average
             domains_sorted = sorted(domain_success_rate.keys())

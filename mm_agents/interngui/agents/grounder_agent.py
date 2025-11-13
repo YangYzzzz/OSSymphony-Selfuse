@@ -36,6 +36,10 @@ class GrounderAgent:
         assert len(numericals) >= 2
         return [int(numericals[0]), int(numericals[1])]
     
+    def dynamic_set_width_height(self, width: int, height: int):
+        self.width = width
+        self.height = height
+        
     # Resize from grounding model dim into OSWorld dim (1920 * 1080)
     def resize_coordinates(self, coordinates: List[int]) -> List[int]:
         grounding_width = self.engine_params_for_grounder["grounding_width"]

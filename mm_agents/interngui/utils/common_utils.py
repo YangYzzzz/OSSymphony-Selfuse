@@ -1,3 +1,4 @@
+import json
 import re
 import time
 from io import BytesIO
@@ -6,7 +7,7 @@ import io
 import os
 from PIL import Image, ImageDraw
 from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
-
+from mm_agents.interngui.utils.process_context import get_current_result_dir
 import logging
 
 logger = logging.getLogger("desktopenv.agent")
@@ -94,6 +95,8 @@ def draw_coordinates(image_bytes: bytes, coordinates: List[Union[int, float]], s
 def call_llm_safe(
     agent, temperature: float = 0.0, use_thinking: bool = False, **kwargs
 ) -> str:
+    # 通过 .get() 方法安全地获取当前线程的上下文值
+    example_result_dir = get_current_result_dir()
     # Retry if fails
     max_retries = 3  # Set the maximum number of retries
     attempt = 0
@@ -112,6 +115,19 @@ def call_llm_safe(
             if attempt == max_retries:
                 print("Max retries reached. Handling failure.")
         time.sleep(1.0)
+    # 记录使用Token数
+    if isinstance(response, tuple):
+        response, usage = response
+        agent_name = agent.agent_name
+        with open(os.path.join(example_result_dir, "token.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "agent_name": agent_name,
+                "completion_tokens": usage.completion_tokens,
+                "prompt_tokens": usage.prompt_tokens,
+                "total_tokens": usage.total_tokens
+            }))
+            f.write("\n")
+
     return response if response is not None else ""
 
 def call_func_safe(
@@ -249,7 +265,7 @@ def extract_agent_functions(code):
     """Extracts all agent function calls from the given code.
 
     Args:
-        code (str): The code string to search for agent function calls.
+        code (str): The code string to search for agent function calls. e.g. agent.click(xxxxx)
 
     Returns:
         list: A list of all agent function calls found in the code.
@@ -257,6 +273,50 @@ def extract_agent_functions(code):
     pattern = r"(agent\.\w+\(\s*.*\))"  # Matches
     return re.findall(pattern, code)
 
+# def extract_agent_functions(input_string):
+#     """
+#     从输入字符串中提取最后一个代码块，并从中找出所有的 agent 函数调用。
+
+#     此函数执行两步操作：
+#     1. 它首先使用正则表达式搜索被三个反引号 (```) 包围的代码块。
+#        如果找到多个代码块，它只关心最后一个，因为这通常代表最终的“Grounded Action”。
+#     2. 在提取出的代码块中，它再使用另一个正则表达式来查找并返回所有
+#        以 "agent." 开头的函数调用。
+
+#     Args:
+#         input_string (str): 包含代码块的完整字符串。
+
+#     Returns:
+#         list: 在最后一个代码块中找到的所有 agent 函数调用的字符串列表。
+#               如果没有找到代码块或代码块中没有 agent 函数调用，则返回空列表。
+#     """
+#     if not isinstance(input_string, str):
+#         return []
+
+#     # 步骤 1: 从输入字符串中提取最后一个代码块的内容。
+#     # 这个正则表达式匹配 ```code``` 或 ```python code``` 这样的格式，
+#     # 并捕获其中的代码。re.DOTALL 标志让 `.` 可以匹配包括换行符在内的任意字符。
+#     code_block_pattern = r"```(?:\w+\s*)?(.*?)```"
+#     matches = re.findall(code_block_pattern, input_string, re.DOTALL)
+    
+#     with open(f'logs/extract_agent_functions.txt', "a", encoding="utf-8") as f:
+#         f.write(f"len: {len(matches)} " + input_string + "\n")
+
+#     # 如果没有找到任何代码块，则返回空列表。
+#     if not matches:
+#         return []
+
+#     # 我们只关心最后一个匹配项，因为它通常是 Grounded Action。
+#     # .strip() 用于移除代码块内容两端可能存在的空白字符。
+#     relevant_code = matches[-1].strip()
+
+#     # 步骤 2: 在提取出的代码块中查找 agent 函数调用。
+#     # 这个正则表达式匹配 "agent." 开头，后跟函数名和圆括号内的所有内容。
+#     # 同样使用 re.DOTALL 以支持跨越多行的函数调用。
+#     agent_call_pattern = r"(agent\.\w+\(\s*.*\))"  # Matches
+#     agent_calls = re.findall(agent_call_pattern, relevant_code, re.DOTALL)
+
+#     return agent_calls
 
 def compress_image(image_bytes: bytes = None, image: Image = None) -> bytes:
     """Compresses an image represented as bytes.

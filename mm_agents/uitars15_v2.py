@@ -6,7 +6,7 @@ import requests
 import logging
 from typing import Optional, Dict, List, Tuple, Union
 from loguru import logger
-
+from mm_agents.interngui.agents.critic_agent import CriticAgent
 import ast
 import base64
 import math
@@ -215,12 +215,14 @@ def parse_action_to_structure_output(text, factor, origin_resized_height, origin
 
         # import pdb; pdb.set_trace()
         action_inputs = {}
+        float_numbers = []
+        switch_str = raw_str # 赋值一个新的str
         for param_name, param in params.items():
             if param == "": continue
             param = param.lstrip()  # 去掉引号和多余的空格
             # 处理start_box或者end_box参数格式 '<bbox>x1 y1 x2 y2</bbox>'
             action_inputs[param_name.strip()] = param
-            
+
             if "start_box" in param_name or "end_box" in param_name:
                 ori_box = param
                 # Remove parentheses and split the string by commas
@@ -231,11 +233,18 @@ def parse_action_to_structure_output(text, factor, origin_resized_height, origin
                 if model_type == "qwen25vl":
                     float_numbers = []
                     for num_idx, num in enumerate(numbers):
+                        num_str = num
                         num = float(num)
                         if (num_idx + 1) % 2 == 0:
                             float_numbers.append(float(num/smart_resize_height))
+                            replace_num_str = str(int(num/smart_resize_height*1080))
                         else:
                             float_numbers.append(float(num/smart_resize_width))
+                            replace_num_str = str(int(num/smart_resize_width*1920))
+                        
+                        print(f'[Smart Resize]: {num_str} -> {replace_num_str}')
+                        switch_str = switch_str.replace(str(num_str), replace_num_str, 1)
+                # 不考虑这种情况
                 else:
                     float_numbers = [float(num) / factor for num in numbers]
 
@@ -244,12 +253,16 @@ def parse_action_to_structure_output(text, factor, origin_resized_height, origin
                 action_inputs[param_name.strip()] = str(float_numbers)
 
         # import pdb; pdb.set_trace()
+        # 需要对 rawstr 进行 smart_resize 后坐标的替换, raw_str 的一个例子是 click(start_box='(1000, 238)') 这个时候我需要将 里面的两个数字替换为 smart_resize 后的坐标, 请你为我
         actions.append({
             "reflection": reflection,
             "thought": thought,
             "action_type": action_type,
             "action_inputs": action_inputs,
-            "text": text
+            "action": switch_str,
+            "action_tars": raw_str,
+            "text": text,
+            "coords": float_numbers # 只保存最后一个坐标
         })
     return actions
 
@@ -384,6 +397,8 @@ def parsing_response_to_pyautogui_code(responses, image_height: int, image_width
             if content:
                 if input_swap:
                     pyautogui_code += f"\nimport pyperclip"
+                    pyautogui_code += f"\nimport subprocess"
+                    pyautogui_code += "\nsubprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})"
                     pyautogui_code += f"\npyperclip.copy('{stripped_content}')"
                     pyautogui_code += f"\npyautogui.hotkey('ctrl', 'v')"
                     pyautogui_code += f"\ntime.sleep(0.5)\n"
@@ -618,7 +633,7 @@ class UITarsAgent:
         max_tokens: int,
         top_p: Optional[float],
         temperature: float,
-        
+        base_url: str,
         # History settings
         max_trajectory_length: Optional[int],
         max_image_history_length: Optional[int],  # UI-TARS uses history-5 logic
@@ -635,6 +650,8 @@ class UITarsAgent:
         # UI-TARS specific settings
         use_thinking: bool = True,
         language: str = "Chinese",
+        critic_agent: CriticAgent = None,
+        critic_times = 1
     ):
         """
         Initialize UI-TARS Agent.
@@ -665,7 +682,7 @@ class UITarsAgent:
         self.observations = []
         self.history_images = []
         self.history_responses = []
-        
+        self.base_url = base_url
         if use_thinking:
             self.system_prompt = COMPUTER_USE_DOUBAO
         else:
@@ -681,7 +698,10 @@ class UITarsAgent:
         self.use_thinking = use_thinking
 
         self.inference_func = self.inference_with_thinking if use_thinking else self.inference_without_thinking
-    
+        
+        self.critic_agent = critic_agent
+        self.critic_times = critic_times if critic_agent else 1
+
     def reset(self, _logger=None):
         global logger
         logger = _logger if _logger is not None else logging.getLogger("desktopenv.agent")
@@ -691,6 +711,7 @@ class UITarsAgent:
         self.observations = []
         self.history_images = []
         self.history_responses = []
+        self.history_actions = []
 
     def pretty_print_messages(self, messages):
         """Pretty print messages while hiding base64 encoded images."""
@@ -754,13 +775,25 @@ class UITarsAgent:
                 "details": response.text
             }
     
+    # 使用该函数
     def inference_without_thinking(self, messages):
-        api_key = os.environ['DOUBAO_API_KEY']
-        api_url = os.environ['DOUBAO_API_URL']
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
+        api_key = None
+        api_url = self.base_url if self.base_url is not None else os.environ['DOUBAO_API_URL']
+        ak = "5ad34100ee055a4bae66370a5e683bac"
+        sk = "607de8249657a3b3bd036dc96d4c0b2f"
+        token = base64.b64encode(f"{ak}:{sk}".encode()).decode()
+
+        if api_key is None:
+            headers = {
+                "Authorization":  f"Basic {token}",
+                'Content-Type': 'application/json'
+            }
+        else:
+            headers = {
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json'
+            }
+
         data = {
             "model": self.model,
             "messages": messages,
@@ -783,7 +816,7 @@ class UITarsAgent:
                 "details": response.text
             }
 
-    def predict(self, task_instruction: str, obs: dict) -> Tuple[Union[str, Dict, None], List]:
+    def predict(self, task_instruction: str, obs: dict):
         """Predict the next action based on the current observation."""
         
         self.task_instruction = task_instruction
@@ -844,32 +877,52 @@ class UITarsAgent:
                 "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{images[image_num]}"}}]
             })
             image_num += 1
-    
-        try_times = 3
+        
         origin_resized_height = 1080
         origin_resized_width = 1920
-        prediction = None
-        while True:
-            if try_times <= 0:
-                self.logger.error(f"Reach max retry times to fetch response from client, as error flag.")
-                return prediction, ["FAIL"]
-            try:
-                logger.info(f"Messages: {self.pretty_print_messages(messages[-1])}")
-                prediction = self.inference_func(messages)
+        # 开始 critic 循环
+        for _ in range(self.critic_times):
+            try_times = 3
+            prediction = None
+            while True:
+                if try_times <= 0:
+                    self.logger.error(f"Reach max retry times to fetch response from client, as error flag.")
+                    return prediction, ["FAIL"]
+                try:
+                    prediction = self.inference_func(messages)
 
-            except Exception as e:
-                self.logger.error(f"Error when fetching response from client, with error:\n{e}")
-                prediction = None
-                try_times -= 1
-            
-            try:
-                parsed_dict = parse_action_to_structure_output(prediction, self.action_parse_res_factor, origin_resized_height, origin_resized_width, self.model_type)
-                parsed_pyautogui_code = parsing_response_to_pyautogui_code(parsed_dict, origin_resized_height, origin_resized_width, platform=self.platform)
+                except Exception as e:
+                    self.logger.error(f"Error when fetching response from client, with error:\n{e}")
+                    prediction = None
+                    try_times -= 1
+                
+                try:
+                    parsed_dict = parse_action_to_structure_output(prediction, self.action_parse_res_factor, origin_resized_height, origin_resized_width, self.model_type)
+                    parsed_pyautogui_code = parsing_response_to_pyautogui_code(parsed_dict, origin_resized_height, origin_resized_width, platform=self.platform)
+                    break
+                except Exception as e:
+                    self.logger.error(f"Error when parsing response from client, with error:\n{e}")
+                    prediction = None
+                    try_times -= 1
+
+            if self.critic_agent is None:
                 break
-            except Exception as e:
-                self.logger.error(f"Error when parsing response from client, with error:\n{e}")
-                prediction = None
-                try_times -= 1
+
+            # 构建历史信息
+            history_action_str = ""
+            cur_action_str = ""
+            for action_idx, action in enumerate(self.history_actions, start=1):
+                history_action_str += f"Step: {action_idx}: {action}\n"
+            for parsed_idx, parsed_response in enumerate(parsed_dict):
+                if parsed_idx == 0:
+                    cur_action_str += parsed_response["action"]
+            critic_result = self.critic_agent.critic(task=task_instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+            # True 则终止循环
+            if critic_result:
+                break
+            # False 代表检查不过关, 继续生成
+            else:
+                continue
 
         self.history_responses.append(prediction)
         
@@ -880,11 +933,15 @@ class UITarsAgent:
         except Exception as e:
             self.logger.error(f"Parsing action error: {prediction}, with error:\n{e}")
             return prediction, ["FAIL"]
-            
+        
         thoughts = ""
         for parsed_response in parsed_dict:
             if "thought" in parsed_response and parsed_response["thought"]:
                 thoughts += parsed_response["thought"]
+
+            # 将多步action存入Action历史记录中
+            self.history_actions.append(parsed_response["action"])
+
         if thoughts:
             self.thoughts.append(thoughts)
         for parsed_response in parsed_dict:
@@ -907,5 +964,5 @@ class UITarsAgent:
         self.actions.append([parsed_pyautogui_code])
     
 
-        return prediction, [parsed_pyautogui_code]
+        return parsed_dict, [parsed_pyautogui_code]
         

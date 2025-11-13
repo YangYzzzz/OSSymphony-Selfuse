@@ -41,6 +41,12 @@ def code_valid_check(agent, obs, response):
     result = _attempt_code_creation(
         agent, code, obs
     ) is not None
+
+    # 查看解析到的code
+    if not result:
+        with open("logs/code_valid_check.txt", "a", encoding="utf-8") as f:
+            f.write(f"Response: {response}\nCode: {code}\n")
+
     # print(f"[code_valid_check]: {result}")
     return result
 

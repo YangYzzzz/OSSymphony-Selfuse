@@ -1,4 +1,5 @@
 import argparse
+import copy
 import datetime
 import json
 import logging
@@ -137,11 +138,13 @@ def run_env_tasks(
             client_password=getattr(args, "client_password", ""),
         )
 
+        engine_params_for_ocr = copy.deepcopy(engine_params_for_orchestrator)
+        engine_params_for_ocr["agent_name"] = "ocr"
         os_aci = OSWorldACI(
             env=env, # 主环境
             search_env=search_env,
             platform="linux",
-            engine_params_for_ocr=engine_params_for_orchestrator, # 用于OCR总结的VLM使用OrchestratorConfig的配置即可
+            engine_params_for_ocr=engine_params_for_ocr, # 用于OCR总结的VLM使用OrchestratorConfig的配置即可
             engine_params_for_grounder=engine_params_for_grounder,
             engine_params_for_coder=engine_params_for_coder,
             engine_params_for_searcher=engine_params_for_searcher,
@@ -160,6 +163,7 @@ def run_env_tasks(
         )
 
         active_environments.append(env)
+        active_environments.append(search_env)
         logger.info(f"Process {current_process().name} started.")
         while True:
             try:
@@ -543,7 +547,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "api_key": getattr(args, "orchestrator_api_key", ""),
         "temperature": getattr(args, "orchestrator_temperature", None),
         "tool_config": args.tool_config,
-        "keep_first_image": args.orchestrator_keep_first_image
+        "keep_first_image": args.orchestrator_keep_first_image,
+        "agent_name": "orchestrator"
     }
 
 
@@ -554,7 +559,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "api_key": getattr(args, "grounder_api_key", ""),
         "grounding_width": args.grounding_width,
         "grounding_height": args.grounding_height,
-        "grounding_smart_resize": args.grounding_smart_resize
+        "grounding_smart_resize": args.grounding_smart_resize,
+        "agent_name": "grounder"
     }
 
     engine_params_for_coder = {
@@ -564,6 +570,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "api_key": getattr(args, "coder_api_key", ""),
         "temperature": getattr(args, "coder_temperature", None),
         "budget": args.coder_budget,
+        "agent_name": "coder"
     }
 
     engine_params_for_memoryer = {
@@ -572,6 +579,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "base_url": getattr(args, "memoryer_url", ""),
         "api_key": getattr(args, "memoryer_api_key", ""),
         "temperature": getattr(args, "memoryer_temperature", None),
+        "agent_name": "memoryer"
     }
 
     engine_params_for_searcher = {
@@ -582,6 +590,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "temperature": getattr(args, "searcher_temperature", None),
         "budget": args.searcher_budget,
         "type": args.searcher_type,
+        "agent_name": "searcher"
     }
 
     with Manager() as manager:

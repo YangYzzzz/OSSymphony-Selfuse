@@ -15,7 +15,7 @@ from mm_agents.interngui.core.engine import (
 
 
 class LMMAgent:
-    def __init__(self, engine_params=None, system_prompt=None, engine=None):
+    def __init__(self, engine_params: dict, system_prompt=None, engine=None):
         if engine is None:
             if engine_params is not None:
                 engine_type = engine_params.get("engine_type")
@@ -43,7 +43,7 @@ class LMMAgent:
             self.engine = engine
 
         self.messages = []  # Empty messages
-
+        self.agent_name = engine_params.get("agent_name")
         if system_prompt:
             self.add_system_prompt(system_prompt)
         else:

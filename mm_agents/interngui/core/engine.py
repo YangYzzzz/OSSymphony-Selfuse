@@ -68,19 +68,18 @@ class LMMEngineOpenAI(LMMEngine):
                     organization=organization,
                     default_headers=custom_headers
                 )
-        return (
-            self.llm_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                # max_completion_tokens=max_new_tokens if max_new_tokens else 4096,
-                temperature=(
-                    temperature if self.temperature is None else self.temperature
-                ),
-                **kwargs,
-            )
-            .choices[0]
-            .message.content
+        result = self.llm_client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            # max_completion_tokens=max_new_tokens if max_new_tokens else 4096,
+            temperature=(
+                temperature if self.temperature is None else self.temperature
+            ),
+            **kwargs,
         )
+        usage = result.usage
+        response = result.choices[0].message.content
+        return (response, usage)
 
 
 class LMMEngineAnthropic(LMMEngine):
@@ -383,7 +382,10 @@ class LMMEnginevLLM(LMMEngine):
             top_p=top_p,
             extra_body={"repetition_penalty": repetition_penalty},
         )
-        return completion.choices[0].message.content
+
+        usage = completion.usage
+        response = completion.choices[0].message.content
+        return (response, usage)
 
 
 class LMMEngineHuggingFace(LMMEngine):
