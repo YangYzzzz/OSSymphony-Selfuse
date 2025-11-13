@@ -91,6 +91,7 @@ def run_env_tasks(
 ):
     active_environments = []
     env = None
+    search_env = None
     try:
         # Use IMAGE_ID_MAP for AWS provider to get snapshot_name
         snapshot_name = None

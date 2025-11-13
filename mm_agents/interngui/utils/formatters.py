@@ -79,10 +79,10 @@ def json_answer_check(response: str, required_fields: List[str]) -> bool:
     一个只返回 True/False 的检查函数。
     """
     try:
-        # 1. 分离 <answer>
-        answer_str, _ = split_thinking_response(response)
+        # 1. 解析 ``` 块内部的string
+        answer_str = parse_code_from_string(response)
         
-        if not answer_str:
+        if len(answer_str) == 0:
             return False
 
         # 2. 检查 JSON
@@ -103,7 +103,7 @@ def json_answer_check(response: str, required_fields: List[str]) -> bool:
         return False
 
 json_answer_error_msg = (
-    "Incorrect response: The <answer>...</answer> tag must contain a valid JSON object that includes all required keys"
+    "Incorrect response: The (Answer) part must contain a valid JSON object that includes ALL required keys and need to be wrapped by ```json and ```"
 )
 
 JSON_ANSWER_FORMATTER = lambda response, required_fields: (

@@ -1,3 +1,4 @@
+from ast import parse
 import logging
 import json
 from typing import List, Dict, Any, Optional, Tuple
@@ -5,6 +6,7 @@ from mm_agents.interngui.utils.common_utils import (
     call_llm_safe,
     call_llm_formatted,
     split_thinking_response,
+    parse_code_from_string
 )
 from functools import partial
 from mm_agents.interngui.utils.formatters import JSON_ANSWER_FORMATTER
@@ -77,6 +79,8 @@ class ReflectionMemoryAgent:
         self.trajectory: List[StepBehavior] = []
 
         self.knowledge_base: List[str] = []
+
+        self.last_code_step_idx = -1        # 没点卵用
 
         '''
         用于控制图片数量，始终存放max_img_len张图片
@@ -214,65 +218,100 @@ class ReflectionMemoryAgent:
         cropped_image.save(buffered, format="PNG")
         return buffered.getvalue()
 
-    def _summarize_step_behavior(self, generator_output: str, cur_obs: Dict, enhanced_obs: bytes | None, is_milestone: bool):
+    def _summarize_step_behavior(
+            self, 
+            generator_output: str, 
+            cur_obs: Dict, 
+            enhanced_obs: bytes | None, 
+            is_milestone: bool,
+            mode: str = "gui",
+            code_exec_summary: str = ""
+        ) -> Tuple[StepBehavior, str]:
         """
         [Interface] Main -> RMA
         The Main Agent (MA) calls this method to "feed" the information of the just-completed step to the RMA.
         RMA will internally process and store this step.
         """
 
-        prev_obs = self.trajectory[-1].obs
+        if mode == "search":
+            is_success = "success"
+            # summary直接写死
+            step_behavior = StepBehavior(
+                False, 
+                generator_output,
+                "Search Agent was called last step, and a tutorial has been generated.", 
+                cur_obs
+            )
+        elif mode == "code":
+            self.last_code_step_idx = len(self.trajectory)  # 没点卵用
 
-        text_content = textwrap.dedent(
-            f"""Computer Use Agent's Output: \n{generator_output}"""
-        )
-        
-        self.behavior_agent.reset()     # don't need history messages
-        
-        updated_sys_prompt = (
-            self.behavior_agent.system_prompt + "\n" + text_content
-        )
-        self.behavior_agent.add_system_prompt(updated_sys_prompt)
+            is_success = "success"
+            # summary直接存code agent返回的summary
+            step_behavior = StepBehavior(
+                False, 
+                generator_output,
+                f"Code Agent was called last step, and the summary of its trajectory is: \n---\n{code_exec_summary}\n---", 
+                cur_obs
+            )
+        else:       # 普遍的GUI操作，用LLM来生成summary
+            prev_obs = self.trajectory[-1].obs
 
-        # 添加三张图片
-        self.behavior_agent.add_message(
-            text_content="This is the observation before executing action.",
-            image_content=prev_obs['screenshot'],
-            role="user"
-        )
-        self.behavior_agent.add_message(
-            text_content="This is the zoom-in view, which may help you to identify the operational region.",
-            image_content=enhanced_obs,
-            role="user"
-        )
-        self.behavior_agent.add_message(
-            text_content="This is the observation after executing action.",
-            image_content=cur_obs['screenshot'],
-            role="user"
-        )
+            text_content = f"""Computer Use Agent's Output: \n{generator_output}"""
+            
+            
+            self.behavior_agent.reset()     # don't need history messages
+            
+            updated_sys_prompt = (
+                self.behavior_agent.system_prompt + "\n" + text_content
+            )
+            self.behavior_agent.add_system_prompt(updated_sys_prompt)
 
-        # required_fields = ["summary", "evaluation"]
-        # format_checkers = [
-        #     partial(JSON_ANSWER_FORMATTER, required_fields)
-        # ]
+            # 添加三张图片
+            self.behavior_agent.add_message(
+                text_content="This is the observation before executing action.",
+                image_content=prev_obs['screenshot'],
+                role="user"
+            )
+            self.behavior_agent.add_message(
+                text_content="This is the zoom-in view, which may help you to identify the operational region.",
+                image_content=enhanced_obs,
+                role="user"
+            )
+            self.behavior_agent.add_message(
+                text_content="This is the observation after executing action.",
+                image_content=cur_obs['screenshot'],
+                role="user"
+            )
 
-        # response = call_llm_formatted(
-        #     self.behavior_agent,
-        #     format_checkers
-        # )
+            required_fields = ["summary", "evaluation"]
+            format_checkers = [
+                partial(JSON_ANSWER_FORMATTER, required_fields)
+            ]
 
-        response = call_llm_safe(self.behavior_agent)
+            full_response = call_llm_formatted(
+                self.behavior_agent,
+                format_checkers
+            )
 
-        behavior_summary, _ = split_thinking_response(response)
+            response = parse_code_from_string(full_response)
 
-        # print("@@@@@@@@@@ Summary Response: ", response)
+            try:
+                data = json.loads(response)
+                behavior_summary = data['summary']
+                is_success = data["evaluation"]
+            except Exception as e:
+                print("[RMA] 处理step summary时遇到错误: ", e)
+                logger.info("Response is not a JSON object or miss required keys!")
+                behavior_summary = response           # 把所有内容都当作reflection
+                is_success = "success"
 
-        step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs)
+            # print("@@@@@@@@@@ Summary Response: ", response)
 
-        self._update_trajectory(step_behavior)
-        return behavior_summary
+            step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs)
 
-    def get_reflection(self, cur_obs: Dict, generator_output: str, coordinates: List) -> Dict:
+        return step_behavior, is_success
+
+    def get_reflection(self, cur_obs: Dict, generator_output: str, coordinates: List, mode: str="gui", code_exec_summary="") -> Dict:
         """
         [Interface] RMA -> Main
         The Main Agent (MA) calls this method to get RMA's reflection before deciding the next action.
@@ -281,11 +320,12 @@ class ReflectionMemoryAgent:
         - cur_obs (Dict): The Main Agent's current observation (o_k).
         - generator_output (str): The thoughts, screen analysis and action of Main Agent.
         - coordinates (List): coordinates in the last operation step of Main Agent.
+        - mode(str): [gui, code, search]. Indicate which agent that main agent called last step.
         
         Returns:
-        - reflection (str): RMA's reflection. 
-        - reflection_thoughts: RMA's thoughts.
-        """        
+        - reflection_info(Dict): all the info related to reflection
+        """   
+             
         reflection = None
         reflection_thought = None
         if len(self.trajectory) == 0:
@@ -305,10 +345,28 @@ class ReflectionMemoryAgent:
                 "step_summary": ""
             } 
         else: 
+
+            # 图像增强，coordinates可能包含了一个或两个坐标，以他们为中心，向周围外扩一些
+            prev_obs = self.trajectory[-1].obs
+            enhanced_obs = self._enhance_observation(prev_obs, coordinates) if coordinates else None
+            # 制作step behavior
+            step_behavior, last_gui_check = self._summarize_step_behavior(generator_output, cur_obs, enhanced_obs, False, mode, code_exec_summary)    # 先进行step summary，目的是获取单步gui操作的评估结果，这里的is_milestone未知，先置为False。
+            
+            # make additional hints
+            additional_hints = []
+            additional_hints.append(f"\t- The last step is GUI operation, and it is {last_gui_check}.")
+            # 没点卵用
+            if len(self.trajectory) - self.last_code_step_idx < 3:      # 3步之内都有可能是验证
+                additional_hints.append(f"\t- The Computer Use Agent might in the verification stage of Code Agent.")
+            # 在这里添加rule-based的循环检测。
+
             self.reflection_agent.reset()
 
             updated_sys_prompt = (
-                PROCEDURAL_MEMORY.REFLECTION_SYSTEM_PROMPT + "\n\n" + f"---\n**user instruction**: {self.instruction}\n" + "**existing knowledge**: \n" + "\n".join(self.knowledge_base) + "\n---"
+                PROCEDURAL_MEMORY.REFLECTION_SYSTEM_PROMPT + "\n\n" + 
+                f"---\n- **user instruction**: {self.instruction}\n" + 
+                "- **existing knowledge**: \n" + "\n".join(self.knowledge_base) + 
+                "\n - **additional_hints**: " + "\n".join(additional_hints) + "\n---"
             )
 
             self.reflection_agent.add_system_prompt(updated_sys_prompt)
@@ -360,43 +418,48 @@ class ReflectionMemoryAgent:
                 partial(JSON_ANSWER_FORMATTER, required_fields)
             ]
 
-            response = call_llm_formatted(
+            full_response = call_llm_formatted(
                 self.reflection_agent,
                 format_checkers
             )
 
-            response, reflection_thought = split_thinking_response(response)
+            # print("=" * 30)
+            # print(full_response)
+            # print("=" * 30)
+
+            reflection_thought = full_response      # 这里直接传full response了，反正也没有实际用途
+
+            response = parse_code_from_string(full_response)
             
-            data = json.loads(response)
-            reflection = data['reflection']
-            is_milestone = data["is_milestone"]
-            knowledge = data['knowledge']
+            try:
+                data = json.loads(response)
+                reflection = data['reflection']
+                is_milestone = data["is_milestone"]
+                knowledge = data['knowledge']
+            except Exception as e:
+                print("[RMA] 处理reflection时遇到错误: ", e)
+                logger.info("Response is not a JSON object or miss required keys!")
+                reflection = response           # 把所有内容都当作reflection
+                is_milestone = False
+                knowledge = ""
 
             if len(knowledge) > 0:
                 self.knowledge_base.append(knowledge)
             
             if isinstance(is_milestone, str):
-                is_milestone = True if "true" in data['is_milestone'].lower() else False
+                is_milestone = True if "true" in is_milestone.lower() else False
             
-
-            # 图像增强，coordinates可能包含了一个或两个坐标，以他们为中心，向周围外扩一些
-            prev_obs = self.trajectory[-1].obs
-            enhanced_obs = self._enhance_observation(prev_obs, coordinates) if coordinates else None
-            
-            # if enhanced_obs:        # debug 记得把这段代码和文件夹都删了
-            #     image = Image.open(io.BytesIO(enhanced_obs)).convert("RGBA")
-            #     image.save(f'tmp_enhance_obs/step_{len(self.trajectory)}_enhanced.png')
-
-            step_summary = self._summarize_step_behavior(generator_output, cur_obs, enhanced_obs, is_milestone)    
-
+            # update is_milestone
+            step_behavior.is_milestone = is_milestone       
+            self._update_trajectory(step_behavior)
 
             reflection_info = {
                 "reflection": reflection,
                 "reflection_thoughts": reflection_thought,
                 "existing_knowledge": "\n".join(self.knowledge_base),
-                "is_milestone": data["is_milestone"],
-                "new_knowledge": data['knowledge'],
-                "step_summary": step_summary
+                "is_milestone": is_milestone,
+                "new_knowledge": knowledge,
+                "step_summary": step_behavior.summary
             } 
             # with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
             #     json.dump(supp_info, f, indent=4, ensure_ascii=False)

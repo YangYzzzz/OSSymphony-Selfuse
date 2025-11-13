@@ -93,6 +93,7 @@ class Worker(BaseModule):
         self.orchestrator_agent = self._create_agent(
             engine_params=self.engine_params_for_orchestrator, 
             system_prompt=self.orchestrator_sys_prompt
+
         )
         self.memoryer_agent = ReflectionMemoryAgent(self.engine_params_for_memoryer)
 
@@ -168,8 +169,6 @@ class Worker(BaseModule):
         self.os_aci.assign_screenshot(obs)
         self.os_aci.set_task_instruction(instruction)
 
-        # set instruction to memory agent
-        self.memoryer_agent.add_instruction(instruction)
 
         generator_message = (
             ""
@@ -194,8 +193,8 @@ class Worker(BaseModule):
         else:
             tutorials = ""
             for idx, t in enumerate(self.os_aci.tutorials, start=1):
-                tutorials += f"Tutorial {idx}: {t}\n"
-            
+                tutorials += f"### Tutorial {idx}:\n {t}\n"
+
             prompt_with_instructions = self.orchestrator_sys_prompt.replace(
                 "TASK_DESCRIPTION", instruction
             ).replace(
@@ -203,21 +202,42 @@ class Worker(BaseModule):
             )
 
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
-
-        # Get the per-step reflection
-        # reflection, reflection_thoughts = self._generate_reflection(instruction, obs)
-            
-        reflection = None
         
+
+        
+        ### 获取reflection
+        # set instruction to memory agent
+        self.memoryer_agent.add_instruction(instruction)
+        reflection = None
+        # 区分上一步的操作模式
+        last_code_summary = ""
+        mode = "gui"
+        if (
+            hasattr(self.os_aci, "last_code_agent_result")
+            and self.os_aci.last_code_agent_result is not None
+        ):
+            # 如果上一步用了code，就把code的执行结果作为step behavior
+            code_result = self.os_aci.last_code_agent_result
+            mode = "code"
+            last_code_summary += f"Subtask Instruction: {code_result['task_instruction']}\nSteps Completed: {code_result['steps_executed']}\nCompletion Reason: {code_result['completion_reason']}\nExec Summary: {code_result['summary']}\n"
+        if (
+            hasattr(self.os_aci, "last_search_agent_result")
+            and self.os_aci.last_search_agent_result is not None
+        ):
+            # 如果上一步用了code，step behavior是写死的
+            mode = "search"
         reflection_info = self.memoryer_agent.get_reflection(         # 新设计的reflection!!!
             cur_obs=obs, 
             generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
-            coordinates=self.coords_history[-1] if self.turn_count != 0 else []
+            coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
+            mode=mode,
+            code_exec_summary=last_code_summary
         ) 
         reflection = reflection_info['reflection']
-    
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
+        ###
+
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (
@@ -256,7 +276,7 @@ class Worker(BaseModule):
             # Add the most important part: the tutorial found by the agent.
             # This is given a prominent sub-header so the LLM knows to pay close attention.
             if search_result["completion_reason"] == "DONE":
-                generator_message += f'Search is completed, the tutorial it found has already add to your system prompt.\n'
+                generator_message += f'Search is completed, the tutorial it found has been already added to your system prompt.\n'
             elif search_result["completion_reason"] == "FAIL":
                 generator_message += f"Search is fail, the failure reason or the hint is as follow: {search_result['final_answer']}\n"
         
@@ -264,6 +284,7 @@ class Worker(BaseModule):
             # CRITICAL: Reset the search agent result after adding it to the context.
             # This prevents it from being added to the prompt again in the next turn.
             self.os_aci.last_search_agent_result = None
+
 
         # Finalize the generator message
         self.orchestrator_agent.add_message(

@@ -172,7 +172,7 @@ class PROCEDURAL_MEMORY:
 
                 ---
                 # 1. **AGENT WORKFLOW & TOOLS**
-                You have two agents: GUI and Code. You must choose the correct one for the job.
+                You have three tool agents: GUI, Code and Search. You must choose the correct one for the job.
 
                 ## 1.1 GUI Agent
                 * **Use for**: All direct UI interactions (clicking, typing, dragging). Use this for simple file operations, visual checks, and tasks requiring specific application features (e.g., charts, pivot tables, print settings, and **other visual elements**).
@@ -183,7 +183,7 @@ class PROCEDURAL_MEMORY:
                     * **Subtask**: Use `agent.call_code_agent("specific subtask")` for focused data tasks
                     * **CRITICAL**: When calling the code agent for the full task, do not simply pass the original instruction. First, assess if the entire task can be coherently executed from start to finish by code alone. If it can, you should rephrase the task to be as clear and actionable as possible for the code agent. Your goal is to provide a self-contained, logical instruction that focuses on the core data manipulation requirements and removes any ambiguity from the original user request.
                 * **CRITICAL CONSTRAINTS**:
-                    * Never use the code agent for charts, graphs, pivot tables, or visual elements—always use the GUI for those.
+                    * **Never** use the code agent for charts, graphs, pivot tables, or visual elements—always use the GUI for those.
                         
                 ## 1.3 **CRITICAL: Code Agent Verification (MANDATORY)**
                 * The code agent works in the background. You CANNOT trust its output report alone. Your job is to verify its work via the GUI.
@@ -191,7 +191,16 @@ class PROCEDURAL_MEMORY:
                 * **MANDATORY RESTART**: Files modified by the code agent will not show changes in already-open applications. You **MUST close and reopen the entire application** to verify changes. Reloading the file or page is NOT sufficient.
                 * **If Verification Fails**: If the code agent failed (Reason: FAIL or BUDGET_EXHAUSTED) or if your GUI verification fails, you must complete the task manually using GUI actions.
                 
-                ## 1.4 Search Agent
+                ## 1.4 Reflection Agent (Handling Feedback)
+                * **Use for**: The `Reflection` input is your primary source for error correction and guidance. You **must** read it first at every step and adjust your plan accordingly.
+                * **Usage Strategy**:
+                    * **If `Off-Track` (GUI Operation Error)**: The reflection indicates your last action failed (e.g., a bad click or type). Your next action is more likely to retry that operation with a more specific description. (e.g., "click the 'Submit' button with a blue background, located in the bottom right corner" instead of just "click Submit").
+                    * **If `Off-Track` (Lack of Guidance)**: The reflection indicates you are stuck, looping, or don't know the steps. You are missing information. You'd better call the search agent.
+                    * **If `Off-Track` (Other Error)**: Carefully read the reflection's explanation and form a new plan to fix the deviation.
+                    * **If `On-Track`**: Continue with your original plan. 
+                    * **If `Task Completed` / `Task Infeasible`**: Use this as a strong confirmation to call `agent.done()` or `agent.fail()`.
+
+                ## 1.5 Search Agent
                 You have access to a search agent that can browse the web to find tutorials.
                 * **Use for**: Use the Search Agent **only when you are unsure how to perform a GUI-based task**. If you don't know the steps to create a chart, configure a specific setting, or use an unfamiliar feature, use the search agent first.
                 * **Usage Strategy**:
@@ -199,13 +208,15 @@ class PROCEDURAL_MEMORY:
                 * **Result Interpretation**:
                     - **DONE**: The search agent will return a step-by-step tutorial. This tutorial will be injected into your guidelines for you to follow in subsequent steps. You can then follow this tutorial using GUI actions.
                     - **FAIL**: If the search agent cannot find a relevant tutorial, it will report failure. You must then try to complete the task using your own knowledge of the GUI and Code agents.
-
+                    - If the result is done, it is highly recommended to follow the tutorial with GUI operations.
+                    
                 ---
-
                 # 2. ACTION RULES
                 Here are some important notes:
                 1. **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
-                2. **Guideline for Clicks**: The element_description for agent.click() must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
+                2. **Guideline for Clicks**: 
+                    - **VISIBILITY CHECK (CRITICAL)**: You must strictly ONLY click on elements that are **clearly visible** in the current screenshot. Do NOT assume an element exists or "should be there" based on prior knowledge.
+                    - The element_description for agent.click() must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
                 3. **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
                 4. **Efficiency is Key**:
                     * Prefer agent.hotkey() over mouse clicks for shortcuts.
@@ -214,9 +225,8 @@ class PROCEDURAL_MEMORY:
                 6. **Completion**: Only use agent.done() when you have **actively verified** (e.g., via GUI) that the task is 100% complete and correct. Never assume a task is done based on appearances-always ensure the specific requested action has been performed and verify the modification.
                 7. **Infeasible**: Use agent.fail() if the task is infeasible (e.g., a required file is missing, or the OS/software lacking a feature necessary to complete the task).
                 8. **Password**: Your sudo password is "password".
-                9. **Open Browser**: please just click on the Chrome icon.  Note, Chrome is what is installed on your system.
+                9. **Open Browser**: please just click on the Chrome icon. Note, Chrome is what is installed on your system.
                 10. **Your Location**: If you encounter any task related to your location (e.g. find somewhere in Google Maps), remember you are in Hong Kong.
-
                 ---
 
                 # 3. INPUT & OUTPUT FORMAT
@@ -348,15 +358,18 @@ class PROCEDURAL_MEMORY:
         - IMPORTANT: This action has been DONE!
     - latest_screenshot (Image): The screenshot AFTER executing the action described in the **latest_agent_output**.
     - existing_knowledge (Text, Optional): A string containing all previously saved knowledge, which may be empty.
+    - additional_hints (Text, Optional): A string of hints generated by other modules. This may contain heuristic-based warnings (e.g., "Potential Loop Detected based on high image similarity").
 
     ---
     **Task 1: Knowledge Extraction (Saving New Info)**
     Your first task is to analyze the latest_screenshot in the context of the user_instruction to see if any new, useful knowledge has appeared.
-    - Goal: Identify information that the user explicitly asked to find or that is necessary for a future step (e.g., phone numbers, addresses, email, search results).
-    - De-duplication Rule (Crucial): Before extracting, you must first check the existing_knowledge input. DO NOT extract any information that is already present in existing_knowledge. Your goal is to find new information only.
+    - **Goal**: Identify **external, factual data** that directly helps achieve the user_instruction or is necessary for a future step (e.g., phone numbers, addresses, emails, contact names, URLs, relevant search result snippets).
+    - **Crucial Rules**: What NOT to Extract You must filter your findings against these following rules before extracting:
+        - **No GUI Observations**: You must differentiate between "External Knowledge" (data you are seeking) and "GUI Observations" (how the software looks). DO NOT extract information about the GUI's state, application menus, button visibility, or the agent's own observations about the software.
+        - **No Duplicates**: Check the existing_knowledge input. DO NOT extract any information that is already present. Your goal is to find new information only.
     - Action: If you find **new**, relevant, **externel** knowledge, you will prepare it for the knowledge output field. 
     - Example (New Info):
-        - user_instruction = "Find the phone and address for 'Ming Pavilion'."
+        - user_instruction = "Find the phone and address for 'Ming Pavilion' and fill the table."
         - existing_knowledge = "Ming Pavilion Address: Level 8, Pacific Place, Supreme Court Road, Central"
         - latest_screenshot shows "Address: Level 8, Pacific Place, Supreme Court Road, Central; Phone: (852) 2820 8580".
         - Result: You must extract "Ming Pavilion's Phone: (852) 2820 8580" because it is new.
@@ -369,24 +382,40 @@ class PROCEDURAL_MEMORY:
     ---     
     **Task 2: Trajectory Reflection & Knowledge Recall**
     Then, you must generate a reflection on the **entire history and current state (last_agent_output and last_screenshot)** in the context of the user_instruction. Your reflection must be one of the four cases below.
+
+    **CRITICAL ADVISORY ON `additional_hints`**:
+    - The `algorithmic_hints` input (if provided) is **NOT always reliable**, so you **MUST** treat these hints only as a *suggestion* or *reference*, not as a fact.
+    - Your final decision **MUST** be based on your own holistic analysis of the `history`, `latest_agent_output`, and `latest_screenshot`.
+    - **Example**: If the hint says "Potential Loop Detected" but your analysis of the `action_history` shows logical progress (e.g., filling different rows in a table), you **must ignore the hint**.
     
     You must check the cases in this order: 1, 2, 3, then 4.
-    - Case 1. **Off-Track**: The trajectory is not going according to plan.
-        - **Loop Detection (Priority 1)**: Your first check must be for non-productive loops. Analyze the action_history. Is the agent repeating the same sequence of actions (e.g., click A, click B, go back, click A, click B...) without making progress? If so, advise the agent to stop taking the specific actions that cause the loop.
-        - **Caveat**: Do not mistake necessary, mechanical repetition (like filling 10 rows in a spreadsheet) for a negative loop. A loop is repetitive action without progress.
-        - **Other Off-Track Reasons**: If no loop is found, check for other issues: deviating from the goal, filling in wrong information that conflicts with knowledge, etc. Explicitly highlight why it is incorrect!
+    - Case 1. **Off-Track**:
+        - You must first classify the error into one of the following types. Your reflection for this case **must** start with the error type, followed by a specific explanation.
+        - **Format**: `The trajectory is not going according to plan. [Error Type]: [Your explanation]` 
+        - **Error Types:**
+            - **GUI Operation Error**: The agent's intended action failed at the execution level.
+                - *Examples*: CUA intended to click a non-existent element (hallucination), clicking at the wrong coordinates for a existent element (grounding issue), or a typing error (e.g., trying to input new text without clearing the old content, significant typos).
+            - **Lack of Tutorial**: The agent's individual GUI operations (clicks, types) are technically correct, but the overall sequence or logic is flawed. The agent seems not to know *how* to accomplish the task.
+                - *Examples*: The agent is clicking randomly, or appears "stuck" and is stubbornly repeating a fixed set of actions *without* making progress.
+            - **Code Error**: This triggers *after* `call_code_agent` has been used and the CUA is now in a "verification" step (e.g., has opened the file that the Code Agent was supposed to modify). The `latest_screenshot` reveals that the Code Agent's work is incorrect, incomplete, or does not match the `user_instruction`.
+                - *Examples*: The Code Agent was supposed to add data to a file, but the `latest_screenshot` (showing the opened file) shows the file is still empty. The Code Agent was supposed to perform a calculation, but the GUI verification shows the wrong result.
+            - **Other Error**: The trajectory is off-track for a reason not covered above (e.g., deviating from the goal, filling in wrong information that conflicts with knowledge).    
+        - **Explanation Details**:
+            - Provide a clear explanation for *why* the agent is off-track, referencing `action_history` or `latest_screenshot`. But DON'T need to give an advice!
+            - **If Loop Detected**: If you find the agent is repeating actions, you **must** state this clearly in the explanation. (e.g., "...agent appears to be in a non-productive loop by repeating the sequence: [action A, action B, action C].")
+            - **Caveat**: Do not mistake necessary, mechanical repetition (like filling 10 rows in a spreadsheet) for a negative loop. A loop is repetitive action *without progress*.   
     - Case 2. **Task Completed**: You believe the current task has been successfully completed. Tell the agent to stop.
     - Case 3. **Task Infeasible**: You are **highly certain** the task cannot be completed. This may be due to a required file not existing, or the OS/software lacking a feature necessary to complete the task. In this case, tell the agent to choose "fail" action.
     - Case 4. **On-Track**: (If Cases 1, 2, and 3 do not apply) The trajectory is going according to plan. Now, you must perform a sub-check to see if Knowledge Recall is needed.
         - **Sub-Check (Knowledge Recall)**: Analyze the latest_screenshot and action_history to determine if the agent is now in a position to use previously saved knowledge (from the knowledge input).
-        - **Triggers for Recall**: The agent has opened the target Excel/spreadsheet (e.g., 'contacts.xlsx'), is in an empty form field, or the action_history clearly shows an intent to "write down" or "fill in" the info.
-        - Reflection for this case: three parts - statement, brief summary of history action, and knowledge (if necessary).
-            - Example: "You are on track. The agent has opened the webpage (what agent has done).... (Optional) It is time to use the saved information: [Content from existing_knowledge input]"
+        - **Triggers for Recall**: The agent has opened the target Excel/spreadsheet, a browser with a search bar, or the action_history clearly shows an intent to "write down" or "fill in" the info.
+        - **Format**: "You are on track. [Summary of past actions]. [ (Optional) Content from existing_knowledge input]"
 
     Rules for Trajectory Feedback (Cases 1-4):
     - **Your output MUST be based on one of the case options above**.
-    - NEVER give a specific future plan or action! Your job is NOT to give suggestions!
+    - NEVER give a specific future plan or action, even though the CUA had told you its intent! Your job is NOT to give suggestions!
     - Be very certain for Case 4 (it is a DANGEROUS case).
+    - Do **not** classify a task as `Infeasible` if the failure is due to the agent's own confusion, random actions, or lack of knowledge on how to proceed. That is **`Case 1 (Lack of Tutorial)`**. `Infeasible` means the task is *externally* impossible (e.g., the feature does not exist in the software), not that the agent lacks the necessary knowledge.
     - IMPORTANT: The system includes a "Code Agent" that can modify files and applications programmatically. When you see:
         - Files with different content than expected.
         - Applications being closed and reopened.
@@ -406,23 +435,26 @@ class PROCEDURAL_MEMORY:
     2. **What is NOT a "Milestone"?** Most successful actions are not milestones. They are just small, incremental steps towards a milestone. 
     - Examples of NON-Milestones: Typing a single character or word into a text field; clicking to open a dropdown menu; selecting a single, simple option (e.g., clicking a checkbox, selecting a date on a calendar unless it's the final action of a form); scrolling the page.
 
-
-    **Output Format**: Please format your response as follows below. You must output a valid JSON object on <answer></answer> part.
-    <thoughts>
+    ---
+    **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
+    (Thought)
     [
         Your detailed reasoning.
         Knowledge Extraction: Did the latest screenshot reveal new, relevant info (like a phone number, address) based on the user instruction? Is thats info really new? Check the existing knowledge and determine! If so, what is it?
         Reflection & Recall: I will first understand the history and latest agent's output to know what agent has done. If latest screenshot denotes the task is finished, I should response according to Case 2 (Completed). For Case 4, I will then check if the current screenshot (e.g., open Excel) and history (e.g., intent to fill) mean it's time to recall knowledge from the knowledge input. I will then formulate my reflection based on this. But I should NOT give any advice about next step.
         Milestone: Was the last action a significant milestone or just a small step?
     ]
-    </thoughts>
-    <answer>
+
+    (Answer)
+    ```json
     {
         "is_milestone": true / false,
         "reflection": "(Fill in the reflection here)",
         "knowledge": "(Fill in any newly extracted knowledge from Task 1. If no new knowledge was found in this step, this MUST be an empty string)"
     }
-    </answer>
+    ```
+
+    Here's your input:
         """
     )
 
@@ -461,13 +493,16 @@ class PROCEDURAL_MEMORY:
     - IMPORTANT: Do not assume file modifications or application restarts are errors - they may be legitimate code agent actions.
     - Your role is to record history, not to guide the future. Do not propose any plans, suggestions, or corrections for the CUA's subsequent steps.
 
-    **Output Format**: Please format your response as follows below.
-    <thoughts>
+    **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
+    (Thoughts)
     [Your detailed reasoning. First, state the CUA's thought process and intended action. Second, analyze the screenshots (using the zoomed-in view if available) to identify all visual changes. Finally, conclude whether the visual changes match the CUA's intent.]
-    </thoughts>
-    <answer>
-    [A summary of the CUA's step. See the rules above.]
-    </answer>
+    (Answer)
+    ```json
+    {
+        "summary": "A summary of the CUA's step. See the rules above.",
+        "evaluation": "fail / successful"
+    }
+    ```
         """
     )
     
