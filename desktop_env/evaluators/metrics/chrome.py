@@ -439,7 +439,10 @@ def is_shortcut_on_desktop(shortcuts: Dict[str, str], rule):
                 return 1.
         return 0.0
     elif rule['type'] == 'url':
-        raise TypeError(f"{rule['type']} not support yet!")
+        for shortcut_path, shortcut_content in shortcuts.items():
+            if "URL=" + rule['url'] + "\n" in shortcut_content:
+                return 1.
+        return 0.0
     elif rule['type'] == 'id':
         raise TypeError(f"{rule['type']} not support yet!")
     else:

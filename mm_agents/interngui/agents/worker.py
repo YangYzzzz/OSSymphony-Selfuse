@@ -168,8 +168,6 @@ class Worker(BaseModule):
         self.os_aci.assign_screenshot(obs)
         self.os_aci.set_task_instruction(instruction)
 
-        # set instruction to memory agent
-        self.memoryer_agent.add_instruction(instruction)
 
         generator_message = (
             ""
@@ -201,21 +199,45 @@ class Worker(BaseModule):
             )
 
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
-
-        # Get the per-step reflection
-        # reflection, reflection_thoughts = self._generate_reflection(instruction, obs)
-            
-        reflection = None
         
+        # print("-" * 10)
+        # print(self.orchestrator_agent.system_prompt)
+        # print("-" * 10)
+
+        
+        ### 获取reflection
+        # set instruction to memory agent
+        self.memoryer_agent.add_instruction(instruction)
+        reflection = None
+        # 区分上一步的操作模式
+        last_code_summary = ""
+        mode = "gui"
+        if (
+            hasattr(self.os_aci, "last_code_agent_result")
+            and self.os_aci.last_code_agent_result is not None
+        ):
+            # 如果上一步用了code，就把code的执行结果作为step behavior
+            code_result = self.os_aci.last_code_agent_result
+            mode = "code"
+            last_code_summary += f"Subtask Instruction: {code_result['task_instruction']}\nSteps Completed: {code_result['steps_executed']}\nCompletion Reason: {code_result['completion_reason']}\nExec Summary: {code_result['summary']}\n"
+        if (
+            hasattr(self.os_aci, "last_search_agent_result")
+            and self.os_aci.last_search_agent_result is not None
+        ):
+            # 如果上一步用了code，step behavior是写死的
+            mode = "search"
         reflection_info = self.memoryer_agent.get_reflection(         # 新设计的reflection!!!
             cur_obs=obs, 
             generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
-            coordinates=self.coords_history[-1] if self.turn_count != 0 else []
+            coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
+            mode=mode,
+            code_exec_summary=last_code_summary
         ) 
         reflection = reflection_info['reflection']
-    
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
+        ###
+
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (
@@ -263,6 +285,7 @@ class Worker(BaseModule):
             # This prevents it from being added to the prompt again in the next turn.
             self.os_aci.last_search_agent_result = None
 
+
         # Finalize the generator message
         self.orchestrator_agent.add_message(
             generator_message, image_content=obs["screenshot"], role="user"
@@ -271,7 +294,7 @@ class Worker(BaseModule):
         # Generate the plan and next action
         format_checkers = [
             SINGLE_ACTION_FORMATTER,
-            partial(CODE_VALID_FORMATTER, self.os_aci, obs),
+            # partial(CODE_VALID_FORMATTER, self.os_aci, obs),
         ]
         plan = call_llm_formatted(
             self.orchestrator_agent,
