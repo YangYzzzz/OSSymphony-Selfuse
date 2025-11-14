@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger("desktopenv.agent")
 
 
-def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple[str, dict]:
+def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple[str, dict | None]:
     """
     Attempts to evaluate the code into a pyautogui code snippet with grounded actions using the observation screenshot.
 
@@ -31,8 +31,12 @@ def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple[str, dict]:
     """
     agent.assign_screenshot(obs)  # Necessary for grounding
     response = eval(code)
-    exec_code, action_dict = response
-    return exec_code, action_dict
+    if isinstance(response, Tuple):
+        return response
+    elif isinstance(response, str):
+        return response, None
+    else:
+        return "", None
 
 def draw_coordinates(image_bytes: bytes, coordinates: List[Union[int, float]], save_path: str):
     """
