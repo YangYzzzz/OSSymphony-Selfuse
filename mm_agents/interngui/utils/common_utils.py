@@ -149,7 +149,7 @@ def call_func_safe(
     
     return response if response is not None else ""
 
-def extract_coords_from_action_dict(action_dict: dict) -> list:
+def extract_coords_from_action_dict(action_dict: Dict) -> List:
     coords = []
     coords_num = 0
     for k, v in action_dict["args"].items():

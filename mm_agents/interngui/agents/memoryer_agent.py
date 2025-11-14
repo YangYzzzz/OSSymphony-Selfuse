@@ -16,6 +16,7 @@ import textwrap
 import io
 import os
 from PIL import Image, ImageDraw
+from mm_agents.interngui.utils.loop_detection import detect_loop
 
 
 
@@ -32,11 +33,12 @@ class StepBehavior:
     Description of each step, cosists of generative agent (main agent)'s output, screenshot (if this step is milestone), and textual description.
     The textual description shows that how the agent thought and did, and how the state changes. 
     """
-    def __init__(self, is_milestone: bool, gen_output: str, summary: str, obs: Dict):
+    def __init__(self, is_milestone: bool, gen_output: str, summary: str, obs: Dict, action_dict: Dict):
         self.is_milestone = is_milestone
         self.gen_output = gen_output
         self.obs = obs
         self.summary = summary
+        self.action_dict = action_dict
     
 
 
@@ -225,7 +227,8 @@ class ReflectionMemoryAgent:
             enhanced_obs: bytes | None, 
             is_milestone: bool,
             mode: str = "gui",
-            code_exec_summary: str = ""
+            code_exec_summary: str = "",
+            action_dict: Dict = {}
         ) -> Tuple[StepBehavior, str]:
         """
         [Interface] Main -> RMA
@@ -240,7 +243,8 @@ class ReflectionMemoryAgent:
                 False, 
                 generator_output,
                 "Search Agent was called last step, and a tutorial has been generated.", 
-                cur_obs
+                cur_obs,
+                action_dict
             )
         elif mode == "code":
             self.last_code_step_idx = len(self.trajectory)  # 没点卵用
@@ -251,7 +255,8 @@ class ReflectionMemoryAgent:
                 False, 
                 generator_output,
                 f"Code Agent was called last step, and the summary of its trajectory is: \n---\n{code_exec_summary}\n---", 
-                cur_obs
+                cur_obs,
+                action_dict
             )
         else:       # 普遍的GUI操作，用LLM来生成summary
             prev_obs = self.trajectory[-1].obs
@@ -307,11 +312,19 @@ class ReflectionMemoryAgent:
 
             # print("@@@@@@@@@@ Summary Response: ", response)
 
-            step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs)
+            step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs, action_dict)
 
         return step_behavior, is_success
 
-    def get_reflection(self, cur_obs: Dict, generator_output: str, coordinates: List, mode: str="gui", code_exec_summary="") -> Dict:
+    def get_reflection(
+            self, 
+            cur_obs: Dict, 
+            generator_output: str, 
+            coordinates: List, 
+            mode: str="gui", 
+            code_exec_summary: str = "",
+            action_dict: Dict = {}
+        ) -> Dict:
         """
         [Interface] RMA -> Main
         The Main Agent (MA) calls this method to get RMA's reflection before deciding the next action.
@@ -333,7 +346,8 @@ class ReflectionMemoryAgent:
                 True, 
                 "The initial screen is provided. No action has been taken yet.",
                 "The initial screen is provided. No action has been taken yet.", 
-                cur_obs
+                cur_obs,
+                action_dict
             )
             self._update_trajectory(step_behavior)
             reflection_info = {
@@ -345,20 +359,37 @@ class ReflectionMemoryAgent:
                 "step_summary": ""
             } 
         else: 
-
+            ### Step Summary
             # 图像增强，coordinates可能包含了一个或两个坐标，以他们为中心，向周围外扩一些
             prev_obs = self.trajectory[-1].obs
             enhanced_obs = self._enhance_observation(prev_obs, coordinates) if coordinates else None
             # 制作step behavior
-            step_behavior, last_gui_check = self._summarize_step_behavior(generator_output, cur_obs, enhanced_obs, False, mode, code_exec_summary)    # 先进行step summary，目的是获取单步gui操作的评估结果，这里的is_milestone未知，先置为False。
+            step_behavior, last_gui_check = self._summarize_step_behavior(  # 先进行step summary，目的是获取单步gui操作的评估结果，这里的is_milestone未知，先置为False。
+                generator_output, 
+                cur_obs, 
+                enhanced_obs, 
+                False, 
+                mode, 
+                code_exec_summary, 
+                action_dict
+            )    
             
-            # make additional hints
+            
+            ### make additional hints
             additional_hints = []
             additional_hints.append(f"\t- The last step is GUI operation, and it is {last_gui_check}.")
             # 没点卵用
             if len(self.trajectory) - self.last_code_step_idx < 3:      # 3步之内都有可能是验证
                 additional_hints.append(f"\t- The Computer Use Agent might in the verification stage of Code Agent.")
-            # 在这里添加rule-based的循环检测。
+            # 循环检测, 检测出的Step号是从0开始标注的请注意, 如有需要从1开始标注请同步, 同时可以适当调整下hint信息
+            enable_loop_detection = False
+            if enable_loop_detection:
+                is_loop, loop_details = detect_loop(history=self.trajectory, N=3)
+                if is_loop and loop_details:
+                    match_sequence_indices = loop_details["match_sequence_indices"]
+                    print("Rule-based Loop Detected: ", loop_details)
+                    loop_hint_message = f"\tWarning: A potential loop has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid repetitive behavior."
+                    additional_hints.append(loop_hint_message)
 
             self.reflection_agent.reset()
 

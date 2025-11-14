@@ -207,9 +207,11 @@ class PROCEDURAL_MEMORY:
                 * **Usage Strategy**:
                     * **If `Off-Track` (GUI Operation Error)**: The reflection indicates your last action failed (e.g., a bad click or type). Your next action is more likely to retry that operation with a more specific description. (e.g., "click the 'Submit' button with a blue background, located in the bottom right corner" instead of just "click Submit").
                     * **If `Off-Track` (Lack of Guidance)**: The reflection indicates you are stuck, looping, or don't know the steps. You are missing information. You'd better call the search agent.
+                    * **If `Off-Track` (Code Error)**: It indicates the code agent fails to finish the task, so you need to continue doing the task by GUI operations.
                     * **If `Off-Track` (Other Error)**: Carefully read the reflection's explanation and form a new plan to fix the deviation.
                     * **If `On-Track`**: Continue with your original plan. 
                     * **If `Task Completed` / `Task Infeasible`**: Use this as a strong confirmation to call `agent.done()` or `agent.fail()`.
+                
                 ---
                 # 2. ACTION RULES
                 Here are some important notes:

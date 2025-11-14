@@ -12,10 +12,7 @@ import logging
 
 logger = logging.getLogger("desktopenv.loop_detection")
 
-# --- 类型别名定义 ---
-Action = Dict[str, Any]
-HistoryStep = Tuple[bytes, Action]  # (图片二进制流, 动作字典)
-History = List[HistoryStep]
+
 
 # 有很大优化空间, 可以随时存储图片之间的ssim值和pHash, 以避免重复计算, 后续分析复杂度时可以修订
 def _are_images_similar_combined(
@@ -72,8 +69,8 @@ def _are_images_similar_combined(
 
 
 def _are_actions_similar(
-    action1: Action,
-    action2: Action,
+    action1: Dict[str, Any],
+    action2: Dict[str, Any],
     image_width: int,
     image_height: int,
     relative_coord_threshold: float,
@@ -182,7 +179,7 @@ def _are_actions_similar(
 # ==============================================================================
 
 def detect_loop(
-    history: History,
+    history: List,
     image_width: int = 1920,
     image_height: int = 1080,
     N: int = 3,
@@ -227,8 +224,8 @@ def detect_loop(
 
         # 4. 逐一对比两个序列中的步骤
         for j in range(N):
-            img_bin_prev, action_prev = previous_sequence[j]
-            img_bin_curr, action_curr = current_sequence[j]
+            img_bin_prev, action_prev = previous_sequence[j].obs["screenshot"], previous_sequence[j].action_dict
+            img_bin_curr, action_curr = current_sequence[j].obs["screenshot"], current_sequence[j].action_dict
 
             # a. 比较图片相似度 (综合 pHash 和 SSIM)
             if not _are_images_similar_combined(img_bin_prev, img_bin_curr, phash_threshold, ssim_threshold):
@@ -277,90 +274,90 @@ def create_mock_image(text: str, size=(800, 600), add_noise=False) -> bytes:
     img.save(byte_io, format='PNG')
     return byte_io.getvalue()
 
-if __name__ == '__main__':
-    # --- 测试环境设置 ---
-    IMG_WIDTH, IMG_HEIGHT = 800, 600
+# if __name__ == '__main__':
+#     # --- 测试环境设置 ---
+#     IMG_WIDTH, IMG_HEIGHT = 800, 600
     
-    # --- 创建模拟图片 ---
-    img_A = create_mock_image("页面 A", (IMG_WIDTH, IMG_HEIGHT))
-    img_B = create_mock_image("页面 B", (IMG_WIDTH, IMG_HEIGHT))
-    img_C = create_mock_image("页面 C", (IMG_WIDTH, IMG_HEIGHT))
-    img_D = create_mock_image("页面 D (无关)", (IMG_WIDTH, IMG_HEIGHT))
-    # 创建一个带噪点的图片 A，pHash 可能相似，但 SSIM 会较低
-    img_A_noisy = create_mock_image("页面 A", (IMG_WIDTH, IMG_HEIGHT), add_noise=True)
+#     # --- 创建模拟图片 ---
+#     img_A = create_mock_image("页面 A", (IMG_WIDTH, IMG_HEIGHT))
+#     img_B = create_mock_image("页面 B", (IMG_WIDTH, IMG_HEIGHT))
+#     img_C = create_mock_image("页面 C", (IMG_WIDTH, IMG_HEIGHT))
+#     img_D = create_mock_image("页面 D (无关)", (IMG_WIDTH, IMG_HEIGHT))
+#     # 创建一个带噪点的图片 A，pHash 可能相似，但 SSIM 会较低
+#     img_A_noisy = create_mock_image("页面 A", (IMG_WIDTH, IMG_HEIGHT), add_noise=True)
 
-    # --- 创建模拟动作 ---
-    action_click_A = {"function": "click", "args": {"x": 100, "y": 200, "button": "left", "clicks": 1}}
-    action_click_A_variant = {"function": "click", "args": {"x": 105, "y": 205, "button": "left", "clicks": 1}} # 坐标微小偏移
-    action_click_A_diff_button = {"function": "click", "args": {"x": 100, "y": 200, "button": "right", "clicks": 1}} # 按键不同
-    action_scroll_down = {"function": "scroll", "args": {"x": 400, "y": 300, "clicks": -5, "shift": False}}
-    action_scroll_up = {"function": "scroll", "args": {"x": 400, "y": 300, "clicks": 5, "shift": False}} # 方向相反
-    action_agent_call_1 = {"function": "call_search_agent", "args": {"query": "如何修复打印机卡纸问题？", "result": True}}
-    action_agent_call_2 = {"function": "call_search_agent", "args": {"query": "怎样修复打印机卡纸问题", "result": True}} # 文本相似
-    action_agent_call_3 = {"function": "call_search_agent", "args": {"query": "如何安装新的墨盒？", "result": True}} # 文本不相似
+#     # --- 创建模拟动作 ---
+#     action_click_A = {"function": "click", "args": {"x": 100, "y": 200, "button": "left", "clicks": 1}}
+#     action_click_A_variant = {"function": "click", "args": {"x": 105, "y": 205, "button": "left", "clicks": 1}} # 坐标微小偏移
+#     action_click_A_diff_button = {"function": "click", "args": {"x": 100, "y": 200, "button": "right", "clicks": 1}} # 按键不同
+#     action_scroll_down = {"function": "scroll", "args": {"x": 400, "y": 300, "clicks": -5, "shift": False}}
+#     action_scroll_up = {"function": "scroll", "args": {"x": 400, "y": 300, "clicks": 5, "shift": False}} # 方向相反
+#     action_agent_call_1 = {"function": "call_search_agent", "args": {"query": "如何修复打印机卡纸问题？", "result": True}}
+#     action_agent_call_2 = {"function": "call_search_agent", "args": {"query": "怎样修复打印机卡纸问题", "result": True}} # 文本相似
+#     action_agent_call_3 = {"function": "call_search_agent", "args": {"query": "如何安装新的墨盒？", "result": True}} # 文本不相似
     
-    print("="*20 + " 场景 1: 检测到清晰的 3 步循环 (坐标有容差) " + "="*20)
-    history_loop: History = [
-        (img_D, action_click_A),                                # 0 (无关)
-        (img_A, action_click_A),                                # 1: 循环序列1开始
-        (img_B, action_scroll_down),                            # 2
-        (img_C, action_agent_call_1),                           # 3: 循环序列1结束
-        (img_A, action_click_A_variant),                        # 4: 循环序列2开始 (点击坐标有微小偏移)
-        (img_B, action_scroll_down),                            # 5
-        (img_C, action_agent_call_2),                           # 6: (Agent query 文本相似)
-    ]
-    is_loop, loop_details = detect_loop(history_loop, IMG_WIDTH, IMG_HEIGHT, N=3)
-    print(f"检测结果: {is_loop}")
-    if is_loop:
-        print(f"循环详情: {loop_details}") # 应为: first: [1,2,3], second: [4,5,6]
-    print("\n")
+#     print("="*20 + " 场景 1: 检测到清晰的 3 步循环 (坐标有容差) " + "="*20)
+#     history_loop: History = [
+#         (img_D, action_click_A),                                # 0 (无关)
+#         (img_A, action_click_A),                                # 1: 循环序列1开始
+#         (img_B, action_scroll_down),                            # 2
+#         (img_C, action_agent_call_1),                           # 3: 循环序列1结束
+#         (img_A, action_click_A_variant),                        # 4: 循环序列2开始 (点击坐标有微小偏移)
+#         (img_B, action_scroll_down),                            # 5
+#         (img_C, action_agent_call_2),                           # 6: (Agent query 文本相似)
+#     ]
+#     is_loop, loop_details = detect_loop(history_loop, IMG_WIDTH, IMG_HEIGHT, N=3)
+#     print(f"检测结果: {is_loop}")
+#     if is_loop:
+#         print(f"循环详情: {loop_details}") # 应为: first: [1,2,3], second: [4,5,6]
+#     print("\n")
 
-    print("="*20 + " 场景 2: 因动作参数不匹配而检测失败 (滚动方向相反) " + "="*20)
-    history_fail_action: History = [
-        (img_A, action_scroll_down), # 0
-        (img_B, action_click_A),     # 1
-        (img_A, action_scroll_up),   # 2 (图片相同，但滚动方向相反)
-        (img_B, action_click_A),     # 3
-    ]
-    is_loop, loop_details = detect_loop(history_fail_action, IMG_WIDTH, IMG_HEIGHT, N=2)
-    print(f"检测结果: {is_loop}") # 应该为 False
-    if is_loop: print(f"循环详情: {loop_details}")
-    print("\n")
+#     print("="*20 + " 场景 2: 因动作参数不匹配而检测失败 (滚动方向相反) " + "="*20)
+#     history_fail_action: History = [
+#         (img_A, action_scroll_down), # 0
+#         (img_B, action_click_A),     # 1
+#         (img_A, action_scroll_up),   # 2 (图片相同，但滚动方向相反)
+#         (img_B, action_click_A),     # 3
+#     ]
+#     is_loop, loop_details = detect_loop(history_fail_action, IMG_WIDTH, IMG_HEIGHT, N=2)
+#     print(f"检测结果: {is_loop}") # 应该为 False
+#     if is_loop: print(f"循环详情: {loop_details}")
+#     print("\n")
 
-    print("="*20 + " 场景 3: 因 Agent Query 文本差异过大而检测失败 " + "="*20)
-    history_fail_query: History = [
-        (img_C, action_agent_call_1), # 0
-        (img_D, action_click_A),      # 1
-        (img_C, action_agent_call_3), # 2 (Query 文本不相似)
-        (img_D, action_click_A),      # 3
-    ]
-    is_loop, loop_details = detect_loop(history_fail_query, IMG_WIDTH, IMG_HEIGHT, N=2)
-    print(f"检测结果: {is_loop}") # 应该为 False
-    if is_loop: print(f"循环详情: {loop_details}")
-    print("\n")
+#     print("="*20 + " 场景 3: 因 Agent Query 文本差异过大而检测失败 " + "="*20)
+#     history_fail_query: History = [
+#         (img_C, action_agent_call_1), # 0
+#         (img_D, action_click_A),      # 1
+#         (img_C, action_agent_call_3), # 2 (Query 文本不相似)
+#         (img_D, action_click_A),      # 3
+#     ]
+#     is_loop, loop_details = detect_loop(history_fail_query, IMG_WIDTH, IMG_HEIGHT, N=2)
+#     print(f"检测结果: {is_loop}") # 应该为 False
+#     if is_loop: print(f"循环详情: {loop_details}")
+#     print("\n")
 
-    print("="*20 + " 场景 4: 因 SSIM 阈值未通过而检测失败 (图片有噪点) " + "="*20)
-    history_fail_ssim: History = [
-        (img_A, action_click_A),     # 0
-        (img_B, action_scroll_down), # 1
-        (img_A_noisy, action_click_A), # 2 (图片有噪点)
-        (img_B, action_scroll_down), # 3
-    ]
-    # 使用非常严格的 SSIM 阈值
-    is_loop, loop_details = detect_loop(history_fail_ssim, IMG_WIDTH, IMG_HEIGHT, N=2, ssim_threshold=0.99)
-    # 检查一下两张图的相似度
-    phash_sim = _are_images_similar_combined(img_A, img_A_noisy, phash_threshold=2, ssim_threshold=0.01)
-    ssim_sim = _are_images_similar_combined(img_A, img_A_noisy, phash_threshold=10, ssim_threshold=0.99)
-    print(f"图片 A 和带噪点的图片 A 比较:")
-    print(f"  - 仅 pHash 判断是否相似? {'是' if phash_sim else '否'}")
-    print(f"  - 仅 SSIM (阈值0.99) 判断是否相似? {'是' if ssim_sim else '否'}")
-    print(f"循环检测结果: {is_loop}") # 应该为 False，因为 SSIM 不达标
-    if is_loop: print(f"循环详情: {loop_details}")
-    print("\n")
+#     print("="*20 + " 场景 4: 因 SSIM 阈值未通过而检测失败 (图片有噪点) " + "="*20)
+#     history_fail_ssim: History = [
+#         (img_A, action_click_A),     # 0
+#         (img_B, action_scroll_down), # 1
+#         (img_A_noisy, action_click_A), # 2 (图片有噪点)
+#         (img_B, action_scroll_down), # 3
+#     ]
+#     # 使用非常严格的 SSIM 阈值
+#     is_loop, loop_details = detect_loop(history_fail_ssim, IMG_WIDTH, IMG_HEIGHT, N=2, ssim_threshold=0.99)
+#     # 检查一下两张图的相似度
+#     phash_sim = _are_images_similar_combined(img_A, img_A_noisy, phash_threshold=2, ssim_threshold=0.01)
+#     ssim_sim = _are_images_similar_combined(img_A, img_A_noisy, phash_threshold=10, ssim_threshold=0.99)
+#     print(f"图片 A 和带噪点的图片 A 比较:")
+#     print(f"  - 仅 pHash 判断是否相似? {'是' if phash_sim else '否'}")
+#     print(f"  - 仅 SSIM (阈值0.99) 判断是否相似? {'是' if ssim_sim else '否'}")
+#     print(f"循环检测结果: {is_loop}") # 应该为 False，因为 SSIM 不达标
+#     if is_loop: print(f"循环详情: {loop_details}")
+#     print("\n")
 
-    print("="*20 + " 场景 5: 历史记录不足 " + "="*20)
-    short_history: History = [(img_A, action_click_A)] * 5 # 5条记录
-    is_loop, loop_details = detect_loop(short_history, IMG_WIDTH, IMG_HEIGHT, N=3) # 需要 2*3=6 条记录
-    print(f"检测结果: {is_loop}") # 应该为 False
-    if is_loop: print(f"循环详情: {loop_details}")
-    print("\n")
+#     print("="*20 + " 场景 5: 历史记录不足 " + "="*20)
+#     short_history: History = [(img_A, action_click_A)] * 5 # 5条记录
+#     is_loop, loop_details = detect_loop(short_history, IMG_WIDTH, IMG_HEIGHT, N=3) # 需要 2*3=6 条记录
+#     print(f"检测结果: {is_loop}") # 应该为 False
+#     if is_loop: print(f"循环详情: {loop_details}")
+#     print("\n")

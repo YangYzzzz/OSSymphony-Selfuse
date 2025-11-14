@@ -15,12 +15,6 @@ from mm_agents.interngui.utils.common_utils import (
     split_thinking_response,
     create_pyautogui_code,
 )
-from mm_agents.interngui.utils.loop_detection import(
-    Action,
-    HistoryStep,
-    History,
-    detect_loop
-)
 from mm_agents.interngui.utils.formatters import (
     SINGLE_ACTION_FORMATTER,
     CODE_VALID_FORMATTER,
@@ -115,7 +109,7 @@ class Worker(BaseModule):
         self.coords_history = []
 
         # For loop detection
-        self.history: History = []
+        self.action_dict_history = []
 
     def flush_messages(self):
         """Flush messages based on the model's context limits.
@@ -136,9 +130,10 @@ class Worker(BaseModule):
                     continue
                 # keep latest k images
                 img_count = 0
-                stop_idx = -1 if self.engine_params_for_orchestrator.get("keep_first_image",False) else 1
+                stop_idx = 1 if self.engine_params_for_orchestrator.get("keep_first_image", False) else -1
                 for i in range(len(agent.messages) - 1, stop_idx, -1):
-                    for j in range(len(agent.messages[i]["content"])):
+                    # for j in range(len(agent.messages[i]["content"])):
+                    for j in range(len(agent.messages[i]["content"]) - 1, -1, -1):
                         if "image" in agent.messages[i]["content"][j].get("type", ""):
                             img_count += 1
                             if img_count > max_images:
@@ -210,16 +205,7 @@ class Worker(BaseModule):
 
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
         
-        # TODO: jinkaiming, 循环检测, 检测出的Step号是从0开始标注的请注意, 如有需要从1开始标注请同步, 同时可以适当调整下hint信息
-        is_loop, loop_details = detect_loop(history=self.history, N=3)
-        loop_hint_message = None
-        if is_loop and loop_details:
-            match_sequence_indices = loop_details["match_sequence_indices"]
-            loop_hint_message = (
-                f"Warning: A potential loop has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}."
-                "A high degree of similarity was found in the screenshot and action sequence. "
-                "Careful review is required to avoid repetitive behavior."
-            )
+        
 
         ### 获取reflection
         # set instruction to memory agent
@@ -243,19 +229,18 @@ class Worker(BaseModule):
         ):
             # 如果上一步用了code，step behavior是写死的
             mode = "search"
-        
-        reflection_info = self.memoryer_agent.get_reflection(         # 新设计的reflection!!!
+        # 新设计的reflection!!!
+        reflection_info = self.memoryer_agent.get_reflection(         
             cur_obs=obs, 
             generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
             coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
             mode=mode,
-            code_exec_summary=last_code_summary
+            code_exec_summary=last_code_summary,
+            action_dict=self.action_dict_history[-1] if self.turn_count != 0 else {}
         )
-
         reflection = reflection_info['reflection']
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
-        ###
 
 
         # Add code agent result from previous step if available (from full task or subtask execution)
@@ -342,8 +327,7 @@ class Worker(BaseModule):
                 1.333
             )  # Skip a turn if the code cannot be evaluated
 
-        history_step: HistoryStep = (obs["screenshot"], action_dict)
-        self.history.append(history_step)
+        self.action_dict_history.append(action_dict)
 
         executor_info = {
             "refined_instruction": self.instruction,
