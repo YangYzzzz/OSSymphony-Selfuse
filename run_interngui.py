@@ -44,7 +44,7 @@ file_handler.setFormatter(formatter)
 file_handler.addFilter(logging.Filter("desktopenv"))
 logger.addHandler(file_handler)
 
-#  }}} Logger Configs #
+# Logger Configs
 # 在当前文件里使用的logger，logger内以.来分级结构，产生一条信息时，会一直向上冒泡到根logger
 logger = logging.getLogger("desktopenv.experiment")
 
@@ -490,45 +490,19 @@ def config() -> argparse.Namespace:
         help="UI-TARS-1.5 and ScaleCUA needs smart resize, if this set, grounding_width and grounding_height is no use.",
     )
 
-    # # Search Agent
-    # parser.add_argument(
-    #     "--search_type",
-    #     type=str,
-    #     default="jina_ai",
-    #     help="jina_ai / searxng",
-    # )
-    # parser.add_argument(
-    #     "--search_api",
-    #     type=str,
-    #     default="http://127.0.0.1:8999/search",
-    #     help="Search api service's url",
-    # )
-    # parser.add_argument(
-    #     "--search_api_key",
-    #     type=str,
-    #     default="",
-    #     help="Search api key for Jina AI",
-    # )
-    # parser.add_argument(
-    #     "--search_engines",
-    #     type=str,
-    #     default="chrome",
-    #     help="Search engine name for SearXNG",
-    # )
-    # parser.add_argument(
-    #     "--search_top_k",
-    #     type=int,
-    #     default=20,
-    #     help="Search top k urls of recall",
-    # )
-
-
     # 实验名
     parser.add_argument(
         "--exp_name",
         type=str,
         default="",
         help="Experiment Name",
+    )
+
+    parser.add_argument(
+        "--pass_k",
+        type=int,
+        default=1,
+        help="Pass k parameter, if > 1, run multi times(to save dollar, we only rerun the past error case.)",
     )
     args = parser.parse_args()
 
@@ -677,7 +651,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         scores = list(shared_scores)
     logger.info(f"Average score: {sum(scores) / len(scores) if scores else 0}")
 
-
+# 把做错的目前也都视为未完成的
 def get_unfinished(
     target_dir, total_file_json
 ):
@@ -699,7 +673,13 @@ def get_unfinished(
                         # empty all files under example_id
                         shutil.rmtree(path=example_path, ignore_errors=True)
                     else:
-                        finished[domain].append(example_id)
+                        with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
+                            score = float(f.read())
+                        if score == 0:
+                            # empty all files under example_id
+                            shutil.rmtree(path=example_path, ignore_errors=True)
+                        else:
+                            finished[domain].append(example_id)
 
     if not finished:
         return total_file_json
@@ -713,31 +693,35 @@ def get_unfinished(
     return total_file_json
 
 
-def get_result(target_dir):
+def get_result(target_dir, total_file_json: dict):
     if not os.path.exists(target_dir):
         print("New experiment, no result yet.")
         return None
 
+    # 记录总共任务列表
     all_result = []
 
-    for domain in os.listdir(target_dir):
-        domain_path = os.path.join(target_dir, domain)
-        if os.path.isdir(domain_path):
-            for example_id in os.listdir(domain_path):
-                example_path = os.path.join(domain_path, example_id)
-                if os.path.isdir(example_path):
-                    if "result.txt" in os.listdir(example_path):
-                        # empty all files under example_id
-                        try:
-                            all_result.append(
-                                float(
-                                    open(
-                                        os.path.join(example_path, "result.txt"), "r"
-                                    ).read()
-                                )
+    for domain, example_id_list in total_file_json.items():
+        for example_id in example_id_list:
+            example_path = os.path.join(target_dir, domain, example_id)
+            if os.path.isdir(example_path):
+                if "result.txt" in os.listdir(example_path):
+                    # empty all files under example_id
+                    try:
+                        all_result.append(
+                            float(
+                                open(
+                                    os.path.join(example_path, "result.txt"), "r"
+                                ).read()
                             )
-                        except:
-                            all_result.append(0.0)
+                        )
+                    except:
+                        all_result.append(0.0)
+                else:
+                    all_result.append(0.0)
+            # 确保统计的任务数量总和为 total_file_json 里的任务之和
+            else:
+                all_result.append(0.0)
 
     if not all_result:
         print("New experiment, no result yet.")
@@ -782,16 +766,26 @@ if __name__ == "__main__":
     if args.domain != "all":
         test_all_meta = {args.domain: test_all_meta[args.domain]}
 
-    test_file_list = get_unfinished(
-        args.result_dir,
-        test_all_meta,
-    )
-    left_info = ""
-    for domain in test_file_list:
-        left_info += f"{domain}: {len(test_file_list[domain])}\n"
-    logger.info(f"Left tasks:\n{left_info}")
-
-    get_result(
-        args.result_dir
-    )
-    test(args, test_file_list)
+    # 执行 Pass k 测试
+    for t in range(1, args.pass_k + 1):
+        logger.info(f"====================\nPass K: no.{t} turn is started\n====================")
+        test_file_list = get_unfinished(
+            args.result_dir,
+            test_all_meta,
+        )
+        left_info = ""
+        for domain in test_file_list:
+            left_info += f"{domain}: {len(test_file_list[domain])}\n"
+        logger.info(f"Left tasks:\n{left_info}")
+        # 获得迄今为止的准确率
+        get_result(
+            target_dir=args.result_dir,
+            total_file_json=test_all_meta
+        )
+        test(
+            args, 
+            test_file_list
+        )
+        logger.info(f"====================\nPass K: no.{t} turn is ended\n====================")
+    
+    logger.info(f"====================\nExperiment {args.exp_name} is totally ended!\n====================")

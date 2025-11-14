@@ -10,9 +10,16 @@ from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 from mm_agents.interngui.utils.common_utils import (
     call_llm_safe,
     call_llm_formatted,
+    extract_coords_from_action_dict,
     parse_code_from_string,
     split_thinking_response,
     create_pyautogui_code,
+)
+from mm_agents.interngui.utils.loop_detection import(
+    Action,
+    HistoryStep,
+    History,
+    detect_loop
 )
 from mm_agents.interngui.utils.formatters import (
     SINGLE_ACTION_FORMATTER,
@@ -105,10 +112,10 @@ class Worker(BaseModule):
         self.instruction = None
         self.turn_count = 0
         self.worker_history = []
-        self.reflections = []
-        self.cost_this_turn = 0
-        self.screenshot_inputs = []
         self.coords_history = []
+
+        # For loop detection
+        self.history: History = []
 
     def flush_messages(self):
         """Flush messages based on the model's context limits.
@@ -203,8 +210,17 @@ class Worker(BaseModule):
 
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
         
+        # TODO: jinkaiming, 循环检测, 检测出的Step号是从0开始标注的请注意, 如有需要从1开始标注请同步, 同时可以适当调整下hint信息
+        is_loop, loop_details = detect_loop(history=self.history, N=3)
+        loop_hint_message = None
+        if is_loop and loop_details:
+            match_sequence_indices = loop_details["match_sequence_indices"]
+            loop_hint_message = (
+                f"Warning: A potential loop has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}."
+                "A high degree of similarity was found in the screenshot and action sequence. "
+                "Careful review is required to avoid repetitive behavior."
+            )
 
-        
         ### 获取reflection
         # set instruction to memory agent
         self.memoryer_agent.add_instruction(instruction)
@@ -220,19 +236,22 @@ class Worker(BaseModule):
             code_result = self.os_aci.last_code_agent_result
             mode = "code"
             last_code_summary += f"Subtask Instruction: {code_result['task_instruction']}\nSteps Completed: {code_result['steps_executed']}\nCompletion Reason: {code_result['completion_reason']}\nExec Summary: {code_result['summary']}\n"
+        
         if (
             hasattr(self.os_aci, "last_search_agent_result")
             and self.os_aci.last_search_agent_result is not None
         ):
             # 如果上一步用了code，step behavior是写死的
             mode = "search"
+        
         reflection_info = self.memoryer_agent.get_reflection(         # 新设计的reflection!!!
             cur_obs=obs, 
             generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
             coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
             mode=mode,
             code_exec_summary=last_code_summary
-        ) 
+        )
+
         reflection = reflection_info['reflection']
         if reflection:
             generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
@@ -288,7 +307,7 @@ class Worker(BaseModule):
 
         # Finalize the generator message
         self.orchestrator_agent.add_message(
-            generator_message, image_content=obs["screenshot"], role="user"
+            generator_message, image_content=obs["screenshot"], role="user", put_text_last=True
         )
 
         # Generate the plan and next action
@@ -309,18 +328,22 @@ class Worker(BaseModule):
         # Extract the next action from the plan
         # 此时的plan code e.g. agent.click('xxxxx', 1)
         plan_code = parse_code_from_string(plan)
-        coordinates = None
+        action_dict, coordinates = None, None
         try:
             assert plan_code, "Plan code should not be empty"
             # 此时的exec_code e.g. import pyautogui; pyautogui.click(1, 2);
-            exec_code, coordinates = create_pyautogui_code(self.os_aci, plan_code, obs)
+            exec_code, action_dict = create_pyautogui_code(self.os_aci, plan_code, obs)
+            coordinates = extract_coords_from_action_dict(action_dict)
         except Exception as e:
             logger.error(
                 f"Could not evaluate the following plan code:\n{plan_code}\nError: {e}"
             )
-            exec_code = self.os_aci.wait(
+            exec_code, action_dict = self.os_aci.wait(
                 1.333
             )  # Skip a turn if the code cannot be evaluated
+
+        history_step: HistoryStep = (obs["screenshot"], action_dict)
+        self.history.append(history_step)
 
         executor_info = {
             "refined_instruction": self.instruction,
@@ -344,6 +367,5 @@ class Worker(BaseModule):
         }
         self.turn_count += 1
         self.coords_history.append(coordinates)
-        self.screenshot_inputs.append(obs["screenshot"])
         self.flush_messages()
         return executor_info, [exec_code]

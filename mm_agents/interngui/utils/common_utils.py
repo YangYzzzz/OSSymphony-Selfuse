@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger("desktopenv.agent")
 
 
-def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple:
+def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple[str, dict]:
     """
     Attempts to evaluate the code into a pyautogui code snippet with grounded actions using the observation screenshot.
 
@@ -31,12 +31,8 @@ def create_pyautogui_code(agent, code: str, obs: Dict) -> Tuple:
     """
     agent.assign_screenshot(obs)  # Necessary for grounding
     response = eval(code)
-    coords = None
-    if isinstance(response, tuple):
-        exec_code, coords = response
-    else:
-        exec_code = response
-    return exec_code, coords
+    exec_code, action_dict = response
+    return exec_code, action_dict
 
 def draw_coordinates(image_bytes: bytes, coordinates: List[Union[int, float]], save_path: str):
     """
@@ -96,7 +92,10 @@ def call_llm_safe(
     agent, temperature: float = 0.0, use_thinking: bool = False, **kwargs
 ) -> str:
     # 通过 .get() 方法安全地获取当前线程的上下文值
-    example_result_dir = get_current_result_dir()
+    try:
+        example_result_dir = get_current_result_dir()
+    except Exception:
+        example_result_dir = "logs/tokens"
     # Retry if fails
     max_retries = 3  # Set the maximum number of retries
     attempt = 0
@@ -150,6 +149,22 @@ def call_func_safe(
     
     return response if response is not None else ""
 
+def extract_coords_from_action_dict(action_dict: dict) -> list:
+    coords = []
+    coords_num = 0
+    for k, v in action_dict["args"].items():
+        # 先判断是0/2/4个坐标, 2个坐标一定是x,y，4个坐标一定是x1,y1,x2,y2
+        if (k == "x" and v) or (k == "y" and v) or (k == "x1" and v) or (k == "x2" and v) or (k == "y1" and v) or (k == "y2" and v):
+            coords_num += 1
+    if coords_num == 2:
+        coords.append(action_dict["args"]["x"])
+        coords.append(action_dict["args"]["y"])
+    if coords_num == 4:
+        coords.append(action_dict["args"]["x1"])
+        coords.append(action_dict["args"]["y1"])
+        coords.append(action_dict["args"]["x2"])
+        coords.append(action_dict["args"]["y2"])
+    return coords
 
 def call_llm_formatted(generator, format_checkers, **kwargs):
     """

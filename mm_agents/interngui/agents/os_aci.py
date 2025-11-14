@@ -193,7 +193,7 @@ class OSWorldACI:
         self.result_dir = ""
         
         self.grounder_agent = GrounderAgent(engine_params=engine_params_for_grounder, width=width, height=height)
-
+        
         # Configure text grounding agent
         self.text_span_agent = LMMAgent(
             engine_params=engine_params_for_ocr,
@@ -333,7 +333,9 @@ class OSWorldACI:
         for k in hold_keys:
             command += f"pyautogui.keyUp({repr(k)}); "
         # Return pyautoguicode to click on the element
-        return (command, [x, y])
+
+        action = {"function": "click", "args": {"x": x, "y": y, "button": button_type, "clicks": num_clicks}}
+        return (command, action)
 
     # @agent_action
     # def switch_applications(self, app_code):
@@ -361,10 +363,11 @@ class OSWorldACI:
         **Important**: 
         Provide only the name of the application or file. Do not include the full path (e.g., "/home/user/Desktop/my_report.docx"). The function works by searching for the name, not by accessing a file path directly.
         """
+        action = {"function": "open", "args": {"name": app_or_filename}}
         if self.platform == "linux":
-            return f"import pyautogui; pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)"
+            return (f"import pyautogui; pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)", action)
         elif self.platform == "darwin":
-            return f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)"
+            return (f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)", action)
 
     @agent_action
     def type(
@@ -394,12 +397,11 @@ class OSWorldACI:
             "original_clipboard = pyperclip.paste()"
         ]
         
-        click_coords = None
+        x, y = None, None
         if element_description is not None:
             coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
             x, y = self.grounder_agent.resize_coordinates(coords1)
             commands.append(f"pyautogui.click({x}, {y})")
-            click_coords = [x, y]
 
         if overwrite:
             if not is_terminal:
@@ -432,10 +434,8 @@ class OSWorldACI:
         # 最后，将所有命令用分号和空格连接成一个最终的字符串
         final_command = "; ".join(commands)
 
-        if click_coords is not None:
-            return (final_command, click_coords)
-        else:
-            return final_command
+        action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
+        return (final_command, action)
         
     # @agent_action
     # def save_to_knowledge(self, text: List[str]):
@@ -472,8 +472,8 @@ class OSWorldACI:
             command += f"pyautogui.keyUp({repr(k)}); "
 
         # Return pyautoguicode to drag and drop the elements
-
-        return (command, [x1, y1, x2, y2])
+        action = {"function": "drag", "args": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}}
+        return (command, action)
 
     # TODO: @Yang 如何消除重复字符的歧义? 对于复杂的Grounding任务，使用 CodeAgent 处理
     @agent_action
@@ -500,7 +500,8 @@ class OSWorldACI:
         command += f"pyautogui.dragTo({x2}, {y2}, duration=1., button='{button}'); pyautogui.mouseUp(); "
 
         # Return pyautoguicode to drag and drop the elements
-        return (command, [x1, y1, x2, y2])
+        action = {"function": "drag", "args": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}}
+        return (command, action)
     
     # TODO: @Yang, locate the cursor in a specified location
     @agent_action
@@ -522,7 +523,8 @@ class OSWorldACI:
         x, y = coords
         command = "import pyautogui; "
         command += f"pyautogui.click({x}, {y}, button='left'); "
-        return (command, [x, y])
+        action = {"function": "click", "args": {"x": x, "y": y, "clicks": 1, "button": "left"}}
+        return (command, action)
 
     @agent_action
     def set_cell_values(
@@ -535,9 +537,13 @@ class OSWorldACI:
             app_name: str, The name of the spreadsheet application. For example, "Some_sheet.xlsx".
             sheet_name: str, The name of the sheet in the spreadsheet. For example, "Sheet1".
         """
-        return SET_CELL_VALUES_CMD.format(
+        action_string = app_name + ";" + sheet_name + ";"
+        for k, v in cell_values.items():
+            action_string += f"{k}:{v};"
+        action = {"function": "set_cell_values", "args": {"text": action_string}}
+        return (SET_CELL_VALUES_CMD.format(
             cell_values=cell_values, app_name=app_name, sheet_name=sheet_name
-        )
+        ), action)
 
 
     @agent_action
@@ -573,46 +579,35 @@ class OSWorldACI:
         logger.info("=" * 50)
         logger.info("ACI: Calling Code Agent")
         logger.info("=" * 50)
+        task_to_execute = task
+        logger.info(f"Executing SUBTASK: {task_to_execute}")
 
-        # **CRITICAL**: Only use provided task for specific subtasks, otherwise use original task instruction
-        if task is not None:
-            # This is a subtask - use the provided task
-            task_to_execute = task
-            logger.info(f"Executing SUBTASK: {task_to_execute}")
-        else:
-            # This is a full task - use the original task instruction to prevent hallucination
-            task_to_execute = self.current_task_instruction
-            logger.info(f"Executing FULL TASK: {task_to_execute}")
+        print("obs keys: ", self.obs.keys())
+        screenshot = self.obs.get("screenshot", "") if self.obs else ""
+        logger.info(f"Screenshot available: {'Yes' if screenshot else 'No'}")
 
-        if task_to_execute:
-            print("obs keys: ", self.obs.keys())
-            screenshot = self.obs.get("screenshot", "") if self.obs else ""
-            logger.info(f"Screenshot available: {'Yes' if screenshot else 'No'}")
+        logger.info("Executing code agent...")
 
-            logger.info("Executing code agent...")
+        # 在一个动作内部能够执行
+        result = self.coder_agent.execute(
+            task_to_execute, screenshot, self.env.controller
+        )
 
-            # 在一个动作内部能够执行
-            result = self.coder_agent.execute(
-                task_to_execute, screenshot, self.env.controller
-            )
+        # Store the result for the worker to access
+        self.last_code_agent_result = result
 
-            # Store the result for the worker to access
-            self.last_code_agent_result = result
+        logger.info("Code agent execution completed")
+        logger.info(f"Result - Completion reason: {result['completion_reason']}")
+        logger.info(f"Steps executed: {result['steps_executed']}")
+        logger.info(f"Summary: {result['summary']}")
 
-            logger.info("Code agent execution completed")
-            logger.info(f"Result - Completion reason: {result['completion_reason']}")
-            logger.info(f"Steps executed: {result['steps_executed']}")
-            logger.info(f"Summary: {result['summary']}")
+        logger.info("=" * 50)
+        logger.info("GROUNDING AGENT: Code Agent Call Finished")
+        logger.info("=" * 50)
 
-            logger.info("=" * 50)
-            logger.info("GROUNDING AGENT: Code Agent Call Finished")
-            logger.info("=" * 50)
-
-            # Return code to be executed in the environment
-            return "import time; time.sleep(2.222)"
-        else:
-            logger.warning("No task instruction available for code agent call")
-            return "import time; time.sleep(1.111)"
+        action = {"function": "call_code_agent", "args": {"query": task, "result": True if result["completion_reason"] == "DONE" else False}}
+        # Return code to be executed in the environment
+        return ("import time; time.sleep(2.222)", action)
 
     @agent_action
     def scroll(self, element_description: str, clicks: int, shift: bool = False):
@@ -624,11 +619,11 @@ class OSWorldACI:
         """
         coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
         x, y = self.grounder_agent.resize_coordinates(coords1)
-
+        action = {"function": "scroll", "args": {"x": x, "y": y, "clicks": clicks, "shift": shift}}
         if shift:
-            return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})", [x, y])
+            return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})", action)
         else:
-            return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.vscroll({clicks})", [x, y])
+            return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.vscroll({clicks})", action)
 
     @agent_action
     def hotkey(self, keys: List):
@@ -638,7 +633,9 @@ class OSWorldACI:
         """
         # add quotes around the keys
         keys = [f"'{key}'" for key in keys]
-        return f"import pyautogui; pyautogui.hotkey({', '.join(keys)})"
+        keys_string = " ".join(keys)
+        action = {"function": "key", "args": {"keys": keys_string}}
+        return (f"import pyautogui; pyautogui.hotkey({', '.join(keys)})", action)
 
     @agent_action
     def hold_and_press(self, hold_keys: List, press_keys: List):
@@ -656,7 +653,10 @@ class OSWorldACI:
         for k in hold_keys:
             command += f"pyautogui.keyUp({repr(k)}); "
 
-        return command
+        hold_keys_string = " ".join(hold_keys)
+        press_keys_string = " ".join(press_keys)
+        action = {"function": "key", "args": {"keys": hold_keys_string + ";" + press_keys_string}}
+        return (command, action)
 
     @agent_action
     def wait(self, time: float):
@@ -664,19 +664,19 @@ class OSWorldACI:
         Args:
             time:float, the amount of time to wait in seconds
         """
-        return f"""import time; time.sleep({time})"""
+        return (f"""import time; time.sleep({time})""", {"function": "wait", "args": {}})
 
     @agent_action
     def done(
         self,
     ):
         """End the current task with a success. Use this when you believe the entire task has been fully completed."""
-        return """DONE"""
+        return ("""DONE""", {"function": "done", "args": {}})
 
     @agent_action
     def fail(self):
         """End the current task with a failure. Use this when you believe the entire task is impossible to complete."""
-        return """FAIL"""
+        return ("""FAIL""", {"function": "fail", "args": {}})
     
     @agent_action
     def call_search_agent(
@@ -705,11 +705,6 @@ class OSWorldACI:
             *   **Correct Query (if stuck on attaching a file):** "How to attach a file to an email in Gmail?"
             *   **Incorrect Query:** "Download my bank statement and email it to my accountant" *(This query is too broad, contains multiple sub-tasks, and does not start with "How to".)*
 
-        **Interpreting the Returned Tutorial:**
-
-        The Searcher Agent aims to find a *complete* tutorial, often starting from the very beginning. This means the returned guide may contain steps you have already completed.
-        It is **your responsibility** to analyze the tutorial in conjunction with your current screen context to determine the correct step to begin with. **Do not blindly follow the tutorial from step 1.**
-
         **Execution Effect:**
         This action pauses the current agent's execution and delegates the search task to an independent Searcher Agent. The resulting tutorial will be made available to you as context to guide your subsequent actions.
         """
@@ -722,5 +717,6 @@ class OSWorldACI:
             self.last_search_agent_result = result
             if result["completion_reason"] == "DONE":
                 self.tutorials.append(result["final_answer"])
-        return "import time; time.sleep(2.222)"
+        action = {"function": "call_search_agent", "args": {"query": query, "result": True if result["completion_reason"] == "DONE" else False}}
+        return ("import time; time.sleep(2.222)", action)
     

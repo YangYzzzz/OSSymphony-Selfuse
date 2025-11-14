@@ -4,7 +4,8 @@ import os
 import requests
 from typing import Dict
 from mm_agents.interngui.core.mllm import LMMAgent
-
+from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
+from mm_agents.interngui.utils.common_utils import call_llm_safe
 class CriticAgent:
     def __init__(self, engine_params: Dict, platform: str = "desktop") -> None:
         self.engine_params = engine_params
@@ -13,8 +14,9 @@ class CriticAgent:
 
     def reset(self):
         # 还需要支持 GPT-4O 的Critic测试
-        # self.critic_agent = LMMAgent(self.engine_params)
-        pass
+        critic_system_prompt = PROCEDURAL_MEMORY.CRITIC_SYSTEM_PROMPT
+        self.critic_agent = LMMAgent(self.engine_params, system_prompt=critic_system_prompt)
+        
         
     def critic(self, task, screenshot, action, history):
         # zhenyu的API, 特殊处理一下
@@ -47,7 +49,53 @@ class CriticAgent:
                 return False
 
         else:
-            return True
+            # 对于 GPT-4o 等通用模型
+            self.reset()
+
+            # 2. 构建用户输入，清晰地组织所有信息
+            user_prompt = f"""
+                [Goal]
+                {task}
+
+                [History]
+                {history}
+
+                [Platform]
+                {self.platform}
+
+                [Proposed Action]
+                {action}
+            """
+            print(f'[Critic Args]: task: {task}, action: {action}, history: {history}')
+
+            self.critic_agent.add_message(text_content=user_prompt, image_content=screenshot, role="user")
+            raw_response = call_llm_safe(self.critic_agent, temperature=0.1)
+            print(f"[Critic Raw Response]:\n{raw_response}")
+
+            # 4. 解析结果
+            if not raw_response:
+                print("[Critic Parsed Result]: No response from model. Defaulting to No.")
+                return False
+
+            try:
+                # 严格解析最后一行非空字符串
+                # .strip() 去除首尾空白
+                # .splitlines() 按换行符分割
+                # [-1] 取最后一部分
+                # .strip() 再次去除可能存在的空白
+                last_line = raw_response.strip().splitlines()[-1].strip()
+                
+                # 判断最后一行是否为 "Yes" (忽略大小写)
+                is_accepted = last_line.lower() == 'yes'
+                
+                print(f'[Critic Parsed Result]: "{last_line}" -> {is_accepted}')
+                return is_accepted
+            except IndexError:
+                # 如果模型返回空字符串或只有空白，则解析失败
+                print("[Critic Parsed Result]: Empty or invalid response format. Defaulting to No.")
+                return False
+# ==============================================================================
+
 
 if __name__=="__main__":
     # ======== 配置 ========

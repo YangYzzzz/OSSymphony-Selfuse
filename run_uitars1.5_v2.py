@@ -105,6 +105,12 @@ def config() -> argparse.Namespace:
         "--critic_model", type=str, default="os-oracle"
     )
     parser.add_argument(
+        "--critic_provider", type=str, default="openai"
+    )
+    parser.add_argument(
+        "--critic_api_key", type=str, default=""
+    )
+    parser.add_argument(
         "--critic_base_url", type=str, default="https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/wzy-proxy-lk85v-151269-worker-0.wuzhenyu/7871"
     )
     parser.add_argument(
@@ -214,9 +220,12 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
         env.start()
         active_environments.append(env)
         critic_params = {
+            "engine_type": args.critic_provider,
+            "api_key": args.critic_api_key,
             "model": args.critic_model,
             "base_url": args.critic_base_url
         }
+
         if args.critic_times == 1:
             critic_agent = None
         else:
@@ -414,7 +423,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
 def get_unfinished(
     action_space, use_model, observation_type, result_dir, total_file_json
 ):
-    target_dir = os.path.join(result_dir, action_space, observation_type, use_model)
+    target_dir = result_dir
 
     if not os.path.exists(target_dir):
         return total_file_json
@@ -429,12 +438,20 @@ def get_unfinished(
                     continue
                 example_path = os.path.join(domain_path, example_id)
                 if os.path.isdir(example_path):
+                    # Modified, 不只没有 result.txt 的重测, 0 分的也重测
                     if "result.txt" not in os.listdir(example_path):
                         # empty all files under example_id
                         for file in os.listdir(example_path):
                             os.remove(os.path.join(example_path, file))
                     else:
-                        finished[domain].append(example_id)
+                        with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
+                            score = float(f.read())
+                        if score == 0:
+                            # empty all files under example_id
+                            for file in os.listdir(example_path):
+                                os.remove(os.path.join(example_path, file))
+                        else:
+                            finished[domain].append(example_id)
 
     if not finished:
         return total_file_json

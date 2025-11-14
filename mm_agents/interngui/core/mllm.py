@@ -115,7 +115,7 @@ class LMMAgent:
         image_content=None,
         role=None,
         image_detail="high",
-        put_text_last=False,
+        put_text_last=True,
     ):
         """Add a new message to the list of messages"""
 

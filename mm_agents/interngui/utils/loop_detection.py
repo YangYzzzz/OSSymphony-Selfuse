@@ -1,60 +1,95 @@
-"""
-    循环检测算法实现
-    我现在是在做一个
-    输入: List[Tuple(Image(二进制流), Action)]
-    其中 Action 是字典, 比如 {"function": "click", "args": {"x": 1000, "y": 200}}这种
-    现在我需要用基于规则的算法判断当前步骤是否出现了重复模式, 以便于大模型进一步识别
-    当前步骤: 列表中最后一个元素
-    重复模式: 以下是我的个人见解，给定一个循环步数N=3, 我们检测最近的N个步骤是否和以往的N步相似，这个相似的算法可能需要你来设计，通过图片相似度与动作相似度来判断, 当然其实我认为动作相似度没有那么重要
-    或者说主要取决于图片相似度, 其次再是动作相似度, 图片相似度需要非常严格, 动作相似度可能需要着重参考一下点击的坐标即可
-    我的核心宗旨是尽可能不出错，没有发生循环时一定不要认为是循环，真正循环出现时能检测出部分即可
-    输出: 不只需要返回是否循环，还要返回在哪几步产生循环
-"""
-
 import io
-from typing import List, Tuple, Dict, Any, Optional, Union
-from PIL import Image
-import imagehash
 import math
+import numpy as np
+from typing import List, Tuple, Dict, Any, Optional, Union
 
-# 定义数据结构类型别名，增强代码可读性
+# --- 核心依赖 ---
+from PIL import Image, ImageDraw, ImageFont
+import imagehash
+from skimage.metrics import structural_similarity as ssim
+from rapidfuzz import fuzz
+import logging
+
+logger = logging.getLogger("desktopenv.loop_detection")
+
+# --- 类型别名定义 ---
 Action = Dict[str, Any]
-Step = Tuple[bytes, Action]
-History = List[Step]
+HistoryStep = Tuple[bytes, Action]  # (图片二进制流, 动作字典)
+History = List[HistoryStep]
 
-# --- 相似度计算辅助函数 ---
-
-def _calculate_phash(image_binary: bytes) -> Optional[imagehash.ImageHash]:
-    """
-    计算图片二进制流的感知哈希值。
-    
-    Args:
-        image_binary: 图片的二进制数据。
-        
-    Returns:
-        返回 imagehash 对象，如果图片无法处理则返回 None。
-    """
-    try:
-        image = Image.open(io.BytesIO(image_binary))
-        # 使用 pHash 算法，它对图片内容的微小变化不敏感
-        return imagehash.phash(image)
-    except Exception:
-        # 如果二进制流不是有效的图片格式，则无法计算哈希
-        return None
-
-def _are_actions_similar(
-    action1: Action, 
-    action2: Action, 
-    click_coord_threshold: float = 10.0
+# 有很大优化空间, 可以随时存储图片之间的ssim值和pHash, 以避免重复计算, 后续分析复杂度时可以修订
+def _are_images_similar_combined(
+    image_binary1: bytes,
+    image_binary2: bytes,
+    phash_threshold: int,
+    ssim_threshold: float,
 ) -> bool:
     """
-    判断两个动作是否相似。
-    
+    【内部辅助】综合 pHash 和 SSIM 比较两个图片二进制流是否相似。
+    只有两种算法都认为相似时，才返回 True。
+
+    Args:
+        image_binary1: 第一个图片的二进制数据。
+        image_binary2: 第二个图片的二进制数据。
+        phash_threshold: pHash 的汉明距离阈值。
+        ssim_threshold: SSIM 的相似度得分阈值 (0 到 1 之间)。
+
+    Returns:
+        如果综合判断为相似则返回 True，否则返回 False。
+    """
+    try:
+        # --- 准备图片 ---
+        img1 = Image.open(io.BytesIO(image_binary1))
+        img2 = Image.open(io.BytesIO(image_binary2))
+
+        # --- 1. pHash 比较 ---
+        phash1 = imagehash.phash(img1)
+        phash2 = imagehash.phash(img2)
+        hash_diff = phash1 - phash2
+        is_phash_similar = hash_diff <= phash_threshold
+        print(f'hash_diff: {hash_diff}')
+        # 如果 pHash 已经不相似，提前返回 False，节省计算
+        if not is_phash_similar:
+            return False
+
+        # --- 2. SSIM 比较 ---
+        # SSIM 需要灰度图和 NumPy 数组
+        img1_gray = img1.convert('L')
+        img2_gray = img2.convert('L')
+        np_img1 = np.array(img1_gray)
+        np_img2 = np.array(img2_gray)
+        
+        # 计算 SSIM 得分
+        ssim_score = ssim(np_img1, np_img2, data_range=np_img1.max() - np_img1.min())
+        is_ssim_similar = ssim_score >= ssim_threshold
+        print(f'ssim_score: {ssim_score}')
+        # --- 3. 综合判断 ---
+        return is_phash_similar and is_ssim_similar
+
+    except Exception:
+        # 如果任何图片处理步骤失败，则视为不相似
+        return False
+
+
+def _are_actions_similar(
+    action1: Action,
+    action2: Action,
+    image_width: int,
+    image_height: int,
+    relative_coord_threshold: float,
+    fuzzy_text_threshold: float,
+) -> bool:
+    """
+    【内部辅助】根据详细规则判断两个动作是否相似。
+
     Args:
         action1: 第一个动作。
         action2: 第二个动作。
-        click_coord_threshold: 点击坐标的欧氏距离阈值，小于该值视为同一点。
-        
+        image_width: 截图宽度。
+        image_height: 截图高度。
+        relative_coord_threshold: 用于坐标比较的相对距离阈值。
+        fuzzy_text_threshold: 用于模糊文本匹配的相似度阈值 (0-100)。
+
     Returns:
         如果动作相似则返回 True，否则返回 False。
     """
@@ -66,206 +101,269 @@ def _are_actions_similar(
     args1 = action1.get("args", {})
     args2 = action2.get("args", {})
 
+    # 计算基于图像对角线的绝对坐标距离阈值
+    diagonal = math.sqrt(image_width**2 + image_height**2)
+    abs_coord_thresh = relative_coord_threshold * diagonal
+
+    def are_coords_close(x1, y1, x2, y2):
+        if None in [x1, y1, x2, y2]: return False
+        distance = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+        print(f'distance: {distance}, abs_thresh: {abs_coord_thresh}')
+        return distance < abs_coord_thresh
+
     # 2. 根据不同的动作类型，比较关键参数
     if func == "click":
-        x1, y1 = args1.get("x"), args1.get("y")
-        x2, y2 = args2.get("x"), args2.get("y")
-        # 确保坐标都存在
-        if None in [x1, y1, x2, y2]:
-            return False
-        # 计算欧氏距离
-        distance = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-        return distance < click_coord_threshold
-    
-    elif func == "type":
-        # 对于输入动作，要求输入的文本完全一致
-        return args1.get("text") == args2.get("text")
-        
-    # 其他类型的动作，默认要求参数字典完全相同
-    # 可以根据需要扩展更多动作类型的比较逻辑
-    else:
-        return args1 == args2
+        return (
+            are_coords_close(args1.get("x"), args1.get("y"), args2.get("x"), args2.get("y")) and
+            args1.get("button") == args2.get("button") and
+            args1.get("clicks") == args2.get("clicks")
+        )
 
-# --- 核心循环检测算法 ---
+    elif func == "open":
+        return args1.get("name") == args2.get("name")
+
+    elif func == "type":
+        if args1.get("x") and args1.get("y") and args2.get("x") and args2.get("y"):
+            return (
+                are_coords_close(args1.get("x"), args1.get("y"), args2.get("x"), args2.get("y")) and
+                args1.get("text") == args2.get("text")
+            )
+        else:
+            return args1.get("text") == args2.get("text")
+
+    elif func == "drag":
+        return (
+            are_coords_close(args1.get("x1"), args1.get("y1"), args2.get("x1"), args2.get("y1")) and
+            are_coords_close(args1.get("x2"), args1.get("y2"), args2.get("x2"), args2.get("y2"))
+        )
+
+    elif func == "set_cell_values":
+        return args1.get("text") == args2.get("text")
+
+    elif func == "scroll":
+        # 比较滚动方向 (通过 clicks 的正负号)
+        clicks1 = args1.get("clicks", 0)
+        clicks2 = args2.get("clicks", 0)
+        # 如果一个为0，另一个不为0，则方向不同
+        if (clicks1 == 0 and clicks2 != 0) or (clicks1 != 0 and clicks2 == 0):
+            same_direction = False
+        else: # 比较符号
+            same_direction = math.copysign(1, clicks1) == math.copysign(1, clicks2)
+
+        return (
+            are_coords_close(args1.get("x"), args1.get("y"), args2.get("x"), args2.get("y")) and
+            same_direction and
+            args1.get("shift") == args2.get("shift")
+        )
+
+    elif func == "key":
+        return args1.get("keys") == args2.get("keys")
+
+    elif func == "wait":
+        return True  # wait 动作总是相似的
+
+    elif func in ["call_code_agent", "call_search_agent"]:
+        query1 = args1.get("query", "")
+        query2 = args2.get("query", "")
+        # 使用 Levenshtein 编辑距离计算模糊相似度
+        ratio_score = fuzz.ratio(query1, query2)
+        print(f'ratio_score: {ratio_score}')
+        query_similarity = fuzz.token_set_ratio(query1, query2) 
+        print(f'query_sim: {query_similarity}')
+        return (
+            query_similarity >= fuzzy_text_threshold and
+            args1.get("result") == args2.get("result")
+        )
+
+    else:
+        # 对于未知的动作类型，采取最严格的策略：返回 False
+        return False
+
+
+# ==============================================================================
+# 核心循环检测算法
+# ==============================================================================
 
 def detect_loop(
     history: History,
-    N: int,
-    image_hash_threshold: int = 1,
-    click_coord_threshold: float = 10.0
+    image_width: int = 1920,
+    image_height: int = 1080,
+    N: int = 3,
+    phash_threshold: int = 1,
+    ssim_threshold: float = 0.98,
+    relative_coord_threshold: float = 0.05,
+    fuzzy_text_threshold: float = 75.0,
 ) -> Tuple[bool, Optional[Dict[str, List[int]]]]:
     """
     基于规则检测操作历史中是否存在循环模式。
 
     Args:
         history (History): 步骤历史列表，每个步骤是一个 (图片二进制流, 动作字典) 的元组。
-        N (int): 要检测的循环步数。
-        image_hash_threshold (int): 图片感知哈希的汉明距离阈值。
-                                    推荐值: 0 或 1。0 表示图片感知内容完全一样。
-                                    1 表示允许极微小的差异。值越小，判断越严格。
-        click_coord_threshold (float): 点击动作的坐标相似度阈值（欧氏距离）。
+        image_width (int): 截图的宽度。
+        image_height (int): 截图的高度。
+        N (int): 要检测的循环步数 (序列长度)。
+        phash_threshold (int): 图片 pHash 汉明距离阈值。推荐 0-2。
+        ssim_threshold (float): 图片 SSIM 相似度阈值。推荐 0.95-0.99。
+        relative_coord_threshold (float): 坐标相似度相对阈值。推荐 0.01-0.05。
+        fuzzy_text_threshold (float): Agent query 文本模糊匹配相似度阈值 (0-100)。
 
     Returns:
         一个元组 (is_loop_detected, loop_info):
         - is_loop_detected (bool): 是否检测到循环。
-        - loop_info (Dict | None): 如果检测到循环，返回一个字典，
-          包含两个序列的索引：{'first_sequence': [i, i+1, ...], 'second_sequence': [j, j+1, ...]}。
-          否则返回 None。
+        - loop_info (Dict | None): 如果检测到循环，返回两个序列的索引。
     """
-    # 1. 检查历史记录长度是否足够进行比较
-    # 至少需要 2*N 的长度才能找到一个不重叠的循环
+    # 1. 检查历史记录长度是否足够
     if not isinstance(N, int) or N <= 0 or len(history) < 2 * N:
         return False, None
 
-    print(f"开始检测... 历史记录长度: {len(history)}, 循环步数 N: {N}")
-
-    # 2. 预处理：为历史记录中的所有图片计算感知哈希值，避免重复计算
-    # 这一步是性能优化的关键
-    processed_history = []
-    for i, (image_binary, action) in enumerate(history):
-        phash = _calculate_phash(image_binary)
-        if phash is None:
-            print(f"警告: 索引 {i} 处的图片无法处理，跳过此步骤的哈希计算。")
-        processed_history.append({"phash": phash, "action": action})
-
-    # 3. 定义要比较的“当前序列”
-    # 当前序列是历史记录的最后 N 个步骤
+    # 2. 定义当前序列 (最后 N 个步骤)
     current_sequence_indices = list(range(len(history) - N, len(history)))
-    current_sequence = processed_history[-N:]
+    current_sequence = history[-N:]
 
-    # 4. 滑动窗口，寻找匹配的“历史序列”
-    # 历史序列的搜索范围是从开头到 `len(history) - 2*N`
-    # 这样可以确保历史序列和当前序列不重叠
+    # 3. 滑动窗口，从后往前搜索匹配的历史序列
     max_start_index = len(history) - 2 * N
-    for i in range(max_start_index + 1):
+    for i in range(max_start_index, -1, -1):
         is_potential_match = True
         
-        # 定义“历史序列”
         previous_sequence_indices = list(range(i, i + N))
-        previous_sequence = processed_history[i : i + N]
+        previous_sequence = history[i : i + N]
 
-        # 5. 逐一对比两个序列中的步骤
+        # 4. 逐一对比两个序列中的步骤
         for j in range(N):
-            step_prev = previous_sequence[j]
-            step_curr = current_sequence[j]
+            img_bin_prev, action_prev = previous_sequence[j]
+            img_bin_curr, action_curr = current_sequence[j]
 
-            # a. 检查图片哈希是否已计算
-            if step_prev["phash"] is None or step_curr["phash"] is None:
+            # a. 比较图片相似度 (综合 pHash 和 SSIM)
+            if not _are_images_similar_combined(img_bin_prev, img_bin_curr, phash_threshold, ssim_threshold):
                 is_potential_match = False
-                break # 如果有图片无法处理，则无法比较，认为不匹配
+                break
 
-            # b. 比较图片相似度 (主要)
-            # 计算两个哈希值的汉明距离
-            hash_diff = step_prev["phash"] - step_curr["phash"]
-            if hash_diff > image_hash_threshold:
+            # b. 比较动作相似度
+            if not _are_actions_similar(action_prev, action_curr, image_width, image_height, relative_coord_threshold, fuzzy_text_threshold):
                 is_potential_match = False
-                break # 图片不相似，立即中断此历史序列的比较
-
-            # c. 比较动作相似度 (次要)
-            if not _are_actions_similar(step_prev["action"], step_curr["action"], click_coord_threshold):
-                is_potential_match = False
-                break # 动作不相似，立即中断此历史序列的比较
-        
-        # 6. 如果两个序列完全匹配，则找到了循环
+                break
+        print(f'current_match: {is_potential_match}')
+        # 5. 如果序列完全匹配，则找到循环
         if is_potential_match:
-            print(f"检测到循环！当前序列 {current_sequence_indices} 与历史序列 {previous_sequence_indices} 匹配。")
             loop_info = {
-                "first_sequence": previous_sequence_indices,
-                "second_sequence": current_sequence_indices
+                "match_sequence_indices": previous_sequence_indices
             }
             return True, loop_info
 
-    # 7. 如果遍历完所有可能的历史序列都没有找到匹配项，则未检测到循环
-    print("未检测到循环。")
+    # 6. 未找到匹配项
     return False, None
 
 
-# --- 示例和测试 ---
+# ==============================================================================
+# 示例和测试
+# ==============================================================================
 
-def create_mock_image(text: str, size=(200, 100)) -> bytes:
+def create_mock_image(text: str, size=(800, 600), add_noise=False) -> bytes:
     """创建一个带有文本的模拟图片，并返回其二进制数据。"""
     img = Image.new('RGB', size, color='white')
-    from PIL import ImageDraw
     draw = ImageDraw.Draw(img)
-    draw.text((10, 10), text, fill='black')
+    try:
+        font = ImageFont.truetype("arial.ttf", 40)
+    except IOError:
+        font = None
+    draw.text((50, 50), text, fill='black', font=font)
     
-    # 将图片保存到内存中的二进制流
+    if add_noise:
+        pixels = img.load()
+        for i in range(int(size[0] * 0.1)):
+            for j in range(int(size[1] * 0.1)):
+                if np.random.rand() < 0.1: # 10% 的概率添加噪点
+                    noise_color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+                    pixels[i, j] = noise_color
+
     byte_io = io.BytesIO()
     img.save(byte_io, format='PNG')
     return byte_io.getvalue()
 
 if __name__ == '__main__':
-    # --- 场景1: 存在一个清晰的 3 步循环 ---
-    print("--- 场景 1: 检测清晰的 3 步循环 ---")
-    # 创建模拟图片
-    img_A = create_mock_image("页面 A")
-    img_B = create_mock_image("页面 B")
-    img_C = create_mock_image("页面 C")
-    img_D = create_mock_image("页面 D (无关页面)")
-
-    # 创建模拟动作
-    action_click_A = {"function": "click", "args": {"x": 100, "y": 200}}
-    action_click_B = {"function": "click", "args": {"x": 500, "y": 400}}
-    action_type_C = {"function": "type", "args": {"text": "hello world"}}
+    # --- 测试环境设置 ---
+    IMG_WIDTH, IMG_HEIGHT = 800, 600
     
-    # 模拟一个稍微有偏差的点击动作
-    action_click_A_variant = {"function": "click", "args": {"x": 102, "y": 198}} # 坐标有微小偏移
+    # --- 创建模拟图片 ---
+    img_A = create_mock_image("页面 A", (IMG_WIDTH, IMG_HEIGHT))
+    img_B = create_mock_image("页面 B", (IMG_WIDTH, IMG_HEIGHT))
+    img_C = create_mock_image("页面 C", (IMG_WIDTH, IMG_HEIGHT))
+    img_D = create_mock_image("页面 D (无关)", (IMG_WIDTH, IMG_HEIGHT))
+    # 创建一个带噪点的图片 A，pHash 可能相似，但 SSIM 会较低
+    img_A_noisy = create_mock_image("页面 A", (IMG_WIDTH, IMG_HEIGHT), add_noise=True)
 
-    # 构建历史记录
-    # 步骤 0-3: 任意操作
-    # 步骤 4-6: 循环的第一次出现 (A -> B -> C)
-    # 步骤 7-9: 循环的第二次出现 (A -> B -> C)
-    history_with_loop: History = [
-        (img_D, action_click_B),                                 # 0
-        (create_mock_image("任意页面1"), action_click_A),         # 1
-        (create_mock_image("任意页面2"), action_type_C),          # 2
-        (img_D, action_click_B),                                 # 3
-        (img_A, action_click_A),                                 # 4: 循环序列1开始
-        (img_B, action_click_B),                                 # 5
-        (img_C, action_type_C),                                  # 6: 循环序列1结束
-        (img_A, action_click_A_variant), # 图片相同，动作坐标有微小偏移  # 7: 循环序列2开始
-        (img_B, action_click_B),                                 # 8
-        (img_C, action_type_C),                                  # 9: 循环序列2结束
+    # --- 创建模拟动作 ---
+    action_click_A = {"function": "click", "args": {"x": 100, "y": 200, "button": "left", "clicks": 1}}
+    action_click_A_variant = {"function": "click", "args": {"x": 105, "y": 205, "button": "left", "clicks": 1}} # 坐标微小偏移
+    action_click_A_diff_button = {"function": "click", "args": {"x": 100, "y": 200, "button": "right", "clicks": 1}} # 按键不同
+    action_scroll_down = {"function": "scroll", "args": {"x": 400, "y": 300, "clicks": -5, "shift": False}}
+    action_scroll_up = {"function": "scroll", "args": {"x": 400, "y": 300, "clicks": 5, "shift": False}} # 方向相反
+    action_agent_call_1 = {"function": "call_search_agent", "args": {"query": "如何修复打印机卡纸问题？", "result": True}}
+    action_agent_call_2 = {"function": "call_search_agent", "args": {"query": "怎样修复打印机卡纸问题", "result": True}} # 文本相似
+    action_agent_call_3 = {"function": "call_search_agent", "args": {"query": "如何安装新的墨盒？", "result": True}} # 文本不相似
+    
+    print("="*20 + " 场景 1: 检测到清晰的 3 步循环 (坐标有容差) " + "="*20)
+    history_loop: History = [
+        (img_D, action_click_A),                                # 0 (无关)
+        (img_A, action_click_A),                                # 1: 循环序列1开始
+        (img_B, action_scroll_down),                            # 2
+        (img_C, action_agent_call_1),                           # 3: 循环序列1结束
+        (img_A, action_click_A_variant),                        # 4: 循环序列2开始 (点击坐标有微小偏移)
+        (img_B, action_scroll_down),                            # 5
+        (img_C, action_agent_call_2),                           # 6: (Agent query 文本相似)
     ]
-
-    # 使用非常严格的阈值进行检测
-    is_loop, loop_details = detect_loop(
-        history=history_with_loop, 
-        N=3, 
-        image_hash_threshold=0, # 要求图片感知内容完全一样
-        click_coord_threshold=5.0 # 要求点击位置偏差在5个像素以内
-    )
-
+    is_loop, loop_details = detect_loop(history_loop, IMG_WIDTH, IMG_HEIGHT, N=3)
     print(f"检测结果: {is_loop}")
     if is_loop:
-        print(f"循环详情: {loop_details}")
-    
-    print("\n" + "="*40 + "\n")
+        print(f"循环详情: {loop_details}") # 应为: first: [1,2,3], second: [4,5,6]
+    print("\n")
 
-    # --- 场景2: 不存在循环 ---
-    print("--- 场景 2: 检测无循环的序列 ---")
-    history_no_loop: History = [
-        (img_A, action_click_A),
-        (img_B, action_click_B),
-        (img_C, action_type_C),
-        (img_D, action_click_A),
-        (img_A, action_click_B), # 页面和动作不匹配
-        (img_B, action_type_C),
+    print("="*20 + " 场景 2: 因动作参数不匹配而检测失败 (滚动方向相反) " + "="*20)
+    history_fail_action: History = [
+        (img_A, action_scroll_down), # 0
+        (img_B, action_click_A),     # 1
+        (img_A, action_scroll_up),   # 2 (图片相同，但滚动方向相反)
+        (img_B, action_click_A),     # 3
     ]
+    is_loop, loop_details = detect_loop(history_fail_action, IMG_WIDTH, IMG_HEIGHT, N=2)
+    print(f"检测结果: {is_loop}") # 应该为 False
+    if is_loop: print(f"循环详情: {loop_details}")
+    print("\n")
 
-    is_loop, loop_details = detect_loop(history=history_no_loop, N=3)
-    print(f"检测结果: {is_loop}")
-    
-    print("\n" + "="*40 + "\n")
-    
-    # --- 场景3: 图片相似但动作不同，不应算作循环 ---
-    print("--- 场景 3: 图片相似但动作不同 ---")
-    history_diff_action: History = [
-        (img_A, action_click_A),
-        (img_B, action_click_B),
-        (img_A, action_type_C), # 页面A，但动作是输入而非点击
-        (img_B, action_click_B),
+    print("="*20 + " 场景 3: 因 Agent Query 文本差异过大而检测失败 " + "="*20)
+    history_fail_query: History = [
+        (img_C, action_agent_call_1), # 0
+        (img_D, action_click_A),      # 1
+        (img_C, action_agent_call_3), # 2 (Query 文本不相似)
+        (img_D, action_click_A),      # 3
     ]
-    
-    is_loop, loop_details = detect_loop(history=history_diff_action, N=2)
-    print(f"检测结果: {is_loop}")
+    is_loop, loop_details = detect_loop(history_fail_query, IMG_WIDTH, IMG_HEIGHT, N=2)
+    print(f"检测结果: {is_loop}") # 应该为 False
+    if is_loop: print(f"循环详情: {loop_details}")
+    print("\n")
+
+    print("="*20 + " 场景 4: 因 SSIM 阈值未通过而检测失败 (图片有噪点) " + "="*20)
+    history_fail_ssim: History = [
+        (img_A, action_click_A),     # 0
+        (img_B, action_scroll_down), # 1
+        (img_A_noisy, action_click_A), # 2 (图片有噪点)
+        (img_B, action_scroll_down), # 3
+    ]
+    # 使用非常严格的 SSIM 阈值
+    is_loop, loop_details = detect_loop(history_fail_ssim, IMG_WIDTH, IMG_HEIGHT, N=2, ssim_threshold=0.99)
+    # 检查一下两张图的相似度
+    phash_sim = _are_images_similar_combined(img_A, img_A_noisy, phash_threshold=2, ssim_threshold=0.01)
+    ssim_sim = _are_images_similar_combined(img_A, img_A_noisy, phash_threshold=10, ssim_threshold=0.99)
+    print(f"图片 A 和带噪点的图片 A 比较:")
+    print(f"  - 仅 pHash 判断是否相似? {'是' if phash_sim else '否'}")
+    print(f"  - 仅 SSIM (阈值0.99) 判断是否相似? {'是' if ssim_sim else '否'}")
+    print(f"循环检测结果: {is_loop}") # 应该为 False，因为 SSIM 不达标
+    if is_loop: print(f"循环详情: {loop_details}")
+    print("\n")
+
+    print("="*20 + " 场景 5: 历史记录不足 " + "="*20)
+    short_history: History = [(img_A, action_click_A)] * 5 # 5条记录
+    is_loop, loop_details = detect_loop(short_history, IMG_WIDTH, IMG_HEIGHT, N=3) # 需要 2*3=6 条记录
+    print(f"检测结果: {is_loop}") # 应该为 False
+    if is_loop: print(f"循环详情: {loop_details}")
+    print("\n")
