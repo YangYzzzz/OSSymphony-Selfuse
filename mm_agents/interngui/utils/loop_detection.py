@@ -47,7 +47,7 @@ def _are_images_similar_combined(
         phash2 = imagehash.phash(img2)
         hash_diff = phash1 - phash2
         is_phash_similar = hash_diff <= phash_threshold
-        print(f'hash_diff: {hash_diff}')
+        # print(f'hash_diff: {hash_diff}')
         # 如果 pHash 已经不相似，提前返回 False，节省计算
         if not is_phash_similar:
             return False
@@ -62,7 +62,7 @@ def _are_images_similar_combined(
         # 计算 SSIM 得分
         ssim_score = ssim(np_img1, np_img2, data_range=np_img1.max() - np_img1.min())
         is_ssim_similar = ssim_score >= ssim_threshold
-        print(f'ssim_score: {ssim_score}')
+        # print(f'ssim_score: {ssim_score}')
         # --- 3. 综合判断 ---
         return is_phash_similar and is_ssim_similar
 
@@ -108,7 +108,6 @@ def _are_actions_similar(
     def are_coords_close(x1, y1, x2, y2):
         if None in [x1, y1, x2, y2]: return False
         distance = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-        print(f'distance: {distance}, abs_thresh: {abs_coord_thresh}')
         return distance < abs_coord_thresh
 
     # 2. 根据不同的动作类型，比较关键参数
@@ -166,10 +165,8 @@ def _are_actions_similar(
         query1 = args1.get("query", "")
         query2 = args2.get("query", "")
         # 使用 Levenshtein 编辑距离计算模糊相似度
-        ratio_score = fuzz.ratio(query1, query2)
-        print(f'ratio_score: {ratio_score}')
         query_similarity = fuzz.token_set_ratio(query1, query2) 
-        print(f'query_sim: {query_similarity}')
+        # print(f'query_sim: {query_similarity}')
         return (
             query_similarity >= fuzzy_text_threshold and
             args1.get("result") == args2.get("result")
