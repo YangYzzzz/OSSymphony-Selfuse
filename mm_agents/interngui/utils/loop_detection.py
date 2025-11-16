@@ -196,7 +196,6 @@ def _are_steps_similar_optimized(
     # 1. 快速检查：pHash 和 SSIM
     # a. 检查 pHash 是否已计算
     if step1.phash is None or step2.phash is None:
-        print(f'Phash is None?????????/')
         return False # 如果任一图像信息缺失，则认为不相似
 
     # b. pHash 比较 (O(1) 整数减法)

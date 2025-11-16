@@ -406,7 +406,7 @@ class ReflectionMemoryAgent:
             is_loop, loop_details = detect_loop(full_trajectory=self.trajectory + [step_behavior], N=3)
             if is_loop and loop_details:
                 match_sequence_indices = loop_details["match_sequence_indices"]
-                loop_hint_message = f"\tWarning: A potential loop has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid repetitive behavior."
+                loop_hint_message = f"\tWarning: A potential LOOP has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid repetitive behavior."
                 additional_hints.append(loop_hint_message)
 
             self.reflection_agent.reset()
