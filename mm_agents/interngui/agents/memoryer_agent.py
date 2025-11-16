@@ -13,12 +13,12 @@ from mm_agents.interngui.utils.formatters import JSON_ANSWER_FORMATTER
 from mm_agents.interngui.core.mllm import LMMAgent
 from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 import textwrap
+import imagehash
 import io
 import os
 from PIL import Image, ImageDraw
-from mm_agents.interngui.utils.loop_detection import detect_loop
-
-
+import numpy as np
+from skimage.metrics import structural_similarity as ssim
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -39,8 +39,25 @@ class StepBehavior:
         self.obs = obs
         self.summary = summary
         self.action_dict = action_dict
+        # 优化循环检测复杂度的变量
+        # --- 1. pHash ---
+        self.phash = None
+        # --- 2. SSIM 历史比较 ---
+        self.ssim_list = [] # 计算当前图片与历史图片的ssim值
     
-
+    def _update_phash_ssim(self, history: List):
+        # 根据历史的图片信息计算当前图片的 ssim_list, 优化循环检测的复杂度
+        # 首先更新 pHash
+        cur_img = Image.open(io.BytesIO(self.obs["screenshot"]))
+        cur_img_gray = cur_img.convert('L')
+        cur_img_np = np.array(cur_img_gray)
+        self.phash = imagehash.phash(cur_img)
+        # 更新 ssim_list
+        for hs in history:
+            compare_img = Image.open(io.BytesIO(hs.obs["screenshot"]))
+            compare_img_gray = compare_img.convert('L')
+            compare_img_np = np.array(compare_img_gray)
+            self.ssim_list.append(ssim(cur_img_np, compare_img_np, data_range=cur_img_np.max() - compare_img_np.min()))
 
 class ReflectionMemoryAgent:
     """
@@ -349,6 +366,7 @@ class ReflectionMemoryAgent:
                 cur_obs,
                 action_dict
             )
+            step_behavior._update_phash_ssim(self.trajectory)
             self._update_trajectory(step_behavior)
             reflection_info = {
                 "reflection": reflection,
@@ -356,7 +374,8 @@ class ReflectionMemoryAgent:
                 "existing_knowledge": "\n".join(self.knowledge_base),
                 "is_milestone": True,
                 "new_knowledge": "",
-                "step_summary": ""
+                "step_summary": "",
+                "loop_detection": None
             } 
         else: 
             ### Step Summary
@@ -373,23 +392,22 @@ class ReflectionMemoryAgent:
                 code_exec_summary, 
                 action_dict
             )    
-            
+            step_behavior._update_phash_ssim(self.trajectory)
             
             ### make additional hints
             additional_hints = []
             additional_hints.append(f"\t- The last step is GUI operation, and it is {last_gui_check}.")
-            # 没点卵用
-            if len(self.trajectory) - self.last_code_step_idx < 3:      # 3步之内都有可能是验证
+
+            if len(self.trajectory) - self.last_code_step_idx < 5:      # 5步之内都有可能是验证
                 additional_hints.append(f"\t- The Computer Use Agent might in the verification stage of Code Agent.")
-            # 循环检测, 检测出的Step号是从0开始标注的请注意, 如有需要从1开始标注请同步, 同时可以适当调整下hint信息
-            enable_loop_detection = False
-            if enable_loop_detection:
-                is_loop, loop_details = detect_loop(history=self.trajectory, N=3)
-                if is_loop and loop_details:
-                    match_sequence_indices = loop_details["match_sequence_indices"]
-                    print("Rule-based Loop Detected: ", loop_details)
-                    loop_hint_message = f"\tWarning: A potential loop has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid repetitive behavior."
-                    additional_hints.append(loop_hint_message)
+            # 循环检测, 检测出的Step号是从0开始标注的
+            from mm_agents.interngui.utils.loop_detection import detect_loop
+            # print(f'当前长度为: {len(self.trajectory)+1}, 开始检测循环!!!!!!!!')
+            is_loop, loop_details = detect_loop(full_trajectory=self.trajectory + [step_behavior], N=3)
+            if is_loop and loop_details:
+                match_sequence_indices = loop_details["match_sequence_indices"]
+                loop_hint_message = f"\tWarning: A potential loop has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid repetitive behavior."
+                additional_hints.append(loop_hint_message)
 
             self.reflection_agent.reset()
 
@@ -481,7 +499,7 @@ class ReflectionMemoryAgent:
                 is_milestone = True if "true" in is_milestone.lower() else False
             
             # update is_milestone
-            step_behavior.is_milestone = is_milestone       
+            step_behavior.is_milestone = is_milestone
             self._update_trajectory(step_behavior)
 
             reflection_info = {
@@ -490,7 +508,8 @@ class ReflectionMemoryAgent:
                 "existing_knowledge": "\n".join(self.knowledge_base),
                 "is_milestone": is_milestone,
                 "new_knowledge": knowledge,
-                "step_summary": step_behavior.summary
+                "step_summary": step_behavior.summary,
+                "loop_detection": loop_details
             } 
             # with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
             #     json.dump(supp_info, f, indent=4, ensure_ascii=False)

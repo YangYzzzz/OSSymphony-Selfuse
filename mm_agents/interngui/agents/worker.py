@@ -230,7 +230,7 @@ class Worker(BaseModule):
             # 如果上一步用了code，step behavior是写死的
             mode = "search"
         # 新设计的reflection!!!
-        reflection_info = self.memoryer_agent.get_reflection(         
+        reflection_info = self.memoryer_agent.get_reflection(
             cur_obs=obs, 
             generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
             coordinates=self.coords_history[-1] if self.turn_count != 0 else [],

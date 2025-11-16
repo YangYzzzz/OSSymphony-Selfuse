@@ -653,7 +653,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
 
 # 把做错的目前也都视为未完成的
 def get_unfinished(
-    target_dir, total_file_json
+    target_dir, total_file_json, turn: int
 ):
 
     if not os.path.exists(target_dir):
@@ -675,7 +675,7 @@ def get_unfinished(
                     else:
                         with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
                             score = float(f.read())
-                        if score == 0:
+                        if score == 0 and turn != 1:
                             # empty all files under example_id
                             shutil.rmtree(path=example_path, ignore_errors=True)
                         else:
@@ -770,8 +770,9 @@ if __name__ == "__main__":
     for t in range(1, args.pass_k + 1):
         logger.info(f"====================\nPass K: no.{t} turn is started\n====================")
         test_file_list = get_unfinished(
-            args.result_dir,
-            test_all_meta,
+            target_dir=args.result_dir,
+            total_file_json=test_all_meta,
+            turn=t
         )
         left_info = ""
         for domain in test_file_list:

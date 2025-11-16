@@ -9,12 +9,14 @@ import imagehash
 from skimage.metrics import structural_similarity as ssim
 from rapidfuzz import fuzz
 import logging
+from mm_agents.interngui.agents.memoryer_agent import StepBehavior
 
 logger = logging.getLogger("desktopenv.loop_detection")
 
 
 
 # 有很大优化空间, 可以随时存储图片之间的ssim值和pHash, 以避免重复计算, 后续分析复杂度时可以修订
+# TODO: Yang，优化复杂度并添加进Workflow中
 def _are_images_similar_combined(
     image_binary1: bytes,
     image_binary2: bytes,
@@ -174,12 +176,59 @@ def _are_actions_similar(
         return False
 
 
+def _are_steps_similar_optimized(
+    step1: StepBehavior,
+    step2: StepBehavior,
+    idx1: int,
+    idx2: int,
+    full_trajectory: List[StepBehavior], # 需要完整轨迹来正确访问SSIM列表
+    phash_threshold: int,
+    ssim_threshold: float,
+    # 动作比较所需的参数
+    image_width: int,
+    image_height: int,
+    relative_coord_threshold: float,
+    fuzzy_text_threshold: float,
+) -> bool:
+    """
+    【内部辅助-已优化】使用预计算数据快速比较两个步骤是否相似。
+    """
+    # 1. 快速检查：pHash 和 SSIM
+    # a. 检查 pHash 是否已计算
+    if step1.phash is None or step2.phash is None:
+        print(f'Phash is None?????????/')
+        return False # 如果任一图像信息缺失，则认为不相似
+
+    # b. pHash 比较 (O(1) 整数减法)
+    if (step1.phash - step2.phash) > phash_threshold:
+        return False
+
+    # c. SSIM 比较 (O(1) 列表访问)
+    # 关键：SSIM值存储在后一个步骤的ssim_list中，索引是前一个步骤的索引
+    later_step_idx = max(idx1, idx2)
+    earlier_step_idx = min(idx1, idx2)
+    
+    # 从后一个步骤的 ssim_list 中获取分数
+    ssim_score = full_trajectory[later_step_idx].ssim_list[earlier_step_idx]
+    
+    if ssim_score < ssim_threshold:
+        return False
+
+    # 2. 详细检查：动作比较 (只有在图像相似时才执行)
+    if not _are_actions_similar(
+        step1.action_dict, step2.action_dict,
+        image_width, image_height, relative_coord_threshold, fuzzy_text_threshold
+    ):
+        return False
+
+    # 所有检查都通过
+    return True
+
 # ==============================================================================
 # 核心循环检测算法
 # ==============================================================================
-
 def detect_loop(
-    history: List,
+    full_trajectory: List[StepBehavior],
     image_width: int = 1920,
     image_height: int = 1080,
     N: int = 3,
@@ -189,10 +238,10 @@ def detect_loop(
     fuzzy_text_threshold: float = 75.0,
 ) -> Tuple[bool, Optional[Dict[str, List[int]]]]:
     """
-    基于规则检测操作历史中是否存在循环模式。
-
+    基于预计算数据，高效检测是否存在循环模式。
+    
     Args:
-        history (History): 步骤历史列表，每个步骤是一个 (图片二进制流, 动作字典) 的元组。
+        full_trajectory (List[StepBehavior]): 包含当前步骤的完整历史。
         image_width (int): 截图的宽度。
         image_height (int): 截图的高度。
         N (int): 要检测的循环步数 (序列长度)。
@@ -206,42 +255,48 @@ def detect_loop(
         - is_loop_detected (bool): 是否检测到循环。
         - loop_info (Dict | None): 如果检测到循环，返回两个序列的索引。
     """
-    # 1. 检查历史记录长度是否足够
-    if not isinstance(N, int) or N <= 0 or len(history) < 2 * N:
+    L = len(full_trajectory)
+
+    # 1. 检查历史记录长度是否足够进行比较
+    if not isinstance(N, int) or N <= 0 or L < 2 * N:
         return False, None
 
     # 2. 定义当前序列 (最后 N 个步骤)
-    current_sequence_indices = list(range(len(history) - N, len(history)))
-    current_sequence = history[-N:]
-
+    # current_sequence_indices = list(range(L - N, L))
+    
     # 3. 滑动窗口，从后往前搜索匹配的历史序列
-    max_start_index = len(history) - 2 * N
+    # 历史序列的起始索引 i，最大不能与当前序列重叠
+    # i + N 必须小于 L - N，所以 i 的最大值是 L - 2*N
+    max_start_index = L - 2 * N
     for i in range(max_start_index, -1, -1):
         is_potential_match = True
         
-        previous_sequence_indices = list(range(i, i + N))
-        previous_sequence = history[i : i + N]
-
         # 4. 逐一对比两个序列中的步骤
         for j in range(N):
-            img_bin_prev, action_prev = previous_sequence[j].obs["screenshot"], previous_sequence[j].action_dict
-            img_bin_curr, action_curr = current_sequence[j].obs["screenshot"], current_sequence[j].action_dict
-
-            # a. 比较图片相似度 (综合 pHash 和 SSIM)
-            if not _are_images_similar_combined(img_bin_prev, img_bin_curr, phash_threshold, ssim_threshold):
+            # 获取历史序列和当前序列中对应步骤的索引
+            idx_prev = i + j
+            idx_curr = (L - N) + j
+            
+            # 获取步骤对象
+            step_prev = full_trajectory[idx_prev]
+            step_curr = full_trajectory[idx_curr]
+            
+            # 使用优化后的比较函数
+            if not _are_steps_similar_optimized(
+                step_prev, step_curr, idx_prev, idx_curr, full_trajectory,
+                phash_threshold, ssim_threshold,
+                image_width, image_height, relative_coord_threshold, fuzzy_text_threshold
+            ):
                 is_potential_match = False
                 break
-
-            # b. 比较动作相似度
-            if not _are_actions_similar(action_prev, action_curr, image_width, image_height, relative_coord_threshold, fuzzy_text_threshold):
-                is_potential_match = False
-                break
-        print(f'current_match: {is_potential_match}')
+        
         # 5. 如果序列完全匹配，则找到循环
         if is_potential_match:
+            previous_sequence_indices = list(range(i, i + N))
             loop_info = {
                 "match_sequence_indices": previous_sequence_indices
             }
+            # print(f"Loop detected: current sequence (indices {L-N} to {L-1}) matches historical sequence (indices {i} to {i+N-1})")
             return True, loop_info
 
     # 6. 未找到匹配项

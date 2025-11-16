@@ -8,7 +8,7 @@ import shutil
 import matplotlib.pyplot as plt
 from collections import Counter
 import re
-
+import numpy as np
 
 # ==============================================================================
 # 辅助函数：创建虚拟数据以便于测试
@@ -134,6 +134,7 @@ def get_tasks(root_dir, domain, compare_dir=None):
             result_text = '❌失败 0.0❌'
         success_list.append(result_text)
 
+        search_flag_file = Path(root_dir) / domain / task_name / "search.txt"
         # 2. 如果开启了对比模式，则进行比较
         current_css_class = ""
         if compare_dir and os.path.isdir(compare_dir):
@@ -145,7 +146,13 @@ def get_tasks(root_dir, domain, compare_dir=None):
                 current_css_class = "compare-main-win" # 主体赢: 绿色背景
             elif main_status == 0 and compare_status == 1:
                 current_css_class = "compare-comp-win" # 对比赢: 红色背景
-        
+
+        if search_flag_file.exists() and int(search_flag_file.read_text().strip()) == 1:
+            if main_status == 1:
+                current_css_class += " search-and-success"
+            else:
+                current_css_class += " search-and-failure"
+
         css_class_list.append(current_css_class)
 
     return task_name_list, success_list, css_class_list
@@ -241,6 +248,38 @@ def create_gradio_app(root_dir):
             background: #f8d7da !important; /* 淡红色背景 */
             border-color: #f5c6cb !important;
         }
+
+        .search-and-success::before {
+            content: 'search';
+            /* 使用从上到下的线性渐变，从稍亮到稍暗的绿色 */
+            background-image: linear-gradient(to bottom, #2ecc71, #28a745);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            border: 1px solid #1e7e34; /* 添加一个深色边框增加质感 */
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1); /* 轻微的阴影 */
+        }
+
+        .search-and-failure::before {
+            content: 'search';
+            /* 使用从上到下的线性渐变，从稍亮到稍暗的红色 */
+            background-image: linear-gradient(to bottom, #e74c3c, #dc3545);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            border: 1px solid #b21f2d; /* 添加一个深色边框增加质感 */
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1); /* 轻微的阴影 */
+        }
     """
 
     with gr.Blocks(theme=gr.themes.Soft(), css=CUSTOM_CSS) as app:
@@ -270,7 +309,8 @@ def create_gradio_app(root_dir):
                 gr.Image(label="成功率", value=os.path.join(root_dir, "domain_success_rates.png"), type="filepath", interactive=False)
                 gr.Image(label="动作使用率", value=os.path.join(root_dir, "overall_action_usage.png"), type="filepath", interactive=False)
                 gr.Image(label="步长/成功率", value=os.path.join(root_dir, "overall_step_distribution.png"), type="filepath", interactive=False)
-            
+                gr.Image(label="Token使用率", value=os.path.join(root_dir, "overall_token_usage_stacked.png"), type="filepath", interactive=False)
+
             with gr.Group(elem_classes="gr-button-group"):
                 domain_buttons = []
                 for i in range(MAX_BUTTONS):
@@ -290,6 +330,8 @@ def create_gradio_app(root_dir):
             with gr.Row():
                 domain_action_img = gr.Image(label=f"动作使用率", type="filepath", interactive=False)
                 domain_step_img = gr.Image(label=f"步长/成功率", type="filepath", interactive=False)
+                domain_token_img = gr.Image(label="Token使用率", type="filepath", interactive=False)
+
             with gr.Group(elem_classes="gr-button-group"):
                 task_buttons = []
                 success_buttons = []
@@ -371,6 +413,7 @@ def create_gradio_app(root_dir):
                 task_view_title: gr.update(value=f"# Domain: {domain_name}\n请选择一个 Task："),
                 domain_action_img: gr.update(value=f"{os.path.join(root_dir, f'action_usage_{domain_name}.png')}"),
                 domain_step_img: gr.update(value=f"{os.path.join(root_dir, f'step_distribution_{domain_name}.png')}"),
+                domain_token_img: gr.update(value=f"{os.path.join(root_dir, f'token_usage_stacked_{domain_name}.png')}"),
             }
             
             # 更新并显示Task按钮，同时应用CSS类
@@ -481,7 +524,7 @@ def create_gradio_app(root_dir):
         )
 
         # 2. 修改 Domain 按钮的点击事件，传入对比路径状态
-        domain_click_outputs = [state_selected_domain, domain_view, task_view, task_view_title, domain_action_img, domain_step_img] + task_buttons + success_buttons
+        domain_click_outputs = [state_selected_domain, domain_view, task_view, task_view_title, domain_action_img, domain_step_img, domain_token_img] + task_buttons + success_buttons
         for btn in domain_buttons:
             btn.click(
                 fn=select_domain,
@@ -619,16 +662,143 @@ def plot_step_histogram(success_steps, failure_steps, title, save_path):
     plt.close(fig)
     print(f"Saved step distribution plot to {save_path}")
 
+
+def plot_token_usage_stacked(stats_data, title, save_path):
+    """
+    Generates and saves a stacked bar chart for prompt and completion token usage.
+    This version prevents error bars from going below zero and adds a combined
+    total/percentage label on top of each bar in the format '100k (98.7%/1.3%)'.
+
+    Args:
+        stats_data (dict): Dict with agent names as keys and dicts of token lists as values.
+        title (str): The title for the plot.
+        save_path (str): The file path to save the plot.
+    """
+    if not stats_data:
+        print(f"Skipping stacked token plot for '{title}' due to no data.")
+        return
+
+    try:
+        # --- 确定任务总数 (num_tasks) ---
+        num_tasks = 0
+        if "orchestrator" in stats_data and stats_data["orchestrator"].get('prompt'):
+            num_tasks = len(stats_data["orchestrator"]['prompt'])
+        else:
+            for agent_data in stats_data.values():
+                num_tasks = max(num_tasks, len(agent_data.get('prompt', [])), len(agent_data.get('completion', [])))
+        
+        if num_tasks == 0:
+            print(f"Skipping stacked token plot for '{title}' as num_tasks is zero.")
+            return
+
+        agents = sorted(stats_data.keys())
+        prompt_avgs = []
+        completion_avgs = []
+        total_stds = []
+
+        total_prompt_avg_sum = 0
+        total_completion_avg_sum = 0
+        
+        # --- 计算每个 Agent 的统计数据 ---
+        for agent in agents:
+            prompt_tokens_orig = stats_data[agent].get('prompt', [])
+            completion_tokens_orig = stats_data[agent].get('completion', [])
+
+            prompt_tokens_padded = prompt_tokens_orig + [0] * (num_tasks - len(prompt_tokens_orig))
+            completion_tokens_padded = completion_tokens_orig + [0] * (num_tasks - len(completion_tokens_orig))
+            
+            prompt_avg = np.mean(prompt_tokens_padded)
+            completion_avg = np.mean(completion_tokens_padded)
+            
+            prompt_avgs.append(prompt_avg)
+            completion_avgs.append(completion_avg)
+
+            total_prompt_avg_sum += prompt_avg
+            total_completion_avg_sum += completion_avg
+
+            total_tokens = [p + c for p, c in zip(prompt_tokens_padded, completion_tokens_padded)]
+            total_std = np.std(total_tokens) if total_tokens else 0
+            total_stds.append(total_std)
+
+        # --- 计算 "Total" 条目的统计数据 ---
+        task_grand_totals = [0] * num_tasks
+        for agent in agents:
+            prompts_orig = stats_data[agent].get('prompt', [])
+            completions_orig = stats_data[agent].get('completion', [])
+            prompts_padded = prompts_orig + [0] * (num_tasks - len(prompts_orig))
+            completions_padded = completions_orig + [0] * (num_tasks - len(completions_orig))
+            for i in range(num_tasks):
+                task_grand_totals[i] += prompts_padded[i] + completions_padded[i]
+
+        total_all_agents_std = np.std(task_grand_totals) if task_grand_totals else 0
+        
+        # --- 添加 "Total" 条目 ---
+        agents.append('Total')
+        prompt_avgs.append(total_prompt_avg_sum)
+        completion_avgs.append(total_completion_avg_sum)
+        total_stds.append(total_all_agents_std)
+
+        # --- 开始绘图 ---
+        plt.figure(figsize=(max(10, len(agents) * 1.5), 8))
+        
+        bar_width = 0.6
+        indices = np.arange(len(agents))
+        prompt_avgs_np = np.array(prompt_avgs)
+        completion_avgs_np = np.array(completion_avgs)
+
+        plt.bar(indices, prompt_avgs_np, bar_width, label='Prompt Tokens', color='#1f77b4', alpha=0.8)
+        plt.bar(indices, completion_avgs_np, bar_width, bottom=prompt_avgs_np, label='Completion Tokens', color='#ff7f0e', alpha=0.8)
+
+        total_avgs = prompt_avgs_np + completion_avgs_np
+        total_stds_np = np.array(total_stds)
+        lower_errors = np.minimum(total_avgs, total_stds_np)
+        asymmetric_errors = np.array([lower_errors, total_stds_np])
+        plt.errorbar(indices, total_avgs, yerr=asymmetric_errors, fmt='none', ecolor='black', capsize=5, elinewidth=1.5, markeredgewidth=1.5)
+
+        plt.ylabel('Average Token Count per Task')
+        plt.title(title)
+        plt.xticks(indices, agents, rotation=45, ha='right')
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.legend()
+
+        # ==============================================================================
+        # =================== 核心修改: 在柱状图上添加新的组合标签 =====================
+        # ==============================================================================
+        for i in range(len(agents)):
+            total_height = total_avgs[i]
+            prompt_height = prompt_avgs_np[i]
+            completion_height = completion_avgs_np[i]
+
+            # 1. 格式化总数部分
+            total_label_part = f'{total_height/1000:,.1f}k' if total_height >= 1000 else f'{total_height:,.0f}'
+            
+            final_label = total_label_part
+
+            # 2. 如果总数大于0且两种token都存在，则添加百分比部分
+            if total_height > 0 and prompt_height > 0 and completion_height > 0:
+                prompt_perc = (prompt_height / total_height) * 100
+                completion_perc = (completion_height / total_height) * 100
+                # 拼接成最终标签
+                final_label += f' ({prompt_perc:.1f}%/{completion_perc:.1f}%)'
+
+            # 3. 将最终标签放置在图表上
+            plt.text(indices[i], total_height, final_label, ha='center', va='bottom', fontsize=8, fontweight='bold')
+        # ==============================================================================
+        # =============================== 修改结束 =====================================
+        # ==============================================================================
+
+        plt.tight_layout()
+        plt.savefig(save_path)
+        plt.close()
+        print(f"Saved stacked token usage plot to {save_path}")
+
+    except Exception as e:
+        print(f"An unexpected error occurred while generating stacked token usage plot for '{title}': {e}")
+
 def get_result(target_dir):
     """
     Analyzes experiment results from a target directory, calculates success rates,
-    gathers action statistics, and generates plots including step distribution histograms.
-
-    Args:
-        target_dir (str): The path to the root directory of the experiment results.
-
-    Returns:
-        list or None: A list of all results (as floats), or None if no results are found.
+    gathers action and token statistics, and generates various plots.
     """
     if not os.path.exists(target_dir):
         print(f"Error: Target directory '{target_dir}' does not exist.")
@@ -636,97 +806,120 @@ def get_result(target_dir):
 
     # --- Data Structures for Analysis ---
     all_result = []
-    domain_result_raw = {}  # Stores lists of 0s and 1s for each domain
-    all_result_for_analysis = {} # For the JSON output
-
-    # New structures for action statistics
+    domain_result_raw = {}
+    all_result_for_analysis = {}
     overall_action_counts = Counter()
-    domain_action_counts = {} # {domain: Counter()}
+    domain_action_counts = {}
+
+    # --- 更新: Token 统计的数据结构，区分 prompt 和 completion ---
+    # 结构: {domain: {agent_name: {'prompt': [...], 'completion': [...]}}}
+    domain_token_stats = {}
+    # 结构: {agent_name: {'prompt': [...], 'completion': [...]}}
+    overall_token_stats = {}
 
     print("Starting analysis...")
     # --- Data Collection Loop ---
     for domain in os.listdir(target_dir):
         domain_path = os.path.join(target_dir, domain)
-        if not os.path.isdir(domain_path):
-            continue
+        if not os.path.isdir(domain_path): continue
 
         domain_action_counts[domain] = Counter()
+        domain_token_stats[domain] = {}
         
         for example_id in os.listdir(domain_path):
             example_path = os.path.join(domain_path, example_id)
-            if not os.path.isdir(example_path):
-                continue
+            if not os.path.isdir(example_path): continue
 
+            if domain not in all_result_for_analysis: all_result_for_analysis[domain] = {}
+            if example_id not in all_result_for_analysis[domain]: all_result_for_analysis[domain][example_id] = {}
+
+            # --- 1. Process Success/Failure Result ---
+            # ... (这部分代码与之前完全相同，为简洁省略，请在您的代码中保留)
             result_file = os.path.join(example_path, "result.txt")
-            
-            # 初始化存储字典
-            if domain not in all_result_for_analysis:
-                all_result_for_analysis[domain] = {}
-            if example_id not in all_result_for_analysis[domain]:
-                all_result_for_analysis[domain][example_id] = {}
-
             final_result = 0.0
             if os.path.exists(result_file):
-                # --- 1. Process Success/Failure Result ---
                 try:
-                    with open(result_file, "r") as f:
-                        result_str = f.read().strip()
-                    
-                    try:
-                        result_val = float(result_str)
-                    except (ValueError, TypeError):
-                        result_val = float(eval(result_str))
-
+                    with open(result_file, "r") as f: result_str = f.read().strip()
+                    try: result_val = float(result_str)
+                    except (ValueError, TypeError): result_val = float(eval(result_str))
                     final_result = result_val
-
                 except Exception as e:
                     print(f"Warning: Could not parse result file {result_file}. Defaulting to 0.0. Error: {e}")
                     final_result = 0.0
-
-                if domain not in domain_result_raw:
-                    domain_result_raw[domain] = []
+                if domain not in domain_result_raw: domain_result_raw[domain] = []
                 domain_result_raw[domain].append(final_result)
                 all_result.append(final_result)
-                
                 all_result_for_analysis[domain][example_id]["score"] = final_result
 
             # --- 2. Process Trajectory for Action and Step Statistics ---
+            # ... (这部分代码与之前完全相同，为简洁省略，请在您的代码中保留)
             traj_file = os.path.join(example_path, "traj.jsonl")
             if os.path.exists(traj_file):
                 try:
-                    total_step = 0
                     with open(traj_file, "r", encoding="utf-8") as f:
                         lines = f.readlines()
-                        total_step = len(lines) # 总步数就是文件行数
+                        all_result_for_analysis[domain][example_id]["step"] = len(lines)
                         for line in lines:
                             try:
                                 data = json.loads(line)
-                                # 假设 "response" 键存在于较新版本的日志中
-                                if "response" in data:
-                                    plan_code = data.get("response", {}).get("plan_code")
-                                # 兼容旧版本，可能直接在顶层有 plan_code
-                                elif "plan_code" in data:
-                                    plan_code = data.get("plan_code")
-                                else:
-                                    plan_code = None
-
+                                plan_code = data.get("response", {}).get("plan_code") or data.get("plan_code")
                                 action = extract_action_from_plan(plan_code)
-                                
                                 if action:
                                     overall_action_counts[action] += 1
                                     domain_action_counts[domain][action] += 1
-                            except (json.JSONDecodeError, AttributeError):
-                                continue
-                        # 记录总步数
-                        all_result_for_analysis[domain][example_id]["step"] = total_step
+                                # 标记该任务使用了 search
+                                if action == "call_search_agent":
+                                    with open(os.path.join(example_path, "search.txt"), "w", encoding="utf-8") as f:
+                                        f.write("1")
+                            except (json.JSONDecodeError, AttributeError): continue
                 except Exception as e:
                     print(f"Warning: Could not read or process trajectory file {traj_file}. Error: {e}")
+
+            # --- 3. 更新: 处理 Token 使用情况 ---
+            token_log_file = os.path.join(example_path, "token.jsonl")
+            if os.path.exists(token_log_file):
+                task_token_summary = {}
+                try:
+                    with open(token_log_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            try:
+                                data = json.loads(line.strip())
+                                agent_name = data.get("agent_name")
+                                if not agent_name: continue
+                                if agent_name not in task_token_summary:
+                                    task_token_summary[agent_name] = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+                                task_token_summary[agent_name]["completion_tokens"] += data.get("completion_tokens", 0)
+                                task_token_summary[agent_name]["prompt_tokens"] += data.get("prompt_tokens", 0)
+                                task_token_summary[agent_name]["total_tokens"] += data.get("total_tokens", 0)
+                            except (json.JSONDecodeError, AttributeError): continue
+                    
+                    if task_token_summary:
+                        task_token_output_path = os.path.join(example_path, "token.json")
+                        with open(task_token_output_path, "w", encoding="utf-8") as f:
+                            json.dump(task_token_summary, f, indent=4)
+                        
+                        # --- 更新数据收集逻辑 ---
+                        for agent, tokens in task_token_summary.items():
+                            # 为 domain 统计添加 prompt 和 completion
+                            if agent not in domain_token_stats[domain]:
+                                domain_token_stats[domain][agent] = {'prompt': [], 'completion': []}
+                            domain_token_stats[domain][agent]['prompt'].append(tokens['prompt_tokens'])
+                            domain_token_stats[domain][agent]['completion'].append(tokens['completion_tokens'])
+                            
+                            # 为 overall 统计添加 prompt 和 completion
+                            if agent not in overall_token_stats:
+                                overall_token_stats[agent] = {'prompt': [], 'completion': []}
+                            overall_token_stats[agent]['prompt'].append(tokens['prompt_tokens'])
+                            overall_token_stats[agent]['completion'].append(tokens['completion_tokens'])
+
+                except Exception as e:
+                    print(f"Warning: Could not process token file {token_log_file}. Error: {e}")
 
     # --- Result Summary and JSON Output ---
     if not all_result:
         print("New experiment or no valid results found.")
         return None
-
+    # ... (这部分代码与之前完全相同，为简洁省略，请在您的代码中保留)
     print("\n--- Success Rate Summary ---")
     domain_success_rate = {}
     for domain, results in domain_result_raw.items():
@@ -734,182 +927,79 @@ def get_result(target_dir):
             rate = sum(results) / len(results) * 100
             domain_success_rate[domain] = rate
             print(f"Domain: {domain:<20} | Runs: {len(results):<5} | Success Rate: {rate:.2f}%")
-
     overall_rate = sum(all_result) / len(all_result) * 100
     print("-" * 60)
     print(f"Overall                  | Runs: {len(all_result):<5} | Avg. Success Rate: {overall_rate:.2f}%")
     print("-" * 60)
-
     json_output_path = os.path.join(target_dir, "all_result_summary.json")
     try:
-        with open(json_output_path, "w", encoding="utf-8") as f:
-            json.dump(all_result_for_analysis, f, indent=4)
+        with open(json_output_path, "w", encoding="utf-8") as f: json.dump(all_result_for_analysis, f, indent=4)
         print(f"\nAnalysis summary saved to {json_output_path}")
-    except Exception as e:
-        print(f"Error saving summary JSON: {e}")
+    except Exception as e: print(f"Error saving summary JSON: {e}")
 
     # --- Plotting Section ---
     print("\nGenerating plots...")
-
-    # 横坐标：执行步数；纵坐标：
+    # ... (Plot 1, 2, 3, 4 的代码与之前完全相同，为简洁省略，请在您的代码中保留)
     # Plot 1: Overall Action Usage
     if overall_action_counts:
         try:
             save_path = os.path.join(target_dir, "overall_action_usage.png")
-            # if not os.path.exists(save_path):
-            plt.figure(figsize=(12, 8))
-            sorted_actions = overall_action_counts.most_common()
-            actions = [item[0] for item in sorted_actions]
-            counts = [item[1] for item in sorted_actions]
-            
-            # 捕获 bar 对象
-            bars = plt.barh(actions, counts, color='skyblue')
-            
-            plt.xlabel('Usage Count')
-            plt.ylabel('Action Type')
-            plt.title('Overall Action Usage Frequency')
-            plt.gca().invert_yaxis()
-            
-            # 【新增】为标签腾出空间，将X轴范围扩大15%
-            if counts:
-                plt.xlim(right=max(counts) * 1.15)
-
-            # 【新增】在每个条形图的末尾添加计数值
-            for bar in bars:
-                xval = bar.get_width()
-                plt.text(
-                    xval + (max(counts) * 0.01),  # X坐标: 条形末端再往右一点
-                    bar.get_y() + bar.get_height() / 2.0, # Y坐标: 条形垂直中心
-                    f' {int(xval)}({int(xval) / sum(counts):.2f}%)', # 显示的文本 (整数)
-                    ha='left',      # 水平对齐: 左
-                    va='center'     # 垂直对齐: 中
-                )
-
-            plt.tight_layout()
-            plt.savefig(save_path)
-            plt.close()
-            print(f"Saved overall action usage plot to {save_path}")
-        except Exception as e:
-            print(f"Error generating overall action usage plot: {e}")
-
+            plt.figure(figsize=(12, 8)); sorted_actions = overall_action_counts.most_common(); actions = [i[0] for i in sorted_actions]; counts = [i[1] for i in sorted_actions]
+            bars = plt.barh(actions, counts, color='skyblue'); plt.xlabel('Usage Count'); plt.ylabel('Action Type'); plt.title('Overall Action Usage Frequency'); plt.gca().invert_yaxis()
+            if counts: plt.xlim(right=max(counts) * 1.15)
+            for bar in bars: xval = bar.get_width(); plt.text(xval + (max(counts) * 0.01), bar.get_y() + bar.get_height() / 2.0, f' {int(xval)} ({int(xval) / sum(counts) * 100:.1f}%)', ha='left', va='center')
+            plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved overall action usage plot to {save_path}")
+        except Exception as e: print(f"Error generating overall action usage plot: {e}")
     # Plot 2: Per-Domain Action Usage
     for domain, counts in domain_action_counts.items():
-        if not counts:
-            continue
+        if not counts: continue
         try:
-            save_path = os.path.join(target_dir, f"action_usage_{domain}.png")
-            # if not os.path.exists(save_path):
-            plt.figure(figsize=(10, 6))
-            sorted_actions = counts.most_common()
-            actions = [item[0] for item in sorted_actions]
-            action_counts = [item[1] for item in sorted_actions]
-
-            # 捕获 bar 对象
-            bars = plt.barh(actions, action_counts, color='lightgreen')
-            
-            plt.xlabel('Usage Count')
-            plt.ylabel('Action Type')
-            plt.title(f'Action Usage Frequency in Domain: {domain}')
-            plt.gca().invert_yaxis()
-
-            # 【新增】为标签腾出空间，将X轴范围扩大15%
-            if action_counts:
-                plt.xlim(right=max(action_counts) * 1.15)
-
-            # 【新增】在每个条形图的末尾添加计数值
-            for bar in bars:
-                xval = bar.get_width()
-                plt.text(
-                    xval + (max(action_counts) * 0.01), # X坐标
-                    bar.get_y() + bar.get_height() / 2.0, # Y坐标
-                    f' {int(xval)}({int(xval) / sum(action_counts) * 100:.2f}%)', # 显示的文本
-                    ha='left',      # 水平对齐
-                    va='center'     # 垂直对齐
-                )
-
-            plt.tight_layout()
-            plt.savefig(save_path)
-            plt.close()
-            print(f"Saved action usage plot for domain '{domain}' to {save_path}")
-        except Exception as e:
-            print(f"Error generating action usage plot for domain {domain}: {e}")
-
+            save_path = os.path.join(target_dir, f"action_usage_{domain}.png"); plt.figure(figsize=(10, 6)); sorted_actions = counts.most_common(); actions = [i[0] for i in sorted_actions]; action_counts = [i[1] for i in sorted_actions]
+            bars = plt.barh(actions, action_counts, color='lightgreen'); plt.xlabel('Usage Count'); plt.ylabel('Action Type'); plt.title(f'Action Usage Frequency in Domain: {domain}'); plt.gca().invert_yaxis()
+            if action_counts: plt.xlim(right=max(action_counts) * 1.15)
+            for bar in bars: xval = bar.get_width(); plt.text(xval + (max(action_counts) * 0.01), bar.get_y() + bar.get_height() / 2.0, f' {int(xval)} ({int(xval) / sum(action_counts) * 100:.1f}%)', ha='left', va='center')
+            plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved action usage plot for domain '{domain}' to {save_path}")
+        except Exception as e: print(f"Error generating action usage plot for domain {domain}: {e}")
     # Plot 3: Success Rate by Domain
     if domain_success_rate:
         try:
-            save_path = os.path.join(target_dir, "domain_success_rates.png")
-            # if not os.path.exists(save_path):
-                # Prepare data including the average
-            domains_sorted = sorted(domain_success_rate.keys())
-            rates_sorted = [domain_success_rate[d] for d in domains_sorted]
-            
-            # Add average rate
-            plot_labels = domains_sorted + ['Average']
-            plot_values = rates_sorted + [overall_rate]
-            
-            colors = ['#87CEEB'] * len(domains_sorted) + ['#FF6347'] # SkyBlue for domains, Tomato for Average
-
-            plt.figure(figsize=(max(10, len(plot_labels) * 0.8), 7))
-            bars = plt.bar(plot_labels, plot_values, color=colors)
-            
-            plt.ylabel('Success Rate (%)')
-            plt.title('Success Rate by Domain and Overall Average')
-            plt.xticks(rotation=45, ha='right')
-            plt.ylim(0, 110) # Set y-limit to 110% for better visualization
-            plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-            # Add percentage text on top of each bar
-            for bar in bars:
-                yval = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
-
-            plt.tight_layout()
-            plt.savefig(save_path)
-            plt.close()
-            print(f"Saved success rate plot to {save_path}")
-        except Exception as e:
-            print(f"Error generating success rate plot: {e}")
-
-    print("\nAnalysis complete.")
-
-        # 1. 准备数据
-    step_stats = {}
-    step_stats['overall'] = {'success_steps': [], 'failure_steps': []}
-
+            save_path = os.path.join(target_dir, "domain_success_rates.png"); domains_sorted = sorted(domain_success_rate.keys()); rates_sorted = [domain_success_rate[d] for d in domains_sorted]
+            plot_labels = domains_sorted + ['Average']; plot_values = rates_sorted + [overall_rate]; colors = ['#87CEEB'] * len(domains_sorted) + ['#FF6347']
+            plt.figure(figsize=(max(10, len(plot_labels) * 0.8), 7)); bars = plt.bar(plot_labels, plot_values, color=colors)
+            plt.ylabel('Success Rate (%)'); plt.title('Success Rate by Domain and Overall Average'); plt.xticks(rotation=45, ha='right'); plt.ylim(0, 110); plt.grid(axis='y', linestyle='--', alpha=0.7)
+            for bar in bars: yval = bar.get_height(); plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
+            plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved success rate plot to {save_path}")
+        except Exception as e: print(f"Error generating success rate plot: {e}")
+    # Plot 4: Step Distribution Histograms
+    step_stats = {'overall': {'success_steps': [], 'failure_steps': []}}
     for domain, tasks in all_result_for_analysis.items():
-        if domain not in step_stats:
-            step_stats[domain] = {'success_steps': [], 'failure_steps': []}
-        
+        if domain not in step_stats: step_stats[domain] = {'success_steps': [], 'failure_steps': []}
         for task_id, data in tasks.items():
-            score = data.get('score')
-            step = data.get('step')
-
-            if score is not None and step is not None:
-                # 定义成功：分数 > 0.5 (可以根据需要调整)
-                if score > 0.0:
-                    step_stats[domain]['success_steps'].append(step)
-                    step_stats['overall']['success_steps'].append(step)
-                else:
-                    step_stats[domain]['failure_steps'].append(step)
-                    step_stats['overall']['failure_steps'].append(step)
-
-    # 2. 循环生成 N+1 张图
+            if data.get('score') is not None and data.get('step') is not None:
+                if data['score'] > 0.0: step_stats[domain]['success_steps'].append(data['step']); step_stats['overall']['success_steps'].append(data['step'])
+                else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
     for name, data in step_stats.items():
-        if name == 'overall':
-            title = 'Overall Task Outcome by Number of Steps'
-            save_path = os.path.join(target_dir, "overall_step_distribution.png")
-        else:
-            title = f'Task Outcome by Number of Steps in Domain: {name}'
-            save_path = os.path.join(target_dir, f"step_distribution_{name}.png")
-        
-        # 仅在文件不存在时生成，避免重复工作
-        # if not os.path.exists(save_path):
-        plot_step_histogram(
-            success_steps=data['success_steps'],
-            failure_steps=data['failure_steps'],
-            title=title,
-            save_path=save_path
+        save_path = os.path.join(target_dir, f"{'overall' if name == 'overall' else name}_step_distribution.png")
+        title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
+        plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
+    
+    # --- 更新 Plot 5: 调用新的堆叠图函数 ---
+    print("\nGenerating stacked token usage plots...")
+    # 为每个 domain 生成图表
+    for domain, token_data in domain_token_stats.items():
+        print(f'Token data: {token_data}')
+        plot_token_usage_stacked(
+            stats_data=token_data,
+            title=f'Average Token Usage (Stacked) per Task in Domain: {domain}',
+            save_path=os.path.join(target_dir, f"token_usage_stacked_{domain}.png")
         )
+    
+    # 生成总览图表
+    plot_token_usage_stacked(
+        stats_data=overall_token_stats,
+        title='Overall Average Token Usage (Stacked) per Task',
+        save_path=os.path.join(target_dir, "overall_token_usage_stacked.png")
+    )
 
     print("\nAnalysis complete.")
     return all_result

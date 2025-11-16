@@ -153,21 +153,22 @@ def call_func_safe(
     
     return response if response is not None else ""
 
-def extract_coords_from_action_dict(action_dict: Dict) -> List:
+def extract_coords_from_action_dict(action_dict: Dict | None) -> List:
     coords = []
     coords_num = 0
-    for k, v in action_dict["args"].items():
-        # 先判断是0/2/4个坐标, 2个坐标一定是x,y，4个坐标一定是x1,y1,x2,y2
-        if (k == "x" and v) or (k == "y" and v) or (k == "x1" and v) or (k == "x2" and v) or (k == "y1" and v) or (k == "y2" and v):
-            coords_num += 1
-    if coords_num == 2:
-        coords.append(action_dict["args"]["x"])
-        coords.append(action_dict["args"]["y"])
-    if coords_num == 4:
-        coords.append(action_dict["args"]["x1"])
-        coords.append(action_dict["args"]["y1"])
-        coords.append(action_dict["args"]["x2"])
-        coords.append(action_dict["args"]["y2"])
+    if action_dict:
+        for k, v in action_dict["args"].items():
+            # 先判断是0/2/4个坐标, 2个坐标一定是x,y，4个坐标一定是x1,y1,x2,y2
+            if (k == "x" and v) or (k == "y" and v) or (k == "x1" and v) or (k == "x2" and v) or (k == "y1" and v) or (k == "y2" and v):
+                coords_num += 1
+        if coords_num == 2:
+            coords.append(action_dict["args"]["x"])
+            coords.append(action_dict["args"]["y"])
+        if coords_num == 4:
+            coords.append(action_dict["args"]["x1"])
+            coords.append(action_dict["args"]["y1"])
+            coords.append(action_dict["args"]["x2"])
+            coords.append(action_dict["args"]["y2"])
     return coords
 
 def call_llm_formatted(generator, format_checkers, **kwargs):
