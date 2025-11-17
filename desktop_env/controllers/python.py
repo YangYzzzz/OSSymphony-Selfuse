@@ -14,12 +14,17 @@ logger = logging.getLogger("desktopenv.pycontroller")
 class PythonController:
     def __init__(self, vm_ip: str,
                  server_port: int,
-                 pkgs_prefix: str = "import pyautogui; import time; pyautogui.FAILSAFE = False; {command}"):
+                 pkgs_prefix: str = "import pyautogui; import time; pyautogui.FAILSAFE = False; {command}",
+                 width: int = 1920,
+                 height: int = 1080
+        ):
         self.vm_ip = vm_ip
         self.http_server = f"http://{vm_ip}:{server_port}"
         self.pkgs_prefix = pkgs_prefix  # fixme: this is a hacky way to execute python commands. fix it and combine it with installation of packages
         self.retry_times = 10
         self.retry_interval = 5
+        self.width = width
+        self.height = height
 
     @staticmethod
     def _is_valid_image_response(content_type: str, data: Optional[bytes]) -> bool:
@@ -464,23 +469,26 @@ class PythonController:
         """
         Gets the size of the vm screen.
         """
+        return {
+            "width": self.width,
+            "height": self.height
+        }
+        # for _ in range(self.retry_times):
+        #     try:
+        #         response = requests.post(self.http_server + "/screen_size")
+        #         if response.status_code == 200:
+        #             logger.info("Got screen size successfully")
+        #             return response.json()
+        #         else:
+        #             logger.error("Failed to get screen size. Status code: %d", response.status_code)
+        #             logger.info("Retrying to get screen size.")
+        #     except Exception as e:
+        #         logger.error("An error occurred while trying to get the screen size: %s", e)
+        #         logger.info("Retrying to get screen size.")
+        #     time.sleep(self.retry_interval)
 
-        for _ in range(self.retry_times):
-            try:
-                response = requests.post(self.http_server + "/screen_size")
-                if response.status_code == 200:
-                    logger.info("Got screen size successfully")
-                    return response.json()
-                else:
-                    logger.error("Failed to get screen size. Status code: %d", response.status_code)
-                    logger.info("Retrying to get screen size.")
-            except Exception as e:
-                logger.error("An error occurred while trying to get the screen size: %s", e)
-                logger.info("Retrying to get screen size.")
-            time.sleep(self.retry_interval)
-
-        logger.error("Failed to get screen size.")
-        return None
+        # logger.error("Failed to get screen size.")
+        # return None
 
     def get_vm_window_size(self, app_class_name: str):
         """

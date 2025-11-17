@@ -383,7 +383,7 @@ class OSWorldACI:
             element_description:str, a detailed description of which element to enter text in. This description should be at least a full sentence.
             text:str, the text to type
             overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
-            enter:bool, Assign it to True if the enter key should be pressed after typing the text, otherwise assign it to False.
+            enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
             is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
         commands = [
