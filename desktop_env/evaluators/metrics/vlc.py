@@ -171,6 +171,7 @@ def is_vlc_recordings_folder(actual_config_path: str, rule: Dict[str, str]) -> f
 
 
 def is_vlc_fullscreen(actual_window_size, screen_size):
+    logger.info(f'[VLC]: screen_sieze: {screen_size}, actual_windows_size: {actual_window_size}')
     if screen_size is None or actual_window_size is None:
         # if the screen size is not available, means that the window is not fullscreen
         return 0

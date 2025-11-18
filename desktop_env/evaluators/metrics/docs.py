@@ -232,6 +232,7 @@ def compare_docx_files(file1, file2, **options):
     if ignore_blanks:
         text1 = re.sub(r'\s+', ' ', '\n'.join(doc1_paragraphs)).strip()
         text2 = re.sub(r'\s+', ' ', '\n'.join(doc2_paragraphs)).strip()
+        logger.info(f'text1: {text1}\ntext2: {text2}')
         if ignore_case:
             text1, text2 = text1.lower(), text2.lower()
 

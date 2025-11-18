@@ -43,7 +43,7 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
             with open(os.path.join(example_result_dir, img_name),
                       "wb") as _f:
                 _f.write(obs['screenshot'])
-            if "coordinates" in response and response["coordinates"] is not None:
+            if "coordinates" in response and response["coordinates"]:
                 draw_coordinates(
                     image_bytes=obs['screenshot'], 
                     coordinates=response["coordinates"], 

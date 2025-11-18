@@ -748,6 +748,7 @@ def check_image_mirror(src_path, tgt_path):
     if src_path is None or tgt_path is None:
         return 0.
 
+    print(f'[GIMP Mirror]: src_path {src_path}; tgt_path {tgt_path}')
     # Load images
     source_image = Image.open(src_path)
     target_image = Image.open(tgt_path)
