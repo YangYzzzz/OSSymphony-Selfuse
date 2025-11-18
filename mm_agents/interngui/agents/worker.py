@@ -33,7 +33,6 @@ class Worker(BaseModule):
         platform: str = "ubuntu",
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
-        enable_rewrite_instruction: bool = False,
         use_search_first: bool = False,
     ):
         """
@@ -67,7 +66,6 @@ class Worker(BaseModule):
 
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
-        self.enable_rewrite_instruction = enable_rewrite_instruction
         self.use_search_first = use_search_first
         self.reset()
 
@@ -153,16 +151,6 @@ class Worker(BaseModule):
         Predict the next action(s) based on the current observation.
         """
         print("=" * 30, f"Turn {self.turn_count + 1}", "=" * 30)
-        # Query Rewrite First
-        if self.instruction is None and self.enable_rewrite_instruction:
-            self.rewrite_agent.add_message(
-                text_content=instruction,
-                image_content=obs["screenshot"],
-                role="user"
-            )
-            self.instruction = call_llm_safe(self.rewrite_agent)
-        if self.instruction:
-            instruction = self.instruction
         
         print("=" * 10)
         print(instruction)

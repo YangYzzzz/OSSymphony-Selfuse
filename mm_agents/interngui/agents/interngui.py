@@ -21,7 +21,6 @@ class InternGUI:
         platform: str = platform.system().lower(),
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
-        enable_rewrite_instruction: bool = False,
         use_search_first: bool = False
     ):
         """Initialize a minimalist AgentS2 without hierarchy
@@ -40,7 +39,6 @@ class InternGUI:
         self.platform =platform
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
-        self.enable_rewrite_instruction = enable_rewrite_instruction
         self.use_search_first = use_search_first
 
     def reset(self, result_dir) -> None:
@@ -54,7 +52,6 @@ class InternGUI:
             platform=self.platform,
             max_trajectory_length=self.max_trajectory_length,
             enable_reflection=self.enable_reflection,
-            enable_rewrite_instruction=self.enable_rewrite_instruction,
             use_search_first=self.use_search_first,
         )
 
