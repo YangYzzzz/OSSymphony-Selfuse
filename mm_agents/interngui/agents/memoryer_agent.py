@@ -179,7 +179,6 @@ class ReflectionMemoryAgent:
             )
 
         # --- 2. 根据坐标数量定义裁剪框 (crop_left, crop_top, crop_right, crop_bottom) ---
-        
         if len(coordinates) == 2:
             # --- Case 1: 1 个坐标 ---
             x, y = coordinates[0], coordinates[1]

@@ -565,13 +565,17 @@ class OSWorldACI:
         - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, create a chart, AND email the result," you should first pass the self-contained goal: "Analyze the sales data and create a chart." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
         - **If unsure, err on the side of caution.** If a task feels like it has two separate parts, break it down and pass only the first part.
 
-        **Instruction Purity is Essential:**
+        **Task MUST be an Objective, NOT a Step-List**
+        * This is the most important rule: The content of the task parameter MUST be a high-level objective description, and NEVER a list of operational steps.
+        * Your instruction must describe the desired end-state, NOT the recipe to get there. Do not specify any solution!
+        
+        **Goal Purity is Essential:**
         - **NEVER** rephrase, paraphrase, or modify the subtask instruction you have decided on. Pass the exact, original wording of the subtask to prevent instruction drift and hallucination.
 
         Use this for tasks that can be fully accomplished through code execution, particularly for:
-        - Spreadsheet applications (LibreOffice Calc, Excel): data processing, filtering, sorting, calculations, formulas, data analysis
-        - Document editors (LibreOffice Writer, Word): text processing, content editing, formatting, document manipulation
-        - Code editors (VS Code, text editors): code editing, file processing, text manipulation, configuration
+        - Spreadsheet applications: data processing, filtering, sorting, calculations, formulas, data analysis
+        - Document editors: text processing, content editing, formatting, document manipulation
+        - Code editors: code editing, file processing, text manipulation, configuration
         - Data analysis tools: statistical analysis, data transformation, reporting
         - File management: bulk operations, file processing, content extraction
         - System utilities: configuration, setup, automation

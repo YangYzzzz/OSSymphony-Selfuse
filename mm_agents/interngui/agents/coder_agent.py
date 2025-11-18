@@ -2,7 +2,7 @@ import logging
 from typing import Dict, List, Tuple, Optional
 
 from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
-from mm_agents.interngui.utils.common_utils import call_llm_safe, split_thinking_response
+from mm_agents.interngui.utils.common_utils import call_llm_safe, split_thinking_response, parse_code_from_string
 from mm_agents.interngui.core.mllm import LMMAgent
 
 logger = logging.getLogger("desktopenv.coder_agent")
@@ -160,7 +160,10 @@ class CoderAgent:
                 raise RuntimeError(error_msg)
 
             # Parse the response to extract action
-            action, thoughts = split_thinking_response(response)
+            # action, thoughts = split_thinking_response(response)
+            ### 这里是新修改的！！！目的是改变code agent的xml输出格式，thoughts直接返回全部回答
+            action = parse_code_from_string(response)
+            thoughts = response
 
             execution_history.append(
                 {"step": step_count + 1, "action": action, "thoughts": thoughts}
@@ -183,6 +186,14 @@ class CoderAgent:
                 print("=" * 60)
                 logger.info(f"Step {step_count + 1}: Task failed by agent request")
                 completion_reason = "FAIL"
+                break
+            elif action_upper == 'INFEASIBLE':      # 新修改部分！
+                print(f"\n❌ TASK INFEASIBLE - Step {step_count + 1}")
+                print("=" * 60)
+                print("Agent signaled task infeasible")
+                print("=" * 60)
+                logger.info(f"Step {step_count + 1}: Task infeasible by agent request")
+                completion_reason = "INFEASIBLE"
                 break
 
             # Extract and execute code
