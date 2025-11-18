@@ -143,10 +143,10 @@ class CoderAgent:
             response = call_llm_safe(self.agent, temperature=self.temperature)
 
             # Print to terminal for immediate visibility
-            print(f"\n🤖 CODING AGENT RESPONSE - Step {step_count + 1}/{self.budget}")
-            print("=" * 60)
-            print(response)
-            print("=" * 60)
+            # print(f"\n🤖 CODING AGENT RESPONSE - Step {step_count + 1}/{self.budget}")
+            # print("=" * 60)
+            # print(response)
+            # print("=" * 60)
 
             # Log the latest message from the coding agent (untruncated)
             logger.info(
@@ -197,7 +197,7 @@ class CoderAgent:
                 break
 
             # Extract and execute code
-            code_type, code = extract_code_block(action)
+            code_type, code = extract_code_block(response.split("(Answer)")[-1])     # 新作修改，目的是为了适应当前的输出格式
 
             if code:
                 result = execute_code(code_type, code, env_controller)
