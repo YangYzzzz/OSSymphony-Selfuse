@@ -4,6 +4,8 @@ import json
 import sys
 import re
 from typing import Dict
+import logging
+logger = logging.getLogger("desktopenv.metrics.vscode")
 
 
 def check_json_keybindings(actual: str, expected: str, **options) -> float:
@@ -65,7 +67,7 @@ def check_json_settings(actual: str, expected: str, **options) -> float:
         return 0.0
 
     expect = expected['expected']
-    
+    logger.info(f'Actual: {actual}, expected: {expect}')
     # Check if all expected key-value pairs are in the actual data
     for key, value in expect.items():
         if key not in data or data[key] != value:

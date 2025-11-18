@@ -395,17 +395,18 @@ class ReflectionMemoryAgent:
             
             ### make additional hints
             additional_hints = []
-            additional_hints.append(f"\t- The last step is GUI operation, and it is {last_gui_check}.")
+            if not last_gui_check:
+                additional_hints.append(f"\t- Warning: The last GUI operation might be failed. Careful review is required to avoid GUI Operation Error.")
 
             if len(self.trajectory) - self.last_code_step_idx < 5:      # 5步之内都有可能是验证
-                additional_hints.append(f"\t- The Computer Use Agent might in the verification stage of Code Agent.")
+                additional_hints.append(f"\t- Warning: The Computer Use Agent might in the verification stage of Code Agent. Careful review is required to avoid Code Error.")
             # 循环检测, 检测出的Step号是从0开始标注的
             from mm_agents.interngui.utils.loop_detection import detect_loop
             # print(f'当前长度为: {len(self.trajectory)+1}, 开始检测循环!!!!!!!!')
             is_loop, loop_details = detect_loop(full_trajectory=self.trajectory + [step_behavior], N=3)
             if is_loop and loop_details:
                 match_sequence_indices = loop_details["match_sequence_indices"]
-                loop_hint_message = f"\tWarning: A potential LOOP has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid repetitive behavior."
+                loop_hint_message = f"\t- Warning: A potential LOOP has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid Repetitive Behavior Error."
                 additional_hints.append(loop_hint_message)
 
             self.reflection_agent.reset()
