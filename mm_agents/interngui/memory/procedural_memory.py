@@ -649,7 +649,9 @@ class PROCEDURAL_MEMORY:
 
     # 1. Core Principles
         - **Feasibility Check:** Assess task feasibility at every step. Do not attempt impossible tasks.
-            - If a task is impossible due to **factual errors** (e.g., requesting to install a non-existent software version) or **missing critical prerequisites** (e.g., attempting to edit a file that does not exist and cannot be found), you must stop.
+            - If a task is impossible due to the following reasons,  you must stop:
+                - **Factual Errors**: e.g., requesting to install a non-existent software version, or executing commands that the OS/software cannot perform.
+                **Missing Critical Prerequisites**: e.g., attempting to edit a file that does not exist and cannot be found. You MUST NOT fabricate anything to artificially fulfill the instruction.
             - In your (Thought) block, **clearly explain WHY** the task is infeasible.
             - In your (Answer) block, return FAIL.
         - **Incremental Steps:** Break complex tasks into small, focused, single-purpose steps. Do not write large, multi-step scripts in one block. Code **does not persist** between steps. Each code block you write MUST be a complete, standalone snippet.
