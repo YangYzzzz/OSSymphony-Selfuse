@@ -398,10 +398,13 @@ class PROCEDURAL_MEMORY:
             - **GUI Operation Error**: The agent's intended action failed at the execution level.
                 - *Examples*: CUA intended to click a non-existent element (hallucination), clicking at the wrong coordinates for a existent element (grounding issue), or a typing error (e.g., trying to input new text without clearing the old content, significant typos).
             - **Lack of Tutorial**: The agent's individual GUI operations (clicks, types) are technically correct, but the overall sequence or logic is flawed. The agent seems not to know *how* to accomplish the task.
-                - *Examples*: The agent is clicking randomly, or appears "stuck" and is stubbornly repeating a fixed set of actions *without* making progress.
+                - *Examples*: The agent is clicking randomly, or appears "stuck" and is stubbornly repeating a fixed set of actions *without* making progress (loop detected).
             - **Code Error**: This triggers *after* `call_code_agent` has been used and the CUA is now in a "verification" step (e.g., has opened the file that the Code Agent was supposed to modify). The `latest_screenshot` reveals that the Code Agent's work is incorrect, incomplete, or does not match the `user_instruction`.
                 - *Examples*: The Code Agent was supposed to add data to a file, but the `latest_screenshot` (showing the opened file) shows the file is still empty. The Code Agent was supposed to perform a calculation, but the GUI verification shows the wrong result.
-            - **Other Error**: The trajectory is off-track for a reason not covered above (e.g., deviating from the goal, filling in wrong information that conflicts with knowledge).    
+            - **Other Error**: The trajectory is off-track for a reason not covered above. Here are some examples:
+                - CUA is deviating from the goal,
+                - CUA is filling in wrong information that conflicts with knowledge,
+                - Screenshot shows an obvious bug or error (pay attention when editing code or json file)...
         - **Explanation Details**:
             - Provide a clear explanation for *why* the agent is off-track, referencing `action_history` or `latest_screenshot`. But DON'T need to give an advice!
             - **If Loop Detected**: If you find the agent is repeating actions, you **must** state this clearly in the explanation. (e.g., "...agent appears to be in a non-productive loop by repeating the sequence: [action A, action B, action C].")
