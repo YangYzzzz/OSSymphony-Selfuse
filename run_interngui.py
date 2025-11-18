@@ -159,7 +159,6 @@ def run_env_tasks(
             platform="linux",
             max_trajectory_length=args.max_trajectory_length,
             enable_reflection=args.enable_reflection,
-            enable_rewrite_instruction=args.enable_rewrite_instruction,
             use_search_first=args.use_search_first,
         )
 
@@ -178,7 +177,11 @@ def run_env_tasks(
                 )
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
-                instruction = example["instruction"]
+
+                if args.enable_rewrite_instruction and "rewritten_instruction" in example:
+                    instruction = example["rewritten_instruction"]
+                else:
+                    instruction = example["instruction"]
                 
                 example_result_dir = os.path.join(
                     args.result_dir,
@@ -498,6 +501,7 @@ def config() -> argparse.Namespace:
         help="Experiment Name",
     )
 
+    # 穷逼版 passk 测试
     parser.add_argument(
         "--pass_k",
         type=int,
