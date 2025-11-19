@@ -321,13 +321,13 @@ def compare_table(result: str, expected: str = None, **options) -> float:
             sheet1 = sheet1.round(error_limit)
             sheet2 = sheet2.round(error_limit)
             metric: bool = sheet1.equals(sheet2)
-            logger.debug("Sheet1: \n%s", str(sheet1))
-            logger.debug("Sheet2: \n%s", str(sheet2))
+            logger.info("Sheet1: \n%s", str(sheet1))
+            logger.info("Sheet2: \n%s", str(sheet2))
             try:
-                logger.debug("Sheet1 =v= Sheet2: \n%s", str(sheet1 == sheet2))
+                logger.info("Sheet1 =v= Sheet2: \n%s", str(sheet1 == sheet2))
             except:
-                logger.debug("Sheet1 =/v= Sheet2")
-            logger.debug(
+                logger.info("Sheet1 =/v= Sheet2")
+            logger.info(
                 "Assertion: %s =v= %s - %s", r["sheet_idx0"], r["sheet_idx1"], metric
             )
             #  }}} Compare Sheet Data by Internal Value #
