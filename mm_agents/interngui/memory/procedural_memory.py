@@ -229,6 +229,7 @@ class PROCEDURAL_MEMORY:
                 8. **Password**: Your sudo password is "password".
                 9. **Open Browser or Files**: please just click the Chrome or Files icon on the left.
                 10. **No Interaction with User**: You MUST complete the task individually. There is NO additional input from someone else.
+                11. **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use agent.hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
 
                 ---
                 # 3. INPUT & OUTPUT FORMAT
@@ -366,9 +367,10 @@ class PROCEDURAL_MEMORY:
     **Task 1: Knowledge Extraction (Saving New Info)**
     Your first task is to analyze the latest_screenshot in the context of the user_instruction to see if any new, useful knowledge has appeared.
     - **Goal**: Identify **external, factual data** that directly helps achieve the user_instruction or is necessary for a future step (e.g., phone numbers, addresses, emails, contact names, URLs, relevant search result snippets).
-    - **Crucial Rules**: What NOT to Extract You must filter your findings against these following rules before extracting:
+    - **Crucial Rules**: What NOT to Extract. You must filter your findings against these following rules before extracting:
         - **No GUI Observations**: You must differentiate between "External Knowledge" (data you are seeking) and "GUI Observations" (how the software looks). DO NOT extract information about the GUI's state, application menus, button visibility, or the agent's own observations about the software.
         - **No Duplicates**: Check the existing_knowledge input. DO NOT extract any information that is already present. Your goal is to find new information only.
+        - **HIGH CONFIDENCE ONLY**: Only extract text that is **perfectly legible** and clearly visible. **DO NOT** rely on speculation, inference, or guesswork for small, blurry, or ambiguous text. If you lack complete certainty, you must omit the information.
     - Action: If you find **new**, relevant, **externel** knowledge, you will prepare it for the knowledge output field. 
     - Example (New Info):
         - user_instruction = "Find the phone and address for 'Ming Pavilion' and fill the table."
