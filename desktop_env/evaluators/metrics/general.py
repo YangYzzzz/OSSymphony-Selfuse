@@ -108,15 +108,19 @@ def fuzzy_place_math(result_file_path, rules) -> float:
     for para in doc.paragraphs:
         words_list.extend(para.text.split())
     fuzzy_score_list = []
+    logger.info(f"[FuzzyPlace]: expect {expect}, result {words_list}")
     for word in words_list:
         max_score = 0
         for ans in expect:
             score = fuzz.ratio(word, ans) / 100
             max_score = max(max_score, score)
         fuzzy_score_list.append(max_score)
-    if len(fuzzy_score_list) != 3:
-        return 0.
-    return sum(fuzzy_score_list) / 3
+    logger.info(f"[FuzzyPlace]: score {fuzzy_score_list}")
+    # if len(fuzzy_score_list) != 3:
+    #     return 0.
+    # 设置一个阈值
+    fuzzy_score_list = [i if i>0.2 else 0 for i in fuzzy_score_list]
+    return sum(fuzzy_score_list) / 5
 
 
 def check_csv(result: str, rules: Dict[str, List[Dict[str, str]]]) -> float:
