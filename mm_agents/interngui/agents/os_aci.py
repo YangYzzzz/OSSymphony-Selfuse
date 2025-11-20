@@ -266,14 +266,16 @@ class OSWorldACI:
 
         # Grounding预定位+OCR细节定位
         # 需要的是图像
-        zoomin_screenshot, global_offset_x, global_offset_y = self.grounder_agent.generate_coords(
-            f"Click on '{phrase}'", 
-            obs=obs, 
-            zoom_in_time=1, 
-            detail=True
-        )
+        screenshot, global_offset_x, global_offset_y= obs["screenshot"], 0, 0
+        # screenshot, global_offset_x, global_offset_y = self.grounder_agent.generate_coords(
+        #     f"Click on '{phrase}'", 
+        #     obs=obs, 
+        #     zoom_in_time=1,
+        #     detail=True,
+        #     expansion_pixels=500
+        # )
 
-        ocr_table, ocr_elements = self.get_ocr_elements(zoomin_screenshot)
+        ocr_table, ocr_elements = self.get_ocr_elements(screenshot)
 
         alignment_prompt = ""
         if alignment == "start":
@@ -287,7 +289,7 @@ class OSWorldACI:
             alignment_prompt + "Phrase: " + phrase + "\n" + ocr_table, role="user"
         )
         self.text_span_agent.add_message(
-            "Screenshot:\n", image_content=zoomin_screenshot, role="user"
+            "Screenshot:\n", image_content=screenshot, role="user"
         )
 
         # Obtain the target element
@@ -529,7 +531,9 @@ class OSWorldACI:
             phrase, self.obs, alignment=start_or_end
         )
         x, y = coords
-        command = "import pyautogui; "
+        command = "import pyautogui; import time;"
+        # 提前点一下选中
+        command += f"pyautogui.click({x}, {y}, button='left'); time.sleep(0.5);"
         command += f"pyautogui.click({x}, {y}, button='left'); "
         action = {"function": "click", "args": {"x": x, "y": y, "clicks": 1, "button": "left"}}
         return (command, action)

@@ -20,7 +20,6 @@ import os
 from PIL import Image, ImageDraw
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-from yangbowen.OSWorld.mm_agents.interngui.utils.process_context import get_current_result_dir
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -280,7 +279,14 @@ class ReflectionMemoryAgent:
             ### Step Summary
             # 图像增强，coordinates可能包含了一个或两个坐标，以他们为中心，向周围外扩一些
             prev_obs = self.trajectory[-1].obs
-            enhanced_obs = enhance_observation(prev_obs["screenshot"], coordinates) if coordinates else None
+            enhanced_obs = None
+            if coordinates:
+                enhanced_obs, _, _, _, _ = enhance_observation(
+                    prev_obs["screenshot"], 
+                    coordinates,
+                    draw=True
+                )
+        
             # 制作step behavior
             step_behavior, last_gui_check = self._summarize_step_behavior(  # 先进行step summary，目的是获取单步gui操作的评估结果，这里的is_milestone未知，先置为False。
                 generator_output, 

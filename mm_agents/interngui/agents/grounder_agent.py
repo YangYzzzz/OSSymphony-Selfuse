@@ -18,7 +18,7 @@ class GrounderAgent:
         self.height = height
 
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
-    def generate_coords(self, ref_expr: str, obs: Dict, zoom_in_time=1, detail=False) -> List:
+    def generate_coords(self, ref_expr: str, obs: Dict, zoom_in_time=1, detail=False, expansion_pixels=400) -> List:
         # zoom_in_time: 增强次数, 若>1, 则在第一次grounding后根据grounding位置裁剪,依此类推,默认为1
         cur_screenshot = obs["screenshot"]
         
@@ -54,7 +54,7 @@ class GrounderAgent:
             
             # 调用 enhance_observation 获取裁剪后的图,偏移量与新图长宽
             cur_screenshot, delta_x, delta_y, cur_width, cur_height = enhance_observation(
-                cur_screenshot, [local_x, local_y], expansion_pixels=400, draw=False
+                cur_screenshot, [local_x, local_y], expansion_pixels=expansion_pixels, draw=False
             )
             
             # delta_x/y 是本次裁剪框左上角相对于本次输入图片的偏移
