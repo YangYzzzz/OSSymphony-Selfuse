@@ -215,7 +215,7 @@ class PROCEDURAL_MEMORY:
                 ---
                 # 2. ACTION RULES
                 Here are some important notes:
-                1. **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
+                1. **Use One Provided Action at a Time**: Execute only one action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
                 2. **Guideline for Clicks**: 
                     - **VISIBILITY CHECK (CRITICAL)**: You must strictly ONLY click on elements that are **clearly visible** in the current screenshot. Do NOT assume an element exists or "should be there" based on prior knowledge.
                     - The element_description for agent.click() must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
