@@ -359,8 +359,7 @@ class VLMSearcherAgent(SearcherAgent):
             num_clicks:int, number of times to click the element
             button_type:str, which mouse button to press can be "left", "middle", or "right"
         """
-        coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
-        x, y = self.grounder_agent.resize_coordinates(coords1)
+        x, y = self.grounder_agent.generate_coords(element_description, self.obs)
         command = "import pyautogui; "
         command += f"""import pyautogui; pyautogui.click({x}, {y}, clicks={num_clicks}, button={repr(button_type)}); """
 
@@ -394,8 +393,7 @@ class VLMSearcherAgent(SearcherAgent):
         
         click_coords = None
         if element_description is not None:
-            coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
-            x, y = self.grounder_agent.resize_coordinates(coords1)
+            x, y = self.grounder_agent.generate_coords(element_description, self.obs)
             commands.append(f"pyautogui.click({x}, {y})")
             click_coords = [x, y]
 
@@ -439,8 +437,7 @@ class VLMSearcherAgent(SearcherAgent):
             clicks:int, the number of clicks to scroll can be positive (up) or negative (down).
             shift:bool, whether to use shift+scroll for horizontal scrolling
         """
-        coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
-        x, y = self.grounder_agent.resize_coordinates(coords1)
+        x, y = self.grounder_agent.generate_coords(element_description, self.obs)
 
         if shift:
             return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})", [x, y])

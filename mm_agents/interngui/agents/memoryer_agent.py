@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from mm_agents.interngui.utils.common_utils import (
     call_llm_safe,
     call_llm_formatted,
+    enhance_observation,
     split_thinking_response,
     parse_code_from_string
 )
@@ -19,7 +20,6 @@ import os
 from PIL import Image, ImageDraw
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-from yangbowen.OSWorld.mm_agents.interngui.utils.process_context import get_current_result_dir
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -134,108 +134,6 @@ class ReflectionMemoryAgent:
             self.active_img_idx.append(len(self.trajectory) - 1)        # 不足max_img_len, 全塞入
             
         assert len(self.active_img_idx) <= self.max_img_len, "[RMA] StepBehavior更新逻辑有问题!!"
-
-
-    def _enhance_observation(self, obs: Dict, coordinates: List, expansion_pixels: int = 400) -> bytes:
-        """
-        根据给定的坐标点，在截图上绘制标记并裁剪一个“聚焦”区域。
-
-        Args:
-            obs (Dict): 包含 'screenshot' 键的观测字典，值为 base64 图像字符串。
-            coordinates (List[Tuple[int, int]]): 包含 1 个或 2 个 (x, y) 坐标的列表。
-            expansion_pixels (int): 从坐标点或坐标框向外扩展的像素数，用于定义裁剪区域。
-
-        Returns:
-            str: 经过标记和裁剪后的新图像的 base64 字符串。
-                 如果发生错误或没有坐标，将返回原始（或仅标记）的 base64 图像。
-        """
-        image_data = obs['screenshot']
-        # 使用 io.BytesIO 来打开二进制数据流
-        image = Image.open(io.BytesIO(image_data)).convert("RGBA")
-        
-        draw = ImageDraw.Draw(image)
-
-        img_width, img_height = image.size
-
-        X_MARKER_SIZE = 40   # 'X' 标记的大小（像素）
-        X_MARKER_WIDTH = 5   # 标记线条宽度
-        
-        def _draw_x(draw_context: ImageDraw.ImageDraw, center_x: int, center_y: int, 
-            size: int = X_MARKER_SIZE, color: str = "red", width: int = X_MARKER_WIDTH):
-            """
-            一个辅助函数，用于在给定坐标 (center_x, center_y) 处绘制一个 'X'。
-            """
-            half_size = size // 2
-            # 绘制 '\'
-            draw_context.line(
-                (center_x - half_size, center_y - half_size,
-                center_x + half_size, center_y + half_size),
-                fill=color, width=width
-            )
-            # 绘制 '/'
-            draw_context.line(
-                (center_x - half_size, center_y + half_size,
-                center_x + half_size, center_y - half_size),
-                fill=color, width=width
-            )
-
-        # --- 2. 根据坐标数量定义裁剪框 (crop_left, crop_top, crop_right, crop_bottom) ---
-        if len(coordinates) == 2:
-            # --- Case 1: 1 个坐标 ---
-            x, y = coordinates[0], coordinates[1]
-            
-            # 2a. 在该点画 'X'
-            _draw_x(draw, x, y)
-            
-            # 2b. 以该点为中心，定义裁剪区域
-            crop_left = x - expansion_pixels
-            crop_top = y - expansion_pixels
-            crop_right = x + expansion_pixels
-            crop_bottom = y + expansion_pixels
-
-        else:
-            # --- Case 2: 2 个或更多坐标 ---
-            # (我们只取前两个)
-            x1, y1 = coordinates[0], coordinates[1]
-            x2, y2 = coordinates[2], coordinates[3]
-            
-            # 2a. 在两个点上都画 'X'
-            _draw_x(draw, x1, y1, color="red")
-            _draw_x(draw, x2, y2, color="blue")
-
-            # 2a. 画一条连接两个中心的绿线
-            draw.line(
-                (x1, y1, x2, y2),
-                fill="green",
-                width=5
-            )
-            
-            # 2b. 找到由这两点形成的矩形
-            box_left = min(x1, x2)
-            box_top = min(y1, y2)
-            box_right = max(x1, x2)
-            box_bottom = max(y1, y2)
-            
-            # 2c. 以该矩形为基础向外扩展
-            crop_left = box_left - expansion_pixels
-            crop_top = box_top - expansion_pixels
-            crop_right = box_right + expansion_pixels
-            crop_bottom = box_bottom + expansion_pixels
-
-        # --- 3. 安全裁剪 (确保裁剪区域不超出图像边界) ---
-        crop_left = max(0, int(crop_left))
-        crop_top = max(0, int(crop_top))
-        crop_right = min(img_width, int(crop_right))
-        crop_bottom = min(img_height, int(crop_bottom))
-
-        # --- 4. 执行裁剪并编码返回 ---
-        crop_box = (crop_left, crop_top, crop_right, crop_bottom)
-        cropped_image = image.crop(crop_box)
-
-        # 将裁剪后的图像编码回 Base64
-        buffered = io.BytesIO()
-        cropped_image.save(buffered, format="PNG")
-        return buffered.getvalue()
 
     def _summarize_step_behavior(
             self, 
@@ -381,7 +279,14 @@ class ReflectionMemoryAgent:
             ### Step Summary
             # 图像增强，coordinates可能包含了一个或两个坐标，以他们为中心，向周围外扩一些
             prev_obs = self.trajectory[-1].obs
-            enhanced_obs = self._enhance_observation(prev_obs, coordinates) if coordinates else None
+            enhanced_obs = None
+            if coordinates:
+                enhanced_obs, _, _, _, _ = enhance_observation(
+                    prev_obs["screenshot"], 
+                    coordinates,
+                    draw=True
+                )
+        
             # 制作step behavior
             step_behavior, last_gui_check = self._summarize_step_behavior(  # 先进行step summary，目的是获取单步gui操作的评估结果，这里的is_milestone未知，先置为False。
                 generator_output, 
