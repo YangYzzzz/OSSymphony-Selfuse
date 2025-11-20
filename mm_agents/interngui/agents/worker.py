@@ -286,7 +286,7 @@ class Worker(BaseModule):
         # Generate the plan and next action
         format_checkers = [
             SINGLE_ACTION_FORMATTER,
-            # partial(CODE_VALID_FORMATTER, self.os_aci, obs),
+            partial(CODE_VALID_FORMATTER, self.tool_config),
         ]
         plan = call_llm_formatted(
             self.orchestrator_agent,
