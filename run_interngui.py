@@ -508,6 +508,13 @@ def config() -> argparse.Namespace:
         default=1,
         help="Pass k parameter, if > 1, run multi times(to save dollar, we only rerun the past error case.)",
     )
+    # 将50步测试扩展到100步测试，仅重测已有达到50步但未做对的任务
+    parser.add_argument(
+        "--step_incremental_test",
+        action="store_true", default=False,
+        help="Max Steps参数中配置当前需要的最大参数, 当前参数开启后动态查找上一步的最大step, 执行 last_max_step->cur_max_step的增量式补充测试",
+    )
+
     args = parser.parse_args()
 
     return args
@@ -657,7 +664,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
 
 # 把做错的目前也都视为未完成的
 def get_unfinished(
-    target_dir, total_file_json, turn: int
+    target_dir, total_file_json, turn: int, incremental_test: bool
 ):
 
     if not os.path.exists(target_dir):
@@ -679,12 +686,23 @@ def get_unfinished(
                     else:
                         with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
                             score = float(f.read())
-                        if score == 0 and turn != 1:
-                            # empty all files under example_id
-                            shutil.rmtree(path=example_path, ignore_errors=True)
+                        if not incremental_test:
+                            if score == 0 and turn != 1:
+                                # empty all files under example_id
+                                shutil.rmtree(path=example_path, ignore_errors=True)
+                            else:
+                                finished[domain].append(example_id)
                         else:
-                            finished[domain].append(example_id)
-
+                            # 增量测试
+                            with open(os.path.join(example_path, "traj.jsonl"), "r", encoding="utf-8") as f:
+                                lines = f.readlines()
+                                non_empty_lines = [line for line in lines if line.strip() != '']
+                                cur_step = json.loads(non_empty_lines[-1].strip())["step_num"]
+                            # 当前写死了, 最小步数为50步
+                            if cur_step == 50 and score == 0:
+                                shutil.rmtree(path=example_path, ignore_errors=True)
+                            else:
+                                finished[domain].append(example_id)
     if not finished:
         return total_file_json
 
@@ -776,7 +794,8 @@ if __name__ == "__main__":
         test_file_list = get_unfinished(
             target_dir=args.result_dir,
             total_file_json=test_all_meta,
-            turn=t
+            turn=t,
+            incremental_test=args.step_incremental_test
         )
         left_info = ""
         for domain in test_file_list:

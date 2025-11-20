@@ -19,6 +19,7 @@ import os
 from PIL import Image, ImageDraw
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
+from yangbowen.OSWorld.mm_agents.interngui.utils.process_context import get_current_result_dir
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -398,7 +399,9 @@ class ReflectionMemoryAgent:
             if not last_gui_check:
                 additional_hints.append(f"\t- Warning: The last GUI operation might be failed. Careful review is required to avoid GUI Operation Error.")
 
+            code_error_hint = False
             if len(self.trajectory) - self.last_code_step_idx < 5:      # 5步之内都有可能是验证
+                code_error_hint = True
                 additional_hints.append(f"\t- Warning: The Computer Use Agent might in the verification stage of Code Agent. Careful review is required to avoid Code Error.")
             # 循环检测, 检测出的Step号是从0开始标注的
             from mm_agents.interngui.utils.loop_detection import detect_loop
@@ -509,7 +512,12 @@ class ReflectionMemoryAgent:
                 "is_milestone": is_milestone,
                 "new_knowledge": knowledge,
                 "step_summary": step_behavior.summary,
-                "loop_detection": loop_details
+                "hint": {
+                    "gui_operation_error": not last_gui_check,
+                    "lack_of_tutorial": is_loop,
+                    "code_error": code_error_hint, # Code Error: True 不代表产生错误, 仅是一个辅助提醒
+                    "loop_detection": loop_details,
+                }
             } 
             # with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
             #     json.dump(supp_info, f, indent=4, ensure_ascii=False)
