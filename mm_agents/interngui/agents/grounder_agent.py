@@ -5,7 +5,7 @@ import pytesseract
 from PIL import Image
 
 from mm_agents.interngui.core.mllm import LMMAgent
-from mm_agents.interngui.utils.common_utils import call_llm_safe, smart_resize
+from mm_agents.interngui.utils.common_utils import call_llm_safe, enhance_observation, smart_resize
 
 class GrounderAgent:
     """
@@ -18,30 +18,60 @@ class GrounderAgent:
         self.height = height
 
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
-    def generate_coords(self, ref_expr: str, obs: Dict) -> List[int]:
+    def generate_coords(self, ref_expr: str, obs: Dict, zoom_in_time=1, detail=False) -> List:
+        # zoom_in_time: 增强次数, 若>1, 则在第一次grounding后根据grounding位置裁剪,依此类推,默认为1
+        cur_screenshot = obs["screenshot"]
+        
+        # 存储全局偏移量
+        global_offset_x = 0
+        global_offset_y = 0
+        
+        # 用于存储最终计算出的全局坐标
+        final_global_x = 0
+        final_global_y = 0
 
-        # Reset the grounding model state
-        self.grounding_model.reset()
+        cur_width, cur_height = self.width, self.height
+        if zoom_in_time < 1:
+            zoom_in_time = 1
+            
+        for _ in range(zoom_in_time):
+            self.grounding_model.reset()
 
-        # Configure the context, UI-TARS demo does not use system prompt
-        prompt = f"Query:{ref_expr}\nOutput only the coordinate of one point in your response.\n"
-        self.grounding_model.add_message(
-            text_content=prompt, image_content=obs["screenshot"], put_text_last=True
-        )
+            # Configure the context
+            prompt = f"Query:{ref_expr}\nOutput only the coordinate of one point in your response.\n"
+            self.grounding_model.add_message(
+                text_content=prompt, image_content=cur_screenshot, put_text_last=True
+            )
 
-        # Generate and parse coordinates
-        response = call_llm_safe(self.grounding_model)
-        # print("RAW GROUNDING MODEL RESPONSE:", response)
-        numericals = re.findall(r"\d+", response)
-        assert len(numericals) >= 2
-        return [int(numericals[0]), int(numericals[1])]
+            # Generate and parse coordinates
+            response = call_llm_safe(self.grounding_model)
+            numericals = re.findall(r"\d+", response)
+            local_x, local_y = self._resize_coordinates([int(numericals[0]), int(numericals[1])], width=cur_width, height=cur_height)
+            
+            # 计算当前的全局坐标 = 局部坐标 + 之前的累计偏移
+            final_global_x = local_x + global_offset_x
+            final_global_y = local_y + global_offset_y
+            
+            # 调用 enhance_observation 获取裁剪后的图,偏移量与新图长宽
+            cur_screenshot, delta_x, delta_y, cur_width, cur_height = enhance_observation(
+                cur_screenshot, [local_x, local_y], expansion_pixels=400, draw=False
+            )
+            
+            # delta_x/y 是本次裁剪框左上角相对于本次输入图片的偏移
+            global_offset_x += delta_x
+            global_offset_y += delta_y
+
+        if detail:
+            return [cur_screenshot, global_offset_x, global_offset_y]
+        else:
+            return [final_global_x, final_global_y]
     
     def dynamic_set_width_height(self, width: int, height: int):
         self.width = width
         self.height = height
         
     # Resize from grounding model dim into OSWorld dim (1920 * 1080)
-    def resize_coordinates(self, coordinates: List[int]) -> List[int]:
+    def _resize_coordinates(self, coordinates: List[int], width:int, height:int) -> List[int]:
         grounding_width = self.engine_params_for_grounder["grounding_width"]
         grounding_height = self.engine_params_for_grounder["grounding_height"]
         grounding_smart_resize = self.engine_params_for_grounder["grounding_smart_resize"]
@@ -50,12 +80,12 @@ class GrounderAgent:
         # 当需要 smart_resize 时, 使用 smart_resize 动态计算归一化系数
         if not grounding_smart_resize:
             return [
-                round(coordinates[0] * self.width / grounding_width),
-                round(coordinates[1] * self.height / grounding_height),
+                round(coordinates[0] * width / grounding_width),
+                round(coordinates[1] * height / grounding_height),
             ]
         else:
             smart_height, smart_width = smart_resize(self.height, self.width)
             return [
-                round(coordinates[0] * self.width / smart_width),
-                round(coordinates[1] * self.height / smart_height)
+                round(coordinates[0] * width / smart_width),
+                round(coordinates[1] * height / smart_height)
             ]

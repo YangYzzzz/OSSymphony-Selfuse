@@ -264,7 +264,16 @@ class OSWorldACI:
         self, phrase: str, obs: Dict, alignment: str = ""
     ) -> List[int]:
 
-        ocr_table, ocr_elements = self.get_ocr_elements(obs["screenshot"])
+        # Grounding预定位+OCR细节定位
+        # 需要的是图像
+        zoomin_screenshot, global_offset_x, global_offset_y = self.grounder_agent.generate_coords(
+            f"Click on '{phrase}'", 
+            obs=obs, 
+            zoom_in_time=1, 
+            detail=True
+        )
+
+        ocr_table, ocr_elements = self.get_ocr_elements(zoomin_screenshot)
 
         alignment_prompt = ""
         if alignment == "start":
@@ -278,7 +287,7 @@ class OSWorldACI:
             alignment_prompt + "Phrase: " + phrase + "\n" + ocr_table, role="user"
         )
         self.text_span_agent.add_message(
-            "Screenshot:\n", image_content=obs["screenshot"], role="user"
+            "Screenshot:\n", image_content=zoomin_screenshot, role="user"
         )
 
         # Obtain the target element
@@ -301,7 +310,7 @@ class OSWorldACI:
                 elem["left"] + (elem["width"] // 2),
                 elem["top"] + (elem["height"] // 2),
             ]
-        return coords
+        return [coords[0] + global_offset_x, coords[1] + global_offset_y]
 
     def set_task_instruction(self, task_instruction: str):
         """Set the current task instruction for the code agent."""
@@ -322,8 +331,8 @@ class OSWorldACI:
             button_type:str, which mouse button to press can be "left", "middle", or "right"
             hold_keys:List, list of keys to hold while clicking
         """
-        coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
-        x, y = self.grounder_agent.resize_coordinates(coords1)
+        x, y = self.grounder_agent.generate_coords(element_description, self.obs)
+
         command = "import pyautogui; "
 
         # TODO: specified duration?
@@ -399,8 +408,7 @@ class OSWorldACI:
         
         x, y = None, None
         if element_description is not None:
-            coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
-            x, y = self.grounder_agent.resize_coordinates(coords1)
+            x, y = self.grounder_agent.generate_coords(element_description, self.obs)
             commands.append(f"pyautogui.click({x}, {y})")
 
         if overwrite:
@@ -456,10 +464,8 @@ class OSWorldACI:
             ending_description:str, a very detailed description of where to end the drag action. This description should be at least a full sentence.
             hold_keys:List list of keys to hold while dragging
         """
-        coords1 = self.grounder_agent.generate_coords(starting_description, self.obs)
-        coords2 = self.grounder_agent.generate_coords(ending_description, self.obs)
-        x1, y1 = self.grounder_agent.resize_coordinates(coords1)
-        x2, y2 = self.grounder_agent.resize_coordinates(coords2)
+        x1, y1 = self.grounder_agent.generate_coords(starting_description, self.obs)
+        x2, y2 = self.grounder_agent.generate_coords(ending_description, self.obs)
 
         command = "import pyautogui; "
 
@@ -482,8 +488,8 @@ class OSWorldACI:
     ):
         """Highlight a text span between a provided starting phrase and ending phrase. Use this to highlight words, lines, and paragraphs.
         Args:
-            starting_phrase:str, the phrase that denotes the start of the text span you want to highlight. If you only want to highlight one word, just pass in that single word.
-            ending_phrase:str, the phrase that denotes the end of the text span you want to highlight. If you only want to highlight one word, just pass in that single word.
+            starting_phrase: str, the sequence of words that marks the beginning of the text span. Provide a unique sequence of 5 to 10 words. Do NOT use single words unless the total text is extremely short.    
+            ending_phrase: str, the sequence of words that marks the end of the text span. Provide a unique sequence of 5 to 10 words. Do NOT use single words unless the total text is extremely short.
             button:str, the button to use to highlight the text span. Defaults to "left". Can be "left", "right", or "middle".
         """
         coords1 = self.generate_text_coords(
@@ -495,8 +501,10 @@ class OSWorldACI:
         x1, y1 = coords1
         x2, y2 = coords2
 
-        command = "import pyautogui; "
+        command = "import pyautogui; import time;"
         command += f"pyautogui.moveTo({x1}, {y1}); "
+        # 提前点一下, 模拟选中文本框(应该不会产生副作用)
+        command += f"pyautogui.click({x1}, {y1}); time.sleep(0.5);"
         command += f"pyautogui.dragTo({x2}, {y2}, duration=1., button='{button}'); pyautogui.mouseUp(); "
 
         # Return pyautoguicode to drag and drop the elements
@@ -621,8 +629,7 @@ class OSWorldACI:
             clicks:int, the number of clicks to scroll can be positive (up) or negative (down).
             shift:bool, whether to use shift+scroll for horizontal scrolling
         """
-        coords1 = self.grounder_agent.generate_coords(element_description, self.obs)
-        x, y = self.grounder_agent.resize_coordinates(coords1)
+        x, y = self.grounder_agent.generate_coords(element_description, self.obs)
         action = {"function": "scroll", "args": {"x": x, "y": y, "clicks": clicks, "shift": shift}}
         if shift:
             return (f"import pyautogui; import time; pyautogui.moveTo({x}, {y}); time.sleep(0.5); pyautogui.hscroll({clicks})", action)

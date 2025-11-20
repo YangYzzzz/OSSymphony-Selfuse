@@ -411,6 +411,82 @@ def smart_resize(
         w_bar = ceil_by_factor(width * beta, factor)
     return h_bar, w_bar
 
+def enhance_observation(image_data: bytes, coordinates: List, expansion_pixels: int = 400, draw=True) -> Tuple[bytes, int, int, int, int]:
+        """
+        根据给定的坐标点，在截图上绘制标记并裁剪一个“聚焦”区域。
+
+        Returns:
+            Tuple[bytes, int, int, int, int]: 
+                - new_image_data (bytes): 裁剪后的图片数据
+                - crop_left (int): X轴偏移量
+                - crop_top (int): Y轴偏移量
+                - new_width (int): 裁剪后的图片宽度
+                - new_height (int): 裁剪后的图片高度
+        """
+        image = Image.open(io.BytesIO(image_data)).convert("RGBA")
+        draw_ctx = ImageDraw.Draw(image)
+
+        img_width, img_height = image.size
+
+        X_MARKER_SIZE = 40
+        X_MARKER_WIDTH = 5
+        
+        def _draw_x(draw_context, center_x, center_y, size=X_MARKER_SIZE, color="red", width=X_MARKER_WIDTH):
+            half_size = size // 2
+            draw_context.line((center_x - half_size, center_y - half_size, center_x + half_size, center_y + half_size), fill=color, width=width)
+            draw_context.line((center_x - half_size, center_y + half_size, center_x + half_size, center_y - half_size), fill=color, width=width)
+
+        # --- 计算裁剪框 ---
+        crop_left, crop_top, crop_right, crop_bottom = 0, 0, img_width, img_height
+
+        if len(coordinates) == 2:
+            x, y = coordinates[0], coordinates[1]
+            if draw:
+                _draw_x(draw_ctx, x, y)
+            
+            crop_left = x - expansion_pixels
+            crop_top = y - expansion_pixels
+            crop_right = x + expansion_pixels
+            crop_bottom = y + expansion_pixels
+
+        elif len(coordinates) >= 4:
+            x1, y1 = coordinates[0], coordinates[1]
+            x2, y2 = coordinates[2], coordinates[3]
+            
+            if draw:
+                _draw_x(draw_ctx, x1, y1, color="red")
+                _draw_x(draw_ctx, x2, y2, color="blue")
+                draw_ctx.line((x1, y1, x2, y2), fill="green", width=5)
+            
+            box_left = min(x1, x2)
+            box_top = min(y1, y2)
+            box_right = max(x1, x2)
+            box_bottom = max(y1, y2)
+            
+            crop_left = box_left - expansion_pixels
+            crop_top = box_top - expansion_pixels
+            crop_right = box_right + expansion_pixels
+            crop_bottom = box_bottom + expansion_pixels
+
+        # --- 安全裁剪边界检查 ---
+        crop_left = max(0, int(crop_left))
+        crop_top = max(0, int(crop_top))
+        crop_right = min(img_width, int(crop_right))
+        crop_bottom = min(img_height, int(crop_bottom))
+
+        # --- 执行裁剪 ---
+        crop_box = (crop_left, crop_top, crop_right, crop_bottom)
+        cropped_image = image.crop(crop_box)
+        
+        # [新增] 获取裁剪后的新尺寸
+        new_width, new_height = cropped_image.size
+
+        buffered = io.BytesIO()
+        cropped_image.save(buffered, format="PNG")
+        
+        # 返回: 图片数据, X偏移, Y偏移, 新宽, 新高
+        return buffered.getvalue(), crop_left, crop_top, new_width, new_height
+
 if __name__=="__main__":
     height = 1080
     width = 1920
