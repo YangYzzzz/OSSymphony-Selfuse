@@ -10,6 +10,8 @@ import sys
 sys.path.insert(0, "/nvme/yangbowen/yangbowen/OSWorld")
 from mm_agents.interngui.core.mllm import LMMAgent
 from mm_agents.interngui.agents.grounder_agent import GrounderAgent
+from mm_agents.interngui.utils.common_utils import enhance_observation, smart_resize
+
 # --- 用户提供的模型信息 ---
 # 使用 typing.Literal 来定义模型名称的类型提示，增强代码可读性
 
@@ -21,34 +23,38 @@ ui_tars_15_7b_model, holo_72b_model, scalecua_32b_model = None, None, None
 
 model_dict: Dict[ModelName, Dict[str, Any]] = {
     "ui-tars-1.5-7b": {
-        "engine_type": "openai",
-        "model": "ui-tars-1.5-7b",
-        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10001/v1",
+        "engine_type": "vllm",
+        "model": "UI-TARS-1.5-7B",
+        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8003/v1",
         "api_key": "none",
         "grounding_smart_resize": True,
         "grounding_width": None,
         "grounding_height": None
     },
     "holo-72b": {
-        "engine_type": "openai",
-        "model": "holo-72b", # 确保模型名称正确
-        "base_url": "YOUR_API_BASE_URL_HERE_2", # 请替换为真实的URL
+        "engine_type": "vllm",
+        "model": "Holo1_5_72B", # 确保模型名称正确
+        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8001/v1",
         "api_key": "none",
         "grounding_smart_resize": True,
+        "grounding_width": None,
+        "grounding_height": None
     },
     "scalecua-32b": {
-        "engine_type": "openai",
-        "model": "scalecua-32b", # 确保模型名称正确
-        "base_url": "YOUR_API_BASE_URL_HERE_3", # 请替换为真实的URL
+        "engine_type": "vllm",
+        "model": "ScaleCUA-32B", # 确保模型名称正确
+        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8002/v1", # 请替换为真实的URL
         "api_key": "none",
         "grounding_smart_resize": True,
+        "grounding_width": None,
+        "grounding_height": None
     }
 }
 
 ui_tars_15_7b_model = GrounderAgent(engine_params=model_dict["ui-tars-1.5-7b"], width=1920, height=1080)
 # --- MODIFIED: 修正了模型初始化，使其使用各自的配置 ---
-holo_72b_model = GrounderAgent(engine_params=model_dict["ui-tars-1.5-7b"], width=1920, height=1080)
-scalecua_32b_model = GrounderAgent(engine_params=model_dict["ui-tars-1.5-7b"], width=1920, height=1080)
+holo_72b_model = GrounderAgent(engine_params=model_dict["holo-72b"], width=1920, height=1080)
+scalecua_32b_model = GrounderAgent(engine_params=model_dict["scalecua-32b"], width=1920, height=1080)
 # 将模型实例存入字典，方便后续调用
 model_dict["ui-tars-1.5-7b"]["var"] = ui_tars_15_7b_model
 model_dict["holo-72b"]["var"] = holo_72b_model
@@ -93,7 +99,8 @@ def call_llm_safe(model_name: ModelName, query: str, image: Image.Image):
         coords = model.generate_coords(query, obs)
         # resize_coordinates 应该返回最终的 [x, y]
         # 根据您的描述，我们假设它返回一个列表，如 [x, y]
-        final_coords = model.resize_coordinates(coordinates=coords)
+        # final_coords = model.resize_coordinates(coordinates=coords)
+        final_coords = coords
         
         # 确保返回的是一个列表
         if isinstance(final_coords, list) and len(final_coords) >= 2:
