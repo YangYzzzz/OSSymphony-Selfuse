@@ -1,6 +1,8 @@
 """This file contains various formatting checks used to reprompt an agent for correctly formatted responses."""
 from typing import Tuple, List, Callable
 import json
+import yaml
+import re
 from mm_agents.interngui.utils.common_utils import (
     extract_agent_functions,
     parse_code_from_string,
@@ -35,24 +37,43 @@ def _attempt_code_creation(agent, code, obs):
 #     )
 #     is not None
 # )
-def code_valid_check(agent, obs, response):
+def code_valid_check(tool_config, response):
     code = parse_code_from_string(response)
-    # print(f'[code_valid_check]: {code}')
-    result = _attempt_code_creation(
-        agent, code, obs
-    ) is not None
+    print(f'[code_valid_check]: {code}')
+    
+    # AgentS3的方法
+    # result = _attempt_code_creation(
+    #     agent, code, obs
+    # ) is not None
 
-    # 查看解析到的code
-    if not result:
-        with open("logs/code_valid_check.txt", "a", encoding="utf-8") as f:
-            f.write(f"Response: {response}\nCode: {code}\n")
+    # # 查看解析到的code
+    # if not result:
+    #     with open("logs/code_valid_check.txt", "a", encoding="utf-8") as f:
+    #         f.write(f"Response: {response}\nCode: {code}\n")
 
-    # print(f"[code_valid_check]: {result}")
-    return result
+    # 新增方法，只检查方法是否在定义的config里
+    with open(tool_config, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+    valid_methods = set(config['tools'].keys())
 
-code_valid_error_msg = "Incorrect code: The agent action must be a valid function and use valid parameters from the docstring list."
-CODE_VALID_FORMATTER = lambda agent, obs, response: (
-    code_valid_check(agent, obs, response),
+    pattern = r"^agent\.(\w+)\(.*\)$"
+    
+    match = re.match(pattern, code.strip())
+    
+    if match:
+        method_name = match.group(1)
+        print(f'[code_valid_check]: method is {method_name}')
+        if method_name in valid_methods:
+            return True
+        else:
+            return False
+    else:
+        # 格式不匹配 (e.g., 不是 agent.xxx(...) 格式)
+        return False
+
+code_valid_error_msg = "Incorrect code: The agent action must be a SINGLE and VALID function and use valid parameters from the docstring list."
+CODE_VALID_FORMATTER = lambda tool_config, response: (
+    code_valid_check(tool_config, response),
     code_valid_error_msg,
 )
 

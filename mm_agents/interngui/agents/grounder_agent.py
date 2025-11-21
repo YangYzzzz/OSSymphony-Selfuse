@@ -33,7 +33,7 @@ class GrounderAgent:
         cur_width, cur_height = self.width, self.height
         if zoom_in_time < 1:
             zoom_in_time = 1
-            
+        
         for _ in range(zoom_in_time):
             self.grounding_model.reset()
 
