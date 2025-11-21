@@ -6,6 +6,10 @@ from PIL import Image
 
 from mm_agents.interngui.core.mllm import LMMAgent
 from mm_agents.interngui.utils.common_utils import call_llm_safe, enhance_observation, smart_resize
+from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
+import logging
+
+logger = logging.getLogger("desktopenv.agent")
 
 class GrounderAgent:
     """
@@ -13,7 +17,8 @@ class GrounderAgent:
     """
     def __init__(self, engine_params: Dict, width: int, height: int):
         self.engine_params_for_grounder = engine_params # grounder_params
-        self.grounding_model = LMMAgent(engine_params)
+        system_prompt, self.user_message = PROCEDURAL_MEMORY.construct_grounder_procedural_memory(model_name=engine_params["model"])
+        self.grounding_model = LMMAgent(engine_params, system_prompt=system_prompt)
         self.width = width
         self.height = height
 
@@ -38,14 +43,26 @@ class GrounderAgent:
             self.grounding_model.reset()
 
             # Configure the context
-            prompt = f"Query:{ref_expr}\nOutput only the coordinate of one point in your response.\n"
+            prompt = self.user_message.replace("REF_EXPR", ref_expr)
             self.grounding_model.add_message(
-                text_content=prompt, image_content=cur_screenshot, put_text_last=True
+                text_content=prompt, image_content=cur_screenshot, put_text_last=True, role="user"
             )
 
             # Generate and parse coordinates
-            response = call_llm_safe(self.grounding_model)
-            numericals = re.findall(r"\d+", response)
+            response = call_llm_safe(self.grounding_model, temperature=0.1)
+            print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
+
+            # 1. 第一优先级：尝试匹配明确带 key 的格式 (x1="...", y1="...", x="...", y="...")
+            numericals = re.findall(r'(?:x1|y1|x|y)=["\']?(\d+)["\']?', response)
+
+            # 2. 第二优先级：如果上面没找到坐标，说明格式可能是纯数字或标签内没有 key 例如：<points>653 42</points> 或 [653, 42]
+            if len(numericals) < 2:
+                # 关键步骤：先将 "x1", "y1", "x2" 等可能导致误判的字符串剔除
+                # 这样 <points x1 ...> 中的 '1' 就不会被当成坐标提取出来了
+                clean_response = re.sub(r'[xXyY]\d', '', response)
+                numericals = re.findall(r'\d+', clean_response)
+                
+            assert len(numericals) >= 2
             local_x, local_y = self._resize_coordinates([int(numericals[0]), int(numericals[1])], width=cur_width, height=cur_height)
             
             # 计算当前的全局坐标 = 局部坐标 + 之前的累计偏移
@@ -60,6 +77,7 @@ class GrounderAgent:
             # delta_x/y 是本次裁剪框左上角相对于本次输入图片的偏移
             global_offset_x += delta_x
             global_offset_y += delta_y
+            # print(f'[Grounder]: g_o_x {global_offset_x}; g_o_y: {global_offset_y}; f_g_x: {final_global_x}; f_g_y: {final_global_y}')
 
         if detail:
             return [cur_screenshot, global_offset_x, global_offset_y]
@@ -84,7 +102,7 @@ class GrounderAgent:
                 round(coordinates[1] * height / grounding_height),
             ]
         else:
-            smart_height, smart_width = smart_resize(self.height, self.width)
+            smart_height, smart_width = smart_resize(height, width)
             return [
                 round(coordinates[0] * width / smart_width),
                 round(coordinates[1] * height / smart_height)

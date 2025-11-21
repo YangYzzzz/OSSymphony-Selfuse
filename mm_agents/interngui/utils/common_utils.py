@@ -363,7 +363,6 @@ MIN_PIXELS = 100 * 28 * 28
 MAX_PIXELS = 16384 * 28 * 28
 MAX_RATIO = 200
 
-
 def round_by_factor(number: int, factor: int) -> int:
     """Returns the closest integer to 'number' that is divisible by 'factor'."""
     return round(number / factor) * factor
@@ -395,6 +394,8 @@ def smart_resize(
 
     3. The aspect ratio of the image is maintained as closely as possible.
     """
+    min_pixels = MIN_PIXELS if not min_pixels else min_pixels
+    max_pixels = MAX_PIXELS if not max_pixels else max_pixels
     if max(height, width) / min(height, width) > MAX_RATIO:
         raise ValueError(
             f"absolute aspect ratio must be smaller than {MAX_RATIO}, got {max(height, width) / min(height, width)}"
