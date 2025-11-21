@@ -391,7 +391,7 @@ class OSWorldACI:
     ):
         """Type text/unicode into a specific element
         Args:
-            element_description:str, a detailed description of which element to enter text in. This description should be at least a full sentence.
+            element_description:str|None, a detailed description of which element to enter text in. If performing direct input, you do not need to set this parameter.
             text:str, the text to type
             overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
@@ -446,15 +446,6 @@ class OSWorldACI:
 
         action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
         return (final_command, action)
-        
-    # @agent_action
-    # def save_to_knowledge(self, text: List[str]):
-    #     """Save facts, elements, texts, etc. to a long-term knowledge bank for reuse during this task. Can be used for copy-pasting text, saving elements, etc.
-    #     Args:
-    #         text:List[str] the text to save to the knowledge
-    #     """
-    #     self.notes.extend(text)
-    #     return """WAIT"""
 
     @agent_action
     def drag_and_drop(
@@ -494,14 +485,12 @@ class OSWorldACI:
             ending_phrase: str, the sequence of words that marks the end of the text span. Provide a unique sequence of 5 to 10 words. Do NOT use single words unless the total text is extremely short.
             button:str, the button to use to highlight the text span. Defaults to "left". Can be "left", "right", or "middle".
         """
-        coords1 = self.generate_text_coords(
+        x1, y1 = self.generate_text_coords(
             starting_phrase, self.obs, alignment="start"
         )
-        coords2 = self.generate_text_coords(
+        x2, y2 = self.generate_text_coords(
             ending_phrase, self.obs, alignment="end"
         )
-        x1, y1 = coords1
-        x2, y2 = coords2
 
         command = "import pyautogui; import time;"
         command += f"pyautogui.moveTo({x1}, {y1}); "
@@ -518,24 +507,36 @@ class OSWorldACI:
     def locate_cursor(
         self,
         phrase: str,
-        start_or_end: str="start"
+        start_or_end: str="start",
+        text: Optional[str|None] = None
     ):
-        """Click at the beginning or end of a specific text phrase to precisely control cursor positioning.
-        Please prefer using the "click" action in general situations, and use this action only in text-intensive software such as libreoffice_writer, impress, etc.
+        """Click at the beginning or end of a specific text phrase to precisely control cursor positioning. Please prefer using the "click" action in general situations, and use this action only in text-intensive software such as libreoffice_writer, impress, etc.
 
         Args:
-            phrase: str, The text phrase where you want to position the cursor. Provide enough context to make the phrase unambiguous. If there are multiple instances of the same phrase, use a longer or more specific text segment to ensure accurate targeting.
+            phrase: str, The text phrase where you want to position the cursor. Provide a unique sequence of 5 to 10 words. Do NOT use single words unless the total text is extremely short.    
             start_or_end: str, Whether to click at the "start" (beginning) or "end" (trailing edge) of the identified text phrase. Use "start" to position before the text, "end" to position after it.
+            text: str | None, The text to enter immediately after positioning the cursor. Use this parameter instead of a separate 'type' action to ensure precise input.
         """
-        coords = self.generate_text_coords(
+        x, y = self.generate_text_coords(
             phrase, self.obs, alignment=start_or_end
         )
-        x, y = coords
-        command = "import pyautogui; import time;"
-        # 提前点一下选中
-        command += f"pyautogui.click({x}, {y}, button='left'); time.sleep(0.5);"
-        command += f"pyautogui.click({x}, {y}, button='left'); "
-        action = {"function": "click", "args": {"x": x, "y": y, "clicks": 1, "button": "left"}}
+        command = f"import pyautogui; pyautogui.click({x}, {y}, button='left'); "
+
+        if text:
+            command += (
+                "import pyperclip;"
+                "import subprocess;"
+                "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
+                "original_clipboard = pyperclip.paste()"
+            )
+            command += f"pyperclip.copy({repr(text)})"
+            command += "pyautogui.hotkey('shift', 'ctrl', 'v')"
+            command += "pyperclip.copy(original_clipboard)"
+
+        if text:
+            action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
+        else:
+            action = {"function": "click", "args": {"x": x, "y": y, "clicks": 1, "button": "left"}}
         return (command, action)
 
     @agent_action

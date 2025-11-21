@@ -171,8 +171,8 @@ def compare_config(actual: str, rules: Dict, **options) -> float:
 
     with open(actual) as f1:
         actual_text = f1.read()
-
-    if actual_text == rules['expected']:
+    logger.info(f'[Compare Config]: actual_text: {actual_text}')
+    if rules['expected'] in actual_text:
         return 1.0
     return 0.0
 

@@ -207,7 +207,7 @@ class PROCEDURAL_MEMORY:
                 * **Usage Strategy**:
                     * **If `Off-Track` (GUI Operation Error)**: The reflection indicates your last action failed (e.g., a bad click or type). Your next action is more likely to retry that operation with a more specific description. (e.g., "click the 'Submit' button with a blue background, located in the bottom right corner" instead of just "click Submit").
                     * **If `Off-Track` (Lack of Guidance)**: The reflection indicates you are stuck, looping, or don't know the steps. You are missing information. You'd better call the search agent.
-                    * **If `Off-Track` (Code Error)**: It indicates the code agent fails to finish the task, so you need to continue doing the task by GUI operations.
+                    * **If `Off-Track` (Code Error)**: It indicates the code agent fails to finish the task, so you need to recover from potential errors or side effects caused by the failed code execution and continue doing the task by GUI operations.
                     * **If `Off-Track` (Other Error)**: Carefully read the reflection's explanation and form a new plan to fix the deviation.
                     * **If `On-Track`**: Continue with your original plan. 
                     * **If `Task Completed` / `Task Infeasible`**: Maybe you need to call `agent.done()` or `agent.fail()`.
@@ -230,6 +230,7 @@ class PROCEDURAL_MEMORY:
                 ## 2.3 Efficiency & Tool Usage
                 - **Efficiency is Key**:
                     - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
+                    - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps (if you are unsure, you can search).
                     - You MUST use `agent.set_cell_values()` when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets.
                 - **Code Usage**: For tasks that are clearly achievable via GUI software, you may take a shortcut and use Code Agent(e.g., using FFMPEG to convert video to GIF); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
 
@@ -239,7 +240,7 @@ class PROCEDURAL_MEMORY:
                 - **Reflection/Hint Stance**: Treat any provided reflection or external hints as **suggestions for consideration**, not as mandatory, golden rules. Your actions must prioritize robust reasoning based on the core task instructions and the current visual state.
                 - **Infeasible**: Use `agent.fail()` if the task is infeasible (e.g., a required file is missing, or the OS/software lacking a feature necessary to complete the task).
                 - **Completion**: Only use `agent.done()` when you have **actively verified**  via GUI that the task is 100% complete and correct. **Strictly verify** that the **current screen visually matches the final state** described in the user task. You must see the correct result visually displayed on the screen to confirm the task is done.
-                - **Error Recovery (Application Missteps)**: If a misoperation or data damage occurs in file editing software (e.g., LibreOffice), first attempt recovery using hotkey('ctrl+z'). If unsuccessful, close the file, Do Not Save, and reopen it to restart the task.
+                - **Error Recovery (Application Missteps)**: If a misoperation or data damage occurs in file editing software (e.g., LibreOffice), first attempt recovery using **hotkey('ctrl+z')**. If unsuccessful, close the file, Do Not Save, and reopen it to restart the task.
                 
                 ---
                 # 3. INPUT & OUTPUT FORMAT
