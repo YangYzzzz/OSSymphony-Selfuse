@@ -578,21 +578,27 @@ def get_page_info(env, config: Dict[str, str]):
                     browser = p.chromium.connect_over_cdp(remote_debugging_url)
                     logger.info(f"[PAGE_INFO] Successfully connected to new Chrome instance")
 
-                page = browser.new_page()
+                if browser.contexts:
+                    context = browser.contexts[0]
+                    logger.info(f"[PAGE_INFO] Reusing existing browser context (Cookies shared)")
+                    page = context.new_page()
+                else:
+                    logger.warning(f"[PAGE_INFO] No existing context found, creating new one (Cookies NOT shared)")
+                    page = browser.new_page()
                 
                 # Set longer timeout for navigation
                 page.set_default_timeout(timeout_ms)
                 
                 logger.info(f"[PAGE_INFO] Navigating to URL: {url}")
-                page.goto(url, wait_until='networkidle', timeout=timeout_ms)
+                page.goto(url, wait_until='load', timeout=timeout_ms)
 
                 try:
                     # Wait for the page to finish loading, this prevents the "execution context was destroyed" issue
-                    page.wait_for_load_state('networkidle', timeout=timeout_ms)  # Wait for the 'load' event to complete
+                    page.wait_for_load_state('load', timeout=timeout_ms)  # Wait for the 'load' event to complete
                     title = page.title()
                     url = page.url
                     page_info = {'title': title, 'url': url, 'content': page.content()}
-                    logger.info(f"[PAGE_INFO] Successfully loaded page. Title: '{title}'")
+                    logger.info(f"[PAGE_INFO] Successfully loaded page. Title: '{title}', Content: {page.content()}")
                 except TimeoutError:
                     # If page loading times out, catch the exception and store the current information in the list
                     logger.warning(f"[PAGE_INFO] Page load timeout for URL: {url}")
@@ -674,7 +680,7 @@ def get_open_tabs_info(env, config: Dict[str, str]):
                             page.set_default_timeout(timeout_ms)
                             
                             # Wait for the page to finish loading, this prevents the "execution context was destroyed" issue
-                            page.wait_for_load_state('networkidle', timeout=timeout_ms)  # Wait for the 'load' event to complete
+                            page.wait_for_load_state('load', timeout=timeout_ms)  # Wait for the 'load' event to complete
                             title = page.title()
                             url = page.url
                             tabs_info.append({'title': title, 'url': url})
@@ -827,8 +833,8 @@ def get_active_tab_info(env, config: Dict[str, str]):
                 
                 try:
                     logger.info(f"[ACTIVE_TAB_INFO] Navigating to URL: {active_tab_url}")
-                    page.goto(active_tab_url, wait_until='networkidle', timeout=timeout_ms)
-                    page.wait_for_load_state('networkidle', timeout=timeout_ms)  # Wait for the 'load' event to complete
+                    page.goto(active_tab_url, wait_until='load', timeout=timeout_ms)
+                    page.wait_for_load_state('load', timeout=timeout_ms)  # Wait for the 'load' event to complete
                     
                     active_tab_info = {
                         'title': page.title(),
@@ -927,11 +933,11 @@ def get_pdf_from_url(env, config: Dict[str, str]) -> str:
                 page.set_default_timeout(timeout_ms)
                 
                 logger.info(f"[PDF_FROM_URL] Navigating to URL: {_url}")
-                page.goto(_url, wait_until='networkidle', timeout=timeout_ms)
+                page.goto(_url, wait_until='load', timeout=timeout_ms)
                 
                 # Wait for page to be fully loaded
                 logger.info(f"[PDF_FROM_URL] Waiting for page to be fully loaded...")
-                page.wait_for_load_state('networkidle', timeout=timeout_ms)
+                page.wait_for_load_state('load', timeout=timeout_ms)
                 
                 # Additional wait to ensure all content is rendered
                 time.sleep(3)
@@ -1034,7 +1040,7 @@ def get_chrome_saved_address(env, config: Dict[str, str]):
                 page.goto("chrome://settings/addresses", wait_until='networkidle', timeout=timeout_ms)
                 
                 # Wait for page to be fully loaded
-                page.wait_for_load_state('networkidle', timeout=timeout_ms)
+                page.wait_for_load_state('load', timeout=timeout_ms)
 
                 # Get the HTML content of the page
                 content = page.content()
@@ -1143,10 +1149,10 @@ def get_number_of_search_results(env, config: Dict[str, str]):
                 page.set_default_timeout(timeout_ms)
                 
                 logger.info(f"[SEARCH_RESULTS] Navigating to URL: {url}")
-                page.goto(url, wait_until='networkidle', timeout=timeout_ms)
+                page.goto(url, wait_until='load', timeout=timeout_ms)
                 
                 # Wait for page to be fully loaded
-                page.wait_for_load_state('networkidle', timeout=timeout_ms)
+                page.wait_for_load_state('load', timeout=timeout_ms)
                 
                 search_results = page.query_selector_all(result_selector)
                 actual_count = len(search_results)
@@ -1557,7 +1563,7 @@ def get_active_tab_html_parse(env, config: Dict[str, Any]):
             for page in context.pages:
                 try:
                     # Wait for page to be stable before checking URL
-                    page.wait_for_load_state("networkidle", timeout=60000)
+                    page.wait_for_load_state("load", timeout=60000)
                     
                     # Check if page is still valid before accessing properties
                     if page.is_closed():
@@ -2071,7 +2077,7 @@ def get_gotoRecreationPage_and_get_html_content(env, config: Dict[str, Any]):
                     
                 # Additional wait to ensure page is fully loaded
                 try:
-                    page.wait_for_load_state('networkidle', timeout=30000)
+                    page.wait_for_load_state('load', timeout=30000)
                     logger.info(f"[RECREATION_PAGE] Page fully loaded and idle")
                 except Exception as e:
                     logger.warning(f"[RECREATION_PAGE] NetworkIdle wait failed, continuing: {e}")
@@ -2122,7 +2128,7 @@ def get_gotoRecreationPage_and_get_html_content(env, config: Dict[str, Any]):
                     # Step 5: Handle new page
                     newpage = popup_info.value
                     newpage.set_default_timeout(timeout_ms)
-                    newpage.wait_for_load_state('networkidle', timeout=timeout_ms)
+                    newpage.wait_for_load_state('load', timeout=timeout_ms)
                     
                     page_title = newpage.title()
                     logger.info(f"[RECREATION_PAGE] New page loaded successfully")
