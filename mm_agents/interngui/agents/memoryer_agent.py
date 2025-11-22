@@ -79,11 +79,18 @@ class ReflectionMemoryAgent:
                 "api_key": args.model_api_key,
                 "temperature": getattr(args, "model_temperature", None),
             }
+        - max_img_len: max image number to use in reflection process, 按照更新逻辑, 相当于历史图片是 max_img_len-1 张, 加一张当前图片, 一共是 max_img_len 张
+        - memoryer_level: 为了消融实验设计的变量, 整理最终版本代码时需移除
+            - 1: 和agents3类似, last k轮的generator output和图片
+            - 2: 文字信息采用Step Behavior, 图片采用last k
+            - 3: 和设计版本一致
         """
 
         self.engine_params = engine_params
 
         self.max_img_len = max_img_len
+
+        self.memoryer_level = engine_params['memoryer_level']
         
         self.reset()
 
@@ -249,11 +256,28 @@ class ReflectionMemoryAgent:
         - generator_output (str): The thoughts, screen analysis and action of Main Agent.
         - coordinates (List): coordinates in the last operation step of Main Agent.
         - mode(str): [gui, code, search]. Indicate which agent that main agent called last step.
+        - code_exec_summary: execution summary for code agent.
+        - action_dict: extracted action from generator output.
         
         Returns:
         - reflection_info(Dict): all the info related to reflection
         """   
-             
+        if self.memoryer_level == 0:
+            return {
+                "reflection": None,
+                "reflection_thoughts": None,
+                "existing_knowledge": None,
+                "is_milestone": False,
+                "new_knowledge": None,
+                "step_summary": None,
+                "hint": {
+                    "gui_operation_error": False,
+                    "lack_of_tutorial": False,
+                    "code_error": False, # Code Error: True 不代表产生错误, 仅是一个辅助提醒
+                    "loop_detection": None,
+                }
+            } 
+
         reflection = None
         reflection_thought = None
         if len(self.trajectory) == 0:
@@ -329,45 +353,60 @@ class ReflectionMemoryAgent:
             self.reflection_agent.add_system_prompt(updated_sys_prompt)
 
 
-            # print("=" * 10)
-            for i, step in enumerate(self.trajectory):
+            ### 消融实验的修改部分
+            print(f"=== Current Memoryer Level is {self.memoryer_level}! ===")
+            if self.memoryer_level == 1:
+                start_idx = max(0, len(self.trajectory) - (self.max_img_len - 1))   # 确定起始索引
+                print("=" * 30)
+                for i, step in enumerate(self.trajectory[start_idx:], start=start_idx):
+                    text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.gen_output}\n'''"""     # 喂main agent完整的输出
+        
+                    print(text_content)
 
-                text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
-
-                if i in self.active_img_idx:
-                    if i == 0:
-                        text_content += f"\ninitial screenshot:"
-                    else: 
+                    text_content += f"\nscreenshot (after executing action): (attached below)"
+                    self.reflection_agent.add_message(
+                        text_content=text_content,
+                        image_content=step.obs['screenshot'],     
+                        role="user",
+                    )
+                print("=" * 30)
+            elif self.memoryer_level == 2:
+                print("=" * 30)
+                for i, step in enumerate(self.trajectory):
+                    text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""        # 文字部分采用summary
+                    active_img_idx = list(range(len(self.trajectory) - (self.max_img_len - 1), len(self.trajectory)))   # 只做一个last k的索引列表
+                    if i in active_img_idx:
                         text_content += f"\nscreenshot (after executing action): (attached below)"
-                
-                # debug
-                # print(text_content)
-                # if i in self.active_img_idx:
-                #     print(f"image content: step_{i + 1}.png")
 
-                self.reflection_agent.add_message(
-                    text_content=text_content,
-                    image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
-                    role="user",
-                )
+                    print(text_content)
+
+                    self.reflection_agent.add_message(
+                        text_content=text_content,
+                        image_content=step.obs['screenshot'] if i in active_img_idx else None,     
+                        role="user",
+                    )
+                print("=" * 30)
+            else:
+                for i, step in enumerate(self.trajectory):
+                    text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
+                    if i in self.active_img_idx:
+                        if i == 0:
+                            text_content += f"\ninitial screenshot:"
+                        else: 
+                            text_content += f"\nscreenshot (after executing action): (attached below)"
+
+                    self.reflection_agent.add_message(
+                        text_content=text_content,
+                        image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
+                        role="user",
+                    )
                 
-                # if i in self.active_img_idx:
-                #     image = Image.open(io.BytesIO(step.obs['screenshot'])).convert("RGBA")
-                #     os.makedirs(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}', exist_ok=True)
-                #     image.save(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}/step_{i + 1}_prompt.png')
-            
             text_content = f"""### (Last Step) CUA's output (has been finished):\n---\n{generator_output}\n---\n\nlatest_screenshot:  (attached below)"""
             self.reflection_agent.add_message(
                 text_content=text_content,
                 image_content=cur_obs['screenshot'],
                 role="user",
             )
-            # print(text_content)
-            # print("=" * 10)
-
-            # image = Image.open(io.BytesIO(cur_obs['screenshot'])).convert("RGBA")
-            # os.makedirs(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}', exist_ok=True)
-            # image.save(f'tmp_prompt_debug/step_{len(self.trajectory) + 1}/step_latest_prompt.png')
             
             required_fields = ["is_milestone", "reflection", "knowledge"]
         
@@ -426,8 +465,50 @@ class ReflectionMemoryAgent:
             } 
             # with open(f'results/debug_memory_agent/multi_apps/c7c1e4c3-9e92-4eba-a4b8-689953975ea4/supp_info_{supp_info["step_num"]}', 'w', encoding='utf-8') as f:
             #     json.dump(supp_info, f, indent=4, ensure_ascii=False)
-        
+            
         return reflection_info
+    
+    def _get_reflection_level_1(self, cur_obs: Dict, generator_output: str):
+        """
+        最简单的reflection, 图片和文字都是last k
+
+        Args:
+        - cur_obs (Dict): The Main Agent's current observation (o_k).
+        - generator_output (str): The thoughts, screen analysis and action of Main Agent.
+
+        Returns:
+        - reflection_info(Dict): all the info related to reflection
+        """
+
+        updated_sys_prompt = (
+            PROCEDURAL_MEMORY.REFLECTION_SYSTEM_PROMPT + "\n\n" + 
+            f"---\n- **user instruction**: {self.instruction}\n" + 
+            "- **existing knowledge**: \n" + "\n".join(self.knowledge_base)
+        )
+
+        self.reflection_agent.add_system_prompt(updated_sys_prompt)
+        
+        for i, step in enumerate(self.trajectory):
+
+            text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
+
+            if i in self.active_img_idx:
+                if i == 0:
+                    text_content += f"\ninitial screenshot:"
+                else: 
+                    text_content += f"\nscreenshot (after executing action): (attached below)"
+            
+            # debug
+            # print(text_content)
+            # if i in self.active_img_idx:
+            #     print(f"image content: step_{i + 1}.png")
+
+            self.reflection_agent.add_message(
+                text_content=text_content,
+                image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
+                role="user",
+            )
+
 
 
     

@@ -417,6 +417,12 @@ def config() -> argparse.Namespace:
         default=None,
         help="Temperature to fix the memoryer model at (e.g. o3 can only be run with 1.0)",
     )
+    parser.add_argument(
+        "--memoryer_level",
+        type=int,
+        default=3,
+        help="The level of memoryer's output (for ablation study only).",
+    )
 
     # search model config
     parser.add_argument("--searcher_provider", type=str, default="openai")
@@ -573,6 +579,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "base_url": getattr(args, "memoryer_url", ""),
         "api_key": getattr(args, "memoryer_api_key", ""),
         "temperature": getattr(args, "memoryer_temperature", None),
+        "memoryer_level": args.memoryer_level,
         "agent_name": "memoryer"
     }
 
