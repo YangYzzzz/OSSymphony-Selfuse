@@ -269,6 +269,8 @@ def compare_pptx_files(file1_path, file2_path, **options):
                 return None
 
         if get_slide_background_color(slide1) != get_slide_background_color(slide2) and examine_background_color:
+            if enable_debug:
+                debug_logger.debug(f"MISMATCH: Background differ")
             return 0
 
         def get_slide_notes(slide):
@@ -491,6 +493,7 @@ def compare_pptx_files(file1_path, file2_path, **options):
                     # check if the paragraphs are the same
                 para_idx = 0
                 for para1, para2 in zip(shape1.text_frame.paragraphs, shape2.text_frame.paragraphs):
+                    debug_logger.debug(f"    Slide {slide_idx}, para1: {para1.text}, para2: {para2.text}")
                     para_idx += 1
                     # Handle alignment comparison - treat None and LEFT (1) as equivalent
                     if examine_alignment:
