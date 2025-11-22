@@ -21,9 +21,10 @@ class GrounderAgent:
         self.grounding_model = LMMAgent(engine_params, system_prompt=system_prompt)
         self.width = width
         self.height = height
+        self.zoom_in_time = engine_params['grounder_zoom_in_time']
 
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
-    def generate_coords(self, ref_expr: str, obs: Dict, zoom_in_time=1, detail=False, expansion_pixels=400) -> List:
+    def generate_coords(self, ref_expr: str, obs: Dict, detail=False, expansion_pixels=400) -> List:
         # zoom_in_time: 增强次数, 若>1, 则在第一次grounding后根据grounding位置裁剪,依此类推,默认为1
         cur_screenshot = obs["screenshot"]
         
@@ -36,9 +37,9 @@ class GrounderAgent:
         final_global_y = 0
 
         cur_width, cur_height = self.width, self.height
-        if zoom_in_time < 1:
-            zoom_in_time = 1
+        zoom_in_time = max(1, self.zoom_in_time)
         
+        print(f"[Grounder] start to ground in {zoom_in_time} times!")
         for _ in range(zoom_in_time):
             self.grounding_model.reset()
 
@@ -50,7 +51,7 @@ class GrounderAgent:
 
             # Generate and parse coordinates
             response = call_llm_safe(self.grounding_model, temperature=0.1)
-            print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
+            # print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
 
             # 1. 第一优先级：尝试匹配明确带 key 的格式 (x1="...", y1="...", x="...", y="...")
             numericals = re.findall(r'(?:x1|y1|x|y)=["\']?(\d+)["\']?', response)

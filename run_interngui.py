@@ -492,6 +492,13 @@ def config() -> argparse.Namespace:
         required=True,
         help="UI-TARS-1.5 and ScaleCUA needs smart resize, if this set, grounding_width and grounding_height is no use.",
     )
+    parser.add_argument(
+        "--grounder_zoom_in_time",
+        type=int,
+        default=1,
+        help="Zoom-in times for grounder agent, aiming to enhance grounding ability.",
+    )
+
 
     # 实验名
     parser.add_argument(
@@ -546,6 +553,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "grounding_width": args.grounding_width,
         "grounding_height": args.grounding_height,
         "grounding_smart_resize": args.grounding_smart_resize,
+        "grounder_zoom_in_time": args.grounder_zoom_in_time,
         "agent_name": "grounder"
     }
 

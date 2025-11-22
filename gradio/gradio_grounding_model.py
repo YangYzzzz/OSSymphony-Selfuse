@@ -13,7 +13,7 @@ sys.path.insert(0, "/nvme/yangbowen/yangbowen/OSWorld")
 from mm_agents.interngui.agents.grounder_agent import GrounderAgent
 
 # --- 配置与初始化 ---
-ModelName = Literal["ui-tars-1.5-7b", "holo-72b", "scalecua-32b"]
+ModelName = Literal["ui-tars-1.5-7b", "holo-72b", "scalecua-32b", "groundnext-7b"]
 example_folder = "gradio/grounding_examples"  # 示例保存路径
 log_file = os.path.join(example_folder, "data_log.csv") # 数据日志文件
 
@@ -36,7 +36,7 @@ model_dict: Dict[ModelName, Dict[str, Any]] = {
         "grounding_height": None
     },
     "holo-72b": {
-        "engine_type": "openai",
+        "engine_type": "vllm",
         "model": "Holo1_5_72B", # 确保模型名称正确
         "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8001/v1",
         "api_key": "none",
@@ -45,9 +45,18 @@ model_dict: Dict[ModelName, Dict[str, Any]] = {
         "grounding_height": None
     },
     "scalecua-32b": {
-        "engine_type": "openai",
+        "engine_type": "vllm",
         "model": "ScaleCUA-32B", # 确保模型名称正确
         "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8002/v1", # 请替换为真实的URL
+        "api_key": "none",
+        "grounding_smart_resize": True,
+        "grounding_width": None,
+        "grounding_height": None
+    },
+    "groundnext-7b": {
+        "engine_type": "vllm",
+        "model": "GroundNext-7B", # 确保模型名称正确
+        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8004/v1", # 请替换为真实的URL
         "api_key": "none",
         "grounding_smart_resize": True,
         "grounding_width": None,
@@ -59,10 +68,12 @@ model_dict: Dict[ModelName, Dict[str, Any]] = {
 ui_tars_15_7b_model = GrounderAgent(engine_params=model_dict["ui-tars-1.5-7b"], width=1920, height=1080)
 holo_72b_model = GrounderAgent(engine_params=model_dict["holo-72b"], width=1920, height=1080)
 scalecua_32b_model = GrounderAgent(engine_params=model_dict["scalecua-32b"], width=1920, height=1080)
+groundnext_7b_model = GrounderAgent(engine_params=model_dict["groundnext-7b"], width=1920, height=1080)
 
 model_dict["ui-tars-1.5-7b"]["var"] = ui_tars_15_7b_model
 model_dict["holo-72b"]["var"] = holo_72b_model
 model_dict["scalecua-32b"]["var"] = scalecua_32b_model
+model_dict["groundnext-7b"]["var"] = groundnext_7b_model
 
 
 def save_sample(image: Image.Image, query: str):
@@ -125,7 +136,7 @@ def call_llm_safe(model_name: ModelName, query: str, image: Image.Image, zoom_in
     assert model
     try:
         model.dynamic_set_width_height(width=width, height=height)
-        final_coords = model.generate_coords(query, obs, zoom_in_time=zoom_in_time)
+        final_coords = model.generate_coords(query, obs)
         print(f'[Final coords]: {final_coords}')
         if isinstance(final_coords, list) and len(final_coords) >= 2:
             return final_coords
@@ -213,7 +224,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="多模型视觉定位对比工具"
                 type="values" # 传递值
             )
 
-        with gr.Column(scale=3):
+        with gr.Column(scale=len(model_dict)):
             outputs_components = []
             with gr.Row():
                 for model_name in model_dict.keys():
