@@ -371,21 +371,21 @@ class ReflectionMemoryAgent:
                     )
                 print("=" * 30)
             elif self.memoryer_level == 2:
-                print("=" * 30)
+                # print("=" * 30)
                 for i, step in enumerate(self.trajectory):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""        # 文字部分采用summary
                     active_img_idx = list(range(len(self.trajectory) - (self.max_img_len - 1), len(self.trajectory)))   # 只做一个last k的索引列表
                     if i in active_img_idx:
                         text_content += f"\nscreenshot (after executing action): (attached below)"
 
-                    print(text_content)
+                    # print(text_content)
 
                     self.reflection_agent.add_message(
                         text_content=text_content,
                         image_content=step.obs['screenshot'] if i in active_img_idx else None,     
                         role="user",
                     )
-                print("=" * 30)
+                # print("=" * 30)
             else:
                 for i, step in enumerate(self.trajectory):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
