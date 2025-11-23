@@ -727,12 +727,11 @@ class OSWorldACI:
         logger.info("=" * 50)
         logger.info(f"ACI: Calling Search Agent(query={query})")
         logger.info("=" * 50)
-        if isinstance(self.searcher_agent, VLMSearcherAgent):
-            self.searcher_agent.result_dir = self.result_dir
-            result = self.searcher_agent.search(query=query, main_obs=self.obs)
-            self.last_search_agent_result = result
-            if result["completion_reason"] == "DONE":
-                self.tutorials.append(result["final_answer"])
+        self.searcher_agent.result_dir = self.result_dir
+        result = self.searcher_agent.search(query=query, main_obs=self.obs)
+        self.last_search_agent_result = result
+        if result["completion_reason"] == "DONE":
+            self.tutorials.append(result["final_answer"])
         action = {"function": "call_search_agent", "args": {"query": query, "result": True if result["completion_reason"] == "DONE" else False}}
         return ("import time; time.sleep(2.222)", action)
     

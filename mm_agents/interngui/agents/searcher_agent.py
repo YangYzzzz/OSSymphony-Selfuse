@@ -25,6 +25,8 @@ from mm_agents.interngui.utils.formatters import (
 )
 
 from desktop_env.desktop_env import DesktopEnv
+from mm_agents.interngui.utils.single_searcher_agent import SearcherAgentSearXNG
+from mm_agents.interngui.utils.parser_agent import ParserAgentCrawl4AI
 
 logger = logging.getLogger("desktopenv.searcher_agent")
 
@@ -35,18 +37,43 @@ def searcher_agent_action(func):
 
 # --- Abstract Base Class and Factory ---
 class SearcherAgent:
-    def __init__(self, engine_params: Dict):
+    def __init__(self, engine_params: Dict, platform: str):
         self.engine_params = engine_params
-    
+        self.result_dir = ""
+        self.tutorial_or_hint = ""
+        self.tutorial_notes = []
+        self.max_trajectory_length = 8 # 这部分有待优化，searcher似乎不需要这么多截图?
+        self.platform = platform
+        self.budget = engine_params.get("budget", 20)
+
     @staticmethod
     def create(engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
         searcher_type = engine_params.get("searcher_type", "vlm")
         if searcher_type == "vlm":
             return VLMSearcherAgent(engine_params=engine_params, search_env=search_env, grounder_agent=grounder_agent, platform=platform)
-        elif searcher_type == "google_ai":
-            return GoogleAISearcherAgent(engine_params=engine_params)
         elif searcher_type == "llm":
-            return LLMSearcherAgent(engine_params=engine_params)
+            return LLMSearcherAgent(engine_params=engine_params, platform=platform)
+        else:
+            raise NotImplementedError
+        
+    def _get_search_time(self) -> int:
+        """获取搜索次数用于目录命名 (复用 VLM 逻辑)"""
+        if not self.result_dir: return 1
+        search_times: list[int] = []
+        try:
+            if not os.path.exists(self.result_dir): return 1
+            for item_name in os.listdir(self.result_dir):
+                full_path = os.path.join(self.result_dir, item_name)
+                if os.path.isdir(full_path) and item_name.startswith("search_"):
+                    try:
+                        time_val = int(item_name.split('_', 1)[1])
+                        search_times.append(time_val)
+                    except (ValueError, IndexError):
+                        continue
+        except Exception:
+            return 1
+        if not search_times: return 1
+        return max(search_times) + 1
     
     def search(self, query: str, obs) -> str:
         """
@@ -62,15 +89,10 @@ class VLMSearcherAgent(SearcherAgent):
     """
     def __init__(self, engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
         # 检索智能体父类
-        SearcherAgent.__init__(self, engine_params=engine_params)
+        SearcherAgent.__init__(self, engine_params=engine_params, platform=platform)
 
         self.grounder_agent = grounder_agent
-        self.budget = engine_params.get("budget", 20)
-        self.platform = platform
-        self.max_trajectory_length = 8 # 这部分有待优化，searcher似乎不需要这么多截图?
         self.env: DesktopEnv = search_env
-
-        self.result_dir = ""
 
         self.use_thinking = engine_params.get("model", "") in [
             "claude-opus-4-20250514",
@@ -120,7 +142,6 @@ class VLMSearcherAgent(SearcherAgent):
             ],
             "proxy": True
         }
-        self.tutorial_notes = []
         self.obs = None
 
     def reset(self, query):
@@ -128,9 +149,9 @@ class VLMSearcherAgent(SearcherAgent):
         # 重置智能体上下文
         self.tutorial_notes = []
         self.tutorial_or_hint = ""
-        self.system_prompt = PROCEDURAL_MEMORY.construct_searcher_procedural_memory(
+        self.system_prompt = PROCEDURAL_MEMORY.construct_vlm_searcher_procedural_memory(
             agent_class=type(self)
-        ).replace("CURRENT_OS", self.platform)
+        ).replace("CURRENT_OS", self.platform).replace("QUERY", query)
         self.searcher_agent = LMMAgent(
             engine_params=self.engine_params,
             system_prompt=self.system_prompt
@@ -177,27 +198,6 @@ class VLMSearcherAgent(SearcherAgent):
 
     def assign_screenshot(self, obs):
         self.obs = obs
-
-    def _get_search_time(self) -> int:
-        """
-        查找 self.result_dir 文件夹下的 search_{search_time} 文件夹, 返回当前最大的 search_time + 1。
-        """
-        search_times: list[int] = []
-        
-        for item_name in os.listdir(self.result_dir):
-            full_path = os.path.join(self.result_dir, item_name)
-            
-            if os.path.isdir(full_path) and item_name.startswith("search_"):
-                try:
-                    time_val = int(item_name.split('_', 1)[1])
-                    search_times.append(time_val)
-                except (ValueError, IndexError):
-                    continue
-
-        if not search_times:
-            return 1
-        
-        return max(search_times) + 1
         
     # TODO: @Yang 结合主Agent与Coder Agent实现
     def search(self, query: str, main_obs):
@@ -208,8 +208,6 @@ class VLMSearcherAgent(SearcherAgent):
 
         obs = self.env._get_obs() # Get the initial observation
         step_idx = 0
-        # 系统提示词替换
-        self.searcher_agent.add_system_prompt(system_prompt=self.system_prompt.replace("QUERY", query))
         initial_state_text = (
             "This screenshot shows the current visual context of the main GUI Agent you are assisting. "
             "Use this image to understand the application, the current view, and the overall environment. "
@@ -248,9 +246,7 @@ class VLMSearcherAgent(SearcherAgent):
             self.searcher_agent.add_message(
                 generator_message, image_content=obs["screenshot"], role="user"
             )
-            format_checkers = [
-                partial(CODE_VALID_FORMATTER, self, obs),
-            ]
+            format_checkers = []
 
             # 生成动作
             plan = call_llm_formatted(
@@ -457,6 +453,7 @@ class VLMSearcherAgent(SearcherAgent):
     @searcher_agent_action
     def save_to_tutorial_notes(self, text: str):
         """Save high quality and useful information to a long-term knowledge bank for reuse during this search task.
+        Args:
             text:str, the text to save to the tutorial notes
         """
         self.tutorial_notes.append(text)
@@ -495,22 +492,259 @@ class VLMSearcherAgent(SearcherAgent):
         return """FAIL"""
         
 
+# class GoogleAISearcherAgent(SearcherAgent):
+#     def __init__(self, engine_params: Dict):
+#         pass
+
+#     def search(self, query: str, _):
+#         pass
+
 # TODO: @Yang 后续完成
-class GoogleAISearcherAgent(SearcherAgent):
-    def __init__(self, engine_params: Dict):
-        pass
-
-    def search(self):
-        pass
-
 class LLMSearcherAgent(SearcherAgent):
-    def __init__(self, engine_params: Dict):
-        pass
+    """
+    A Searcher Agent powered by a text-only LLM.
+    It uses SearXNG for searching and Crawl4AI for parsing web content.
+    """
+    def __init__(self, engine_params: Dict, platform: str):
+        super().__init__(engine_params=engine_params, platform=platform)
+        
+        # 1. 配置 SearXNG 参数, 默认部署在了本机
+        engine_params_for_searxng = {
+            "search_api": engine_params.get("search_api", "http://127.0.0.1:8999/search"),
+            "search_engine": engine_params.get("search_engine", "google"),
+            "search_top_k": engine_params.get("search_top_k", 10),
+            "search_enable_reranker": engine_params.get("search_enable_reranker", False),
+            "search_reranker_api": engine_params.get("search_reranker_api", "")
+        }
+        
+        # 2. 配置 Crawl4AI 参数, 默认部署在了本机
+        engine_params_for_craw4ai = {
+            "parser_api": engine_params.get("parser_api", "http://127.0.0.1:9000/visit")
+        }
 
-    def search(self):
-        pass
+        # 3. 初始化工具代理
+        self.single_searcher_agent = SearcherAgentSearXNG(engine_params=engine_params_for_searxng)
+        self.parser_agent = ParserAgentCrawl4AI(engine_params=engine_params_for_craw4ai)
+        
+        # 4. 初始化 LLM 相关的属性
+        self.use_thinking = engine_params.get("model", "").startswith("claude-3-7") or "thinking" in engine_params.get("model", "")
+        self.system_prompt = ""
 
+    def reset(self, query):
+        """重置智能体状态，准备新的搜索任务"""
+        self.tutorial_notes = []
+        self.tutorial_or_hint = ""
+        
+        self.system_prompt = PROCEDURAL_MEMORY.construct_llm_searcher_procedural_memory(
+            agent_class=type(self)
+        ).replace("CURRENT_OS", self.platform).replace("QUERY", query)
 
+        # 初始化 LLM Agent (这里复用 LMMAgent，假设它也能处理纯文本)
+        self.searcher_agent = LMMAgent(
+            engine_params=self.engine_params,
+            system_prompt=self.system_prompt
+        )
+
+    def flush_messages(self):
+        """管理上下文长度"""
+        # 对于纯文本 LLM，主要关注 token 数量，这里简单实现为保留最近 N 轮
+        if len(self.searcher_agent.messages) > 2 * self.max_trajectory_length + 1:
+            # 保留 system prompt (通常在 index 0)，删除最早的对话
+            # messages[0] is system, [1] is user, [2] is assistant...
+            self.searcher_agent.messages.pop(1)
+            self.searcher_agent.messages.pop(1)
+
+    def search(self, query: str, main_obs):
+        """
+        执行搜索任务的主循环
+        Args:
+            query: 搜索查询
+            main_obs: 占位符，对应 VLM 中的 obs, 这里不需要
+        """
+        self.reset(query=query)
+        
+        # 设置结果目录
+        search_result_dir = os.path.join(self.result_dir, f"search_{self._get_search_time()}")
+        os.makedirs(search_result_dir, exist_ok=True)
+
+        # 初始化状态
+        step_idx = 0
+        
+        # 初始消息
+        last_observation = f"Task Started. Please find a tutorial for: {query}"
+        self.searcher_agent.add_message(last_observation, role="user")
+        
+        execution_history = []
+        completion_reason = ""
+        final_answer = ""
+
+        while step_idx < self.budget:
+            # 1. 更新 System Prompt 中的笔记
+            tutorial_notes_str = ""
+            if len(self.tutorial_notes) > 0:
+                for i, note in enumerate(self.tutorial_notes, 1):
+                    tutorial_notes_str += f"Tutorial Note {i}: {note}\n\n"
+
+            if step_idx == self.budget - 1:
+                # 最后一舞
+                self.system_prompt = PROCEDURAL_MEMORY.construct_searcher_eager_mode_procedural_memory(
+                    agent_class=type(self)
+                ).replace("CURRENT_OS", self.platform).replace("QUERY", query)
+            
+            system_prompt = self.system_prompt.replace("TUTORIAL_PLACEHOLDER", tutorial_notes_str)
+            self.searcher_agent.add_system_prompt(system_prompt=system_prompt)
+
+            # 2. 如果不是第一步，将上一步的执行结果作为 User Message 输入
+            if step_idx > 0:
+                self.searcher_agent.add_message(
+                    f"Result from step {step_idx}:\n{last_observation}", 
+                    role="user"
+                )
+
+            # 3. 调用 LLM 生成计划
+            # 只需要代码格式检查器
+            format_checkers = [] 
+            
+            plan = call_llm_formatted(
+                self.searcher_agent,
+                format_checkers,
+                temperature=self.engine_params.get("temperature", 0.1),
+                use_thinking=self.use_thinking,
+            )
+
+            self.searcher_agent.add_message(plan, role="assistant")
+            execution_history.append(plan)
+            logger.info("SEARCHER PLAN (Step %d):\n %s", step_idx + 1, plan)
+
+            # 4. 解析并执行代码
+            plan_code = parse_code_from_string(plan)
+            action_result = ""
+            
+            if not plan_code:
+                action_result = "Error: No valid code block found in your response."
+                logger.warning(action_result)
+            else:
+                try:
+                    local_scope = {"agent": self}
+                    action_result = eval(plan_code, {}, local_scope)
+                except Exception as e:
+                    action_result = f"Error executing code: {str(e)}"
+                    logger.error(action_result)
+
+            # 更新 Observation 供下一轮使用
+            last_observation = str(action_result)
+
+            # 记录日志
+            with open(os.path.join(search_result_dir, f"traj_{step_idx+1}.json"), "w", encoding="utf-8") as f:
+                json.dump({
+                    "query": query,
+                    "step_num": step_idx + 1,
+                    "plan": plan,
+                    "code": plan_code,
+                    "response": last_observation,
+                    "result": str(action_result)[:1000] + "..." # 日志中截断
+                }, f, ensure_ascii=False)
+
+            with open(os.path.join(search_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "query": query,
+                    "step_num": step_idx + 1,
+                    "plan": plan,
+                    "code": plan_code,
+                    "response": last_observation,
+                    "result": str(action_result)[:1000] + "..." # 日志中截断
+                }, ensure_ascii=False))
+                f.write("\n")
+
+            # 5. 处理特殊的控制流返回值 (DONE, FAIL, WAIT)
+            if action_result == "DONE":
+                completion_reason = "DONE"
+                final_answer = self.tutorial_or_hint
+                break
+            elif action_result == "FAIL":
+                completion_reason = "FAIL"
+                final_answer = self.tutorial_or_hint
+                break
+            
+            self.flush_messages()
+            step_idx += 1
+
+        if completion_reason == "":
+            completion_reason = "BUDGET_EXHAUSTED"
+            final_answer = "Sorry, I could not find a complete tutorial within the step limit."
+
+        return {
+            "query": query,
+            "completion_reason": completion_reason,
+            "tutorial_notes": self.tutorial_notes,
+            "execution_history": execution_history,
+            "steps_executed": step_idx,
+            "budget": self.budget,
+            "final_answer": final_answer,
+        }
+    
+    @searcher_agent_action
+    def single_search(self, query: str) -> str:
+        """
+        Perform a single Google search using SearXNG.
+        Args:
+            query (str): The search query. You are free to combine keywords, specific terms, or phrases in any manner to optimize the search results.
+        Returns:
+            str: A summary of the search results (list of url and other metadata).
+        """
+        logger.info(f"Executing Search: {query}")
+        try:
+            return self.single_searcher_agent.search(query)
+        except Exception as e:
+            return f"Error during search: {str(e)}"
+
+    @searcher_agent_action
+    def parse(self, url: str) -> str:
+        """
+        Visit a specific URL and parse its content.
+        Args:
+            url (str): The URL to visit.
+        Returns:
+            str: The parsed textual content of the webpage.
+        """
+        logger.info(f"Executing Parse: {url}")
+        try:
+            return self.parser_agent.parse(url)
+        except Exception as e:
+            return f"Error during parsing: {str(e)}"
+
+    @searcher_agent_action
+    def save_to_tutorial_notes(self, text: str):
+        """Save high quality and useful information to a long-term knowledge bank for reuse during this search task.
+        Args:
+            text:str, the text to save to the tutorial notes
+        """
+        self.tutorial_notes.append(text)
+        return """Tutorial notes have successfully saved to the context."""
+
+    @searcher_agent_action
+    def done(
+        self,
+        tutorial: str
+    ):
+        """End the current task with a success. Use this when you believe the entire task has been fully completed.
+        Args:
+            tutorial:str, A detailed, step-by-step tutorial compiled from the search results to be passed to the main agent.
+        """
+        self.tutorial_or_hint = tutorial
+        return """DONE"""
+
+    @searcher_agent_action
+    def fail(
+        self,
+        hint: str
+    ):
+        """End the current task with a failure. Use this when you believe the entire task is impossible to complete.
+        Args:
+            hint:str, A hint or reason explaining why the search failed, or what kind of information was missing.
+        """
+        self.tutorial_or_hint = hint
+        return """FAIL"""
 
 if __name__=="__main__":
     query = input("Query: ")
