@@ -341,7 +341,7 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--tool_config", 
         type=str, 
-        default="/nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml",
+        default="/nvme/yangbowen/yangbowen/OSWorld/mm_agents/interngui/tool/all_tool_config.yaml",
         help="The path of tool config yaml, default uses /nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml"
     )
 
@@ -449,7 +449,7 @@ def config() -> argparse.Namespace:
         "--searcher_type",
         type=str,
         default="vlm",
-        help="Type of search agent, vlm/google_ai/llm(all in search action), default is vlm",
+        help="Type of search agent, vlm/llm(all in search action), default is vlm",
     )
     parser.add_argument(
         "--searcher_budget",
@@ -525,7 +525,7 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--step_incremental_test",
         action="store_true", default=False,
-        help="Max Steps参数中配置当前需要的最大参数, 当前参数开启后动态查找上一步的最大step, 执行 last_max_step->cur_max_step的增量式补充测试",
+        help="Max Steps参数中配置当前需要的最大参数, 当前参数开启后动态查找上一步的最大step, 执行 last_max_step->cur_max_step 的增量式补充测试",
     )
 
     args = parser.parse_args()
