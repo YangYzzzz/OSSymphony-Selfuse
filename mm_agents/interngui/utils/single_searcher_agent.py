@@ -2,10 +2,6 @@ import requests
 import urllib.parse
 from typing import Any, Dict, List, Optional, Tuple
 from requests.auth import HTTPBasicAuth
-from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
-from mm_agents.interngui.utils.common_utils import call_llm_safe, split_thinking_response
-from mm_agents.interngui.core.mllm import LMMAgent
-from mm_agents.interngui.agents.aci import ACI
 
 class PastSearcherAgent:
     """
@@ -225,9 +221,9 @@ def searxng_test():
 
     # Search parameters
     params = {
-        "q": "OpenAI",
+        "q": "How to get OpenAI",
         "format": "json",
-        "engines": "google"
+        "engines": "chrome"
     }
 
     headers = {
@@ -271,7 +267,7 @@ def jina_search_test():
 
 
 if __name__ == "__main__":
-    jina_search_test()
+    # jina_search_test()
     print("\n" + "="*50 + "\n")
     # You can uncomment the line below to test SearXNG if you have an instance running.
-    # searxng_test()
+    searxng_test()

@@ -48,7 +48,7 @@ class SearcherAgent:
 
     @staticmethod
     def create(engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
-        searcher_type = engine_params.get("searcher_type", "vlm")
+        searcher_type = engine_params.get("type", "vlm")
         if searcher_type == "vlm":
             return VLMSearcherAgent(engine_params=engine_params, search_env=search_env, grounder_agent=grounder_agent, platform=platform)
         elif searcher_type == "llm":
@@ -511,7 +511,7 @@ class LLMSearcherAgent(SearcherAgent):
         # 1. 配置 SearXNG 参数, 默认部署在了本机
         engine_params_for_searxng = {
             "search_api": engine_params.get("search_api", "http://127.0.0.1:8999/search"),
-            "search_engine": engine_params.get("search_engine", "google"),
+            "search_engine": engine_params.get("search_engine", "chrome"),
             "search_top_k": engine_params.get("search_top_k", 10),
             "search_enable_reranker": engine_params.get("search_enable_reranker", False),
             "search_reranker_api": engine_params.get("search_reranker_api", "")
@@ -643,7 +643,7 @@ class LLMSearcherAgent(SearcherAgent):
                     "code": plan_code,
                     "response": last_observation,
                     "result": str(action_result)[:1000] + "..." # 日志中截断
-                }, f, ensure_ascii=False)
+                }, f, ensure_ascii=False, indent=4)
 
             with open(os.path.join(search_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
                 f.write(json.dumps({
@@ -656,13 +656,9 @@ class LLMSearcherAgent(SearcherAgent):
                 }, ensure_ascii=False))
                 f.write("\n")
 
-            # 5. 处理特殊的控制流返回值 (DONE, FAIL, WAIT)
-            if action_result == "DONE":
-                completion_reason = "DONE"
-                final_answer = self.tutorial_or_hint
-                break
-            elif action_result == "FAIL":
-                completion_reason = "FAIL"
+            # 5. 处理特殊的控制流返回值 (DONE, FAIL)
+            if action_result in ["DONE", "FAIL"]:
+                completion_reason = action_result
                 final_answer = self.tutorial_or_hint
                 break
             
