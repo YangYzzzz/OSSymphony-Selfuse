@@ -357,11 +357,11 @@ class ReflectionMemoryAgent:
             print(f"=== Current Memoryer Level is {self.memoryer_level}! ===")
             if self.memoryer_level == 1:
                 start_idx = max(0, len(self.trajectory) - (self.max_img_len - 1))   # 确定起始索引
-                print("=" * 30)
+                # print("=" * 30)
                 for i, step in enumerate(self.trajectory[start_idx:], start=start_idx):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.gen_output}\n'''"""     # 喂main agent完整的输出
         
-                    print(text_content)
+                    # print(text_content)
 
                     text_content += f"\nscreenshot (after executing action): (attached below)"
                     self.reflection_agent.add_message(
@@ -369,7 +369,7 @@ class ReflectionMemoryAgent:
                         image_content=step.obs['screenshot'],     
                         role="user",
                     )
-                print("=" * 30)
+                # print("=" * 30)
             elif self.memoryer_level == 2:
                 # print("=" * 30)
                 for i, step in enumerate(self.trajectory):
