@@ -1,3 +1,4 @@
+from typing import Literal
 import gradio as gr
 import os
 import json
@@ -839,6 +840,18 @@ def plot_step_histogram(success_steps, failure_steps, title, save_path):
     print(f"Saved step distribution plot to {save_path}")
 
 
+def parse_reflection_type(reflection: str):
+    if reflection == "":
+        return "On Track"
+    if "gui operation error" in reflection.lower():
+        return "GUI Operation Error"
+    elif "lack of tutorial" in reflection.lower():
+        return "Lack of Tutorial"
+    elif "code error" in reflection.lower():
+        return "Code Error"
+    else:
+        return "On Track"
+    
 def plot_token_usage_stacked(stats_data, title, save_path):
     """
     Generates and saves a stacked bar chart for prompt and completion token usage.
@@ -974,7 +987,7 @@ def plot_token_usage_stacked(stats_data, title, save_path):
 def get_result(target_dir):
     """
     Analyzes experiment results from a target directory, calculates success rates,
-    gathers action and token statistics, and generates various plots.
+    gathers action and token statistics, and generates various plots including Error Analysis.
     """
     if not os.path.exists(target_dir):
         print(f"Error: Target directory '{target_dir}' does not exist.")
@@ -987,11 +1000,24 @@ def get_result(target_dir):
     overall_action_counts = Counter()
     domain_action_counts = {}
 
-    # --- 更新: Token 统计的数据结构，区分 prompt 和 completion ---
-    # 结构: {domain: {agent_name: {'prompt': [...], 'completion': [...]}}}
+    # --- Token 统计结构 ---
     domain_token_stats = {}
-    # 结构: {agent_name: {'prompt': [...], 'completion': [...]}}
     overall_token_stats = {}
+
+    # --- Error/Reflection 统计结构 ---
+    def init_error_stats():
+        return {
+            'categories': {
+                'GUI Operation Error': {'hint': 0, 'type': 0, 'match': 0},
+                'Lack of Tutorial':    {'hint': 0, 'type': 0, 'match': 0},
+                'Code Error':          {'hint': 0, 'type': 0, 'match': 0}
+            },
+            'type_counts': Counter(),
+            'total_steps': 0
+        }
+
+    domain_error_stats = {}
+    overall_error_stats = init_error_stats()
 
     print("Starting analysis...")
     # --- Data Collection Loop ---
@@ -1001,6 +1027,7 @@ def get_result(target_dir):
 
         domain_action_counts[domain] = Counter()
         domain_token_stats[domain] = {}
+        domain_error_stats[domain] = init_error_stats()
         
         for example_id in os.listdir(domain_path):
             example_path = os.path.join(domain_path, example_id)
@@ -1010,7 +1037,6 @@ def get_result(target_dir):
             if example_id not in all_result_for_analysis[domain]: all_result_for_analysis[domain][example_id] = {}
 
             # --- 1. Process Success/Failure Result ---
-            # ... (这部分代码与之前完全相同，为简洁省略，请在您的代码中保留)
             result_file = os.path.join(example_path, "result.txt")
             final_result = 0.0
             if os.path.exists(result_file):
@@ -1028,7 +1054,6 @@ def get_result(target_dir):
                 all_result_for_analysis[domain][example_id]["score"] = final_result
 
             # --- 2. Process Trajectory for Action and Step Statistics ---
-            # ... (这部分代码与之前完全相同，为简洁省略，请在您的代码中保留)
             traj_file = os.path.join(example_path, "traj.jsonl")
             if os.path.exists(traj_file):
                 try:
@@ -1039,19 +1064,65 @@ def get_result(target_dir):
                             try:
                                 data = json.loads(line)
                                 plan_code = data.get("response", {}).get("plan_code") or data.get("plan_code")
-                                action = extract_action_from_plan(plan_code)
+                                
+                                # 模拟 action 获取 (实际请替换为你的 extract_action_from_plan)
+                                action = "unknown"
+                                if plan_code: action = plan_code.split('(')[0]
+
                                 if action:
                                     overall_action_counts[action] += 1
                                     domain_action_counts[domain][action] += 1
-                                # 标记该任务使用了 search
                                 if action == "call_search_agent":
                                     with open(os.path.join(example_path, "search.txt"), "w", encoding="utf-8") as f:
                                         f.write("1")
+
+                                # --- ErrorType 统计逻辑 ---
+                                reflection = data.get("response", {}).get("reflection", {})
+                                error_hint = reflection.get("hint", {})
+                                
+                                # 获取 Hint (Boolean)
+                                gui_hint = error_hint.get("gui_operation_error", False)
+                                lack_of_tutorial_hint = error_hint.get("lack_of_tutorial", False)
+                                code_hint = error_hint.get("code_error", False)
+                                
+                                # 获取 Reflection Type (String)
+                                reflection_type = parse_reflection_type(reflection.get("reflection", "None"))
+
+                                # 定义映射关系
+                                error_mapping = [
+                                    ("GUI Operation Error", gui_hint),
+                                    ("Lack of Tutorial", lack_of_tutorial_hint),
+                                    ("Code Error", code_hint)
+                                ]
+
+                                # 更新 Domain 统计
+                                domain_stats = domain_error_stats[domain]
+                                domain_stats['total_steps'] += 1
+                                domain_stats['type_counts'][reflection_type] += 1
+
+                                # 更新 Overall 统计
+                                overall_error_stats['total_steps'] += 1
+                                overall_error_stats['type_counts'][reflection_type] += 1
+ 
+                                for err_name, is_hint_present in error_mapping:
+                                    is_type_present = (reflection_type == err_name)
+                                    is_true_positive = (is_hint_present and is_type_present)
+
+                                    # Domain Level Update
+                                    if is_hint_present:  domain_stats['categories'][err_name]['hint'] += 1
+                                    if is_type_present:  domain_stats['categories'][err_name]['type'] += 1
+                                    if is_true_positive: domain_stats['categories'][err_name]['match'] += 1
+                                    
+                                    # Overall Level Update
+                                    if is_hint_present:  overall_error_stats['categories'][err_name]['hint'] += 1
+                                    if is_type_present:  overall_error_stats['categories'][err_name]['type'] += 1
+                                    if is_true_positive: overall_error_stats['categories'][err_name]['match'] += 1
+
                             except (json.JSONDecodeError, AttributeError): continue
                 except Exception as e:
                     print(f"Warning: Could not read or process trajectory file {traj_file}. Error: {e}")
 
-            # --- 3. 更新: 处理 Token 使用情况 ---
+            # --- 3. Process Token Usage ---
             token_log_file = os.path.join(example_path, "token.jsonl")
             if os.path.exists(token_log_file):
                 task_token_summary = {}
@@ -1074,15 +1145,12 @@ def get_result(target_dir):
                         with open(task_token_output_path, "w", encoding="utf-8") as f:
                             json.dump(task_token_summary, f, indent=4)
                         
-                        # --- 更新数据收集逻辑 ---
                         for agent, tokens in task_token_summary.items():
-                            # 为 domain 统计添加 prompt 和 completion
                             if agent not in domain_token_stats[domain]:
                                 domain_token_stats[domain][agent] = {'prompt': [], 'completion': []}
                             domain_token_stats[domain][agent]['prompt'].append(tokens['prompt_tokens'])
                             domain_token_stats[domain][agent]['completion'].append(tokens['completion_tokens'])
                             
-                            # 为 overall 统计添加 prompt 和 completion
                             if agent not in overall_token_stats:
                                 overall_token_stats[agent] = {'prompt': [], 'completion': []}
                             overall_token_stats[agent]['prompt'].append(tokens['prompt_tokens'])
@@ -1095,7 +1163,7 @@ def get_result(target_dir):
     if not all_result:
         print("New experiment or no valid results found.")
         return None
-    # ... (这部分代码与之前完全相同，为简洁省略，请在您的代码中保留)
+
     print("\n--- Success Rate Summary ---")
     domain_success_rate = {}
     for domain, results in domain_result_raw.items():
@@ -1115,7 +1183,7 @@ def get_result(target_dir):
 
     # --- Plotting Section ---
     print("\nGenerating plots...")
-    # ... (Plot 1, 2, 3, 4 的代码与之前完全相同，为简洁省略，请在您的代码中保留)
+
     # Plot 1: Overall Action Usage
     if overall_action_counts:
         try:
@@ -1126,6 +1194,7 @@ def get_result(target_dir):
             for bar in bars: xval = bar.get_width(); plt.text(xval + (max(counts) * 0.01), bar.get_y() + bar.get_height() / 2.0, f' {int(xval)} ({int(xval) / sum(counts) * 100:.1f}%)', ha='left', va='center')
             plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved overall action usage plot to {save_path}")
         except Exception as e: print(f"Error generating overall action usage plot: {e}")
+
     # Plot 2: Per-Domain Action Usage
     for domain, counts in domain_action_counts.items():
         if not counts: continue
@@ -1133,9 +1202,10 @@ def get_result(target_dir):
             save_path = os.path.join(target_dir, f"action_usage_{domain}.png"); plt.figure(figsize=(10, 6)); sorted_actions = counts.most_common(); actions = [i[0] for i in sorted_actions]; action_counts = [i[1] for i in sorted_actions]
             bars = plt.barh(actions, action_counts, color='lightgreen'); plt.xlabel('Usage Count'); plt.ylabel('Action Type'); plt.title(f'Action Usage Frequency in Domain: {domain}'); plt.gca().invert_yaxis()
             if action_counts: plt.xlim(right=max(action_counts) * 1.15)
-            for bar in bars: xval = bar.get_width(); plt.text(xval + (max(action_counts) * 0.01), bar.get_y() + bar.get_height() / 2.0, f' {int(xval)} ({int(xval) / sum(action_counts) * 100:.1f}%)', ha='left', va='center')
+            for bar in bars: xval = bar.get_width(); plt.text(xval + (max(action_counts) * 0.01), bar.get_y() + bar.get_height() / 2.0, f' {int(xval)} ({int(action_counts) * 100:.1f}%)', ha='left', va='center')
             plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved action usage plot for domain '{domain}' to {save_path}")
         except Exception as e: print(f"Error generating action usage plot for domain {domain}: {e}")
+
     # Plot 3: Success Rate by Domain
     if domain_success_rate:
         try:
@@ -1146,39 +1216,100 @@ def get_result(target_dir):
             for bar in bars: yval = bar.get_height(); plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
             plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved success rate plot to {save_path}")
         except Exception as e: print(f"Error generating success rate plot: {e}")
-    # Plot 4: Step Distribution Histograms
-    step_stats = {'overall': {'success_steps': [], 'failure_steps': []}}
-    for domain, tasks in all_result_for_analysis.items():
-        if domain not in step_stats: step_stats[domain] = {'success_steps': [], 'failure_steps': []}
-        for task_id, data in tasks.items():
-            if data.get('score') is not None and data.get('step') is not None:
-                if data['score'] > 0.0: step_stats[domain]['success_steps'].append(data['step']); step_stats['overall']['success_steps'].append(data['step'])
-                else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
-    for name, data in step_stats.items():
-        save_path = os.path.join(target_dir, f"{'overall' if name == 'overall' else name}_step_distribution.png")
-        title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
-        plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
-    
-    # --- 更新 Plot 5: 调用新的堆叠图函数 ---
-    print("\nGenerating stacked token usage plots...")
-    # 为每个 domain 生成图表
-    for domain, token_data in domain_token_stats.items():
-        print(f'Token data: {token_data}')
-        plot_token_usage_stacked(
-            stats_data=token_data,
-            title=f'Average Token Usage (Stacked) per Task in Domain: {domain}',
-            save_path=os.path.join(target_dir, f"token_usage_stacked_{domain}.png")
-        )
-    
-    # 生成总览图表
-    plot_token_usage_stacked(
-        stats_data=overall_token_stats,
-        title='Overall Average Token Usage (Stacked) per Task',
-        save_path=os.path.join(target_dir, "overall_token_usage_stacked.png")
-    )
+
+    # --- Plot 6: Error & Reflection Analysis (Combined & Enhanced) ---
+    print("\nGenerating error analysis plots...")
+
+    def plot_error_analysis(stats, title_prefix, save_path):
+        """
+        Generates a single combined grouped bar chart:
+        - Bar 1 (Left): Agent Prediction Count (Type)
+        - Bar 2 (Right): Ground Truth Hint Count (Hint)
+        - Annotation: Precision & Recall displayed above each group.
+        """
+        if stats['total_steps'] == 0:
+            return
+
+        # 1. 准备数据
+        categories = list(stats['categories'].keys()) # ['GUI Operation Error', ...]
+        
+        # 提取 Type (分母: Agent 预测数量)
+        type_counts = [stats['categories'][c]['type'] for c in categories]
+        # 提取 Hint (分母: Ground Truth 数量)
+        hint_counts = [stats['categories'][c]['hint'] for c in categories]
+        # 提取 Match (分子: 交集数量，用于计算指标)
+        match_counts = [stats['categories'][c]['match'] for c in categories]
+
+        x = np.arange(len(categories))
+        width = 0.35  # 柱子宽度
+
+        fig, ax = plt.subplots(figsize=(12, 8))
+
+        # 2. 绘制分组柱状图
+        # 左侧柱子：Type (Agent Prediction)
+        rects1 = ax.bar(x - width/2, type_counts, width, label='Agent Prediction (Type)', color='#8da0cb')
+        # 右侧柱子：Hint (Ground Truth)
+        rects2 = ax.bar(x + width/2, hint_counts, width, label='Ground Truth (Hint)', color='#fc8d62')
+
+        # 3. 设置图表属性
+        ax.set_ylabel('Count')
+        ax.set_title(f'{title_prefix}: Reflection Analysis (Type vs Hint)\nPrecision = Match/Type | Recall = Match/Hint')
+        ax.set_xticks(x)
+        ax.set_xticklabels(categories)
+        ax.legend()
+
+        # 4. 辅助函数：在柱子上显示原始数量
+        def autolabel_counts(rects):
+            for rect in rects:
+                height = rect.get_height()
+                ax.annotate(f'{height}',
+                            xy=(rect.get_x() + rect.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom', fontsize=9)
+        
+        autolabel_counts(rects1)
+        autolabel_counts(rects2)
+
+        # 5. 核心逻辑：在柱子组上方显示 Precision 和 Recall
+        for i in range(len(categories)):
+            n_type = type_counts[i]
+            n_hint = hint_counts[i]
+            n_match = match_counts[i]
+
+            # 计算 Precision (精确率) = Match / Type
+            precision = (n_match / n_type * 100) if n_type > 0 else 0.0
+            
+            # 计算 Recall (召回率) = Match / Hint
+            recall = (n_match / n_hint * 100) if n_hint > 0 else 0.0
+
+            # 确定文字显示的 Y 轴高度 (取两个柱子中较高的那个，再往上抬一点)
+            max_height = max(n_type, n_hint)
+            # 动态调整高度偏移，防止文字贴太紧
+            text_y = max_height + (max(type_counts + hint_counts) * 0.02) if (type_counts + hint_counts) else 1
+
+            # 显示文本
+            label_text = f"Prec: {precision:.1f}%\nRec: {recall:.1f}%"
+            ax.text(i, text_y, label_text, 
+                    ha='center', va='bottom', 
+                    fontsize=11, color='darkred', fontweight='bold',
+                    bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
+
+        plt.tight_layout()
+        plt.savefig(save_path)
+        plt.close()
+        print(f"Saved error analysis plot to {save_path}")
+
+    # Generate Overall Plot
+    plot_error_analysis(overall_error_stats, "Overall", os.path.join(target_dir, "overall_error_analysis.png"))
+
+    # Generate Per-Domain Plots
+    for domain, stats in domain_error_stats.items():
+        plot_error_analysis(stats, f"Domain: {domain}", os.path.join(target_dir, f"error_analysis_{domain}.png"))
 
     print("\nAnalysis complete.")
     return all_result
+
 
 # ==============================================================================
 # 主程序入口

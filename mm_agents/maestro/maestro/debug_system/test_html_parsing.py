@@ -11,8 +11,8 @@ import os
 # Add the osworld directory to Python path
 sys.path.insert(0, '/home/lxguo/osworld')
 
-from desktop_env.evaluators.metrics.chrome import is_added_to_steam_cart
-from desktop_env.evaluators.getters.chrome import get_page_info
+from desktop_env.osworld.evaluators.metrics.chrome import is_added_to_steam_cart
+from desktop_env.osworld.evaluators.getters.chrome import get_page_info
 
 def test_html_parsing():
     """

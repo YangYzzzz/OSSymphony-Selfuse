@@ -11,7 +11,7 @@ from .data_models import CommandData
 from .hardware_interface import HardwareInterface
 from .new_global_state import NewGlobalState
 from .enums import ExecStatus, SubtaskStatus
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from PIL import Image
 from .Action import Screenshot
 from .utils.screenShot import scale_screenshot_dimensions

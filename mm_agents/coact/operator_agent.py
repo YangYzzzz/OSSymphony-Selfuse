@@ -6,7 +6,7 @@ import json
 import os
 import traceback
 from typing import Any, Callable, Literal, Optional, Union
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 
 from .autogen.llm_config import LLMConfig
 from .autogen.agentchat.conversable_agent import ConversableAgent
@@ -191,7 +191,7 @@ class OrchestratorUserProxyAgent(MultimodalConversableAgent):
         self.region = region
         self.client_password = client_password
 
-        from desktop_env.providers.aws.manager import IMAGE_ID_MAP
+        from desktop_env.osworld.providers.aws.manager import IMAGE_ID_MAP
         screen_size = (screen_width, screen_height)
         ami_id = IMAGE_ID_MAP[region].get(screen_size, IMAGE_ID_MAP[region][(1920, 1080)])
 

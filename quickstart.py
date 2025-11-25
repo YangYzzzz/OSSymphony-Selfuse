@@ -1,4 +1,4 @@
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 import argparse
 import logging
 

@@ -12,7 +12,7 @@ import time
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 
 from ...tools.new_tools import NewTools
 from ..new_global_state import NewGlobalState

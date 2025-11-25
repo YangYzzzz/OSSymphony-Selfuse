@@ -15,6 +15,8 @@ from mm_agents.interngui.agents.grounder_agent import GrounderAgent
 from mm_agents.interngui.agents.searcher_agent import SearcherAgent, VLMSearcherAgent
 import logging
 
+from mm_agents.interngui.agents.ocr import OCRProcessor
+
 logger = logging.getLogger("desktopenv.agent")
 
 # Agent action decorator
@@ -195,6 +197,7 @@ class OSWorldACI:
         self.grounder_agent = GrounderAgent(engine_params=engine_params_for_grounder, width=width, height=height)
         
         # Configure text grounding agent
+        self.ocr_processor = OCRProcessor()
         self.text_span_agent = LMMAgent(
             engine_params=engine_params_for_ocr,
             system_prompt=PROCEDURAL_MEMORY.PHRASE_TO_WORD_COORDS_PROMPT,
@@ -222,43 +225,6 @@ class OSWorldACI:
     def assign_screenshot(self, obs):
         self.obs = obs
 
-    # Calls pytesseract to generate word level bounding boxes for text grounding
-    def get_ocr_elements(self, b64_image_data: str) -> Tuple[str, List]:
-        image = Image.open(BytesIO(b64_image_data))
-        image_data = pytesseract.image_to_data(image, output_type=Output.DICT)
-
-        # Clean text by removing leading and trailing spaces and non-alphabetical characters, but keeping punctuation
-        for i, word in enumerate(image_data["text"]):
-            image_data["text"][i] = re.sub(
-                r"^[^a-zA-Z\s.,!?;:\-\+]+|[^a-zA-Z\s.,!?;:\-\+]+$", "", word
-            )
-
-        ocr_elements = []
-        ocr_table = "Text Table:\nWord id\tText\n"
-        # Obtain the <id, text, group number, word number> for each valid element
-        grouping_map = defaultdict(list)
-        ocr_id = 0
-        for i in range(len(image_data["text"])):
-            block_num = image_data["block_num"][i]
-            if image_data["text"][i]:
-                grouping_map[block_num].append(image_data["text"][i])
-                ocr_table += f"{ocr_id}\t{image_data['text'][i]}\n"
-                ocr_elements.append(
-                    {
-                        "id": ocr_id,
-                        "text": image_data["text"][i],
-                        "group_num": block_num,
-                        "word_num": len(grouping_map[block_num]),
-                        "left": image_data["left"][i],
-                        "top": image_data["top"][i],
-                        "width": image_data["width"][i],
-                        "height": image_data["height"][i],
-                    }
-                )
-                ocr_id += 1
-
-        return ocr_table, ocr_elements
-
     # Given the state and worker's text phrase, generate the coords of the first/last word in the phrase
     def generate_text_coords(
         self, phrase: str, obs: Dict, alignment: str = ""
@@ -275,7 +241,7 @@ class OSWorldACI:
         #     expansion_pixels=500
         # )
 
-        ocr_table, ocr_elements = self.get_ocr_elements(screenshot)
+        ocr_table, ocr_elements = self.ocr_processor.get_ocr_elements(screenshot, "easyocr")
 
         alignment_prompt = ""
         if alignment == "start":
@@ -303,16 +269,14 @@ class OSWorldACI:
         elem = ocr_elements[text_id]
 
         # Compute the element coordinates
+        # 注意: 5 是偏移像素, 为了指针更好的被选中
         if alignment == "start":
-            coords = [elem["left"], elem["top"] + (elem["height"] // 2)]
+            coords = [elem["left"] + 5, elem["top"] + (elem["height"] // 2)]
         elif alignment == "end":
-            coords = [elem["left"] + elem["width"], elem["top"] + (elem["height"] // 2)]
-        else:
-            coords = [
-                elem["left"] + (elem["width"] // 2),
-                elem["top"] + (elem["height"] // 2),
-            ]
-        return [coords[0] + global_offset_x, coords[1] + global_offset_y]
+            coords = [elem["left"] + elem["width"] + 10, elem["top"] + (elem["height"] // 2)]
+        
+        print(f'[OCR] 选择的坐标为: {[coords[0] + global_offset_x, coords[1] + global_offset_y]}')
+        return [int(coords[0] + global_offset_x), int(coords[1] + global_offset_y)]
 
     def set_task_instruction(self, task_instruction: str):
         """Set the current task instruction for the code agent."""
@@ -380,6 +344,73 @@ class OSWorldACI:
         elif self.platform == "darwin":
             return (f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)", action)
 
+    # @agent_action
+    # def type(
+    #     self,
+    #     element_description: str,
+    #     text: str = "",
+    #     overwrite: bool = False,
+    #     enter: bool = False,
+    #     is_terminal = False
+    # ):
+    #     """Type text/unicode into a specific element
+    #     Args:
+    #         element_description:str, a detailed description of which element to enter text in.
+    #         text:str, the text to type
+    #         overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
+    #         enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
+    #         is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
+    #     """
+    #     commands = [
+    #         "import pyautogui",
+    #         "import pyperclip",
+    #         "import subprocess",
+    #         # 注意：这个安装命令每次执行都会尝试运行，可能效率不高且需要sudo权限
+    #         # 最好确保环境已经预先配置好
+    #         "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
+    #         # 存储原始剪贴板
+    #         "original_clipboard = pyperclip.paste()"
+    #     ]
+        
+    #     x, y = None, None
+    #     if element_description is not None:
+    #         x, y = self.grounder_agent.generate_coords(element_description, self.obs)
+    #         commands.append(f"pyautogui.click({x}, {y})")
+
+    #     if overwrite:
+    #         if not is_terminal:
+    #             # 使用 repr() 来确保 'command' 或 'ctrl' 字符串被正确引用
+    #             hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
+    #             commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
+    #             commands.append("pyautogui.press('backspace')")
+    #         else:
+    #             # 在终端中，Ctrl+A/Backspace 可能不总是清空行，Ctrl+U 更常用
+    #             # 但 Ctrl+C 是中断，这里可能有逻辑错误，假设意图是清空行
+    #             commands.append("pyautogui.hotkey('ctrl', 'u')") # Ctrl+U 通常用于清空光标前的内容
+
+    #     # 使用剪贴板方法进行输入
+    #     # repr(text) 会正确处理文本中的引号和特殊字符
+    #     commands.append(f"pyperclip.copy({repr(text)})")
+        
+    #     if not is_terminal or self.platform == 'darwin':
+    #         hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
+    #         commands.append(f"pyautogui.hotkey({hotkey_mod}, 'v')")
+    #     else:
+    #         # Linux 终端的粘贴
+    #         commands.append("pyautogui.hotkey('shift', 'ctrl', 'v')")
+
+    #     # 恢复原始剪贴板
+    #     commands.append("pyperclip.copy(original_clipboard)")
+        
+    #     if enter:
+    #         commands.append("pyautogui.press('enter')")
+
+    #     # 最后，将所有命令用分号和空格连接成一个最终的字符串
+    #     final_command = "; ".join(commands)
+
+    #     action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
+    #     return (final_command, action)
+        
     @agent_action
     def type(
         self,
@@ -426,6 +457,9 @@ class OSWorldACI:
 
         # 使用剪贴板方法进行输入
         # repr(text) 会正确处理文本中的引号和特殊字符
+        # 通过输入一个空格再撤回的方式实现对文本框的指定, 而非创建新的文本框
+        commands.append("pyautogui.write(' ')")
+        commands.append("pyautogui.press('backspace')")
         commands.append(f"pyperclip.copy({repr(text)})")
         
         if not is_terminal or self.platform == 'darwin':
@@ -446,7 +480,7 @@ class OSWorldACI:
 
         action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
         return (final_command, action)
-
+    
     @agent_action
     def drag_and_drop(
         self, starting_description: str, ending_description: str, hold_keys: List = []
@@ -481,8 +515,8 @@ class OSWorldACI:
     ):
         """Highlight a text span between a provided starting phrase and ending phrase. Use this to highlight words, lines, and paragraphs.
         Args:
-            starting_phrase: str, the sequence of words that marks the beginning of the text span. Provide a unique sequence of 5 to 10 words. Do NOT use single words unless the total text is extremely short.    
-            ending_phrase: str, the sequence of words that marks the end of the text span. Provide a unique sequence of 5 to 10 words. Do NOT use single words unless the total text is extremely short.
+            starting_phrase: str, the sequence of words that marks the beginning of the text span. Provide a unique sequence of 5 to 10 words.
+            ending_phrase: str, the sequence of words that marks the end of the text span. Provide a unique sequence of 5 to 10 words.
             button:str, the button to use to highlight the text span. Defaults to "left". Can be "left", "right", or "middle".
         """
         x1, y1 = self.generate_text_coords(
@@ -496,7 +530,7 @@ class OSWorldACI:
         command += f"pyautogui.moveTo({x1}, {y1}); "
         # 提前点一下, 模拟选中文本框(应该不会产生副作用)
         command += f"pyautogui.click({x1}, {y1}); time.sleep(0.5);"
-        command += f"pyautogui.dragTo({x2}, {y2}, duration=1., button='{button}'); pyautogui.mouseUp(); "
+        command += f"pyautogui.dragTo({x2}, {y2}, duration=2., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
 
         # Return pyautoguicode to drag and drop the elements
         action = {"function": "drag", "args": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}}

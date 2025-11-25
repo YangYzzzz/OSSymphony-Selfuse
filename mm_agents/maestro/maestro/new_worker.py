@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 
 from .new_global_state import NewGlobalState
 from .data_models import create_command_data

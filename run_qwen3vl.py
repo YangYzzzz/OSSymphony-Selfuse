@@ -11,7 +11,7 @@ from typing import List
 from multiprocessing import Process, Manager
 from multiprocessing import current_process
 import lib_run_single
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 
 # Global variables for signal handling
@@ -177,7 +177,7 @@ def run_env_tasks(task_queue, args: argparse.Namespace, shared_scores: list):
         screen_size = (args.screen_width, args.screen_height)
         snapshot_name = "init_state"
         if args.provider_name == "aws":
-            from desktop_env.providers.aws.manager import IMAGE_ID_MAP
+            from desktop_env.osworld.providers.aws.manager import IMAGE_ID_MAP
             ami_id = IMAGE_ID_MAP[REGION].get(screen_size, IMAGE_ID_MAP[REGION][(1920, 1080)])
             snapshot_name = ami_id
         env = DesktopEnv(

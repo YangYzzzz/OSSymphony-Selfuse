@@ -17,7 +17,7 @@ from mm_agents.s3.agents.agent_s import AgentS3
 from mm_agents.s3.agents.grounding import OSWorldACI
 
 import lib_run_single
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 
 from dotenv import load_dotenv
 
@@ -100,7 +100,7 @@ def run_env_tasks(
         region = getattr(args, "region", None)
         if args.provider_name == "aws" and region is not None:
             try:
-                from desktop_env.providers.aws.manager import IMAGE_ID_MAP
+                from desktop_env.osworld.providers.aws.manager import IMAGE_ID_MAP
 
                 screen_size = (args.screen_width, args.screen_height)
                 snapshot_name = IMAGE_ID_MAP[region].get(

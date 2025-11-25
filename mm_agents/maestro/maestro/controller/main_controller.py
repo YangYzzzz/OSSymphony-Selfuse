@@ -13,7 +13,7 @@ import platform
 from ..Action import Screenshot
 
 from ..data_models import SubtaskData, TaskData
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from ..hardware_interface import HardwareInterface
 from PIL import Image
 

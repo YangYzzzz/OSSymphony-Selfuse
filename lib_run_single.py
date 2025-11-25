@@ -54,6 +54,16 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
             obs, reward, done, info = env.step(action, args.sleep_after_execution)
             logger.info("Done: %s", done)
             
+            result_dict = {                    
+                "instruction": instruction,
+                "step_num": step_idx + 1,
+                "action": action,
+                "response": response,
+                "done": done,
+                "info": info,
+                "screenshot_file": img_name
+            }
+
             with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
                 f.write(json.dumps({
                     "instruction": instruction,

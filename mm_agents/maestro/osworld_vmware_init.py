@@ -1,5 +1,5 @@
 import os
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 
 # To ensure the relative path works correctly, this script should be executed from the root of the project directory.
 # For example: python osworld_setup/test_vmware.py

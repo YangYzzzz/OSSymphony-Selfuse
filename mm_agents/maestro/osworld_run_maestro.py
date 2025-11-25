@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from gui_agents.maestro.controller.main_controller import MainController
 # Import analyze_display functionality
 from gui_agents.utils.analyze_display import analyze_display_json, format_output_line
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from gui_agents.utils.common_utils import ImageDataFilter, SafeLoggingFilter
 
 env_path = Path(os.path.dirname(os.path.abspath(__file__))) / '.env'

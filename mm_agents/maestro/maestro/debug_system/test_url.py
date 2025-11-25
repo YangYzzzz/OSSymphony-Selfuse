@@ -20,9 +20,9 @@ import pytz
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import actual functions from OSWorld
-from desktop_env.evaluators.getters.chrome import get_active_tab_url_parse
-from desktop_env.evaluators.getters.misc import get_rule_relativeTime
-from desktop_env.evaluators.metrics.general import check_direct_json_object
+from desktop_env.osworld.evaluators.getters.chrome import get_active_tab_url_parse
+from desktop_env.osworld.evaluators.getters.misc import get_rule_relativeTime
+from desktop_env.osworld.evaluators.metrics.general import check_direct_json_object
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

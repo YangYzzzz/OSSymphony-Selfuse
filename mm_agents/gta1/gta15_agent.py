@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from typing import Any, Dict, List, Tuple, Callable
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from openai import OpenAI
 from mm_agents.gta1.format_message import FormatMessage
 from mm_agents.gta1.cua_tool import response_api_tools as CUA_TOOLS

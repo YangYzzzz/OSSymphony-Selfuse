@@ -4,7 +4,7 @@
 import os
 import io
 from typing import Optional
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from ..Action import (
     Action,
     Click,

@@ -12,7 +12,7 @@ from typing import List, Dict
 from multiprocessing import Process, Manager
 from multiprocessing import current_process
 import lib_run_single
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.uitars15_v2 import UITarsAgent
 import os
 from mm_agents.interngui.agents.critic_agent import CriticAgent
@@ -195,7 +195,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
         snapshot_name = None
         if args.provider_name == "aws" and region is not None:
             try:
-                from desktop_env.providers.aws.manager import IMAGE_ID_MAP
+                from desktop_env.osworld.providers.aws.manager import IMAGE_ID_MAP
 
                 screen_size = (args.screen_width, args.screen_height)
                 snapshot_name = IMAGE_ID_MAP[region].get(

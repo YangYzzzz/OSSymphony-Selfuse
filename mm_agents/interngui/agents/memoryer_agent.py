@@ -169,7 +169,7 @@ class ReflectionMemoryAgent:
                 action_dict
             )
         elif mode == "code":
-            self.last_code_step_idx = len(self.trajectory)  # 没点卵用
+            self.last_code_step_idx = len(self.trajectory)
 
             is_success = "success"
             # summary直接存code agent返回的summary
@@ -217,7 +217,8 @@ class ReflectionMemoryAgent:
 
             full_response = call_llm_formatted(
                 self.behavior_agent,
-                format_checkers
+                format_checkers,
+                temperature=self.engine_params.get("temperture", 0.1),
             )
 
             response = parse_code_from_string(full_response)
@@ -329,7 +330,7 @@ class ReflectionMemoryAgent:
                 additional_hints.append(f"\t- Warning: The last GUI operation might be failed. Careful review is required to avoid GUI Operation Error.")
 
             code_error_hint = False
-            if len(self.trajectory) - self.last_code_step_idx < 5:      # 5步之内都有可能是验证
+            if len(self.trajectory) - self.last_code_step_idx < 5 and self.last_code_step_idx != -1:      # 5步之内都有可能是验证
                 code_error_hint = True
                 additional_hints.append(f"\t- Warning: The Computer Use Agent might in the verification stage of Code Agent. Careful review is required to avoid Code Error.")
             # 循环检测, 检测出的Step号是从0开始标注的

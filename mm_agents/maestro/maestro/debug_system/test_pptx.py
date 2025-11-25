@@ -15,7 +15,7 @@ sys.path.insert(0, str(project_root))
 
 # Import the compare_pptx_files function directly from slides.py
 try:
-    from desktop_env.evaluators.metrics.slides import compare_pptx_files, enable_debug_logging
+    from desktop_env.osworld.evaluators.metrics.slides import compare_pptx_files, enable_debug_logging
     print(f"Successfully imported compare_pptx_files from {project_root}/desktop_env/evaluators/metrics/slides.py")
 except ImportError as e:
     print(f"Error importing compare_pptx_files: {e}")

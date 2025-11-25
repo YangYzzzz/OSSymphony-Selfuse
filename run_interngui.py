@@ -12,11 +12,58 @@ from mm_agents.interngui.agents.interngui import InternGUI
 from mm_agents.interngui.agents.os_aci import OSWorldACI
 import shutil
 import lib_run_single
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
+from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+def prepare_worker_vm_paths(base_golden_path: str, worker_idx: int):
+    """
+    根据 golden 路径和 worker id 准备存储路径。
+    例如: /nvme/.../waa/golden -> /nvme/.../waa/storage_0, /nvme/.../waa/storage_0_backup
+    """
+    # 去除末尾斜杠以确保 dirname 计算正确
+    base_golden_path = base_golden_path.rstrip(os.sep)
+    
+    # 获取父目录 (例如 /nvme/yangbowen/vm_stroage/waa)
+    parent_dir = os.path.dirname(base_golden_path)
+    
+    # 定义该 worker 的路径
+    worker_storage_path = os.path.join(parent_dir, f"storage_{worker_idx}")
+    worker_backup_path = os.path.join(parent_dir, f"storage_{worker_idx}_backup")
+    
+    return worker_storage_path, worker_backup_path
+
+
+def initialize_worker_files(golden_path: str, worker_backup_path: str, worker_storage_path: str):
+    """
+    初始化 worker 的文件。如果 backup 不存在，从 golden 复制。
+    """
+    if not os.path.exists(golden_path):
+        raise FileNotFoundError(f"Golden VM path not found: {golden_path}")
+
+    # 1. 准备 Backup 目录 (作为该 Worker 的只读/恢复源)
+    if not os.path.exists(worker_backup_path):
+        logger.info(f"Initializing backup for worker from {golden_path} to {worker_backup_path} ...")
+        try:
+            if os.path.isdir(golden_path):
+                shutil.copytree(golden_path, worker_backup_path)
+            else:
+                # 如果是单文件 (如 qcow2)
+                os.makedirs(os.path.dirname(worker_backup_path), exist_ok=True)
+                shutil.copy2(golden_path, worker_backup_path)
+            logger.info(f"Backup initialization complete for {worker_backup_path}")
+        except Exception as e:
+            logger.error(f"Failed to copy golden image to backup: {e}")
+            raise e
+    else:
+        logger.info(f"Worker backup already exists at {worker_backup_path}, skipping copy.")
+
+    # 2. 准备 Storage 目录 (运行目录)
+    if not os.path.exists(worker_storage_path):
+        os.makedirs(worker_storage_path, exist_ok=True)
 
 
 #  Logger Configs {{{ #
@@ -88,6 +135,7 @@ def run_env_tasks(
     engine_params_for_coder,
     engine_params_for_memoryer,
     engine_params_for_searcher,
+    worker_id: int,
 ):
     active_environments = []
     env = None
@@ -96,35 +144,44 @@ def run_env_tasks(
         # Use IMAGE_ID_MAP for AWS provider to get snapshot_name
         snapshot_name = None
         region = getattr(args, "region", None)
-        if args.provider_name == "aws" and region is not None:
-            try:
-                from desktop_env.providers.aws.manager import IMAGE_ID_MAP
 
-                screen_size = (args.screen_width, args.screen_height)
-                snapshot_name = IMAGE_ID_MAP[region].get(
-                    screen_size, IMAGE_ID_MAP[region][(1920, 1080)]
-                )
-            except Exception as e:
-                logger.error(f"Failed to get snapshot_name from IMAGE_ID_MAP: {e}")
-                snapshot_name = None
+        if args.benchmark == "osworld":
+            env = OSWorldDesktopEnv(
+                path_to_vm=args.path_to_vm,
+                action_space=args.action_space,
+                provider_name=args.provider_name,
+                region=region,
+                snapshot_name=snapshot_name,
+                screen_size=(args.screen_width, args.screen_height),
+                headless=args.headless,
+                os_type="Ubuntu",
+                require_a11y_tree=args.observation_type
+                in ["a11y_tree", "screenshot_a11y_tree", "som"],
+                enable_proxy=True,
+                client_password=getattr(args, "client_password", ""),
+            )
+            env.start()
 
-        env = DesktopEnv(
-            path_to_vm=args.path_to_vm,
-            action_space=args.action_space,
-            provider_name=args.provider_name,
-            region=region,
-            snapshot_name=snapshot_name,
-            screen_size=(args.screen_width, args.screen_height),
-            headless=args.headless,
-            os_type="Ubuntu",
-            require_a11y_tree=args.observation_type
-            in ["a11y_tree", "screenshot_a11y_tree", "som"],
-            enable_proxy=True,
-            client_password=getattr(args, "client_password", ""),
-        )
-        env.start()
+        elif args.benchmark == "waa":
+            parent_dir = os.path.dirname(args.path_to_vm.rstrip(os.sep))
+            path_to_vm = os.path.join(parent_dir, f"storage_{worker_id}")
+            path_to_vm_backup = os.path.join(parent_dir, f"storage_{worker_id}_backup")
+            
+            logger.info(f"[{current_process().name}] Worker ID: {worker_id}")
+            logger.info(f"[{current_process().name}] Derived VM Storage: {path_to_vm}")
+            logger.info(f"[{current_process().name}] Derived VM Backup: {path_to_vm_backup}")
+            env = WindowsAgentArenaDesktopEnv(
+                path_to_vm=path_to_vm,
+                path_to_vm_backup=path_to_vm_backup,
+                action_space=args.action_space,
+                screen_size=(args.screen_width, args.screen_height),
+                headless=args.headless,
+                require_a11y_tree=args.observation_type
+                                in ["a11y_tree", "screenshot_a11y_tree", "som"],
+                provider_name=args.provider_name
+            )
 
-        search_env = DesktopEnv(
+        search_env = OSWorldDesktopEnv(
             path_to_vm=args.path_to_vm,
             action_space=args.action_space,
             provider_name=args.provider_name,
@@ -597,14 +654,22 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "agent_name": "searcher"
     }
 
+    # --- 初始化 Worker 路径 ---
+    num_envs = args.num_envs
+    # 仅 waa 需要作此处理
+    if args.benchmark == "waa":
+        logger.info(f"[WindowsAgentArena] Initializing storage for {num_envs} workers from golden image: {args.path_to_vm}")
+        for i in range(num_envs):
+            s_path, b_path = prepare_worker_vm_paths(args.path_to_vm, i)
+            initialize_worker_files(args.path_to_vm, b_path, s_path)
+
     with Manager() as manager:
         shared_scores = manager.list()
         task_queue = manager.Queue()
         for item in all_tasks:
             task_queue.put(item)
-        num_envs = args.num_envs
         processes = []
-        for i in range(num_envs):
+        for worker_id in range(num_envs):
             p = Process(
                 target=run_env_tasks,
                 args=(
@@ -615,9 +680,10 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                     engine_params_for_grounder,
                     engine_params_for_coder,
                     engine_params_for_memoryer,
-                    engine_params_for_searcher
+                    engine_params_for_searcher,
+                    worker_id
                 ),
-                name=f"EnvProcess-{i+1}",
+                name=f"EnvProcess-{worker_id+1}",
             )
             p.daemon = True
             p.start()
@@ -639,7 +705,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                                 engine_params_for_grounder,
                                 engine_params_for_coder,
                                 engine_params_for_memoryer,
-                                engine_params_for_searcher
+                                engine_params_for_searcher,
+                                idx
                             ),
                             name=f"EnvProcess-Restart-{idx+1}",
                         )

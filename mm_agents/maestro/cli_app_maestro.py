@@ -14,7 +14,7 @@ from gui_agents.maestro.controller.main_controller import MainController
 # Import analyze_display functionality
 from gui_agents.utils.analyze_display import analyze_display_json, aggregate_results, format_output_line
 from gui_agents.utils.common_utils import show_task_completion_notification
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from gui_agents.utils.common_utils import ImageDataFilter, SafeLoggingFilter
 
 env_path = Path(os.path.dirname(os.path.abspath(__file__))) / '.env'

@@ -24,7 +24,7 @@ from mm_agents.interngui.utils.formatters import (
     CODE_VALID_FORMATTER,
 )
 
-from desktop_env.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.interngui.utils.single_searcher_agent import SearcherAgentSearXNG
 from mm_agents.interngui.utils.parser_agent import ParserAgentCrawl4AI
 
