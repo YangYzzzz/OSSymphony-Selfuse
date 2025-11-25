@@ -186,15 +186,13 @@ class ParserAgentCrawl4AI(ParserAgent):
         print(f"-> Visiting URL: {source} using API: {self.parser_api}")
         try:
             # 使用 GET 请求，并通过 params 传递 source
-            response = requests.get(self.parser_api, params={"source": source}, headers=self.headers, timeout=30)
+            response = requests.get(self.parser_api, params={"url": source}, headers=self.headers, timeout=30)
             response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
 
-            # 假设 API 返回的 JSON 中有一个 'markdown' 字段
+            # 假设 API 返回的 JSON 中有一个 'markdown' 字段owenY
             data = response.json()
             content = data.get("markdown")
 
-            with open(f'test.md', "w", encoding="utf-8") as f:
-                f.write(content)
             if content is None:
                 return f"Error: The parsing API did not return a 'markdown' field for URL: {source}. Response: {data}"
 
@@ -271,12 +269,13 @@ class ParserAgentCrawl4AI(ParserAgent):
 def crawlai_test():
     # 假设您的 crawl4ai 服务正在本地 9000 端口运行
     # 如果服务在别处，请修改此处的 URL
-    crawl4ai_api_endpoint = "http://127.0.0.1:9000/visit"
+    crawl4ai_api_endpoint = "http://0.0.0.0:9000/visit"
 
     # 1. 初始化 ParseAgent
     agent_params = {
-        "parser_type": "crawl_ai",
-        "parser_api": crawl4ai_api_endpoint
+        "parser_type": "crawl4ai",
+        "parser_api": crawl4ai_api_endpoint,
+        "parser_api_key": "none"
     }
     try:
         parser = ParserAgent.create(agent_params)
@@ -285,36 +284,36 @@ def crawlai_test():
         # 2. 示例 1: 解析一个 URL
         print("="*30 + " 1. Parsing a URL " + "="*30)
         # 使用一个稳定的、内容丰富的维基百科页面作为示例
-        test_url = "https://www.libreofficehelp.com/add-insert-delete-copy-move-rename-a-worksheet-in-libreoffice-calc/"
+        test_url = "https://docs.searxng.org/admin/settings/settings_search.html"
         parsed_url_content = parser.parse(test_url)
         print(parsed_url_content)
         
         # 3. 示例 2: 解析一个本地文件 (已支持的 .txt)
-        print("\n" + "="*30 + " 2. Parsing a local .txt file " + "="*30)
-        # 创建一个临时的 .txt 文件用于演示
-        temp_txt_path = "sample_document.txt"
-        with open(temp_txt_path, "w", encoding="utf-8") as f:
-            f.write("This is a test document.\nIt contains multiple lines of text.\nLLMs can easily process this.")
+        # print("\n" + "="*30 + " 2. Parsing a local .txt file " + "="*30)
+        # # 创建一个临时的 .txt 文件用于演示
+        # temp_txt_path = "sample_document.txt"
+        # with open(temp_txt_path, "w", encoding="utf-8") as f:
+        #     f.write("This is a test document.\nIt contains multiple lines of text.\nLLMs can easily process this.")
         
-        parsed_txt_content = parser.parse(temp_txt_path)
-        print(parsed_txt_content)
+        # parsed_txt_content = parser.parse(temp_txt_path)
+        # print(parsed_txt_content)
         
-        # 清理临时文件
-        os.remove(temp_txt_path)
+        # # 清理临时文件
+        # os.remove(temp_txt_path)
 
-        # 4. 示例 3: 尝试解析一个尚不支持的本地文件类型 (.pdf)
-        print("\n" + "="*30 + " 3. Parsing an unsupported file type " + "="*30)
-        # 这只是一个虚拟路径，文件不需要实际存在，因为 `os.path.exists` 会先失败
-        # 如果文件存在，它会进入 `_parse_local_file` 并返回 "not yet implemented"
-        unsupported_file = "mydocument.pdf"
-        parsed_unsupported_content = parser.parse(unsupported_file)
-        print(parsed_unsupported_content)
+        # # 4. 示例 3: 尝试解析一个尚不支持的本地文件类型 (.pdf)
+        # print("\n" + "="*30 + " 3. Parsing an unsupported file type " + "="*30)
+        # # 这只是一个虚拟路径，文件不需要实际存在，因为 `os.path.exists` 会先失败
+        # # 如果文件存在，它会进入 `_parse_local_file` 并返回 "not yet implemented"
+        # unsupported_file = "mydocument.pdf"
+        # parsed_unsupported_content = parser.parse(unsupported_file)
+        # print(parsed_unsupported_content)
 
-        # 5. 示例 4: 提供一个无效的输入
-        print("\n" + "="*30 + " 4. Handling an invalid input " + "="*30)
-        invalid_source = "not_a_url_or_a_file"
-        error_message = parser.parse(invalid_source)
-        print(error_message)
+        # # 5. 示例 4: 提供一个无效的输入
+        # print("\n" + "="*30 + " 4. Handling an invalid input " + "="*30)
+        # invalid_source = "not_a_url_or_a_file"
+        # error_message = parser.parse(invalid_source)
+        # print(error_message)
 
     except (ValueError, requests.exceptions.ConnectionError) as e:
         print(f"An error occurred during setup or execution: {e}")
@@ -338,5 +337,6 @@ def readerlmv2_test():
     print(agent.parse(source="https://support.google.com/chrome/answer/15085120?hl=zh-Hans&co=GENIE.Platform%3DDesktop"))
 
 if __name__ == "__main__":
-    jina_test()
-    readerlmv2_test()
+    # jina_test()
+    # readerlmv2_test()
+    crawlai_test()
