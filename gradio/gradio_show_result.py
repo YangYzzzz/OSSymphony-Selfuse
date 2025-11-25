@@ -634,9 +634,9 @@ def create_gradio_app(root_dir):
             (task_instruction, completion_reason, summary, history_json, is_code_visible) = process_code_agent_output(code_agent_output)
             is_search_visible, tutorial = (True, response["search_agent_output"]["final_answer"]) if response.get("search_agent_output") else (False, "N/A")
             
-            evaluator_path = base_path.parent.parent.parent / "evaluation_examples" / "examples" / domain / f"{task}.json"
+            evaluator_path = base_path.parent.parent.parent / "evaluation_examples/osworld" / "examples" / domain / f"{task}.json"
             if not evaluator_path.exists():
-                 evaluator_path = Path("/nvme/yangbowen/yangbowen/OSWorld/evaluation_examples/examples") / domain / f"{task}.json"
+                 evaluator_path = Path("/nvme/yangbowen/yangbowen/InternGUIFramework/evaluation_examples/osworld/examples") / domain / f"{task}.json"
 
             if evaluator_path.exists():
                 try:

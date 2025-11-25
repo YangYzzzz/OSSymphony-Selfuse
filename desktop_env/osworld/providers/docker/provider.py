@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 WAIT_TIME = 3
 RETRY_INTERVAL = 1
-LOCK_TIMEOUT = 10
+LOCK_TIMEOUT = 60
 
 
 class PortAllocationError(Exception):

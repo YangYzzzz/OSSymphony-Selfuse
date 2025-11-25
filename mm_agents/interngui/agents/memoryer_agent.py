@@ -151,7 +151,7 @@ class ReflectionMemoryAgent:
             mode: str = "gui",
             code_exec_summary: str = "",
             action_dict: Dict = {}
-        ) -> Tuple[StepBehavior, str]:
+        ) -> Tuple[StepBehavior, bool]:
         """
         [Interface] Main -> RMA
         The Main Agent (MA) calls this method to "feed" the information of the just-completed step to the RMA.
@@ -159,7 +159,7 @@ class ReflectionMemoryAgent:
         """
 
         if mode == "search":
-            is_success = "success"
+            is_success = "successful"
             # summary直接写死
             step_behavior = StepBehavior(
                 False, 
@@ -171,7 +171,7 @@ class ReflectionMemoryAgent:
         elif mode == "code":
             self.last_code_step_idx = len(self.trajectory)
 
-            is_success = "success"
+            is_success = "successful"
             # summary直接存code agent返回的summary
             step_behavior = StepBehavior(
                 False, 
@@ -231,13 +231,13 @@ class ReflectionMemoryAgent:
                 print("[RMA] 处理step summary时遇到错误: ", e)
                 logger.info("Response is not a JSON object or miss required keys!")
                 behavior_summary = response           # 把所有内容都当作reflection
-                is_success = "success"
+                is_success = "successful"
 
             # print("@@@@@@@@@@ Summary Response: ", response)
 
             step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs, action_dict)
 
-        return step_behavior, is_success
+        return step_behavior, is_success == "successful"
 
     def get_reflection(
             self, 
@@ -327,12 +327,15 @@ class ReflectionMemoryAgent:
             ### make additional hints
             additional_hints = []
             if not last_gui_check:
+                print("[Reflection & Memory Agent] GUI Error is detected!!")
                 additional_hints.append(f"\t- Warning: The last GUI operation might be failed. Careful review is required to avoid GUI Operation Error.")
 
             code_error_hint = False
-            if len(self.trajectory) - self.last_code_step_idx < 5 and self.last_code_step_idx != -1:      # 5步之内都有可能是验证
+
+            if self.last_code_step_idx != -1 and len(self.trajectory) - self.last_code_step_idx < 0:      # 5步之内都有可能是验证（先让他滚蛋）
                 code_error_hint = True
                 additional_hints.append(f"\t- Warning: The Computer Use Agent might in the verification stage of Code Agent. Careful review is required to avoid Code Error.")
+                
             # 循环检测, 检测出的Step号是从0开始标注的
             from mm_agents.interngui.utils.loop_detection import detect_loop
             # print(f'当前长度为: {len(self.trajectory)+1}, 开始检测循环!!!!!!!!')
@@ -358,11 +361,11 @@ class ReflectionMemoryAgent:
             print(f"=== Current Memoryer Level is {self.memoryer_level}! ===")
             if self.memoryer_level == 1:
                 start_idx = max(0, len(self.trajectory) - (self.max_img_len - 1))   # 确定起始索引
-                print("=" * 30)
+                # print("=" * 30)
                 for i, step in enumerate(self.trajectory[start_idx:], start=start_idx):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.gen_output}\n'''"""     # 喂main agent完整的输出
         
-                    print(text_content)
+                    # print(text_content)
 
                     text_content += f"\nscreenshot (after executing action): (attached below)"
                     self.reflection_agent.add_message(
@@ -370,23 +373,23 @@ class ReflectionMemoryAgent:
                         image_content=step.obs['screenshot'],     
                         role="user",
                     )
-                print("=" * 30)
+                # print("=" * 30)
             elif self.memoryer_level == 2:
-                print("=" * 30)
+                # print("=" * 30)
                 for i, step in enumerate(self.trajectory):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""        # 文字部分采用summary
                     active_img_idx = list(range(len(self.trajectory) - (self.max_img_len - 1), len(self.trajectory)))   # 只做一个last k的索引列表
                     if i in active_img_idx:
                         text_content += f"\nscreenshot (after executing action): (attached below)"
 
-                    print(text_content)
+                    # print(text_content)
 
                     self.reflection_agent.add_message(
                         text_content=text_content,
                         image_content=step.obs['screenshot'] if i in active_img_idx else None,     
                         role="user",
                     )
-                print("=" * 30)
+                # print("=" * 30)
             else:
                 for i, step in enumerate(self.trajectory):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
