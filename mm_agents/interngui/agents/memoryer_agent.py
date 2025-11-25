@@ -151,7 +151,7 @@ class ReflectionMemoryAgent:
             mode: str = "gui",
             code_exec_summary: str = "",
             action_dict: Dict = {}
-        ) -> Tuple[StepBehavior, str]:
+        ) -> Tuple[StepBehavior, bool]:
         """
         [Interface] Main -> RMA
         The Main Agent (MA) calls this method to "feed" the information of the just-completed step to the RMA.
@@ -159,7 +159,7 @@ class ReflectionMemoryAgent:
         """
 
         if mode == "search":
-            is_success = "success"
+            is_success = "successful"
             # summary直接写死
             step_behavior = StepBehavior(
                 False, 
@@ -171,7 +171,7 @@ class ReflectionMemoryAgent:
         elif mode == "code":
             self.last_code_step_idx = len(self.trajectory)  # 没点卵用
 
-            is_success = "success"
+            is_success = "successful"
             # summary直接存code agent返回的summary
             step_behavior = StepBehavior(
                 False, 
@@ -230,13 +230,13 @@ class ReflectionMemoryAgent:
                 print("[RMA] 处理step summary时遇到错误: ", e)
                 logger.info("Response is not a JSON object or miss required keys!")
                 behavior_summary = response           # 把所有内容都当作reflection
-                is_success = "success"
+                is_success = "successful"
 
             # print("@@@@@@@@@@ Summary Response: ", response)
 
             step_behavior = StepBehavior(is_milestone, generator_output, behavior_summary, cur_obs, action_dict)
 
-        return step_behavior, is_success
+        return step_behavior, is_success == "successful"
 
     def get_reflection(
             self, 
@@ -326,10 +326,11 @@ class ReflectionMemoryAgent:
             ### make additional hints
             additional_hints = []
             if not last_gui_check:
+                print("[Reflection & Memory Agent] GUI Error is detected!!")
                 additional_hints.append(f"\t- Warning: The last GUI operation might be failed. Careful review is required to avoid GUI Operation Error.")
 
             code_error_hint = False
-            if len(self.trajectory) - self.last_code_step_idx < 5:      # 5步之内都有可能是验证
+            if self.last_code_step_idx != -1 and len(self.trajectory) - self.last_code_step_idx < 0:      # 5步之内都有可能是验证（先让他滚蛋）
                 code_error_hint = True
                 additional_hints.append(f"\t- Warning: The Computer Use Agent might in the verification stage of Code Agent. Careful review is required to avoid Code Error.")
             # 循环检测, 检测出的Step号是从0开始标注的
