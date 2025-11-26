@@ -326,12 +326,13 @@ class ReflectionMemoryAgent:
                 action_dict
             )    
             step_behavior._update_phash_ssim(self.trajectory)
+            self._update_trajectory(step_behavior)
             
             ### make additional hints
             additional_hints = []
             if not last_gui_check:
                 print("[Reflection & Memory Agent] GUI Error is detected!!")
-                additional_hints.append(f"\t- Warning: The last GUI operation might be failed. Careful review is required to avoid GUI Operation Error.")
+                additional_hints.append(f"\t- Warning: The last GUI operation is unsuccessful. Careful review is required to avoid GUI Operation Error.")
 
             code_error_hint = False
 
@@ -342,7 +343,7 @@ class ReflectionMemoryAgent:
             # 循环检测, 检测出的Step号是从0开始标注的
             from mm_agents.interngui.utils.loop_detection import detect_loop
             # print(f'当前长度为: {len(self.trajectory)+1}, 开始检测循环!!!!!!!!')
-            is_loop, loop_details = detect_loop(full_trajectory=self.trajectory + [step_behavior], N=3)
+            is_loop, loop_details = detect_loop(full_trajectory=self.trajectory, N=3)
             if is_loop and loop_details:
                 match_sequence_indices = loop_details["match_sequence_indices"]
                 loop_hint_message = f"\t- Warning: A potential LOOP has been detected between Step {match_sequence_indices[0]} and Step {match_sequence_indices[-1]}. Careful review is required to avoid Repetitive Behavior Error."
@@ -394,6 +395,7 @@ class ReflectionMemoryAgent:
                     )
                 # print("=" * 30)
             else:
+                # print("=" * 30)
                 for i, step in enumerate(self.trajectory):
                     text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
                     if i in self.active_img_idx:
@@ -402,12 +404,14 @@ class ReflectionMemoryAgent:
                         else: 
                             text_content += f"\nscreenshot (after executing action): (attached below)"
 
+                    # print(text_content)
+
                     self.reflection_agent.add_message(
                         text_content=text_content,
                         image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
                         role="user",
                     )
-                
+                # print("=" * 30)
             text_content = f"""### (Last Step) CUA's output (has been finished):\n---\n{generator_output}\n---\n\nlatest_screenshot:  (attached below)"""
             self.reflection_agent.add_message(
                 text_content=text_content,
@@ -453,8 +457,8 @@ class ReflectionMemoryAgent:
                 is_milestone = True if "true" in is_milestone.lower() else False
             
             # update is_milestone
-            step_behavior.is_milestone = is_milestone
-            self._update_trajectory(step_behavior)
+            self.trajectory[-1].is_milestone = is_milestone
+            
 
             reflection_info = {
                 "reflection": reflection,
