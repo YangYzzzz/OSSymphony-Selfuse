@@ -388,11 +388,13 @@ def compare_pptx_files(file1_path, file2_path, **options):
                 if not hasattr(shape1, "text") and not hasattr(shape2,
                                                                "text") or shape1.shape_type == 5 and shape2.shape_type == 5:
                     if not is_approximately_equal(shape1.height, shape2.height):
+                        logger.info(f'[Slides Check]: examine_modify_height1')
                         return 0
                 elif (not is_approximately_equal(shape1.left, shape2.left) or 
                       not is_approximately_equal(shape1.top, shape2.top) or 
                       not is_approximately_equal(shape1.width, shape2.width) or 
                       not is_approximately_equal(shape1.height, shape2.height)):
+                    logger.info(f'[Slides Check]: examine_modify_height2')
                     return 0
 
             if shape1.shape_type == MSO_SHAPE_TYPE.TABLE:
@@ -480,6 +482,7 @@ def compare_pptx_files(file1_path, file2_path, **options):
 
             if hasattr(shape1, "text") and hasattr(shape2, "text"):
                 if shape1.text.strip() != shape2.text.strip() and examine_text:
+                    logger.info(f'[Slide Check]: {shape1.text.strip()} != {shape2.text.strip()}')
                     return 0
 
                 # check if the number of paragraphs are the same
@@ -522,9 +525,11 @@ def compare_pptx_files(file1_path, file2_path, **options):
 
                     # check if the runs are the same
                     if para1.text != para2.text and examine_text:
+                        logger.info(f'[Slide Check]: para text {para1.text} != {para2.text}')
                         return 0
 
                     if para1.level != para2.level and examine_indent:
+                        logger.info(f'[Slide Check]: para level {para1.level} != {para2.level}')
                         return 0
 
                     # check if the number of runs are the same
@@ -535,7 +540,7 @@ def compare_pptx_files(file1_path, file2_path, **options):
                             debug_logger.debug(f"      Para2 runs: {len(para2.runs)}")
                         return 0
 
-                    for run1, run2 in zip(para1.runs, para2.runs):
+                    for r, (run1, run2) in enumerate(zip(para1.runs, para2.runs)):
 
                         # check if the font properties are the same                        
                         if run1.font.name != run2.font.name and examine_font_name:
@@ -596,6 +601,7 @@ def compare_pptx_files(file1_path, file2_path, **options):
                                 
                         if run1.font._element.attrib.get('strike', 'noStrike') != run2.font._element.attrib.get(
                                 'strike', 'noStrike') and examine_strike_through:
+                            logger.info(f"[Slide Check]: {r} strike {run1.text} vs {run2.text}; {run1.font._element.attrib.get('strike', 'noStrike')} != {run2.font._element.attrib.get('strike', 'noStrike')}")
                             return 0
 
                         def _extract_bullets(xml_data):

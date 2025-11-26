@@ -268,7 +268,7 @@ def parse_code_from_string(input_string):
     # This regular expression will match both ```code``` and ```python code```
     # and capture the `code` part. It uses a non-greedy match for the content inside.
     pattern = r"```(?:\w+\s+)?(.*?)```"
-    # print(f'[parse_code_from_string].input_string: {input_string}')
+    print(f'[parse_code_from_string].input_string: {input_string}')
     # Find all non-overlapping matches in the string
     matches = re.findall(pattern, input_string, re.DOTALL)
     if len(matches) == 0:
@@ -282,15 +282,17 @@ def parse_code_from_string(input_string):
 
 
 def extract_agent_functions(code):
-    """Extracts all agent function calls from the given code.
-
+    """
+    Extracts all agent function names from the given code.
+    
     Args:
-        code (str): The code string to search for agent function calls. e.g. agent.click(xxxxx)
+        code (str): The code string to search.
 
     Returns:
-        list: A list of all agent function calls found in the code.
+        list: A list of strings like ['agent.click', 'agent.type'].
     """
-    pattern = r"(agent\.\w+\(\s*.*\))"  # Matches
+    pattern = r"agent\.\w+" 
+    
     return re.findall(pattern, code)
 
 # def extract_agent_functions(input_string):

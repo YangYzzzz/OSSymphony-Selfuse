@@ -197,17 +197,20 @@ class ReflectionMemoryAgent:
             self.behavior_agent.add_message(
                 text_content="This is the observation before executing action.",
                 image_content=prev_obs['screenshot'],
-                role="user"
+                role="user",
+                put_text_last=False
             )
             self.behavior_agent.add_message(
                 text_content="This is the zoom-in view, which may help you to identify the operational region.",
                 image_content=enhanced_obs,
-                role="user"
+                role="user",
+                put_text_last=False
             )
             self.behavior_agent.add_message(
                 text_content="This is the observation after executing action.",
                 image_content=cur_obs['screenshot'],
-                role="user"
+                role="user", 
+                put_text_last=False
             )
 
             required_fields = ["summary", "evaluation"]

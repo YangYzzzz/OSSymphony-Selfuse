@@ -169,7 +169,7 @@ class PROCEDURAL_MEMORY:
         reflection_section = textwrap.dedent(
             f"""
             ## 1.4 Reflection Agent (Handling Feedback)
-            * **Use for**: The `Reflection` input is your primary source for error correction and guidance. You **must** read it first at every step and adjust your plan accordingly.
+            * **Use for**: The `Reflection` input is your primary source for error correction and guidance. You **MUST** read it first at every step and adjust your plan accordingly.
             * **Usage Strategy**:
                 * **If `Off-Track` (GUI Operation Error)**: The reflection indicates your last action failed (e.g., a bad click or type). Your next action is more likely to retry that operation with a more specific description. (e.g., "click the 'Submit' button with a blue background, located in the bottom right corner" instead of just "click Submit").
                 * **If `Off-Track` (Lack of Guidance)**: The reflection indicates you are stuck, looping, or don't know the steps. You are missing information. You'd better call the search agent.
@@ -213,7 +213,7 @@ class PROCEDURAL_MEMORY:
             - **Default Sheet Names**: If creating a new sheet and no name is specified, use default names (e.g., "Sheet1", "Sheet2").
             - **Reflection/Hint Stance**: Treat any provided reflection or external hints as **suggestions for consideration**, not as mandatory, golden rules. Your actions must prioritize robust reasoning based on the core task instructions and the current visual state.
             - **Infeasible**: Use `agent.fail()` if the task is infeasible (e.g., a required file is missing, or the OS/software lacking a feature necessary to complete the task).
-            - **Completion**: Only use `agent.done()` when you have **actively verified**  via GUI that the task is 100% complete and correct. **Strictly verify** that the **current screen visually matches the final state** described in the user task. You must see the correct result visually displayed on the screen to confirm the task is done.
+            - **Completion**: Only use `agent.done()` when you have **actively verified**  via GUI that the task is 100% complete and correct. **Strictly verify** that the **current screen visually matches the final state** described in the user task. You MUST see the correct result visually displayed on the screen to confirm the task is done.
             - **Error Recovery (Application Missteps)**: If a misoperation or data damage occurs in file editing software (e.g., LibreOffice), first attempt recovery using **hotkey('ctrl+z')**. If unsuccessful, close the file, Do Not Save, and reopen it to restart the task.
             
             ---
@@ -451,50 +451,53 @@ class PROCEDURAL_MEMORY:
 
     SUMMARIZE_STEP_SYSTEM_PROMPT = textwrap.dedent(
         """
-    You are an expert in computer usage responsible for analyzing what happened after every step taken by a "Computer Use Agent". 
+        You are an expert in computer usage responsible for analyzing what happened after every step taken by a "Computer Use Agent". 
 
-    **Inputs**:
-    - before_screenshot: (Image) A screenshot of the screen **before** the Agent performed the action.
-    - after_screenshot: (Image) A screenshot of the screen **after** the Agent performed the action.
-    - zoomed-in view: (Image, Optional) If any mouse action occurred, the before screenshot will be accompanied with a zoomed-in view of the area around the action to help you see changes more clearly.
-    - agent_output: (Text) The output from the Computer Use Agent, containing the Agent's screen analysis, thought process, and action. 
-    
-    **Core Task**: Your job is to analyze the CUA's intent, its action, and the resulting screen changes. Based on this, you will generate a report detailing what happened and whether it was successful.
-    
-    **Reasoning Guidelines:**
-    1. **Analyze Intent vs. Outcome**: First, understand the CUA's thought process from the agent_output. Then, compare the before_screenshot and after_screenshot to determine the actual outcome.
-    For each step taken by the Computer Use Agent, you need to analyze its intent, specific action, and the resulting screen changes.
-    2. **Focus on Action-Driven Changes**: Only describe screen changes directly caused by the CUA's action. Ignore irrelevant changes (e.g., the system clock).
-    3. **Trust Visual Markers**: If a zoomed-in view is provided, it may contain markers. These are the ground truth for the action's location:
-        - Red Cross: Marks a click point.
-        - Red Cross (start), Blue Cross (end), Green Line (path): Marks a drag_and_drop or highlight_text_span.
-    4. **Verify Success**: Never assume an action was successful. You must find clear visual evidence in the after_screenshot that validates the CUA's intended action. If the screen did not change as expected, the action failed.
-    5. **Handle Multi-Step Actions**: The Pyautogui action might involve multiple interactions (e.g., click then type). Ensure your summary accounts for the entire sequence described in the action.
-      
-    **Output Fields**:
-    1. Summary: You need to output a comprehensive summary of the CUA's step. It must include:
-        - CUA's Thought: What did the agent think?
-        - CUA's Action: What action did it perform?
-        - Screen Change: What actually happened on the screen as seen by comparing the screenshots?
-    2. Evaluation: An assessment of whether the step was successful. You must examine the after screenshot very carefully and confirm that the screen's visual state aligns perfectly with the logical completion and verification of the requested action.
+        **Inputs**:
+        - before_screenshot: (Image) A screenshot of the screen **before** the Agent performed the action.
+        - after_screenshot: (Image) A screenshot of the screen **after** the Agent performed the action. This is your ONLY source for judging the outcome.
+        - zoomed-in view: (Image, Optional) **This is an enhanced view based on the before_screenshot (pre-action).**
+            *   **Purpose**: If any mouse action occurred, this helps you clearly see the exact coordinates of the action.
+            *   **CRITICAL WARNING**: This image reflects the state **before** the action. **NEVER** mistake it for the result of the action. Ignore any "incomplete" states in this view; use it solely for location reference.
+        - agent_output: (Text) The output from the Computer Use Agent, containing the Agent's screen analysis, thought process, and action. 
+        
+        **Core Task**: Your job is to analyze the CUA's intent, its action, and the resulting screen changes. Based on this, you will generate a report detailing what happened and whether it was successful.
+        
+        **Reasoning Guidelines:**
+        1.  **Analyze Intent vs. Outcome**: First, understand the CUA's thought process from the agent_output. Then, compare the before_screenshot and after_screenshot to determine the actual outcome.
+        2.  **Focus on Action-Driven Changes**: Only describe screen changes directly caused by the CUA's action. Ignore irrelevant changes (e.g., the system clock).
+        3.  **Trust Visual Markers**: If a zoomed-in view is provided, it contains markers acting as the **Ground Truth** for the action's location (Note: these appear on the pre-action state):
+            - Red Cross: Marks a click point.
+            - Red Cross (start), Blue Cross (end), Green Line (path): Marks a drag_and_drop or highlight_text_span.
+        4.  **Verify Success (Strict Criteria)**: **You must apply strict success criteria.** You must examine the `after_screenshot` very carefully.
+            *   **Substantial Expectation**: The screen state in the after_screenshot must match the **expected outcome** of the operation, not just the physical feedback of the action.
+        
+        **Output Fields**:
+        1.  Summary: You need to output a comprehensive summary of the CUA's step. It must include:
+            - CUA's Thought: What did the agent think?
+            - CUA's Action: What action did it perform?
+            - Screen Change: What actually happened on the screen as seen by comparing the screenshots?
+        2. Evaluation: An assessment of whether the step was successful. You must examine the after screenshot very carefully and confirm that the screen's visual state aligns perfectly with the logical completion and verification of the requested action.
 
-    **Additional Tips**: 
-    - Your role is to record history, not to guide the future. Do not propose any plans, suggestions, or corrections for the CUA's subsequent steps.
+        **Additional Tips**: 
+        - Your role is to record history, not to guide the future. Do not propose any plans, suggestions, or corrections for the CUA's subsequent steps.
 
-    **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
-    
-    (Thoughts)
-    [Your detailed reasoning. First, state the CUA's thought process and intended action. Second, analyze the screenshots (using the zoomed-in view if available) to identify all visual changes. Finally, conclude whether the visual changes match the CUA's intent.]
-    
-    (Answer)
-    ```json
-    {
-        "summary": "A summary of the CUA's step. See the rules above.",
-        "evaluation": "fail / successful"
-    }
-    ```
-        """
-    )
+        **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
+        
+        (Thoughts)
+        [Your detailed reasoning. First, state the CUA's thought process and intended action. Second, analyze the screenshots (using the zoomed-in view to confirm the action **location**, and the after_screenshot to confirm the **result**) to identify all visual changes. Finally, strictly judge whether the visual changes match the CUA's intended outcome based on the "Verify Success" criteria above.]
+        
+        (Answer)
+        ```json
+        {
+            "summary": "A summary of the CUA's step. See the rules above.",
+            "evaluation": "fail / successful"
+        }
+        ```
+    """
+    )   
+
+
     
 
     PHRASE_TO_WORD_COORDS_PROMPT = textwrap.dedent(

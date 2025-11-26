@@ -228,7 +228,7 @@ class Worker(BaseModule):
         )
         reflection = reflection_info['reflection']
         if reflection:
-            generator_message += f"REFLECTION: You may use this reflection on the previous action and overall trajectory:\n{reflection}\n"
+            generator_message += f"REFLECTION: You MUST use this reflection on the latest action:\n{reflection}\n"
 
 
         # Add code agent result from previous step if available (from full task or subtask execution)

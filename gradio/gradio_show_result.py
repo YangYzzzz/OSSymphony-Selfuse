@@ -1196,15 +1196,45 @@ def get_result(target_dir):
         except Exception as e: print(f"Error generating overall action usage plot: {e}")
 
     # Plot 2: Per-Domain Action Usage
+    # Plot 2: Per-Domain Action Usage
     for domain, counts in domain_action_counts.items():
         if not counts: continue
         try:
-            save_path = os.path.join(target_dir, f"action_usage_{domain}.png"); plt.figure(figsize=(10, 6)); sorted_actions = counts.most_common(); actions = [i[0] for i in sorted_actions]; action_counts = [i[1] for i in sorted_actions]
-            bars = plt.barh(actions, action_counts, color='lightgreen'); plt.xlabel('Usage Count'); plt.ylabel('Action Type'); plt.title(f'Action Usage Frequency in Domain: {domain}'); plt.gca().invert_yaxis()
-            if action_counts: plt.xlim(right=max(action_counts) * 1.15)
-            for bar in bars: xval = bar.get_width(); plt.text(xval + (max(action_counts) * 0.01), bar.get_y() + bar.get_height() / 2.0, f' {int(xval)} ({int(action_counts) * 100:.1f}%)', ha='left', va='center')
-            plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved action usage plot for domain '{domain}' to {save_path}")
-        except Exception as e: print(f"Error generating action usage plot for domain {domain}: {e}")
+            save_path = os.path.join(target_dir, f"action_usage_{domain}.png")
+            plt.figure(figsize=(10, 6))
+            
+            sorted_actions = counts.most_common()
+            actions = [i[0] for i in sorted_actions]
+            action_counts = [i[1] for i in sorted_actions] # 这是一个纯数字的列表
+            
+            bars = plt.barh(actions, action_counts, color='lightgreen')
+            plt.xlabel('Usage Count')
+            plt.ylabel('Action Type')
+            plt.title(f'Action Usage Frequency in Domain: {domain}')
+            plt.gca().invert_yaxis()
+            
+            if action_counts: 
+                plt.xlim(right=max(action_counts) * 1.15)
+            
+            # --- 修复点开始 ---
+            # 计算总数时，使用 sum(action_counts) 或者 sum(counts.values())
+            total_count = sum(action_counts)
+            # --- 修复点结束 ---
+
+            for bar in bars: 
+                xval = bar.get_width()
+                # 这里将原本的 sum(counts) 替换为了 total_count
+                plt.text(xval + (max(action_counts) * 0.01), 
+                         bar.get_y() + bar.get_height() / 2.0, 
+                         f' {int(xval)} ({int(xval) / total_count * 100:.1f}%)', 
+                         ha='left', va='center')
+            
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            print(f"Saved action usage plot for domain '{domain}' to {save_path}")
+        except Exception as e: 
+            print(f"Error generating action usage plot for domain {domain}: {e}")
 
     # Plot 3: Success Rate by Domain
     if domain_success_rate:

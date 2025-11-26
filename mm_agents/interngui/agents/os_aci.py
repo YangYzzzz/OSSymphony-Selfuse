@@ -271,7 +271,7 @@ class OSWorldACI:
         # Compute the element coordinates
         # 注意: 5 是偏移像素, 为了指针更好的被选中
         if alignment == "start":
-            coords = [elem["left"] + 5, elem["top"] + (elem["height"] // 2)]
+            coords = [elem["left"] + 3, elem["top"] + (elem["height"] // 2)]
         elif alignment == "end":
             coords = [elem["left"] + elem["width"] + 10, elem["top"] + (elem["height"] // 2)]
         
@@ -529,7 +529,7 @@ class OSWorldACI:
         command = "import pyautogui; import time;"
         command += f"pyautogui.moveTo({x1}, {y1}); "
         # 提前点一下, 模拟选中文本框(应该不会产生副作用)
-        command += f"pyautogui.click({x1}, {y1}); time.sleep(0.5);"
+        command += f"pyautogui.click({x1}, {y1}, clicks=2); time.sleep(1.0); pyautogui.click({x1}, {y1}); time.sleep(1.0);"
         command += f"pyautogui.dragTo({x2}, {y2}, duration=2., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
 
         # Return pyautoguicode to drag and drop the elements
@@ -554,8 +554,7 @@ class OSWorldACI:
         x, y = self.generate_text_coords(
             phrase, self.obs, alignment=start_or_end
         )
-        command = f"import pyautogui; pyautogui.click({x}, {y}, button='left'); "
-
+        command = f"import pyautogui; pyautogui.click({x}, {y}, button='left', clicks=2); time.sleep(1.0); pyautogui.click({x}, {y}, button='left');"
         if text:
             command += (
                 "import pyperclip;"
@@ -720,7 +719,11 @@ class OSWorldACI:
     def done(
         self,
     ):
-        """End the current task with a success. Use this when you believe the entire task has been fully completed."""
+        """        
+        End the current task with a success. Use this when you believe the entire task has been fully completed.
+        You must ensure all visual information aligns with the user's true intent.
+        Do not determine task completion based on inference (e.g., assuming success after clicking a button); you must visually verify the outcome!
+        """
         return ("""DONE""", {"function": "done", "args": {}})
 
     @agent_action
