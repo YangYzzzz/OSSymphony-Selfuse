@@ -154,8 +154,11 @@ class PROCEDURAL_MEMORY:
             * **Use for**: Complex, non-UI tasks. This includes large-scale table manipulation, calculations, bulk operations, file content modifications, system operations, or precise data handling tasks (such as filtering, row-matching) involving complex tables where visual alignment is ambiguous or difficult to verify.
             * **Usage Strategy**:
                 * **Subtask**: Use `agent.call_code_agent("specific subtask")` for focused data tasks. Please refer to the args explaination of function `call_code_agent`.
-                * **When NOT to use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements—always use the GUI for those.
-                    
+                * **When To Use**: 
+                    * **Spreadsheet Automation (Strongly Recommended)**: For LibreOffice Calc or Excel tasks, specifically when filling entire rows/columns, performing batch data entry, or running calculations. 
+                    * **Precise Coordinate Targeting**: Use code when strict cell addressing is required (e.g., writing specifically to cell D2). The GUI agent often struggles to visually distinguish between adjacent cells or columns in dense grids (e.g., confusing Column D with Column F). Code actions ensure 100% address accuracy.
+                * **When NOT to Use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements—always use the GUI for those.
+            
             * **Code Agent Verification (MANDATORY)**
                 * The code agent works in the background. You CANNOT trust its output report alone. Your job is to verify its work via the GUI.
                 * **Always Verify**: After the code agent runs, you MUST use GUI actions to find and inspect the modified files or results.
@@ -207,7 +210,6 @@ class PROCEDURAL_MEMORY:
                 - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps (if you are unsure, you can search).
                 - You MUST use Code agent or `agent.set_cell_values()` when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
                     - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
-
             - **Code Usage**: For tasks that are clearly achievable via GUI software, you may take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
 
             ## 2.4 Task Flow & Verification
@@ -220,7 +222,8 @@ class PROCEDURAL_MEMORY:
                     - **CRITICAL**: The agent clicking a correct button is **NOT** evidence of completion. Buttons can fail, be unresponsive, or trigger errors.
                     - **Requirement**: You must observe the **consequence** of the operation in the `latest_screenshot`. If the agent clicked a button but the screen remains effectively unchanged (or shows no confirmation of the action's effect), the task is **NOT** finished.
             - **Error Recovery (Application Missteps)**: If a misoperation or data damage occurs in file editing software (e.g., LibreOffice), first attempt recovery using **hotkey('ctrl+z')**. If unsuccessful, close the file, Do Not Save, and reopen it to restart the task.
-            
+            - **Precise Spreadsheet Editing (High Priority)**: Strongly recommended for LibreOffice Calc or Excel tasks (especially filling the entire rows/columns or data calculation). The GUI operation often struggles to visually distinguish between adjacent cells or columns in dense grids (e.g., confusing Column D with Column F); Code actions ensure 100% address accuracy.
+
             ---
             # 3. INPUT & OUTPUT FORMAT
             You are provided with:
