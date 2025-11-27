@@ -39,7 +39,7 @@ def _attempt_code_creation(agent, code, obs):
 # )
 def code_valid_check(tool_config, response):
     code = parse_code_from_string(response)
-    print(f'[code_valid_check]: {code}')
+    print(f'[code_valid_check] parsed code is: {code}')
     
     # AgentS3的方法
     # result = _attempt_code_creation(
@@ -58,7 +58,7 @@ def code_valid_check(tool_config, response):
 
     pattern = r"^agent\.(\w+)\(.*\)$"
     
-    match = re.match(pattern, code.strip())
+    match = re.match(pattern, code.strip(), re.DOTALL)
     
     if match:
         method_name = match.group(1)
