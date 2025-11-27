@@ -214,7 +214,9 @@ def get_tasks_merged(root_dir, domain, compare_dir=None, merge_dirs=None):
         # 检查 Search 标记 (优先检查最优路径下的 search.txt)
         search_flag_file = Path(best_root) / domain / task_name / "search.txt"
         is_search = search_flag_file.exists() and int(search_flag_file.read_text().strip()) == 1
-
+        code_flag_file = Path(best_root) / domain / task_name / "code.txt"
+        is_code = code_flag_file.exists() and int(code_flag_file.read_text().strip()) == 1
+        
         if compare_dir and os.path.isdir(compare_dir):
             compare_result_file = Path(compare_dir) / domain / task_name / "result.txt"
             compare_status = _get_result_status(compare_result_file)
@@ -226,12 +228,22 @@ def get_tasks_merged(root_dir, domain, compare_dir=None, merge_dirs=None):
                 current_css_class = "compare-comp-win" # 输
         
         # 叠加 Search 样式
-        if is_search:
+        if is_search and not is_code:
             if best_status == 1:
                 current_css_class += " search-and-success"
             else:
                 current_css_class += " search-and-failure"
 
+        if is_code and not is_search:
+            if best_status == 1:
+                current_css_class += " code-and-success"
+            else:
+                current_css_class += " code-and-failure"
+        if is_code and is_search:
+            if best_status == 1:
+                current_css_class += " code-and-search-success"
+            else:
+                current_css_class += " code-and-search-failure"
         css_class_list.append(current_css_class)
 
     # 生成统计文本
@@ -356,6 +368,62 @@ def create_gradio_app(root_dir):
         }
         .search-and-failure::before {
             content: 'search';
+            background-image: linear-gradient(to bottom, #e74c3c, #dc3545);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            border: 1px solid #b21f2d;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .code-and-success::before {
+            content: 'code';
+            background-image: linear-gradient(to bottom, #2ecc71, #28a745);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            border: 1px solid #1e7e34;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .code-and-failure::before {
+            content: 'code';
+            background-image: linear-gradient(to bottom, #e74c3c, #dc3545);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            border: 1px solid #b21f2d;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .code-and-search-success::before {
+            content: 'code & search';
+            background-image: linear-gradient(to bottom, #2ecc71, #28a745);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+            display: inline-block;
+            vertical-align: middle;
+            border: 1px solid #1e7e34;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .code-and-search-failure::before {
+            content: 'code & search';
             background-image: linear-gradient(to bottom, #e74c3c, #dc3545);
             color: white;
             padding: 2px 8px;
@@ -1072,10 +1140,12 @@ def get_result(target_dir):
                                 if action:
                                     overall_action_counts[action] += 1
                                     domain_action_counts[domain][action] += 1
-                                if action == "call_search_agent":
+                                if "call_search_agent" in action:
                                     with open(os.path.join(example_path, "search.txt"), "w", encoding="utf-8") as f:
                                         f.write("1")
-
+                                if "call_code_agent" in action:
+                                    with open(os.path.join(example_path, "code.txt"), "w", encoding="utf-8") as f:
+                                        f.write("1")
                                 # --- ErrorType 统计逻辑 ---
                                 reflection = data.get("response", {}).get("reflection", {})
                                 error_hint = reflection.get("hint", {})

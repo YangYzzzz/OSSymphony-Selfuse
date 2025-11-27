@@ -432,6 +432,7 @@ class OSWorldACI:
             "import pyautogui",
             "import pyperclip",
             "import subprocess",
+            "import time",
             # 注意：这个安装命令每次执行都会尝试运行，可能效率不高且需要sudo权限
             # 最好确保环境已经预先配置好
             "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
@@ -442,7 +443,7 @@ class OSWorldACI:
         x, y = None, None
         if element_description is not None:
             x, y = self.grounder_agent.generate_coords(element_description, self.obs)
-            commands.append(f"pyautogui.click({x}, {y})")
+            commands.extend([f"pyautogui.click({x}, {y}, clicks=2)", "time.sleep(1.0)", f"pyautogui.click({x}, {y})"])
 
         if overwrite:
             if not is_terminal:
@@ -720,9 +721,7 @@ class OSWorldACI:
         self,
     ):
         """        
-        End the current task with a success. Use this when you believe the entire task has been fully completed.
-        You must ensure all visual information aligns with the user's true intent.
-        Do not determine task completion based on inference (e.g., assuming success after clicking a button); you must visually verify the outcome!
+        End the current task with a success. Use this when you believe the entire task has been fully completed. You must ensure all visual information aligns with the user's true intent.
         """
         return ("""DONE""", {"function": "done", "args": {}})
 
@@ -757,9 +756,6 @@ class OSWorldACI:
             *   **Correct Query (if stuck on downloading):** "How to download a bank statement from the Bank of America website?"
             *   **Correct Query (if stuck on attaching a file):** "How to attach a file to an email in Gmail?"
             *   **Incorrect Query:** "Download my bank statement and email it to my accountant" *(This query is too broad, contains multiple sub-tasks, and does not start with "How to".)*
-
-        **Execution Effect:**
-        This action pauses the current agent's execution and delegates the search task to an independent Searcher Agent. The resulting tutorial will be made available to you as context to guide your subsequent actions.
         """
         logger.info("=" * 50)
         logger.info(f"ACI: Calling Search Agent(query={query})")

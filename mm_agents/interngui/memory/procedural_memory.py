@@ -172,7 +172,7 @@ class PROCEDURAL_MEMORY:
             * **Use for**: The `Reflection` input is your primary source for error correction and guidance. You **MUST** read it first at every step and adjust your plan accordingly.
             * **Usage Strategy**:
                 * **If `Off-Track` (GUI Operation Error)**: The reflection indicates your last action failed (e.g., a bad click or type). Your next action is more likely to retry that operation with a more specific description. (e.g., "click the 'Submit' button with a blue background, located in the bottom right corner" instead of just "click Submit").
-                * **If `Off-Track` (Lack of Guidance)**: The reflection indicates you are stuck, looping, or don't know the steps. You are missing information. You'd better call the search agent.
+                * **If `Off-Track` (Lack of Tutorial)**: The reflection indicates you are stuck, looping, or don't know the steps. You are missing information. You'd better call the search agent.
                 * **If `Off-Track` (Code Error)**: It indicates the code agent fails to finish the task, so you need to recover from potential errors or side effects caused by the failed code execution and continue doing the task by GUI operations.
                 * **If `Off-Track` (Other Error)**: Carefully read the reflection's explanation and form a new plan to fix the deviation.
                 * **If `On-Track`**: Continue with your original plan. 
@@ -205,19 +205,16 @@ class PROCEDURAL_MEMORY:
             - **Efficiency is Key**:
                 - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
                 - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps (if you are unsure, you can search).
-                - You MUST use `agent.set_cell_values()` when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets.
-            - **Code Usage**: For tasks that are clearly achievable via GUI software, you may take a shortcut and use Code Agent(e.g., using FFMPEG to convert video to GIF); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
+            - **Code Usage**: For tasks that are clearly achievable via GUI software, you may take a shortcut and use Code Agent(e.g., using FFMPEG to convert video to GIF, operating in Libreoffice Calc); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
+            - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, can invoke the Search Agent to retrieve detailed online tutorials for further guidance.
 
             ## 2.4 Task Flow & Verification
             - **Task Initial State**: The file you need to operate on is usually already open. Please align the screenshot with task description. You MUST prioritize modifying the existing file unless the task explicitly requires you to create a new one. Avoid creating new files unnecessarily.
             - **Default Sheet Names**: If creating a new sheet and no name is specified, use default names (e.g., "Sheet1", "Sheet2").
             - **Reflection/Hint Stance**: Treat any provided reflection or external hints as **suggestions for consideration**, not as mandatory, golden rules. Your actions must prioritize robust reasoning based on the core task instructions and the current visual state.
             - **Infeasible**: Use `agent.fail()` if the task is infeasible (e.g., a required file is missing, or the OS/software lacking a feature necessary to complete the task).
-            - **Completion**: Only use `agent.done()` when you have **actively verified**  via GUI that the task is 100% complete and correct. **Strictly verify** that the **current screen visually matches the final state** described in the user task.
-                - **"Outcome over Action" Rule**: You must strictly distinguish between **Action Execution** (e.g., clicking 'Submit', typing text) and **State Change** (e.g., a 'Success' banner appears, page redirects, file's format changes).
-                    - **CRITICAL**: The agent clicking a correct button is **NOT** evidence of completion. Buttons can fail, be unresponsive, or trigger errors.
-                    - **Requirement**: You must observe the **consequence** of the operation in the `latest_screenshot`. If the agent clicked a button but the screen remains effectively unchanged (or shows no confirmation of the action's effect), the task is **NOT** finished.
-            - **Error Recovery (Application Missteps)**: If a misoperation or data damage occurs in file editing software (e.g., LibreOffice), first attempt recovery using **hotkey('ctrl+z')**. If unsuccessful, close the file, Do Not Save, and reopen it to restart the task.
+            - **Completion**: Only use `agent.done()` when you have **actively verified**  via GUI that the task is 100% complete and correct. **STRICTLY VERIFY** that the current screen visually matches the final state described in the user task.
+            - **Error Recovery (Application Missteps)**: If a misoperation occurs in file editing software (e.g., LibreOffice), first attempt recovery using **hotkey('ctrl+z')**. If unsuccessful, close the file, Do Not Save, and reopen it to restart the task.
             
             ---
             # 3. INPUT & OUTPUT FORMAT
@@ -349,7 +346,7 @@ class PROCEDURAL_MEMORY:
         - IMPORTANT: This action has been DONE!
     - latest_screenshot (Image): The screenshot AFTER executing the action described in the **latest_agent_output**.
     - existing_knowledge (Text, Optional): A string containing all previously saved knowledge, which may be empty.
-    - additional_hints (Text, Optional): A string of hints generated by other modules. **Treat these as strong indicators unless you have a high degree of certainty that the hints are incorrect**. (The hints are possible but unlikely to be wrong.)
+    - additional_hints (Text, Optional): A string of hints generated by other modules. **Treat these as strong indicators!**.
 
     ---
     **Task 1: Knowledge Extraction (Saving New Info)**
@@ -373,11 +370,10 @@ class PROCEDURAL_MEMORY:
 
     ---     
     **Task 2: Reflection & Knowledge Recall**
-    Then, you must generate a reflection on the **current state (last_agent_output and last_screenshot)** in the context of the user_instruction. Your reflection must be one of the four cases below.
-    
+    Then, you must generate a reflection on the **entire history and current state (last_agent_output and last_screenshot)** in the context of the user_instruction. Your reflection must be one of the four cases below.
+
     You must check the cases in this order: 1, 2, 3, then 4.
     - Case 1. **Off-Track**:
-        - **Trigger**: The **latest action's outcome**, as seen in `latest_screenshot`, either failed to execute correctly, resulted in a state that actively hinders progress, or is part of a detected unproductive loop. **DO NOT** review the correctness of steps *prior* to the latest one, unless the latest step *itself* confirms a prior error (e.g., the latest action was to verify a file, and the verification shows the file is wrong).
         - You must first classify the error into one of the following types. Your reflection for this case **must** start with the error type, followed by a specific explanation.
         - **Format**: `The trajectory is not going according to plan. [Error Type]: [Your explanation]` 
         - **Error Types:**

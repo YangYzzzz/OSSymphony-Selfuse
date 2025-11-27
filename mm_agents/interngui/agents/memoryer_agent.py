@@ -195,19 +195,19 @@ class ReflectionMemoryAgent:
 
             # 添加三张图片
             self.behavior_agent.add_message(
-                text_content="This is the observation before executing action.",
+                text_content="This is the observation before executing action (attached below).",
                 image_content=prev_obs['screenshot'],
                 role="user",
                 put_text_last=False
             )
             self.behavior_agent.add_message(
-                text_content="This is the zoom-in view, which may help you to identify the operational region.",
+                text_content="This is the zoom-in view, which may help you to identify the operational region (attached below).",
                 image_content=enhanced_obs,
                 role="user",
                 put_text_last=False
             )
             self.behavior_agent.add_message(
-                text_content="This is the observation after executing action.",
+                text_content="This is the observation after executing action (attached below).",
                 image_content=cur_obs['screenshot'],
                 role="user", 
                 put_text_last=False
@@ -326,7 +326,6 @@ class ReflectionMemoryAgent:
                 action_dict
             )    
             step_behavior._update_phash_ssim(self.trajectory)
-            self._update_trajectory(step_behavior)
             
             ### make additional hints
             additional_hints = []
@@ -412,7 +411,8 @@ class ReflectionMemoryAgent:
                         role="user",
                     )
                 # print("=" * 30)
-            text_content = f"""### (Last Step) CUA's output (has been finished):\n---\n{generator_output}\n---\n\nlatest_screenshot:  (attached below)"""
+                    
+            text_content = f"""### (Last Step) CUA's output (has been finished):\n---\n{generator_output}\n---\nStep Summary:\n---\n{step_behavior.summary}\n---\nlatest_screenshot:  (attached below)"""
             self.reflection_agent.add_message(
                 text_content=text_content,
                 image_content=cur_obs['screenshot'],
@@ -430,9 +430,9 @@ class ReflectionMemoryAgent:
                 format_checkers
             )
 
-            # print("=" * 30)
-            # print(full_response)
-            # print("=" * 30)
+            print("=" * 30)
+            print(full_response)
+            print("=" * 30)
 
             reflection_thought = full_response      # 这里直接传full response了，反正也没有实际用途
 
@@ -456,7 +456,8 @@ class ReflectionMemoryAgent:
             if isinstance(is_milestone, str):
                 is_milestone = True if "true" in is_milestone.lower() else False
             
-            # update is_milestone
+            # update trajectory and is_milestone
+            self._update_trajectory(step_behavior)
             self.trajectory[-1].is_milestone = is_milestone
             
 
