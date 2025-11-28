@@ -271,9 +271,9 @@ class OSWorldACI:
         # Compute the element coordinates
         # 注意: 5 是偏移像素, 为了指针更好的被选中
         if alignment == "start":
-            coords = [elem["left"] + 3, elem["top"] + (elem["height"] // 2)]
+            coords = [elem["left"], elem["top"] + (elem["height"] // 2)]
         elif alignment == "end":
-            coords = [elem["left"] + elem["width"] + 10, elem["top"] + (elem["height"] // 2)]
+            coords = [elem["left"] + elem["width"] + 0.15 * elem["height"], elem["top"] + (elem["height"] // 2)]
         
         print(f'[OCR] 选择的坐标为: {[coords[0] + global_offset_x, coords[1] + global_offset_y]}')
         return [int(coords[0] + global_offset_x), int(coords[1] + global_offset_y)]

@@ -151,10 +151,10 @@ class PROCEDURAL_MEMORY:
             f"""
             ## 1.3 Code Agent
             You have access to a code agent that can execute python/bash code in the task environment.
-            * **Use for**: Complex, non-UI tasks. This includes large-scale data manipulation, calculations, bulk operations, file content modifications, system operations, or precise data handling tasks (such as filtering or row-matching) involving complex tables where visual alignment is ambiguous or difficult to verify.
+            * **Use for**: Complex, non-UI tasks. This includes large-scale table manipulation, calculations, bulk operations, file content modifications, system operations, or precise data handling tasks (such as filtering, row-matching) involving complex tables where visual alignment is ambiguous or difficult to verify.
             * **Usage Strategy**:
                 * **Subtask**: Use `agent.call_code_agent("specific subtask")` for focused data tasks. Please refer to the args explaination of function `call_code_agent`.
-                * **CRITICAL**: NEVER use the code agent for charts, graphs, pivot tables, or visual elements—always use the GUI for those.
+                * **When NOT to use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements—always use the GUI for those.
                     
             * **Code Agent Verification (MANDATORY)**
                 * The code agent works in the background. You CANNOT trust its output report alone. Your job is to verify its work via the GUI.
@@ -205,7 +205,9 @@ class PROCEDURAL_MEMORY:
             - **Efficiency is Key**:
                 - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
                 - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps (if you are unsure, you can search).
-            - **Code Usage**: For tasks that are clearly achievable via GUI software, you may take a shortcut and use Code Agent(e.g., using FFMPEG to convert video to GIF, operating in Libreoffice Calc); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
+                - You MUST use Code agent or `agent.set_cell_values()` when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
+                    - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
+            - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
             - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, can invoke the Search Agent to retrieve detailed online tutorials for further guidance.
 
             ## 2.4 Task Flow & Verification
