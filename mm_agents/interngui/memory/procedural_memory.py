@@ -211,7 +211,7 @@ class PROCEDURAL_MEMORY:
                 - You MUST use Code Agent or `agent.set_cell_values()` when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
                     - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
             - **Code Usage**: For tasks that are clearly achievable via GUI software, you may take a shortcut and use Code Agent(e.g., using FFMPEG to convert video to GIF, operating in Libreoffice Calc); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
-            - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, can invoke the Search Agent to retrieve detailed online tutorials for further guidance.
+            - **Search Usage**: Invoke the Search Agent to retrieve detailed online tutorials if you encounter flawed execution logic, persistent failure after multiple attempts, or receive a 'Lack of Tutorial' error from the Reflection Agent.
 
             ## 2.4 Task Flow & Verification
             - **Task Initial State**: The file you need to operate on is usually already open. Please align the screenshot with task description. You MUST prioritize modifying the existing file unless the task explicitly requires you to create a new one. Avoid creating new files unnecessarily.
@@ -384,6 +384,7 @@ class PROCEDURAL_MEMORY:
         - **Error Types:**
             - **GUI Operation Error**: The agent's intended action failed at the execution level. It usually occurs when `additional_hints` contain "Warning: The last GUI operation is unsuccessful".
                 - *Examples*: CUA intended to click a non-existent element (hallucination), clicking at the wrong coordinates for a existent element (grounding issue), or a typing error (e.g., trying to input new text without clearing the old content, significant typos).
+                - *Tip*: Do NOT check the action `agent.locate_cursor()`, since it must be correct. 
             - **Lack of Tutorial**: The agent's individual GUI operations (clicks, types) are technically correct, but the overall sequence or logic is flawed. The agent seems not to know *how* to accomplish the task.
                 - *Examples*: The agent is clicking randomly, or appears "stuck" and is stubbornly repeating a fixed set of actions *without* making progress (loop detected).
             - **Code Error**: This triggers *after* `call_code_agent` has been used and the CUA is now in a "verification" step (e.g., has opened the file that the Code Agent was supposed to modify). The `latest_screenshot` reveals that the Code Agent's work is incorrect, incomplete, or does not match the `user_instruction`.
