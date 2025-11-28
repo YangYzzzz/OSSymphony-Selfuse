@@ -2,6 +2,8 @@ import sys
 import os
 import logging
 import glob
+import tempfile
+import uuid
 from send2trash import send2trash
 from logging import FileHandler
 from logging.handlers import RotatingFileHandler
@@ -1755,6 +1757,192 @@ def get_check_if_world_clock_exists():
     else:
         return jsonify({'status': 'error', 'message': 'World clock does not exist'}), 400
 
+@app.route("/run_python", methods=['POST'])
+def run_python():
+    data = request.json
+    code = data.get('code', None)
+
+    if not code:
+        return jsonify({'status': 'error', 'message': 'Code not supplied!'}), 400
+
+    # --- 适配点 1: 使用跨平台的临时目录 ---
+    # Windows 下通常是 C:\Users\xxx\AppData\Local\Temp
+    temp_dir = tempfile.gettempdir()
+    temp_filename = os.path.join(temp_dir, f"python_exec_{uuid.uuid4().hex}.py")
+    
+    try:
+        # --- 适配点 2: 显式指定 utf-8 编码，防止 Windows 中文乱码 ---
+        with open(temp_filename, 'w', encoding='utf-8') as f:
+            f.write(code)
+        
+        # --- 适配点 3: 动态获取 Python 解释器 ---
+        # 参考你的 server.py，这比硬编码路径更安全
+        python_executable = sys.executable
+        
+        # Execute the file
+        result = subprocess.run(
+            [python_executable, temp_filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            encoding='utf-8' # 确保捕获输出时使用 UTF-8
+        )
+        
+        # Clean up
+        try:
+            os.remove(temp_filename)
+        except:
+            pass
+        
+        output = result.stdout
+        error_output = result.stderr
+        
+        combined_message = output
+        if error_output:
+            combined_message += ('\n' + error_output) if output else error_output
+        
+        if result.returncode != 0:
+            status = 'error'
+            if not error_output:
+                error_output = f"Process exited with code {result.returncode}"
+                combined_message = combined_message + '\n' + error_output if combined_message else error_output
+        else:
+            status = 'success'
+        
+        return jsonify({
+            'status': status,
+            'message': combined_message,
+            'need_more': False,
+            'output': output,
+            'error': error_output,
+            'return_code': result.returncode
+        })
+        
+    except subprocess.TimeoutExpired:
+        try: os.remove(temp_filename)
+        except: pass
+        return jsonify({
+            'status': 'error',
+            'message': 'Execution timeout',
+            'error': 'TimeoutExpired',
+            'need_more': False,
+            'output': None,
+        }), 500
+        
+    except Exception as e:
+        try: os.remove(temp_filename)
+        except: pass
+        return jsonify({
+            'status': 'error',
+            'message': f'Execution error: {str(e)}',
+            'error': traceback.format_exc(),
+            'need_more': False,
+            'output': None,
+        }), 500
+
+
+@app.route("/run_bash_script", methods=['POST'])
+def run_bash_script():
+    data = request.json
+    script = data.get('script', None)
+    timeout = data.get('timeout', 100)
+    working_dir = data.get('working_dir', None)
+    
+    if not script:
+        return jsonify({
+            'status': 'error',
+            'output': 'Script not supplied!',
+            'error': "",
+            'returncode': -1
+        }), 400
+    
+    if working_dir:
+        working_dir = os.path.expanduser(working_dir)
+        if not os.path.exists(working_dir):
+            return jsonify({
+                'status': 'error',
+                'output': f'Working directory does not exist: {working_dir}',
+                'error': "",
+                'returncode': -1
+            }), 400
+    
+    # --- 适配点 4: 根据平台决定脚本后缀和执行方式 ---
+    is_windows = (platform_name == "Windows")
+    suffix = '.ps1' if is_windows else '.sh'
+    
+    # delete=False 是必须的，因为 Windows 下文件打开时无法被另一个进程执行
+    with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False, encoding='utf-8') as tmp_file:
+        # 如果是 Linux 且没有 shebang，加上 bash
+        if not is_windows and "#!/bin/bash" not in script:
+            script = "#!/bin/bash\n\n" + script
+        
+        # 如果是 Windows，移除可能存在的 Linux shebang，防止 PowerShell 报错或误解
+        if is_windows and script.startswith("#!"):
+            script = "#" + script # 注释掉 shebang
+            
+        tmp_file.write(script)
+        tmp_file_path = tmp_file.name
+    
+    try:
+        # Linux 需要执行权限，Windows 不需要 chmod
+        if not is_windows:
+            try:
+                os.chmod(tmp_file_path, 0o755)
+            except:
+                pass
+        
+        # --- 适配点 5: 构建执行命令 ---
+        if is_windows:
+            # 使用 PowerShell 执行
+            # -ExecutionPolicy Bypass: 允许执行未签名的脚本
+            cmd = ['powershell', '-ExecutionPolicy', 'Bypass', '-File', tmp_file_path]
+            creation_flags = subprocess.CREATE_NO_WINDOW # 防止弹出黑框
+        else:
+            # 使用 Bash 执行
+            cmd = ['/bin/bash', tmp_file_path]
+            creation_flags = 0
+
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+            cwd=working_dir,
+            creationflags=creation_flags,
+            shell=False,
+            encoding='utf-8' # 强制 UTF-8，防止 Windows GBK 乱码
+        )
+        
+        return jsonify({
+            'status': 'success' if result.returncode == 0 else 'error',
+            'output': result.stdout,
+            'error': "",
+            'returncode': result.returncode
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'status': 'error',
+            'output': f'Script execution timed out after {timeout} seconds',
+            'error': "",
+            'returncode': -1
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'output': f'Failed to execute script: {str(e)}',
+            'error': "",
+            'returncode': -1
+        }), 500
+    finally:
+        # 手动清理临时文件
+        try:
+            os.unlink(tmp_file_path)
+        except:
+            pass
+        
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=args.port)
 

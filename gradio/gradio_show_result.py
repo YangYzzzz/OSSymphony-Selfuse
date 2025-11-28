@@ -1266,7 +1266,6 @@ def get_result(target_dir):
         except Exception as e: print(f"Error generating overall action usage plot: {e}")
 
     # Plot 2: Per-Domain Action Usage
-    # Plot 2: Per-Domain Action Usage
     for domain, counts in domain_action_counts.items():
         if not counts: continue
         try:
@@ -1316,6 +1315,39 @@ def get_result(target_dir):
             for bar in bars: yval = bar.get_height(); plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
             plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved success rate plot to {save_path}")
         except Exception as e: print(f"Error generating success rate plot: {e}")
+
+
+    # Plot 4: Step Distribution Histograms
+
+    step_stats = {'overall': {'success_steps': [], 'failure_steps': []}}
+    for domain, tasks in all_result_for_analysis.items():
+        if domain not in step_stats: step_stats[domain] = {'success_steps': [], 'failure_steps': []}
+        for task_id, data in tasks.items():
+            if data.get('score') is not None and data.get('step') is not None:
+                if data['score'] > 0.0: step_stats[domain]['success_steps'].append(data['step']); step_stats['overall']['success_steps'].append(data['step'])
+                else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
+
+    for name, data in step_stats.items():
+        save_path = os.path.join(target_dir, f"{'overall' if name == 'overall' else name}_step_distribution.png")
+        title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
+        plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
+
+
+
+    # --- Plot 5: 调用新的堆叠图函数 ---
+    print("\nGenerating stacked token usage plots...")
+    # 为每个 domain 生成图表
+    for domain, token_data in domain_token_stats.items():
+        plot_token_usage_stacked(
+            stats_data=token_data,
+            title=f'Average Token Usage (Stacked) per Task in Domain: {domain}',
+            save_path=os.path.join(target_dir, f"token_usage_stacked_{domain}.png")
+        )
+    plot_token_usage_stacked(
+        stats_data=overall_token_stats,
+        title='Overall Average Token Usage (Stacked) per Task',
+        save_path=os.path.join(target_dir, "overall_token_usage_stacked.png")
+    )
 
     # --- Plot 6: Error & Reflection Analysis (Combined & Enhanced) ---
     print("\nGenerating error analysis plots...")
