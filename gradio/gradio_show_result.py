@@ -1243,7 +1243,7 @@ def get_result(target_dir):
             print(f"Domain: {domain:<20} | Runs: {len(results):<5} | Success Rate: {rate:.2f}%")
     overall_rate = sum(all_result) / len(all_result) * 100
     print("-" * 60)
-    print(f"Overall                  | Runs: {len(all_result):<5} | Avg. Success Rate: {overall_rate:.2f}%")
+    print(f"Overall    | Runs: {len(all_result):<5} | Total Score: {sum(all_result)}| Avg. Success Rate: {overall_rate:.2f}%")
     print("-" * 60)
     json_output_path = os.path.join(target_dir, "all_result_summary.json")
     try:

@@ -458,7 +458,8 @@ class ReflectionMemoryAgent:
             
             # update trajectory and is_milestone
             self._update_trajectory(step_behavior)
-            self.trajectory[-1].is_milestone = is_milestone
+            if mode == "gui":       # 只有gui操作评判是否是milestone
+                self.trajectory[-1].is_milestone = is_milestone
             
 
             reflection_info = {
