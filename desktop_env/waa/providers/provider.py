@@ -11,11 +11,11 @@ from pathlib import Path
 from filelock import FileLock
 
 logger = logging.getLogger("desktopenv.providers.docker")
-LOCK_TIMEOUT = 30
+LOCK_TIMEOUT = 300
 
 class WindowsDockerProvider:
     def __init__(self, 
-                 image_name="windowsarena/winarena-v2:latest", 
+                 image_name="winarena-v2:latest", 
                  vm_storage_path="./storage", 
                  vm_backup_path="./storage_backup",
                  ram_size="8G",
@@ -92,7 +92,7 @@ class WindowsDockerProvider:
         """等待 Windows Agent (5000端口) 启动"""
         start_time = time.time()
         # 注意：这里使用动态分配的 server_port
-        url = f"http://127.0.0.1:{self.server_port}/screenshot" 
+        url = f"http://127.0.0.1:{self.server_port}/probe" 
         
         logger.info(f"Waiting for Windows Agent at {url}...")
         while time.time() - start_time < timeout:
@@ -143,31 +143,32 @@ class WindowsDockerProvider:
                     "RAM_SIZE": self.ram_size,
                     "CPU_CORES": self.cpu_cores,
                     "KVM": "Y" if devices else "N",
-                    "HTTPS_PROXY": "http://10.1.8.5:23128",
-                    "HTTP_PROXY": "http://10.1.8.5:23128",
-                    "NO_PROXY": "127.0.0.1,localhost"
+                    "OPENAI_API_KEY_FOR_CHECK_SETUP": "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D",
+                    "OPENAI_BASE_URL_FOR_CHECK_SETUP": "https://api.boyuerichdata.opensphereai.com/v1"
                 }
 
                 # 3. 启动容器
                 logger.info(f"Starting container using storage: {self.vm_storage_path}")
                 self.container = self.client.containers.run(
-                    self.image_name,
+                    "winarena-v2:latest",
                     detach=True,
-                    remove=True, 
+                    privileged=True,
                     devices=devices,
+                    platform="linux/amd64",
                     cap_add=["NET_ADMIN"],
                     ports={
-                        '5000/tcp': self.server_port,   # Agent API
-                        '3389/tcp': self.rdp_port,      # RDP
-                        '9222/tcp': self.chromium_port,  # Chrome DevTools <--- 关键映射
-                        '8006/tcp': self.brower_port
+                        '5000': self.server_port,   # Agent API
+                        '3389': self.rdp_port,      # RDP
+                        '9222': self.chromium_port,  # Chrome DevTools <--- 关键映射
+                        '8006': self.brower_port
                     },
                     volumes={
                         self.vm_storage_path: {'bind': '/storage', 'mode': 'rw'}
                     },
                     environment=environment,
                     extra_hosts={"host.docker.internal": "host-gateway"},
-                    name=f"win_vm_{self.server_port}" # 给容器起个名字方便调试
+                    entrypoint="/bin/bash",
+                    command='-c "./entry_setup.sh & tail -f /dev/null"'
                 )
                 
                 # 4. 等待服务就绪

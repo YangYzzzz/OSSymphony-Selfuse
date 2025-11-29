@@ -9,7 +9,7 @@ import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
 from mm_agents.interngui.agents.interngui import InternGUI
-from mm_agents.interngui.agents.os_aci import OSWorldACI
+from mm_agents.interngui.agents.os_aci import OSACI
 import shutil
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
@@ -161,6 +161,8 @@ def run_env_tasks(
                 client_password=getattr(args, "client_password", ""),
             )
             env.start()
+            
+            platform = "linux"
 
         elif args.benchmark == "waa":
             parent_dir = os.path.dirname(args.path_to_vm.rstrip(os.sep))
@@ -181,13 +183,19 @@ def run_env_tasks(
                 provider_name=args.provider_name
             )
 
+            platform = "windows"
+
+        elif args.benchmark == "macos":
+            # TODO: zhenyu
+            pass
+
         search_env = OSWorldDesktopEnv(
-            path_to_vm=args.path_to_vm,
+            path_to_vm=args.searcher_path_to_vm,
             action_space=args.action_space,
             provider_name=args.provider_name,
             region=region,
             snapshot_name=snapshot_name,
-            screen_size=(args.screen_width, args.screen_height),
+            screen_size=(args.searcher_screen_width, args.searcher_screen_height),
             headless=args.headless,
             os_type="Ubuntu",
             require_a11y_tree=args.observation_type
@@ -198,10 +206,10 @@ def run_env_tasks(
 
         engine_params_for_ocr = copy.deepcopy(engine_params_for_orchestrator)
         engine_params_for_ocr["agent_name"] = "ocr"
-        os_aci = OSWorldACI(
+        os_aci = OSACI(
             env=env, # 主环境
             search_env=search_env,
-            platform="linux",
+            platform=platform,
             engine_params_for_ocr=engine_params_for_ocr, # 用于OCR总结的VLM使用OrchestratorConfig的配置即可
             engine_params_for_grounder=engine_params_for_grounder,
             engine_params_for_coder=engine_params_for_coder,
@@ -213,7 +221,7 @@ def run_env_tasks(
             engine_params_for_orchestrator,
             engine_params_for_memoryer,
             os_aci,
-            platform="linux",
+            platform=platform,
             max_trajectory_length=args.max_trajectory_length,
             enable_reflection=args.enable_reflection,
             use_search_first=args.use_search_first,
@@ -369,8 +377,8 @@ def config() -> argparse.Namespace:
         default=1,
         help="Number of environments to run in parallel",
     )
-    parser.add_argument("--screen_width", type=int, default=1920)
-    parser.add_argument("--screen_height", type=int, default=1080)
+    parser.add_argument("--screen_width", type=int, default=1920, help="Main environment's width")
+    parser.add_argument("--screen_height", type=int, default=1080, help="Main environment's height")
     parser.add_argument("--sleep_after_execution", type=float, default=1.0)
     parser.add_argument("--max_steps", type=int, default=15)
 
@@ -516,6 +524,24 @@ def config() -> argparse.Namespace:
         type=int,
         default=20,
         help="Max inner loop steps of search agent",
+    )
+    parser.add_argument(
+        "--searcher_screen_width",
+        type=int,
+        default=1920,
+        help="Search enviroment's width",
+    )
+    parser.add_argument(
+        "--searcher_screen_height",
+        type=int,
+        default=1080,
+        help="Search enviroment's height",
+    )
+    parser.add_argument(
+        "--searcher_path_to_vm",
+        type=str,
+        default="/nvme/yangbowen/vm_stroage/osworld/Ubuntu.qcow2",
+        help="Searcher Env VM's path (OSWorld'VM Path)",
     )
 
     # grounding model config, temperture is 0 with hardcode

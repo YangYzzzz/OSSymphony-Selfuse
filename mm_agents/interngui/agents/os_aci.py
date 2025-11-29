@@ -12,7 +12,7 @@ from mm_agents.interngui.core.mllm import LMMAgent
 from mm_agents.interngui.utils.common_utils import call_llm_safe, smart_resize
 from mm_agents.interngui.agents.coder_agent import CoderAgent
 from mm_agents.interngui.agents.grounder_agent import GrounderAgent
-from mm_agents.interngui.agents.searcher_agent import SearcherAgent, VLMSearcherAgent
+from mm_agents.interngui.agents.searcher_agent import SearcherAgent
 import logging
 
 from mm_agents.interngui.agents.ocr import OCRProcessor
@@ -173,7 +173,7 @@ set_cell_values(new_cell_values={cell_values}, app_name="{app_name}", sheet_name
 
 
 # GrounderAgent primitives are parameterized by description, and coordinate generation uses a pretrained grounding model
-class OSWorldACI:
+class OSACI:
     def __init__(
         self,
         env,
@@ -187,7 +187,7 @@ class OSWorldACI:
         height: int = 1080
     ):
 
-        # 独属于 OSWorldACI 的主环境
+        # 独属于 OSACI 的主环境
         self.env = env
         self.platform = platform
 
@@ -205,7 +205,8 @@ class OSWorldACI:
 
         # Configure code agent
         self.coder_agent = CoderAgent(
-            engine_params=engine_params_for_coder
+            engine_params=engine_params_for_coder,
+            platform=self.platform
         )
 
         # Configure search agent, TODO: @Yang
@@ -343,6 +344,17 @@ class OSWorldACI:
             return (f"import pyautogui; pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)", action)
         elif self.platform == "darwin":
             return (f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)", action)
+        elif self.platform == "windows":
+            return (
+                "import pyautogui; import time; "
+                "pyautogui.hotkey('win'); time.sleep(0.5); "
+                f"pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); "
+                "pyautogui.press('enter'); time.sleep(0.5)"
+            )
+        else:
+            assert (
+                False
+            ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
 
     # @agent_action
     # def type(
@@ -433,13 +445,19 @@ class OSWorldACI:
             "import pyperclip",
             "import subprocess",
             "import time",
-            # 注意：这个安装命令每次执行都会尝试运行，可能效率不高且需要sudo权限
-            # 最好确保环境已经预先配置好
-            "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
-            # 存储原始剪贴板
-            "original_clipboard = pyperclip.paste()"
         ]
-        
+        if self.platform == "linux":
+            commands += [
+                "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
+                # 存储原始剪贴板
+                "original_clipboard = pyperclip.paste()"
+            ]
+        elif self.platform in ["windows", "darwin"]:
+            commands += [
+                # Windows 简单起见, 在环境内预先配置好
+                "original_clipboard = pyperclip.paste()"
+            ]
+
         x, y = None, None
         if element_description is not None:
             x, y = self.grounder_agent.generate_coords(element_description, self.obs)
@@ -611,10 +629,7 @@ class OSWorldACI:
         - The `task` you provide should be a single, continuous goal. The code agent is capable of handling a multi-step process internally (e.g., opening a file, processing its data, and then saving it) to achieve this one goal.
         - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, create a chart, AND email the result," you should first pass the self-contained goal: "Analyze the sales data and create a chart." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
         - **If unsure, err on the side of caution.** If a task feels like it has two separate parts, break it down and pass only the first part.
-
-        **Task MUST be an Objective, NOT a Step-List**
-        * This is the most important rule: The content of the task parameter MUST be a high-level objective description, and NEVER a list of operational steps.
-        * Your instruction must describe the desired end-state, NOT the recipe to get there. Do not specify any solution!
+        - Your instruction must describe the desired end-state, NOT the recipe to get there. Do not specify any solution!
         
         **Goal Purity is Essential:**
         - **NEVER** rephrase, paraphrase, or modify the subtask instruction you have decided on. Pass the exact, original wording of the subtask to prevent instruction drift and hallucination.

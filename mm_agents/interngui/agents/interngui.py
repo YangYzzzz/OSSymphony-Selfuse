@@ -1,7 +1,7 @@
 import logging
 import platform
 from typing import Dict, List, Tuple
-from mm_agents.interngui.agents.os_aci import OSWorldACI
+from mm_agents.interngui.agents.os_aci import OSACI
 from mm_agents.interngui.agents.searcher_agent import VLMSearcherAgent
 from mm_agents.interngui.agents.worker import Worker
 
@@ -17,7 +17,7 @@ class InternGUI:
         self,
         engine_params_for_orchestrator: Dict,
         engine_params_for_memoryer: Dict,
-        os_aci: OSWorldACI,
+        os_aci: OSACI,
         platform: str = platform.system().lower(),
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
@@ -35,7 +35,7 @@ class InternGUI:
 
         self.engine_params_for_orchestrator = engine_params_for_orchestrator
         self.engine_params_for_memoryer = engine_params_for_memoryer
-        self.os_aci: OSWorldACI = os_aci
+        self.os_aci: OSACI = os_aci
         self.platform =platform
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection

@@ -69,7 +69,7 @@ class DockerProvider(Provider):
         def check_screenshot():
             try:
                 response = requests.get(
-                    f"http://localhost:{self.server_port}/screenshot",
+                    f"http://127.0.0.1:{self.server_port}/screenshot",
                     timeout=(10, 10)
                 )
                 return response.status_code == 200
@@ -149,7 +149,7 @@ class DockerProvider(Provider):
     def get_ip_address(self, path_to_vm: str) -> str:
         if not all([self.server_port, self.chromium_port, self.vnc_port, self.vlc_port]):
             raise RuntimeError("VM not started - ports not allocated")
-        return f"localhost:{self.server_port}:{self.chromium_port}:{self.vnc_port}:{self.vlc_port}"
+        return f"127.0.0.1:{self.server_port}:{self.chromium_port}:{self.vnc_port}:{self.vlc_port}"
 
     def save_state(self, path_to_vm: str, snapshot_name: str):
         raise NotImplementedError("Snapshots not available for Docker provider")

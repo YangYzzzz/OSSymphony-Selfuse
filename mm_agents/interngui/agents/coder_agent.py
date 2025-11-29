@@ -90,7 +90,7 @@ Error: No result returned from execution
 class CoderAgent:
     """A dedicated agent for executing code with a budget of steps."""
 
-    def __init__(self, engine_params: Dict):
+    def __init__(self, engine_params: Dict, platform: str="linux"):
         """Initialize the CodeAgent."""
         if not engine_params:
             raise ValueError("engine_params cannot be None or empty")
@@ -99,8 +99,9 @@ class CoderAgent:
         self.budget = engine_params.get("budget", 20)
         self.temperature = engine_params.get("temperature", 0.1)
         self.agent = None
+        self.platform = platform
 
-        logger.info(f"CodeAgent initialized with budget={self.budget}")
+        logger.info(f"CodeAgent initialized with budget={self.budget} and platform={self.platform}")
         self.reset()
 
     def reset(self):
@@ -108,7 +109,7 @@ class CoderAgent:
         logger.debug("Resetting CodeAgent state")
         self.agent = LMMAgent(
             engine_params=self.engine_params,
-            system_prompt=PROCEDURAL_MEMORY.CODE_AGENT_PROMPT,
+            system_prompt=PROCEDURAL_MEMORY.construct_coder_procedural_memory(platform=self.platform)
         )
 
     def execute(self, task_instruction: str, screenshot: str, env_controller) -> Dict:

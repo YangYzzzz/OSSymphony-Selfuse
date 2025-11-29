@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import subprocess
 import time
 import json
@@ -21,24 +22,73 @@ logger = logging.getLogger("desktopenv.env")
 Metric = Callable[[Any, Any], float]
 Getter = Callable[[gym.Env, Dict[str, Any]], Any]
 
-def _execute_command(command: List[str]) -> None:
-    def _is_contained_in(a, b):
-        for v in set(a):
-            if a.count(v) > b.count(v):
-                return False
-        return True
+def _fix_pyautogui_less_than_bug(command: str) -> str:
+    """
+    Fix PyAutoGUI '<' character bug by converting it to hotkey("shift", ',') calls.
+    
+    This fixes the known PyAutoGUI issue where typing '<' produces '>' instead.
+    References:
+    - https://github.com/asweigart/pyautogui/issues/198
+    - https://github.com/xlang-ai/OSWorld/issues/257
+    
+    Args:
+        command (str): The original pyautogui command
+        
+    Returns:
+        str: The fixed command with '<' characters handled properly
+    """
+    # Pattern to match press('<') or press('\u003c') calls  
+    press_pattern = r'pyautogui\.press\(["\'](?:<|\\u003c)["\']\)'
 
-    # Specially handled for the `vmrun` command in Windows
-    # if _is_contained_in(["vmrun", "-T", "ws", "start"], command):
-    #     p = subprocess.Popen(command)
-    #     p.wait()
-    # else:
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, text=True,
-                            encoding="utf-8")
-    if result.returncode != 0:
-        raise Exception("\033[91m" + result.stdout + result.stderr + "\033[0m")
-    return result.stdout
+    # Handle press('<') calls
+    def replace_press_less_than(match):
+        return 'pyautogui.hotkey("shift", ",")'
+    
+    # First handle press('<') calls
+    command = re.sub(press_pattern, replace_press_less_than, command)
 
+    # Pattern to match typewrite calls with quoted strings
+    typewrite_pattern = r'pyautogui\.write\((["\'])(.*?)\1\)'
+    
+    # Then handle typewrite calls
+    def process_typewrite_match(match):
+        quote_char = match.group(1)
+        content = match.group(2)
+        
+        # Preprocess: Try to decode Unicode escapes like \u003c to actual '<'
+        # This handles cases where '<' is represented as escaped Unicode
+        try:
+            # Attempt to decode unicode escapes
+            decoded_content = content.encode('utf-8').decode('unicode_escape')
+            content = decoded_content
+        except UnicodeDecodeError:
+            # If decoding fails, proceed with original content to avoid breaking existing logic
+            pass  # English comment: Graceful degradation - fall back to original content if decoding fails
+        
+        # Check if content contains '<'
+        if '<' not in content:
+            return match.group(0)
+        
+        # Split by '<' and rebuild
+        parts = content.split('<')
+        result_parts = []
+        
+        for i, part in enumerate(parts):
+            if i == 0:
+                # First part
+                if part:
+                    result_parts.append(f"pyautogui.write({quote_char}{part}{quote_char})")
+            else:
+                # Add hotkey for '<' and then typewrite for the rest
+                result_parts.append('pyautogui.hotkey("shift", ",")')
+                if part:
+                    result_parts.append(f"pyautogui.write({quote_char}{part}{quote_char})")
+        
+        return '; '.join(result_parts)
+    
+    command = re.sub(typewrite_pattern, process_typewrite_match, command)
+    
+    return command
 
 class DesktopEnv(gym.Env):
     def __init__(
@@ -72,14 +122,14 @@ class DesktopEnv(gym.Env):
         # 启动环境 (Start)
         # 注意：这里会自动分配端口并启动容器
         logger.info("Initializing Environment and starting Docker container...")
-        self.provider.start_emulator(headless=self.headless)
+        # self.provider.start_emulator(headless=self.headless)
         
         # 获取动态分配的端口
-        conn_info = self.provider.get_connection_info()
-        self.vm_ip = conn_info["ip"]
-        self.server_port = conn_info["server_port"]
-        self.rdp_port = conn_info["rdp_port"]
-        self.chromium_port = conn_info["chromium_port"]
+        # conn_info = self.provider.get_connection_info() 
+        self.vm_ip = '127.0.0.1'
+        self.server_port = 5000
+        self.rdp_port = 3389
+        self.chromium_port = 9222
         logger.info(f"Environment started at {self.vm_ip}:{self.server_port}")
 
         # 初始化控制器
@@ -129,7 +179,6 @@ class DesktopEnv(gym.Env):
 
     def _save_state(self):
         # TODO: test this
-        # self.vm_controller.take_snapshot(self.snapshot_name)
         logger.error("Not implemented! Saving state is not supported for remote VMs!")
 
     def _get_screenshot(self):
@@ -137,7 +186,7 @@ class DesktopEnv(gym.Env):
         # Get the screenshot and save to the image_path
         max_retries = 20
         for _ in range(max_retries):
-            screenshot = self.vm_controller.take_screenshot()
+            screenshot = self.controller.get_screenshot()
             if screenshot is not None:
                 break
             print("Retrying to get screenshot...")
@@ -153,7 +202,7 @@ class DesktopEnv(gym.Env):
             
             # Create image object from byte stream
             image = Image.open(io.BytesIO(screenshot))
-            
+            print(f'[WindowsAgentArena]: origin size: {image.height},{image.width}')
             # Resize
             resized_image = image.resize(self.screen_size, Image.LANCZOS)
             
@@ -168,19 +217,14 @@ class DesktopEnv(gym.Env):
     def _get_obs(self):
         screenshot = self._get_screenshot()
         
-        if self.not_navi:
-            accessibility_tree = None
-            terminal = None
-        else:
-            accessibility_tree = self.controller.get_accessibility_tree(backend=self.a11y_backend) if self.require_a11y_tree else None
-            terminal = self.controller.get_terminal_output() if self.require_terminal else None
+        accessibility_tree = None
+        terminal = None
         
         obs = self.controller.get_obs_winagent()
         if obs is not None:
             window_image, window_title, window_rect, window_names_str, computer_clipboard, human_input = obs
-            if self.not_navi:
-                window_image = None
-                human_input = None
+            window_image = None
+            human_input = None
             
             return {
                 "screenshot": screenshot,
@@ -193,7 +237,7 @@ class DesktopEnv(gym.Env):
                 "window_names_str": window_names_str,
                 "computer_clipboard": computer_clipboard,
                 "human_input": human_input
-                }
+            }
         else:
             return None
         # print("terminal done")
@@ -252,7 +296,7 @@ class DesktopEnv(gym.Env):
                 or (len(self.metric) == len(self.result_getter) == len(self.expected_getter) == len(
                     self.metric_options)))
 
-    def reset(self, task_config: Optional[Dict[str, Any]] = None, seed=None, options=None) -> Dict[str, Any]:
+    def reset(self, task_config: Optional[Dict[str, Any]] = None, seed=None, options=None):
         logger.info("Resetting environment...")
 
         self._traj_no += 1
@@ -284,7 +328,7 @@ class DesktopEnv(gym.Env):
 
         time.sleep(5) # 给一点额外的缓冲时间
 
-        return self._get_obs()
+        return
 
     def resize_action(self, action):
         # Extract all x,y coordinates and resize them
@@ -350,7 +394,11 @@ class DesktopEnv(gym.Env):
                     # the set of all possible python commands insides `pyautogui`
                     if self.vm_screen_size != self.screen_size:
                         action = self.resize_action(action)
-                    self.controller.execute_python_command(action)
+                    if type(action) == str:
+                        # Fix PyAutoGUI '<' character bug before execution
+                        fixed_command = _fix_pyautogui_less_than_bug(action)
+                        self.controller.execute_python_command(fixed_command)
+
             elif self.action_space == "code_block":
                 self.controller.execute_python_windows_command(action)
             else:
@@ -437,9 +485,7 @@ class DesktopEnv(gym.Env):
             return metric
         else:
             logger.error("Task metric value produced is neither numeric nor boolean: returning 0 instead")
-            return 0            
-
-        return metric
+            return 0
 
     def render(self, mode='rgb_array'):
         if mode == 'rgb_array':
@@ -449,8 +495,5 @@ class DesktopEnv(gym.Env):
 
     def close(self):
         logger.info("Stopping emulator...")
-        if self.remote_vm:
-            # TODO: Implement this
-            logger.error("Not implemented! Stopping emulator is not supported for remote VMs!")
-        # else:
-        #     _execute_command(["vmrun", "stop", self.path_to_vm])
+        self.provider.stop_emulator()
+

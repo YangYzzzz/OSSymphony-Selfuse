@@ -4,7 +4,7 @@ import textwrap
 from typing import Dict, List, Tuple
 
 from mm_agents.interngui.agents.memoryer_agent import ReflectionMemoryAgent
-from mm_agents.interngui.agents.os_aci import OSWorldACI
+from mm_agents.interngui.agents.os_aci import OSACI
 from mm_agents.interngui.core.module import BaseModule
 from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
 from mm_agents.interngui.utils.common_utils import (
@@ -29,7 +29,7 @@ class Worker(BaseModule):
         self,
         engine_params_for_orchestrator: Dict,
         engine_params_for_memoryer: Dict,
-        os_aci: OSWorldACI,
+        os_aci: OSACI,
         platform: str = "ubuntu",
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
@@ -62,7 +62,7 @@ class Worker(BaseModule):
         ]
         self.engine_params_for_orchestrator = engine_params_for_orchestrator
         self.engine_params_for_memoryer = engine_params_for_memoryer
-        self.os_aci: OSWorldACI = os_aci
+        self.os_aci: OSACI = os_aci
 
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
@@ -70,6 +70,7 @@ class Worker(BaseModule):
         self.reset()
 
     def reset(self):
+        # set_cell_values 仅适用于 linux
         if self.platform != "linux":
             skipped_actions = ["set_cell_values"]
         else:
