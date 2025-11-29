@@ -422,7 +422,59 @@ class OSACI:
 
     #     action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
     #     return (final_command, action)
+    
+    def _paste(self, is_terminal):
+        if self.platform == 'darwin':
+            # macOS: 无论是否为终端，通常都是 Command + V
+            return "pyautogui.hotkey('command', 'v');"
         
+        elif self.platform == 'linux':
+            if is_terminal:
+                # Linux 终端: 通常需要 Shift + Ctrl + V
+                return "pyautogui.hotkey('ctrl', 'shift', 'v');"
+            else:
+                # Linux 普通应用: Ctrl + V
+                return "pyautogui.hotkey('ctrl', 'v');"
+                
+        elif self.platform == 'windows':
+            # Windows: 
+            # 现代 Windows Terminal 和 CMD/PowerShell 默认都支持 Ctrl + V。
+            # 只有极少数配置或旧环境需要 Shift+Insert 或右键，但 Ctrl+V 是最通用的标准。
+            return "pyautogui.hotkey('ctrl', 'v');"
+        
+        return ""
+    
+    def _clear_all(self, is_terminal):
+        """
+        生成全选并删除（或清空当前行）的代码。
+        """
+        # 1. 普通应用 (GUI) 的处理逻辑
+        # -------------------------------------------------
+        if not is_terminal:
+            if self.platform == 'darwin':
+                # macOS GUI: Command + A -> Backspace
+                return "pyautogui.hotkey('command', 'a'); pyautogui.press('backspace');"
+            else:
+                # Windows/Linux GUI: Ctrl + A -> Backspace
+                return "pyautogui.hotkey('ctrl', 'a'); pyautogui.press('backspace');"
+
+        # 2. 终端 (Terminal) 的处理逻辑
+        # -------------------------------------------------
+        else:
+            if self.platform == 'windows':
+                # Windows 终端 (CMD/PowerShell):
+                # 'Esc' 键是标准的清空当前行命令。
+                # 相比 Ctrl+A+Backspace，Esc 在 Windows 命令行中更稳定。
+                return "pyautogui.press('esc');"
+            
+            else:
+                # Linux 和 macOS 终端 (Bash/Zsh):
+                # 这里的逻辑是：
+                # 1. Ctrl + E: 确保光标移动到行尾 (End)
+                # 2. Ctrl + U: 删除光标之前的所有内容 (Unix Line Discard)
+                # 这样做比单纯 Ctrl+U 更安全，防止光标在中间时只删了一半。
+                return "pyautogui.hotkey('ctrl', 'e'); pyautogui.hotkey('ctrl', 'u');"
+            
     @agent_action
     def type(
         self,
@@ -440,65 +492,49 @@ class OSACI:
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
             is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
-        commands = [
-            "import pyautogui",
-            "import pyperclip",
-            "import subprocess",
-            "import time",
-        ]
+        commands = (
+            "import pyautogui;"
+            "import pyperclip;"
+            "import subprocess;"
+            "import time;"
+        )
         if self.platform == "linux":
-            commands += [
-                "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
-                # 存储原始剪贴板
-                "original_clipboard = pyperclip.paste()"
-            ]
-        elif self.platform in ["windows", "darwin"]:
-            commands += [
-                # Windows 简单起见, 在环境内预先配置好
-                "original_clipboard = pyperclip.paste()"
-            ]
+            commands += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
+            
+
+        commands += "original_clipboard = pyperclip.paste();"
 
         x, y = None, None
         if element_description is not None:
             x, y = self.grounder_agent.generate_coords(element_description, self.obs)
-            commands.extend([f"pyautogui.click({x}, {y}, clicks=2)", "time.sleep(1.0)", f"pyautogui.click({x}, {y})"])
+            commands += (
+                f"pyautogui.click({x}, {y}, clicks=2);" 
+                f"time.sleep(1.0);"
+                f"pyautogui.click({x}, {y});"
+            )
 
         if overwrite:
-            if not is_terminal:
-                # 使用 repr() 来确保 'command' 或 'ctrl' 字符串被正确引用
-                hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-                commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
-                commands.append("pyautogui.press('backspace')")
-            else:
-                # 在终端中，Ctrl+A/Backspace 可能不总是清空行，Ctrl+U 更常用
-                # 但 Ctrl+C 是中断，这里可能有逻辑错误，假设意图是清空行
-                commands.append("pyautogui.hotkey('ctrl', 'u')") # Ctrl+U 通常用于清空光标前的内容
+            commands += self._clear_all(is_terminal=is_terminal)
 
         # 使用剪贴板方法进行输入
         # repr(text) 会正确处理文本中的引号和特殊字符
         # 通过输入一个空格再撤回的方式实现对文本框的指定, 而非创建新的文本框
-        commands.append("pyautogui.write(' ')")
-        commands.append("pyautogui.press('backspace')")
-        commands.append(f"pyperclip.copy({repr(text)})")
+        commands += (
+            "pyautogui.write(' ');"
+            "pyautogui.press('backspace');"
+            f"pyperclip.copy({repr(text)});"
+        )
         
-        if not is_terminal or self.platform == 'darwin':
-            hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-            commands.append(f"pyautogui.hotkey({hotkey_mod}, 'v')")
-        else:
-            # Linux 终端的粘贴
-            commands.append("pyautogui.hotkey('shift', 'ctrl', 'v')")
+        commands += self._paste(is_terminal=is_terminal)
 
         # 恢复原始剪贴板
-        commands.append("pyperclip.copy(original_clipboard)")
+        commands += "pyperclip.copy(original_clipboard);"
         
         if enter:
-            commands.append("pyautogui.press('enter')")
-
-        # 最后，将所有命令用分号和空格连接成一个最终的字符串
-        final_command = "; ".join(commands)
+            commands += "pyautogui.press('enter');"
 
         action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
-        return (final_command, action)
+        return (commands, action)
     
     @agent_action
     def drag_and_drop(
@@ -573,17 +609,24 @@ class OSACI:
         x, y = self.generate_text_coords(
             phrase, self.obs, alignment=start_or_end
         )
-        command = f"import pyautogui; pyautogui.click({x}, {y}, button='left', clicks=2); time.sleep(1.0); pyautogui.click({x}, {y}, button='left');"
+        command = (
+            "import pyautogui;" 
+            "import subprocess;" 
+            "import pyperclip;" 
+            f"pyautogui.click({x}, {y}, button='left', clicks=2);"
+            "time.sleep(1.0);"
+            f"pyautogui.click({x}, {y}, button='left');"
+        )
         if text:
+            if self.platform == "linux":
+                command += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
+
             command += (
-                "import pyperclip;"
-                "import subprocess;"
-                "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
-                "original_clipboard = pyperclip.paste()"
+                "original_clipboard = pyperclip.paste();"
+                f"pyperclip.copy({repr(text)});"
             )
-            command += f"pyperclip.copy({repr(text)})"
-            command += "pyautogui.hotkey('shift', 'ctrl', 'v')"
-            command += "pyperclip.copy(original_clipboard)"
+            command += self._paste(is_terminal=False)
+            command += "pyperclip.copy(original_clipboard);"
 
         if text:
             action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
@@ -700,7 +743,7 @@ class OSACI:
         keys = [f"'{key}'" for key in keys]
         keys_string = " ".join(keys)
         action = {"function": "key", "args": {"keys": keys_string}}
-        return (f"import pyautogui; pyautogui.hotkey({', '.join(keys)})", action)
+        return (f"import pyautogui; pyautogui.hotkey({', '.join(keys)});", action)
 
     @agent_action
     def hold_and_press(self, hold_keys: List, press_keys: List):
@@ -729,7 +772,7 @@ class OSACI:
         Args:
             time:float, the amount of time to wait in seconds
         """
-        return (f"""import time; time.sleep({time})""", {"function": "wait", "args": {}})
+        return (f"""import time; time.sleep({time});""", {"function": "wait", "args": {}})
 
     @agent_action
     def done(
