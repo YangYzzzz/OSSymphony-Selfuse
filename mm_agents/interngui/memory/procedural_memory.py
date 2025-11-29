@@ -154,8 +154,11 @@ class PROCEDURAL_MEMORY:
             * **Use for**: Complex, non-UI tasks. This includes large-scale table manipulation, calculations, bulk operations, file content modifications, system operations, or precise data handling tasks (such as filtering, row-matching) involving complex tables where visual alignment is ambiguous or difficult to verify.
             * **Usage Strategy**:
                 * **Subtask**: Use `agent.call_code_agent("specific subtask")` for focused data tasks. Please refer to the args explaination of function `call_code_agent`.
-                * **When NOT to use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements—always use the GUI for those.
-                    
+                * **When To Use**: 
+                    * **Spreadsheet Automation (Strongly Recommended)**: For LibreOffice Calc or Excel tasks, specifically when filling entire rows/columns, performing batch data entry, or running calculations. 
+                    * **Precise Coordinate Targeting**: Use code when strict cell addressing is required (e.g., writing specifically to cell D2). The GUI agent often struggles to visually distinguish between adjacent cells or columns in dense grids (e.g., confusing Column D with Column F). Code actions ensure 100% address accuracy.
+                * **When NOT to Use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements—always use the GUI for those.
+            
             * **Code Agent Verification (MANDATORY)**
                 * The code agent works in the background. You CANNOT trust its output report alone. Your job is to verify its work via the GUI.
                 * **Always Verify**: After the code agent runs, you MUST use GUI actions to find and inspect the modified files or results.
@@ -209,6 +212,7 @@ class PROCEDURAL_MEMORY:
                     - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
             - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
             - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, can invoke the Search Agent to retrieve detailed online tutorials for further guidance.
+
 
             ## 2.4 Task Flow & Verification
             - **Task Initial State**: The file you need to operate on is usually already open. Please align the screenshot with task description. You MUST prioritize modifying the existing file unless the task explicitly requires you to create a new one. Avoid creating new files unnecessarily.
@@ -381,6 +385,7 @@ class PROCEDURAL_MEMORY:
         - **Error Types:**
             - **GUI Operation Error**: The agent's intended action failed at the execution level. It usually occurs when `additional_hints` contain "Warning: The last GUI operation is unsuccessful".
                 - *Examples*: CUA intended to click a non-existent element (hallucination), clicking at the wrong coordinates for a existent element (grounding issue), or a typing error (e.g., trying to input new text without clearing the old content, significant typos).
+                - *Tip*: Do NOT check the action `agent.locate_cursor()`, since it must be correct. 
             - **Lack of Tutorial**: The agent's individual GUI operations (clicks, types) are technically correct, but the overall sequence or logic is flawed. The agent seems not to know *how* to accomplish the task.
                 - *Examples*: The agent is clicking randomly, or appears "stuck" and is stubbornly repeating a fixed set of actions *without* making progress (loop detected).
             - **Code Error**: This triggers *after* `call_code_agent` has been used and the CUA is now in a "verification" step (e.g., has opened the file that the Code Agent was supposed to modify). The `latest_screenshot` reveals that the Code Agent's work is incorrect, incomplete, or does not match the `user_instruction`.
