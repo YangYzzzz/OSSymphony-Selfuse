@@ -11,7 +11,7 @@ from pathlib import Path
 from filelock import FileLock
 
 logger = logging.getLogger("desktopenv.providers.docker")
-LOCK_TIMEOUT = 300
+LOCK_TIMEOUT = 1000
 
 class WindowsDockerProvider:
     def __init__(self, 
@@ -103,89 +103,95 @@ class WindowsDockerProvider:
             except requests.exceptions.RequestException:
                 time.sleep(2)
         
+        # 必须给我启动喽!
         raise TimeoutError("Windows Agent failed to start within timeout.")
 
     def start_emulator(self, headless=True):
         """
         启动 Docker 容器，动态分配 3 个端口
         """
-        lock = FileLock(str(self.lock_file), timeout=LOCK_TIMEOUT)
-        # 使用文件锁，防止多进程并行测试时端口冲突
-        try:
-            with lock:
-                # 1. 动态申请端口
-                self.server_port = self._get_available_port(5000)
-                
-                self.rdp_port = self._get_available_port(
-                    3389, 
-                    exclude_ports={self.server_port}
-                )
-                
-                self.chromium_port = self._get_available_port(
-                    9222, 
-                    exclude_ports={self.server_port, self.rdp_port}
-                )
+        try_times = 3
+    
+        for i in range(try_times):
+            lock = FileLock(str(self.lock_file), timeout=LOCK_TIMEOUT)
+            # 使用文件锁，防止多进程并行测试时端口冲突
+            try:
+                with lock:
+                    # 1. 动态申请端口
+                    self.server_port = self._get_available_port(5000)
+                    
+                    self.rdp_port = self._get_available_port(
+                        3389, 
+                        exclude_ports={self.server_port}
+                    )
+                    
+                    self.chromium_port = self._get_available_port(
+                        9222, 
+                        exclude_ports={self.server_port, self.rdp_port}
+                    )
 
-                self.brower_port = self._get_available_port(
-                    8006, 
-                    exclude_ports={self.server_port, self.rdp_port, self.chromium_port}
-                )
+                    self.brower_port = self._get_available_port(
+                        8006, 
+                        exclude_ports={self.server_port, self.rdp_port, self.chromium_port}
+                    )
 
-                logger.info(f"Allocated ports -> API: {self.server_port}, RDP: {self.rdp_port}, Chrome: {self.chromium_port}, Browser(?): {self.brower_port}")
+                    logger.info(f"Allocated ports -> API: {self.server_port}, RDP: {self.rdp_port}, Chrome: {self.chromium_port}, Browser(?): {self.brower_port}")
 
-                # 2. 准备 Docker 参数
-                devices = []
-                if os.path.exists("/dev/kvm"):
-                    devices.append("/dev/kvm")
-                
-                # 添加外网代理
-                environment = {
-                    "RAM_SIZE": self.ram_size,
-                    "CPU_CORES": self.cpu_cores,
-                    "KVM": "Y" if devices else "N",
-                    "OPENAI_API_KEY_FOR_CHECK_SETUP": "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D",
-                    "OPENAI_BASE_URL_FOR_CHECK_SETUP": "https://api.boyuerichdata.opensphereai.com/v1"
-                }
+                    # 2. 准备 Docker 参数
+                    devices = []
+                    if os.path.exists("/dev/kvm"):
+                        devices.append("/dev/kvm")
+                    
+                    # 添加外网代理
+                    environment = {
+                        "RAM_SIZE": self.ram_size,
+                        "CPU_CORES": self.cpu_cores,
+                        "KVM": "Y" if devices else "N",
+                        "OPENAI_API_KEY_FOR_CHECK_SETUP": "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D",
+                        "OPENAI_BASE_URL_FOR_CHECK_SETUP": "https://api.boyuerichdata.opensphereai.com/v1"
+                    }
 
-                # 3. 启动容器
-                logger.info(f"Starting container using storage: {self.vm_storage_path}")
-                self.container = self.client.containers.run(
-                    "winarena-v2:latest",
-                    detach=True,
-                    privileged=True,
-                    devices=devices,
-                    platform="linux/amd64",
-                    cap_add=["NET_ADMIN"],
-                    ports={
-                        '5000': self.server_port,   # Agent API
-                        '3389': self.rdp_port,      # RDP
-                        '9222': self.chromium_port,  # Chrome DevTools <--- 关键映射
-                        '8006': self.brower_port
-                    },
-                    volumes={
-                        self.vm_storage_path: {'bind': '/storage', 'mode': 'rw'}
-                    },
-                    environment=environment,
-                    extra_hosts={"host.docker.internal": "host-gateway"},
-                    entrypoint="/bin/bash",
-                    command='-c "./entry_setup.sh & tail -f /dev/null"'
-                )
+                    # 3. 启动容器
+                    logger.info(f"Starting container using storage: {self.vm_storage_path}")
+                    self.container = self.client.containers.run(
+                        "winarena-v2:latest",
+                        detach=True,
+                        privileged=True,
+                        devices=devices,
+                        platform="linux/amd64",
+                        cap_add=["NET_ADMIN"],
+                        ports={
+                            '5000': self.server_port,   # Agent API
+                            '3389': self.rdp_port,      # RDP
+                            '9222': self.chromium_port,  # Chrome DevTools <--- 关键映射
+                            '8006': self.brower_port
+                        },
+                        volumes={
+                            self.vm_storage_path: {'bind': '/storage', 'mode': 'rw'}
+                        },
+                        environment=environment,
+                        extra_hosts={"host.docker.internal": "host-gateway"},
+                        entrypoint="/bin/bash",
+                        command='-c "./entry_setup.sh & tail -f /dev/null"'
+                    )
+                    
+                    # 4. 等待服务就绪
+                    self._wait_for_server()
+                    return
                 
-                # 4. 等待服务就绪
-                self._wait_for_server()
-                
-        except Exception as e:
-            logger.error(f"Failed to start container: {e}")
-            # 如果启动失败，清理残留
-            self.stop_emulator()
-            raise e
+            except Exception as e:
+                logger.error(f"Time {i}: Failed to start container: {e}")
+                # 如果启动失败，清理残留
+                self.stop_emulator()
+        
+        raise Exception("Windows Agent failed to start within N times.")
 
     def stop_emulator(self):
         """停止并移除容器"""
         if self.container:
             try:
                 logger.info("Stopping container...")
-                self.container.stop(timeout=10)
+                self.container.stop(timeout=300)
             except Exception as e:
                 logger.warning(f"Error stopping container: {e}")
             finally:

@@ -763,7 +763,7 @@ class SetupController:
             return browser, context
             
     def _update_browse_history_edge_setup(self, **config):
-        db_path = os.path.join("desktop_env", "assets", "history_empty.sqlite")
+        db_path = os.path.join("desktop_env", "waa", "assets", "history_empty.sqlite")
 
         # copy a new history file in the tmp folder
         cache_path = os.path.join(self.cache_dir, "history_new.sqlite")
@@ -841,7 +841,7 @@ class SetupController:
         self._execute_setup(["sudo chown -R user:user /home/user/.config/microsoft-edge/Default/History"], shell=True)
 
     def _update_browse_history_setup(self, **config):
-        db_path = os.path.join("desktop_env", "assets", "history_empty.sqlite")
+        db_path = os.path.join("desktop_env", "waa", "assets", "history_empty.sqlite")
 
         # copy a new history file in the tmp folder
         cache_path = os.path.join(self.cache_dir, "history_new.sqlite")
