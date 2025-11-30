@@ -417,6 +417,7 @@ class PROCEDURAL_MEMORY:
     - Be very certain for Case 4 (DANGEROUS case).
     - Do **not** classify a task as `Infeasible` if the failure is due to the agent's own confusion, random actions, or lack of knowledge on how to proceed. That is **`Case 1 (Lack of Tutorial)`**. `Infeasible` means the task is *externally* impossible (e.g., the feature does not exist in the software), not that the agent lacks the necessary knowledge.
     - Pay attention to the latest summary, especially the **screenshot change** part. It may help you analyze the screen.
+    - When CUA has just used the `call_search_agent` or `call_code_agent`, just simply consider it's on-track.
     - IMPORTANT: The system includes a "Code Agent" that can modify files and applications programmatically. When you see:
         - Files with different content than expected.
         - Applications being closed and reopened.
