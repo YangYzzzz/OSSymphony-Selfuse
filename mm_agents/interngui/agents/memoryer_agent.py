@@ -481,47 +481,4 @@ class ReflectionMemoryAgent:
             
         return reflection_info
     
-    def _get_reflection_level_1(self, cur_obs: Dict, generator_output: str):
-        """
-        最简单的reflection, 图片和文字都是last k
-
-        Args:
-        - cur_obs (Dict): The Main Agent's current observation (o_k).
-        - generator_output (str): The thoughts, screen analysis and action of Main Agent.
-
-        Returns:
-        - reflection_info(Dict): all the info related to reflection
-        """
-
-        updated_sys_prompt = (
-            PROCEDURAL_MEMORY.REFLECTION_SYSTEM_PROMPT + "\n\n" + 
-            f"---\n- **user instruction**: {self.instruction}\n" + 
-            "- **existing knowledge**: \n" + "\n".join(self.knowledge_base)
-        )
-
-        self.reflection_agent.add_system_prompt(updated_sys_prompt)
-        
-        for i, step in enumerate(self.trajectory):
-
-            text_content = f"""### (Step {i}) history:\nsummary: '''\n{step.summary}\n'''"""
-
-            if i in self.active_img_idx:
-                if i == 0:
-                    text_content += f"\ninitial screenshot:"
-                else: 
-                    text_content += f"\nscreenshot (after executing action): (attached below)"
-            
-            # debug
-            # print(text_content)
-            # if i in self.active_img_idx:
-            #     print(f"image content: step_{i + 1}.png")
-
-            self.reflection_agent.add_message(
-                text_content=text_content,
-                image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
-                role="user",
-            )
-
-
-
     
