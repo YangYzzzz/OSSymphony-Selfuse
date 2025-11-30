@@ -1234,17 +1234,62 @@ def get_result(target_dir):
         print("New experiment or no valid results found.")
         return None
 
-    print("\n--- Success Rate Summary ---")
+   # 1. 打印 Sub-Domain (原始文件夹) 统计
     domain_success_rate = {}
-    for domain, results in domain_result_raw.items():
+    print("\n--- Sub-Domain Success Rate Summary ---")
+    # 排序以便查看
+    sorted_domains = sorted(domain_result_raw.keys())
+    for domain in sorted_domains:
+        results = domain_result_raw[domain]
         if results:
             rate = sum(results) / len(results) * 100
             domain_success_rate[domain] = rate
             print(f"Domain: {domain:<20} | Runs: {len(results):<5} | Success Rate: {rate:.2f}%")
-    overall_rate = sum(all_result) / len(all_result) * 100
+    
     print("-" * 60)
+
+    # 2. 打印 Father Domain 统计 (如果有传入映射表)
+    if "thunderbird" in domain_result_raw.keys():
+        father_domain_mapping = {
+            "OS": ["os"],
+            "Office": ["libreoffice_calc", "libreoffice_impress", "libreoffice_writer"],
+            "Daily": ["chrome", "vlc", "thunderbird"],
+            "Professional": ["vscode", "gimp"],
+            "Workflow": ["multi_apps"]
+        }
+    else:
+        father_domain_mapping = {
+            "Office": ["libreoffice_writer", "libreoffice_calc"],
+            "Web Browing": ["msedge", "chrome"],
+            "Windows System": ["file_explorer", "settings"],
+            "Coding": ["vs_code"],
+            "Media & Video": ["vlc"],
+            "Windows Utilities": ["microsoft_paint",  "clock", "windows_calc", "notepad"]
+        }
+
+    if father_domain_mapping:
+        print("\n--- Father Domain Success Rate Summary ---")
+        for father_name, sub_domains in father_domain_mapping.items():
+            father_scores = []
+            # 遍历该父类下的所有子类
+            for sub in sub_domains:
+                # 只有当子类确实在本次实验结果中存在时才统计
+                if sub in domain_result_raw:
+                    father_scores.extend(domain_result_raw[sub])
+            
+            if father_scores:
+                rate = sum(father_scores) / len(father_scores) * 100
+                print(f"Domain: {father_name:<20} | Runs: {len(father_scores):<5} | Success Rate: {rate:.2f}%")
+            else:
+                # 如果该父类下没有任何有结果的子类
+                print(f"Domain: {father_name:<20} | Runs: 0     | Success Rate: N/A")
+        print("-" * 60)
+
+    # 3. 打印 Overall 统计
+    overall_rate = sum(all_result) / len(all_result) * 100
     print(f"Overall    | Runs: {len(all_result):<5} | Total Score: {sum(all_result)}| Avg. Success Rate: {overall_rate:.2f}%")
     print("-" * 60)
+
     json_output_path = os.path.join(target_dir, "all_result_summary.json")
     try:
         with open(json_output_path, "w", encoding="utf-8") as f: json.dump(all_result_for_analysis, f, indent=4)
@@ -1328,7 +1373,7 @@ def get_result(target_dir):
                 else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
 
     for name, data in step_stats.items():
-        save_path = os.path.join(target_dir, f"{'overall' if name == 'overall' else name}_step_distribution.png")
+        save_path = os.path.join(target_dir, 'overall_step_distribution.png' if name == 'overall' else f'step_distribution_{name}.png')
         title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
         plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
 
