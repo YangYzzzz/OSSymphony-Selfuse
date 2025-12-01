@@ -87,7 +87,7 @@ class Worker(BaseModule):
             skipped_actions=skipped_actions,
             tool_config=self.tool_config
         ).replace("CURRENT_OS", self.platform)
-
+        logger.info(f'[Memory]: {self.orchestrator_sys_prompt}')
 
         # Worker 内设置了 重写Agent，反思Agent，规划Agent 三个智能体
         self.orchestrator_agent = self._create_agent(
