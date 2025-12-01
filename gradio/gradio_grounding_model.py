@@ -9,11 +9,11 @@ import uuid
 from typing import Literal, Dict, Any
 import sys
 
-sys.path.insert(0, "/nvme/yangbowen/yangbowen/OSWorld")
+sys.path.insert(0, "/nvme/yangbowen/jinkaiming/InternGUIFramework")
 from mm_agents.interngui.agents.grounder_agent import GrounderAgent
 
 # --- 配置与初始化 ---
-ModelName = Literal["ui-tars-1.5-7b", "holo-72b", "scalecua-32b", "groundnext-7b"]
+ModelName = Literal["ui-tars-1.5-7b", "holo-72b", "scalecua-32b", "groundnext-7b", "claude-sonnet-4.5"]
 example_folder = "gradio/grounding_examples"  # 示例保存路径
 log_file = os.path.join(example_folder, "data_log.csv") # 数据日志文件
 
@@ -28,52 +28,63 @@ if not os.path.exists(log_file):
 model_dict: Dict[ModelName, Dict[str, Any]] = {
     "ui-tars-1.5-7b": {
         "engine_type": "vllm",
-        "model": "UI-TARS-1.5-7B",
-        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8003/v1",
+        "model": "ui-tars-1.5-7b",
+        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10001/v1",
         "api_key": "none",
         "grounding_smart_resize": True,
-        "grounding_width": None,
-        "grounding_height": None
+        "grounding_width": 1920,
+        "grounding_height": 1080
     },
-    "holo-72b": {
-        "engine_type": "vllm",
-        "model": "Holo1_5_72B", # 确保模型名称正确
-        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8001/v1",
-        "api_key": "none",
-        "grounding_smart_resize": True,
-        "grounding_width": None,
-        "grounding_height": None
+    # "holo-72b": {
+    #     "engine_type": "vllm",
+    #     "model": "Holo1_5_72B", # 确保模型名称正确
+    #     "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8001/v1",
+    #     "api_key": "none",
+    #     "grounding_smart_resize": True,
+    #     "grounding_width": None,
+    #     "grounding_height": None
+    # },
+    # "scalecua-32b": {
+    #     "engine_type": "vllm",
+    #     "model": "ScaleCUA-32B", # 确保模型名称正确
+    #     "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8002/v1", # 请替换为真实的URL
+    #     "api_key": "none",
+    #     "grounding_smart_resize": True,
+    #     "grounding_width": None,
+    #     "grounding_height": None
+    # },
+    # "groundnext-7b": {
+    #     "engine_type": "vllm",
+    #     "model": "GroundNext-7B", # 确保模型名称正确
+    #     "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8004/v1", # 请替换为真实的URL
+    #     "api_key": "none",
+    #     "grounding_smart_resize": True,
+    #     "grounding_width": None,
+    #     "grounding_height": None
+    # },
+    "claude-sonnet-4.5": {
+        "engine_type": "openai",
+        "model": "claude-sonnet-4-5-20250929", # 确保模型名称正确
+        "base_url": "https://api.boyuerichdata.opensphereai.com/v1", 
+        "api_key": "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D",
+        "grounding_smart_resize": False,
+        "grounding_width": 1280,
+        "grounding_height": 800
     },
-    "scalecua-32b": {
-        "engine_type": "vllm",
-        "model": "ScaleCUA-32B", # 确保模型名称正确
-        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8002/v1", # 请替换为真实的URL
-        "api_key": "none",
-        "grounding_smart_resize": True,
-        "grounding_width": None,
-        "grounding_height": None
-    },
-    "groundnext-7b": {
-        "engine_type": "vllm",
-        "model": "GroundNext-7B", # 确保模型名称正确
-        "base_url": "https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework-2wtdb-2960570-worker-0.yangbowen/8004/v1", # 请替换为真实的URL
-        "api_key": "none",
-        "grounding_smart_resize": True,
-        "grounding_width": None,
-        "grounding_height": None
-    }
 }
 
 # 初始化模型
-ui_tars_15_7b_model = GrounderAgent(engine_params=model_dict["ui-tars-1.5-7b"], width=1920, height=1080)
-holo_72b_model = GrounderAgent(engine_params=model_dict["holo-72b"], width=1920, height=1080)
-scalecua_32b_model = GrounderAgent(engine_params=model_dict["scalecua-32b"], width=1920, height=1080)
-groundnext_7b_model = GrounderAgent(engine_params=model_dict["groundnext-7b"], width=1920, height=1080)
+ui_tars_15_7b_model = GrounderAgent(engine_params=model_dict["ui-tars-1.5-7b"], screen_width=1920, screen_height=1080)
+# holo_72b_model = GrounderAgent(engine_params=model_dict["holo-72b"], width=1920, height=1080)
+# scalecua_32b_model = GrounderAgent(engine_params=model_dict["scalecua-32b"], width=1920, height=1080)
+# groundnext_7b_model = GrounderAgent(engine_params=model_dict["groundnext-7b"], width=1920, height=1080)
+claude_sonnet_model = GrounderAgent(engine_params=model_dict["claude-sonnet-4.5"], screen_width=1920, screen_height=1080)
 
 model_dict["ui-tars-1.5-7b"]["var"] = ui_tars_15_7b_model
-model_dict["holo-72b"]["var"] = holo_72b_model
-model_dict["scalecua-32b"]["var"] = scalecua_32b_model
-model_dict["groundnext-7b"]["var"] = groundnext_7b_model
+# model_dict["holo-72b"]["var"] = holo_72b_model
+# model_dict["scalecua-32b"]["var"] = scalecua_32b_model
+# model_dict["groundnext-7b"]["var"] = groundnext_7b_model
+model_dict['claude-sonnet-4.5']['var'] = claude_sonnet_model
 
 
 def save_sample(image: Image.Image, query: str):
@@ -134,16 +145,20 @@ def call_llm_safe(model_name: ModelName, query: str, image: Image.Image, zoom_in
     width, height = image.width, image.height
     model = model_dict[model_name].get("var")
     assert model
-    try:
+    # try:
+
+    if "claude" not in model_name:
         model.dynamic_set_width_height(width=width, height=height)
-        final_coords = model.generate_coords(query, obs)
-        print(f'[Final coords]: {final_coords}')
-        if isinstance(final_coords, list) and len(final_coords) >= 2:
-            return final_coords
-        return []
-    except Exception as e:
-        print(f"Error {model_name}: {e}")
-        return []
+    
+    final_coords = model.generate_coords(query, obs)
+    
+    print(f'[Final coords]: {final_coords}')
+    if isinstance(final_coords, list) and len(final_coords) >= 2:
+        return final_coords
+    return []
+    # except Exception as e:
+    #     print(f"Error {model_name}: {e}")
+    #     return []
 
 # --- 核心处理函数 (修改) ---
 def process_and_compare_with_save(image: Image.Image, query: str, zoom_in_time: int = 1):

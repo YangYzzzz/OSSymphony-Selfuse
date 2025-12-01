@@ -282,7 +282,7 @@ class PROCEDURAL_MEMORY:
         ```
         """
         )
-        
+
         return procedural_memory.strip()
 
     REWRITE_GUI_INSTRUCTION = textwrap.dedent(

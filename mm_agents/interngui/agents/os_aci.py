@@ -183,8 +183,8 @@ class OSACI:
         engine_params_for_grounder: Dict,
         engine_params_for_coder: Dict,
         engine_params_for_searcher: Dict,
-        width: int = 1920,
-        height: int = 1080
+        screen_width: int = 1920,
+        screen_height: int = 1080
     ):
 
         # 独属于 OSACI 的主环境
@@ -194,7 +194,7 @@ class OSACI:
         # 结果目录
         self.result_dir = ""
         
-        self.grounder_agent = GrounderAgent(engine_params=engine_params_for_grounder, width=width, height=height)
+        self.grounder_agent = GrounderAgent(engine_params=engine_params_for_grounder, screen_width=screen_width, screen_height=screen_height)
         
         # Configure text grounding agent
         self.ocr_processor = OCRProcessor()
