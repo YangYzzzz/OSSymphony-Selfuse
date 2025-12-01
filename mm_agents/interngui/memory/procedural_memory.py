@@ -283,7 +283,7 @@ class PROCEDURAL_MEMORY:
         """
         )
 
-        print(f'[Main Agent Memory]: {procedural_memory}')
+        # print(f'[Main Agent Memory]: {procedural_memory}')
         return procedural_memory.strip()
 
     REWRITE_GUI_INSTRUCTION = textwrap.dedent(

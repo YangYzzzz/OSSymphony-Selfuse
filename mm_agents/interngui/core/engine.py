@@ -68,6 +68,7 @@ class LMMEngineOpenAI(LMMEngine):
                     organization=organization,
                     default_headers=custom_headers
                 )
+        print(**kwargs)
         result = self.llm_client.chat.completions.create(
             model=self.model,
             messages=messages,
