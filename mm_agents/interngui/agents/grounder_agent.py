@@ -20,14 +20,17 @@ class GrounderAgent:
         self.engine_params_for_grounder = engine_params # grounder_params
         system_prompt, self.user_message = PROCEDURAL_MEMORY.construct_grounder_procedural_memory(model_name=engine_params["model"])
         self.grounding_model = LMMAgent(engine_params, system_prompt=system_prompt)
+        # 送入Grounder的长宽
         self.width = engine_params['grounding_width']
         self.height = engine_params['grounding_height']
         print(f"[Grounder]: 初始化的长为 {self.width}, 宽为 {self.height}")
         self.zoom_in_time = engine_params.get('grounder_zoom_in_time', 1)
+        # 屏幕的长宽
         self.screen_width = screen_width
         self.screen_height = screen_height
 
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
+    # self.zoom_in_time 不好使, 已废弃
     def generate_coords(self, ref_expr: str, obs: Dict, detail=False, expansion_pixels=400, **kwargs) -> List:
         # zoom_in_time: 增强次数, 若>1, 则在第一次grounding后根据grounding位置裁剪,依此类推,默认为1
         cur_screenshot = obs["screenshot"]
