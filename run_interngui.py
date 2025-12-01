@@ -284,8 +284,8 @@ def run_env_tasks(
                     with open(os.path.join(os.path.dirname(example_result_dir), "error.jsonl"), "a") as f:
                         f.write(json.dumps({"Error": f"{domain}/{example_id} - {e}"}))
                         f.write("\n")
-                    # with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
-                    #     f.write("0.0\n")
+                    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
+                        f.write("0.0\n")
 
             except Exception as e:
                 logger.error(f"Task-level error in {current_process().name}: {e}")

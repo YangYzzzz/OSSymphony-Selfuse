@@ -923,26 +923,27 @@ def parse_reflection_type(reflection: str):
 def plot_token_usage_stacked(stats_data, title, save_path):
     """
     Generates and saves a stacked bar chart for prompt and completion token usage.
-    This version prevents error bars from going below zero and adds a combined
-    total/percentage label on top of each bar in the format '100k (98.7%/1.3%)'.
-
-    Args:
-        stats_data (dict): Dict with agent names as keys and dicts of token lists as values.
-        title (str): The title for the plot.
-        save_path (str): The file path to save the plot.
+    
+    Update: 
+    - For individual agents: Average is calculated based on active runs only (no zero-padding).
+    - For 'Total': Average is calculated based on the global number of tasks (system-wide average).
     """
     if not stats_data:
         print(f"Skipping stacked token plot for '{title}' due to no data.")
         return
 
     try:
-        # --- 确定任务总数 (num_tasks) ---
+        # --- 1. 确定全局任务总数 (num_tasks) ---
+        # 这个变量主要用于计算 "Total" 栏的平均值，以及对齐系统总方差
         num_tasks = 0
         if "orchestrator" in stats_data and stats_data["orchestrator"].get('prompt'):
             num_tasks = len(stats_data["orchestrator"]['prompt'])
         else:
             for agent_data in stats_data.values():
-                num_tasks = max(num_tasks, len(agent_data.get('prompt', [])), len(agent_data.get('completion', [])))
+                # 找出最长的列表作为任务总数
+                p_len = len(agent_data.get('prompt', []))
+                c_len = len(agent_data.get('completion', []))
+                num_tasks = max(num_tasks, p_len, c_len)
         
         if num_tasks == 0:
             print(f"Skipping stacked token plot for '{title}' as num_tasks is zero.")
@@ -953,49 +954,56 @@ def plot_token_usage_stacked(stats_data, title, save_path):
         completion_avgs = []
         total_stds = []
 
-        total_prompt_avg_sum = 0
-        total_completion_avg_sum = 0
+        # 用于计算 "Total" 栏的累加器 (基于全局 num_tasks)
+        # 我们需要两个数组来存储每个任务的 Prompt 和 Completion 总和
+        global_task_prompts = np.zeros(num_tasks)
+        global_task_completions = np.zeros(num_tasks)
         
-        # --- 计算每个 Agent 的统计数据 ---
+        # --- 2. 计算每个 Agent 的统计数据 (修改点：只计算非空数据) ---
         for agent in agents:
-            prompt_tokens_orig = stats_data[agent].get('prompt', [])
-            completion_tokens_orig = stats_data[agent].get('completion', [])
+            prompt_tokens = stats_data[agent].get('prompt', [])
+            completion_tokens = stats_data[agent].get('completion', [])
 
-            prompt_tokens_padded = prompt_tokens_orig + [0] * (num_tasks - len(prompt_tokens_orig))
-            completion_tokens_padded = completion_tokens_orig + [0] * (num_tasks - len(completion_tokens_orig))
+            # A. 计算该 Agent 的平均值（仅基于它实际运行的次数）
+            # 如果列表为空，平均值为 0
+            p_avg = np.mean(prompt_tokens) if prompt_tokens else 0
+            c_avg = np.mean(completion_tokens) if completion_tokens else 0
             
-            prompt_avg = np.mean(prompt_tokens_padded)
-            completion_avg = np.mean(completion_tokens_padded)
+            prompt_avgs.append(p_avg)
+            completion_avgs.append(c_avg)
+
+            # B. 计算该 Agent 的标准差 (基于实际运行次数)
+            # 假设 prompt 和 completion 列表长度一致，如果不一致取最短进行 zip
+            agent_total_tokens = [p + c for p, c in zip(prompt_tokens, completion_tokens)]
+            agent_std = np.std(agent_total_tokens) if agent_total_tokens else 0
+            total_stds.append(agent_std)
+
+            # C. 累加到全局数据中 (为了计算 Total 栏)
+            # 这里必须填充 0，因为我们要把 Agent A 的第 i 个任务和 Agent B 的第 i 个任务加在一起
+            # 假设 stats_data 中的列表是按任务顺序记录的
+            for i in range(len(prompt_tokens)):
+                if i < num_tasks:
+                    global_task_prompts[i] += prompt_tokens[i]
             
-            prompt_avgs.append(prompt_avg)
-            completion_avgs.append(completion_avg)
+            for i in range(len(completion_tokens)):
+                if i < num_tasks:
+                    global_task_completions[i] += completion_tokens[i]
 
-            total_prompt_avg_sum += prompt_avg
-            total_completion_avg_sum += completion_avg
-
-            total_tokens = [p + c for p, c in zip(prompt_tokens_padded, completion_tokens_padded)]
-            total_std = np.std(total_tokens) if total_tokens else 0
-            total_stds.append(total_std)
-
-        # --- 计算 "Total" 条目的统计数据 ---
-        task_grand_totals = [0] * num_tasks
-        for agent in agents:
-            prompts_orig = stats_data[agent].get('prompt', [])
-            completions_orig = stats_data[agent].get('completion', [])
-            prompts_padded = prompts_orig + [0] * (num_tasks - len(prompts_orig))
-            completions_padded = completions_orig + [0] * (num_tasks - len(completions_orig))
-            for i in range(num_tasks):
-                task_grand_totals[i] += prompts_padded[i] + completions_padded[i]
-
-        total_all_agents_std = np.std(task_grand_totals) if task_grand_totals else 0
+        # --- 3. 计算并添加 "Total" 条目 ---
+        # Total 代表“系统级平均开销”，所以分母必须是 num_tasks
+        total_p_avg = np.mean(global_task_prompts) if num_tasks > 0 else 0
+        total_c_avg = np.mean(global_task_completions) if num_tasks > 0 else 0
         
-        # --- 添加 "Total" 条目 ---
+        # 计算 Total 的标准差 (每个任务的总 token 数 vs 平均值)
+        global_task_totals = global_task_prompts + global_task_completions
+        total_all_agents_std = np.std(global_task_totals) if num_tasks > 0 else 0
+        
         agents.append('Total')
-        prompt_avgs.append(total_prompt_avg_sum)
-        completion_avgs.append(total_completion_avg_sum)
+        prompt_avgs.append(total_p_avg)
+        completion_avgs.append(total_c_avg)
         total_stds.append(total_all_agents_std)
 
-        # --- 开始绘图 ---
+        # --- 4. 开始绘图 ---
         plt.figure(figsize=(max(10, len(agents) * 1.5), 8))
         
         bar_width = 0.6
@@ -1003,46 +1011,43 @@ def plot_token_usage_stacked(stats_data, title, save_path):
         prompt_avgs_np = np.array(prompt_avgs)
         completion_avgs_np = np.array(completion_avgs)
 
+        # 绘制 Prompt 柱状图
         plt.bar(indices, prompt_avgs_np, bar_width, label='Prompt Tokens', color='#1f77b4', alpha=0.8)
+        # 绘制 Completion 柱状图 (堆叠在 Prompt 之上)
         plt.bar(indices, completion_avgs_np, bar_width, bottom=prompt_avgs_np, label='Completion Tokens', color='#ff7f0e', alpha=0.8)
 
+        # 绘制误差棒
         total_avgs = prompt_avgs_np + completion_avgs_np
         total_stds_np = np.array(total_stds)
+        # 确保下限误差棒不会让图形低于 0
         lower_errors = np.minimum(total_avgs, total_stds_np)
         asymmetric_errors = np.array([lower_errors, total_stds_np])
+        
         plt.errorbar(indices, total_avgs, yerr=asymmetric_errors, fmt='none', ecolor='black', capsize=5, elinewidth=1.5, markeredgewidth=1.5)
 
-        plt.ylabel('Average Token Count per Task')
+        plt.ylabel('Average Token Count (Active Tasks Only)')
         plt.title(title)
         plt.xticks(indices, agents, rotation=45, ha='right')
         plt.grid(axis='y', linestyle='--', alpha=0.7)
         plt.legend()
 
-        # ==============================================================================
-        # =================== 核心修改: 在柱状图上添加新的组合标签 =====================
-        # ==============================================================================
+        # --- 5. 添加数值标签 ---
         for i in range(len(agents)):
             total_height = total_avgs[i]
             prompt_height = prompt_avgs_np[i]
             completion_height = completion_avgs_np[i]
 
-            # 1. 格式化总数部分
+            # 格式化总数
             total_label_part = f'{total_height/1000:,.1f}k' if total_height >= 1000 else f'{total_height:,.0f}'
-            
             final_label = total_label_part
 
-            # 2. 如果总数大于0且两种token都存在，则添加百分比部分
+            # 添加百分比 (如果存在两种 token)
             if total_height > 0 and prompt_height > 0 and completion_height > 0:
                 prompt_perc = (prompt_height / total_height) * 100
                 completion_perc = (completion_height / total_height) * 100
-                # 拼接成最终标签
                 final_label += f' ({prompt_perc:.1f}%/{completion_perc:.1f}%)'
 
-            # 3. 将最终标签放置在图表上
             plt.text(indices[i], total_height, final_label, ha='center', va='bottom', fontsize=8, fontweight='bold')
-        # ==============================================================================
-        # =============================== 修改结束 =====================================
-        # ==============================================================================
 
         plt.tight_layout()
         plt.savefig(save_path)
@@ -1051,6 +1056,7 @@ def plot_token_usage_stacked(stats_data, title, save_path):
 
     except Exception as e:
         print(f"An unexpected error occurred while generating stacked token usage plot for '{title}': {e}")
+
 
 def get_result(target_dir):
     """

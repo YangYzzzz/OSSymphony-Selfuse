@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import random
@@ -5,6 +6,7 @@ from typing import Any, Dict, Optional
 import time
 import traceback
 import requests
+from PIL import Image
 
 from desktop_env.osworld.actions import KEYBOARD_KEYS
 
@@ -33,16 +35,25 @@ class PythonController:
         """
         if not isinstance(data, (bytes, bytearray)) or not data:
             return False
-        # PNG magic
-        if len(data) >= 8 and data[:8] == b"\x89PNG\r\n\x1a\n":
-            return True
-        # JPEG magic
-        if len(data) >= 3 and data[:3] == b"\xff\xd8\xff":
-            return True
-        # If server explicitly marks as image, accept as a weak fallback (some environments strip magic)
-        if content_type and ("image/png" in content_type or "image/jpeg" in content_type or "image/jpg" in content_type):
-            return True
-        return False
+
+        try:
+            with io.BytesIO(data) as b:
+                with Image.open(b) as img:
+                    img.verify() # 验证文件头完整性，不解码像素，速度快
+            # PNG magic
+            if len(data) >= 8 and data[:8] == b"\x89PNG\r\n\x1a\n":
+                return True
+            # JPEG magic
+            if len(data) >= 3 and data[:3] == b"\xff\xd8\xff":
+                return True
+            # If server explicitly marks as image, accept as a weak fallback (some environments strip magic)
+            if content_type and ("image/png" in content_type or "image/jpeg" in content_type or "image/jpg" in content_type):
+                return True
+            return False
+        
+        except Exception:
+            return False
+        
 
     def get_screenshot(self) -> Optional[bytes]:
         """
