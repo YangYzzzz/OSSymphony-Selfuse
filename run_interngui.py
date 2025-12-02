@@ -284,8 +284,13 @@ def run_env_tasks(
                     with open(os.path.join(os.path.dirname(example_result_dir), "error.jsonl"), "a") as f:
                         f.write(json.dumps({"Error": f"{domain}/{example_id} - {e}"}))
                         f.write("\n")
-                    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
-                        f.write("0.0\n")
+
+                    # 处理非连接重置错误的情况
+                    is_connection_reset = isinstance(e, ConnectionResetError)
+                    if not is_connection_reset:
+                        result_file_path = os.path.join(example_result_dir, "result.txt")
+                        with open(result_file_path, "w", encoding="utf-8") as f:
+                            f.write("0.0\n")
 
             except Exception as e:
                 logger.error(f"Task-level error in {current_process().name}: {e}")
