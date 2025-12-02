@@ -214,8 +214,8 @@ def run_env_tasks(
             engine_params_for_grounder=engine_params_for_grounder,
             engine_params_for_coder=engine_params_for_coder,
             engine_params_for_searcher=engine_params_for_searcher,
-            width=args.screen_width,
-            height=args.screen_height,
+            screen_width=args.screen_width,
+            screen_height=args.screen_height,
         )
         agent = InternGUI(
             engine_params_for_orchestrator,
@@ -585,8 +585,7 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--grounding_smart_resize",
-        type=bool,
-        required=True,
+        action="store_true", default=False,
         help="UI-TARS-1.5 and ScaleCUA needs smart resize, if this set, grounding_width and grounding_height is no use.",
     )
     parser.add_argument(

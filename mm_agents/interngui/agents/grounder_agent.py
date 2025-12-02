@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 import pytesseract
 from PIL import Image
-
+import io
 from mm_agents.interngui.core.mllm import LMMAgent
 from mm_agents.interngui.utils.common_utils import call_llm_safe, enhance_observation, smart_resize
 from mm_agents.interngui.memory.procedural_memory import PROCEDURAL_MEMORY
@@ -15,16 +15,23 @@ class GrounderAgent:
     """
     专门用于与GUI环境交互的父类, 用于GroundingAgent和VLMSearcherAgent与OS-World GUI操作
     """
-    def __init__(self, engine_params: Dict, width: int, height: int):
+    def __init__(self, engine_params: Dict, screen_width: int, screen_height: int):
+        print("!!!!", engine_params)
         self.engine_params_for_grounder = engine_params # grounder_params
         system_prompt, self.user_message = PROCEDURAL_MEMORY.construct_grounder_procedural_memory(model_name=engine_params["model"])
         self.grounding_model = LMMAgent(engine_params, system_prompt=system_prompt)
-        self.width = width
-        self.height = height
-        self.zoom_in_time = engine_params['grounder_zoom_in_time']
+        # 送入Grounder的长宽
+        self.width = engine_params['grounding_width']
+        self.height = engine_params['grounding_height']
+        print(f"[Grounder]: 初始化的长为 {self.width}, 宽为 {self.height}")
+        self.zoom_in_time = engine_params.get('grounder_zoom_in_time', 1)
+        # 屏幕的长宽
+        self.screen_width = screen_width
+        self.screen_height = screen_height
 
     # Given the state and worker's referring expression, use the grounding model to generate (x,y)
-    def generate_coords(self, ref_expr: str, obs: Dict, detail=False, expansion_pixels=400) -> List:
+    # self.zoom_in_time 不好使, 已废弃
+    def generate_coords(self, ref_expr: str, obs: Dict, detail=False, expansion_pixels=400, **kwargs) -> List:
         # zoom_in_time: 增强次数, 若>1, 则在第一次grounding后根据grounding位置裁剪,依此类推,默认为1
         cur_screenshot = obs["screenshot"]
         
@@ -45,31 +52,43 @@ class GrounderAgent:
 
             # Configure the context
             prompt = self.user_message.replace("REF_EXPR", ref_expr)
+            if 'claude' in self.engine_params_for_grounder['model']:
+                ### 规范一下系统提示词!!!
+                self.grounding_model.add_system_prompt("""Please strictly follow the output format: x1=100, y1=100""")
+                screenshot_image = Image.open(io.BytesIO(cur_screenshot))
+                ### Claude 只接受 (1280, 800) 分辨率的图片，Resize the image!!!
+                resized_image = screenshot_image.resize((self.width, self.height), Image.Resampling.LANCZOS)
+                # Convert back to bytes
+                output_buffer = io.BytesIO()
+                resized_image.save(output_buffer, format='PNG')
+                cur_screenshot = output_buffer.getvalue()
+            
             self.grounding_model.add_message(
                 text_content=prompt, image_content=cur_screenshot, put_text_last=True, role="user"
             )
 
             # Generate and parse coordinates
-            response = call_llm_safe(self.grounding_model, temperature=0.1)
-            # print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
+            response = call_llm_safe(self.grounding_model, temperature=0.1, **kwargs)
+            print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
 
             # 1. 第一优先级：尝试匹配明确带 key 的格式 (x1="...", y1="...", x="...", y="...")
             numericals = re.findall(r'(?:x1|y1|x|y)=["\']?(\d+)["\']?', response)
-
             # 2. 第二优先级：如果上面没找到坐标，说明格式可能是纯数字或标签内没有 key 例如：<points>653 42</points> 或 [653, 42]
             if len(numericals) < 2:
                 # 关键步骤：先将 "x1", "y1", "x2" 等可能导致误判的字符串剔除
                 # 这样 <points x1 ...> 中的 '1' 就不会被当成坐标提取出来了
                 clean_response = re.sub(r'[xXyY]\d', '', response)
                 numericals = re.findall(r'\d+', clean_response)
-                
             assert len(numericals) >= 2
             local_x, local_y = self._resize_coordinates([int(numericals[0]), int(numericals[1])], width=cur_width, height=cur_height)
             
             # 计算当前的全局坐标 = 局部坐标 + 之前的累计偏移
             final_global_x = local_x + global_offset_x
             final_global_y = local_y + global_offset_y
-            
+            if 'claude' in self.engine_params_for_grounder['model']:
+                final_global_x = int(final_global_x * self.screen_width / self.width)
+                final_global_y = int(final_global_y * self.screen_height / self.height)
+
             # 调用 enhance_observation 获取裁剪后的图,偏移量与新图长宽
             cur_screenshot, delta_x, delta_y, cur_width, cur_height = enhance_observation(
                 cur_screenshot, [local_x, local_y], expansion_pixels=expansion_pixels, draw=False
