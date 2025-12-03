@@ -354,10 +354,11 @@ class ReflectionMemoryAgent:
                 PROCEDURAL_MEMORY.REFLECTION_SYSTEM_PROMPT + "\n\n" + 
                 f"---\n- **user instruction**: {self.instruction}\n" + 
                 "- **existing knowledge**: \n" + "\n".join(self.knowledge_base) + 
-                "\n - **additional_hints**: " + "\n".join(additional_hints) + "\n---"
+                "\n- **additional_hints**: " + "\n".join(additional_hints) + "\n---"
             )
 
             self.reflection_agent.add_system_prompt(updated_sys_prompt)
+            # print(self.reflection_agent.system_prompt)
 
 
             ### 消融实验的修改部分
@@ -404,6 +405,7 @@ class ReflectionMemoryAgent:
                             text_content += f"\nscreenshot (after executing action): (attached below)"
 
                     # print(text_content)
+                    print(f"image content: step_{i+1}.png")
 
                     self.reflection_agent.add_message(
                         text_content=text_content,
@@ -430,9 +432,9 @@ class ReflectionMemoryAgent:
                 format_checkers
             )
 
-            print("=" * 30)
-            print(full_response)
-            print("=" * 30)
+            # print("=" * 30)
+            # print(full_response)
+            # print("=" * 30)
 
             reflection_thought = full_response      # 这里直接传full response了，反正也没有实际用途
 

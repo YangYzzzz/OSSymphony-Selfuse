@@ -157,7 +157,7 @@ class PROCEDURAL_MEMORY:
                 * **When To Use**: 
                     * **Spreadsheet Automation (Strongly Recommended)**: For LibreOffice Calc or Excel tasks, specifically when filling entire rows/columns, performing batch data entry, or running calculations. 
                     * **Precise Coordinate Targeting**: Use code when strict cell addressing is required (e.g., writing specifically to cell D2). The GUI agent often struggles to visually distinguish between adjacent cells or columns in dense grids (e.g., confusing Column D with Column F). Code actions ensure 100% address accuracy.
-                * **When NOT to Use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements—always use the GUI for those.
+                * **When NOT to Use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements. Always use the GUI for those.
             
             * **Code Agent Verification (MANDATORY)**
                 * The code agent works in the background. You CANNOT trust its output report alone. Your job is to verify its work via the GUI.
@@ -209,14 +209,14 @@ class PROCEDURAL_MEMORY:
                 - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
                 - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps.
                 - You MUST use Code agent or `agent.set_cell_values()`(set_cell_values is only available on Linux platform) when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
-                    - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
-            - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
+                    - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the **Code Agent**.
+            - **Don't Over-rely Code Agent**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
             """
         )
         
         procedural_memory += textwrap.dedent(
             """
-            - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, can invoke the Search Agent to retrieve detailed online tutorials for further guidance.
+            - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, invoke the Search Agent to retrieve detailed online tutorials for further guidance.
             """
         ) if has_search_agent else "" 
 
