@@ -131,7 +131,7 @@ class WindowsDockerProvider:
                     )
 
                     self.brower_port = self._get_available_port(
-                        8006, 
+                        5910, 
                         exclude_ports={self.server_port, self.rdp_port, self.chromium_port}
                     )
 
@@ -160,6 +160,7 @@ class WindowsDockerProvider:
                         devices=devices,
                         platform="linux/amd64",
                         cap_add=["NET_ADMIN"],
+                        shm_size="500m",
                         ports={
                             '5000': self.server_port,   # Agent API
                             '3389': self.rdp_port,      # RDP

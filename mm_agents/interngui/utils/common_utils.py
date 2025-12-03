@@ -494,4 +494,11 @@ if __name__=="__main__":
     height = 1080
     width = 1920
     # (1080, 1920) -> (1092, 1932)
-    print(smart_resize(height, width))
+    # print(smart_resize(height, width))
+    code = """
+    ```
+    DONE
+    ```
+    """
+
+    print(parse_code_from_string(code))
