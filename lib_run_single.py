@@ -79,7 +79,7 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
                 break
         step_idx += 1
     end_time = time.time()
-    result = env.evaluate()
+    result = float(env.evaluate())
     logger.info("Result: %.2f", result)
     scores.append(result)
     with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:

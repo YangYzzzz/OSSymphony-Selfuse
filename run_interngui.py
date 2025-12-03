@@ -284,8 +284,13 @@ def run_env_tasks(
                     with open(os.path.join(os.path.dirname(example_result_dir), "error.jsonl"), "a") as f:
                         f.write(json.dumps({"Error": f"{domain}/{example_id} - {e}"}))
                         f.write("\n")
-                    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
-                        f.write("0.0\n")
+
+                    # 处理非连接重置错误的情况
+                    is_connection_reset = isinstance(e, ConnectionResetError)
+                    if not is_connection_reset or "ConnectionResetError" not in str(e):
+                        result_file_path = os.path.join(example_result_dir, "result.txt")
+                        with open(result_file_path, "w", encoding="utf-8") as f:
+                            f.write("0.0\n")
 
             except Exception as e:
                 logger.error(f"Task-level error in {current_process().name}: {e}")
@@ -795,8 +800,16 @@ def get_unfinished(
                         shutil.rmtree(path=example_path, ignore_errors=True)
                     else:
                         with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
-                            score = float(f.read())
+                            score = f.read().strip()
+                            if score == "False":
+                                score = 0.0
+                            elif score == "True":
+                                score = 1.0
+                            else:
+                                score = float(score)
+                        
                         if not incremental_test:
+                            # TODO: 特化一下后面需要修正!!!
                             if score == 0 and turn != 1:
                                 # empty all files under example_id
                                 shutil.rmtree(path=example_path, ignore_errors=True)

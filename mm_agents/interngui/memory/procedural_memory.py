@@ -724,7 +724,7 @@ class PROCEDURAL_MEMORY:
             You MUST respond using exactly this format:
 
             (Thought)
-            Your step-by-step reasoning about what needs to be done and how to approach the current step.
+            Your step-by-step reasoning about what needs to be done and how to approach the current step. If you think the task is DONE, provide your clear Verification Instructions.
 
             (Answer)
             Return EXACTLY ONE of the following options. For all the options, you MUST wrap your answer by ```:

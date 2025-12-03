@@ -41,12 +41,17 @@ class PythonController:
         """
         Queries the server probe endpoint to check if the VM is running.
         """
-        response = requests.get(self.http_server + "/probe")
-        if response.status_code == 200:
-            return True
-        else:
-            logger.error("Failed to get a successful response from the VM.")
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.get(self.http_server + "/probe")
+                if response.status_code == 200:
+                    return True
+                else:
+                    logger.error("Failed to get a successful response from the VM.")
+            except Exception as e:
+                logger.error(f"An error occurred while probing the VM: {e}")
+            time.sleep(self.retry_interval)
+        return False
      
     def update_computer(self, rects, window_rect, screenshot, scale, clipboard_content, swap_ctrl_alt=False):
         """
@@ -76,33 +81,50 @@ class PythonController:
             'clipboard_content': clipboard_content,  
             'swap_ctrl_alt': swap_ctrl_alt  
         }  
-        response = requests.post(self.http_server + "/update_computer", headers=headers, json=payload)
-        if response.status_code == 200:
-            logger.info("Updated computer successfully")
-        else:
-            logger.error("Failed to update computer. Status code: %d", response.status_code)
+
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/update_computer", headers=headers, json=payload)
+                if response.status_code == 200:
+                    logger.info("Updated computer successfully")
+                    return
+                else:
+                    logger.error("Failed to update computer. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while updating computer: {e}")
+            time.sleep(self.retry_interval)
 
 
     def get_screenshot(self):
         """
         Gets a screenshot from the server. With the cursor.
         """
-        response = requests.get(self.http_server + "/screenshot")
-        if response.status_code == 200:
-            return response.content
-        else:
-            logger.error("Failed to get screenshot. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.get(self.http_server + "/screenshot")
+                if response.status_code == 200:
+                    return response.content
+                else:
+                    logger.error("Failed to get screenshot. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting screenshot: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_terminal_output(self):
         """ Gets the terminal output from the server. None -> no terminal output or unexpected error.
         """
-        response = requests.get(self.http_server + "/terminal")
-        if response.status_code == 200:
-            return response.json()["output"]
-        else:
-            logger.error("Failed to get terminal output. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.get(self.http_server + "/terminal")
+                if response.status_code == 200:
+                    return response.json()["output"]
+                else:
+                    logger.error("Failed to get terminal output. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting terminal output: {e}")
+            time.sleep(self.retry_interval)
+        return None
         
     def get_obs_winagent(self):
         """ Gets the observations for the agent from the server. None -> no observations or unexpected error.
@@ -110,45 +132,60 @@ class PythonController:
         import base64
         import io
         from PIL import Image
-        response = requests.get(self.http_server + "/obs_winagent")
-        if response.status_code == 200:
-            image_str = response.json()["image"]
-            image = Image.open(io.BytesIO(base64.b64decode(image_str)))
-            window_title = response.json()["window_title"]
-            rect = response.json()["rect"]
-            window_names_str = response.json()["window_names_str"]
-            computer_clipboard = response.json()["computer_clipboard"]
-            human_input = response.json()["human_input"]
-            return image, window_title, rect, window_names_str, computer_clipboard, human_input
-        else:
-            logger.error("Failed to get the observations for the agent from the server. Status code: %d", response.status_code)
-            return None 
+
+        for _ in range(self.retry_times):
+            try:
+                response = requests.get(self.http_server + "/obs_winagent")
+                if response.status_code == 200:
+                    image_str = response.json()["image"]
+                    image = Image.open(io.BytesIO(base64.b64decode(image_str)))
+                    window_title = response.json()["window_title"]
+                    rect = response.json()["rect"]
+                    window_names_str = response.json()["window_names_str"]
+                    computer_clipboard = response.json()["computer_clipboard"]
+                    human_input = response.json()["human_input"]
+                    return image, window_title, rect, window_names_str, computer_clipboard, human_input
+                else:
+                    logger.error("Failed to get the observations for the agent from the server. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting obs_winagent: {e}")
+            time.sleep(self.retry_interval)
+        return None 
 
     def get_accessibility_tree(self, backend: Optional[str] = None) -> Optional[str]:
-        try:
-            response: requests.Response = requests.get(self.http_server + (f"/accessibility?backend={backend}" if backend else "/accessibility"), timeout=A11Y_TIMEOUT)
-            if response.status_code == 200:
-                return response.json().get("AT")
-            else:
-                logger.error("Failed to get accessibility tree. Status code: %d", response.status_code)
-                return None
-        except requests.Timeout:
-            # logger.error("Request timed out while trying to get accessibility tree.")
-            raise TimeoutError("Request timed out while trying to get accessibility tree.")
-            return None
+        for i in range(self.retry_times):
+            try:
+                response: requests.Response = requests.get(self.http_server + (f"/accessibility?backend={backend}" if backend else "/accessibility"), timeout=A11Y_TIMEOUT)
+                if response.status_code == 200:
+                    return response.json().get("AT")
+                else:
+                    logger.error("Failed to get accessibility tree. Status code: %d", response.status_code)
+            except requests.Timeout:
+                if i == self.retry_times - 1:
+                    raise TimeoutError("Request timed out while trying to get accessibility tree.")
+                logger.info("Request timed out while trying to get accessibility tree. Retrying...")
+            except Exception as e:
+                logger.error(f"An error occurred while getting accessibility tree: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_file(self, file_path: str):
         """
         Gets a file from the server.
         """
-        response = requests.post(self.http_server + "/file", data={"file_path": file_path})
-        logger.info(f"GET_FILE, file_path: {file_path}")
-        if response.status_code == 200:
-            logger.info("File downloaded successfully")
-            return response.content
-        else:
-            logger.error("Failed to get file. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/file", data={"file_path": file_path})
+                logger.info(f"GET_FILE, file_path: {file_path}")
+                if response.status_code == 200:
+                    logger.info("File downloaded successfully")
+                    return response.content
+                else:
+                    logger.error("Failed to get file. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting file: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def save_state(self, state: str):
         """
@@ -158,11 +195,17 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/save_state", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("State saved successfully")
-        else:
-            logger.error("Failed to save state. Status code: %d", response.status_code)
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/save_state", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("State saved successfully")
+                    return
+                else:
+                    logger.error("Failed to save state. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while saving state: {e}")
+            time.sleep(self.retry_interval)
             
     def revert_to_snapshot(self, state: str):
         """
@@ -172,11 +215,17 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/revert_to_snapshot", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("Reverted to snapshot successfully")
-        else:
-            logger.error("Failed to revert to snapshot. Status code: %d", response.status_code)
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/revert_to_snapshot", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("Reverted to snapshot successfully")
+                    return
+                else:
+                    logger.error("Failed to revert to snapshot. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while reverting to snapshot: {e}")
+            time.sleep(self.retry_interval)
     
     def execute_python_windows_command(self, command: str) -> None:
         """
@@ -193,16 +242,17 @@ class PythonController:
             'Content-Type': 'application/json'
         }
 
-
-        try:
-            response = requests.post(self.http_server + "/execute_windows", headers=headers, json=payload, timeout=90)
-            if response.status_code == 200:
-                logger.info("Command executed successfully: %s", response.text)
-            else:
-                logger.error("Failed to execute command. Status code: %d", response.status_code)
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error("An error occurred while trying to execute the command: %s", e)
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/execute_windows", headers=headers, json=payload, timeout=90)
+                if response.status_code == 200:
+                    logger.info("Command executed successfully: %s", response.text)
+                    return response.json()
+                else:
+                    logger.error("Failed to execute command. Status code: %d", response.status_code)
+            except requests.exceptions.RequestException as e:
+                logger.error("An error occurred while trying to execute the command: %s", e)
+            time.sleep(self.retry_interval)
 
     def execute_python_command(self, command: str) -> None:
         """
@@ -216,17 +266,19 @@ class PythonController:
             'Content-Type': 'application/json'
         }
 
-        try:
-            response = requests.post(self.http_server + "/execute", headers=headers, data=payload, timeout=90)
-            response_json = response.json()
-            return_code = response_json["returncode"]
-            if return_code == 0:
-                logger.info("Command executed successfully: %s", response.text)
-            else:
-                logger.error("Failed to execute command. Return code: %d", return_code)
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error("An error occurred while trying to execute the command: %s", e)
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/execute", headers=headers, data=payload, timeout=90)
+                response_json = response.json()
+                return_code = response_json["returncode"]
+                if return_code == 0:
+                    logger.info("Command executed successfully: %s", response.text)
+                else:
+                    logger.error("Failed to execute command. Return code: %d", return_code)
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                logger.error("An error occurred while trying to execute the command: %s", e)
+            time.sleep(self.retry_interval)
 
     def execute_action(self, action: Dict[str, Any]):
         """
@@ -407,29 +459,38 @@ class PythonController:
         """
         Starts recording the screen.
         """
-        response = requests.post(self.http_server + "/start_recording")
-        if response.status_code == 200:
-            logger.info("Recording started successfully")
-        else:
-            logger.error("Failed to start recording. Status code: %d", response.status_code)
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/start_recording")
+                if response.status_code == 200:
+                    logger.info("Recording started successfully")
+                    return
+                else:
+                    logger.error("Failed to start recording. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while starting recording: {e}")
+            time.sleep(self.retry_interval)
 
     def end_recording(self, dest: str):
         """
         Ends recording the screen.
         """
-        try:
-            response = requests.post(self.http_server + "/end_recording")
-            if response.status_code == 200:
-                logger.info("Recording stopped successfully")
-                with open(dest, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-            else:
-                logger.error("Failed to stop recording. Status code: %d", response.status_code)
-                return None
-        except Exception as e:
-            logger.error("An error occurred while trying to download the recording: %s", e)
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/end_recording")
+                if response.status_code == 200:
+                    logger.info("Recording stopped successfully")
+                    with open(dest, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    return
+                else:
+                    logger.error("Failed to stop recording. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error("An error occurred while trying to download the recording: %s", e)
+            time.sleep(self.retry_interval)
+        return None
 
     # Additional info
     def get_vm_platform(self):
@@ -442,59 +503,84 @@ class PythonController:
         """
         Gets the size of the vm screen.
         """
-        response = requests.post(self.http_server + "/screen_size")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logger.error("Failed to get screen size. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/screen_size")
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.error("Failed to get screen size. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting screen size: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_vm_window_size(self, app_class_name: str):
         """
         Gets the size of the vm app window.
         """
-        response = requests.post(self.http_server + "/window_size", data={"app_class_name": app_class_name})
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logger.error("Failed to get window size. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/window_size", data={"app_class_name": app_class_name})
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.error("Failed to get window size. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting window size: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_vm_wallpaper(self):
         """
         Gets the wallpaper of the vm.
         """
-        response = requests.post(self.http_server + "/wallpaper")
-        if response.status_code == 200:
-            logger.info("Wallpaper downloaded successfully")
-            return response.content
-        else:
-            logger.error("Failed to get wallpaper. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/wallpaper")
+                if response.status_code == 200:
+                    logger.info("Wallpaper downloaded successfully")
+                    return response.content
+                else:
+                    logger.error("Failed to get wallpaper. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting wallpaper: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_vm_desktop_path(self):
         """
         Gets the desktop path of the vm.
         """
-        response = requests.post(self.http_server + "/desktop_path")
-        if response.status_code == 200:
-            logger.info("Desktop path downloaded successfully")
-            return response.json()["desktop_path"]
-        else:
-            logger.error("Failed to get desktop path. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/desktop_path")
+                if response.status_code == 200:
+                    logger.info("Desktop path downloaded successfully")
+                    return response.json()["desktop_path"]
+                else:
+                    logger.error("Failed to get desktop path. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting desktop path: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_vm_documents_path(self):
         """
         Gets the documents path of the vm.
         """
-        response = requests.post(self.http_server + "/documents_path")
-        if response.status_code == 200:
-            logger.info("Documents path downloaded successfully")
-            return response.json()["documents_path"]
-        else:
-            logger.error("Failed to get documents path. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/documents_path")
+                if response.status_code == 200:
+                    logger.info("Documents path downloaded successfully")
+                    return response.json()["documents_path"]
+                else:
+                    logger.error("Failed to get documents path. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting documents path: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_vm_folder_exists_in_path(self, folder_name, path):
         """
@@ -504,13 +590,18 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/folder_exists", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("Folder exists")
-            return True
-        else:
-            logger.error("Failed to get folder exists. Status code: %d", response.status_code)
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/folder_exists", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("Folder exists")
+                    return True
+                else:
+                    logger.error("Failed to get folder exists. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while checking folder existence: {e}")
+            time.sleep(self.retry_interval)
+        return False
         
     def get_vm_file_exists_in_path(self, file_name, path):
         """
@@ -520,13 +611,18 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/file_exists", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("File exists")
-            return True
-        else:
-            logger.error("Failed to get file exists. Status code: %d", response.status_code)
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/file_exists", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("File exists")
+                    return True
+                else:
+                    logger.error("Failed to get file exists. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while checking file existence: {e}")
+            time.sleep(self.retry_interval)
+        return False
 
     def get_vm_are_files_sorted_by_modified_time(self, directory) -> bool:
         """
@@ -537,13 +633,18 @@ class PythonController:
             'Content-Type': 'application/json'
         }
         logger.info(f"Checking if files in {directory} are sorted by modified time")
-        response = requests.post(self.http_server + "/are_files_sorted_by_modified_time", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("Files sorted by modified time")
-            return True
-        else:
-            logger.error("Files are not sorted by modified time. Status text: %s", response.text)
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/are_files_sorted_by_modified_time", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("Files sorted by modified time")
+                    return True
+                else:
+                    logger.error("Files are not sorted by modified time. Status text: %s", response.text)
+            except Exception as e:
+                logger.error(f"An error occurred while checking file sorting: {e}")
+            time.sleep(self.retry_interval)
+        return False
         
     def get_file_hidden_status(self, file_path: str):
         """
@@ -569,13 +670,18 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/is_directory_read_only_for_user", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info(f"Directory {directory} is read-only for user {user}")
-            return True
-        else:
-            logger.error(f"Directory {directory} is not read-only for user {user}. Status text: %s", response.text)
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/is_directory_read_only_for_user", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info(f"Directory {directory} is read-only for user {user}")
+                    return True
+                else:
+                    logger.error(f"Directory {directory} is not read-only for user {user}. Status text: %s", response.text)
+            except Exception as e:
+                logger.error(f"An error occurred while checking directory permissions: {e}")
+            time.sleep(self.retry_interval)
+        return False
 
     def get_vm_are_all_images_tagged(self, directory, tag) -> bool:
         """
@@ -585,13 +691,18 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/are_all_images_tagged", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info(f"All images in {directory} are tagged with {tag}")
-            return True
-        else:
-            logger.error(f"Not all images in {directory} are tagged with {tag}. Status text: %s", response.text)
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/are_all_images_tagged", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info(f"All images in {directory} are tagged with {tag}")
+                    return True
+                else:
+                    logger.error(f"Not all images in {directory} are tagged with {tag}. Status text: %s", response.text)
+            except Exception as e:
+                logger.error(f"An error occurred while checking image tags: {e}")
+            time.sleep(self.retry_interval)
+        return False
 
     def get_vm_directory_tree(self, path):
         """
@@ -601,13 +712,18 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/list_directory", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("Directory tree downloaded successfully")
-            return response.json()["directory_tree"]
-        else:
-            logger.error("Failed to get directory tree. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/list_directory", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("Directory tree downloaded successfully")
+                    return response.json()["directory_tree"]
+                else:
+                    logger.error("Failed to get directory tree. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting directory tree: {e}")
+            time.sleep(self.retry_interval)
+        return None
             
     def get_vm_file_explorer_is_details_view(self, path):
         """
@@ -617,26 +733,36 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/is_details_view", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("File explorer is set to details view")
-            return True
-        else:
-            logger.error("File explorer is not set to details view. Status code: %d", response.status_code)
-            return False
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/is_details_view", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("File explorer is set to details view")
+                    return True
+                else:
+                    logger.error("File explorer is not set to details view. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while checking file explorer view: {e}")
+            time.sleep(self.retry_interval)
+        return False
 
     def get_file_as_text(self, file_path: str):
         """
         Gets a file from the server.
         """
-        response = requests.post(self.http_server + "/file", data={"file_path": file_path})
-        logger.info(f"GET_FILE, file_path: {file_path}")
-        if response.status_code == 200:
-            logger.info("File downloaded successfully")
-            return response.text
-        else:
-            logger.error("Failed to get file. Status code: %d", response.status_code)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/file", data={"file_path": file_path})
+                logger.info(f"GET_FILE, file_path: {file_path}")
+                if response.status_code == 200:
+                    logger.info("File downloaded successfully")
+                    return response.text
+                else:
+                    logger.error("Failed to get file. Status code: %d", response.status_code)
+            except Exception as e:
+                logger.error(f"An error occurred while getting file as text: {e}")
+            time.sleep(self.retry_interval)
+        return None
 
     def get_vm_library_folders(self, library_name):
         """
@@ -646,14 +772,19 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        response = requests.post(self.http_server + "/library_folders", headers=headers, data=payload)
-        if response.status_code == 200:
-            library_folders = response.json()["output"]
-            logger.info(f"Library folders {library_folders} downloaded successfully")
-            return library_folders
-        else:
-            logger.error("Failed to get library folders. Status text: %s", response.text)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/library_folders", headers=headers, data=payload)
+                if response.status_code == 200:
+                    library_folders = response.json()["output"]
+                    logger.info(f"Library folders {library_folders} downloaded successfully")
+                    return library_folders
+                else:
+                    logger.error("Failed to get library folders. Status text: %s", response.text)
+            except Exception as e:
+                logger.error(f"An error occurred while getting library folders: {e}")
+            time.sleep(self.retry_interval)
+        return None
     
     # Clock, Timers, Alarms (Clock inbox app)
     def get_vm_check_if_timer_started(self, hours, minutes, seconds):
@@ -667,13 +798,18 @@ class PythonController:
         
         logger.info(f"Checking if timer exists: {hours} hours {minutes} minutes {seconds} seconds")
 
-        response = requests.post(self.http_server + "/check_if_timer_started", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("Timer started in Clock app")
-            return "True"
-        else:
-            logger.error("Timer is not start or does not exist in Clock app. Status text: %s", response.text)
-            return "False"
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/check_if_timer_started", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("Timer started in Clock app")
+                    return "True"
+                else:
+                    logger.error("Timer is not start or does not exist in Clock app. Status text: %s", response.text)
+            except Exception as e:
+                logger.error(f"An error occurred while checking timer: {e}")
+            time.sleep(self.retry_interval)
+        return "False"
         
     def get_vm_check_if_world_clock_exists(self, city, country):
         """
@@ -686,13 +822,18 @@ class PythonController:
         
         logger.info(f"Checking if world clock exists: {city}, {country}")
 
-        response = requests.post(self.http_server + "/check_if_world_clock_exists", headers=headers, data=payload)
-        if response.status_code == 200:
-            logger.info("World clock exists in Clock app")
-            return "True"
-        else:
-            logger.error("World clock does not exist in Clock app. Status text: %s", response.text)
-            return "False"
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/check_if_world_clock_exists", headers=headers, data=payload)
+                if response.status_code == 200:
+                    logger.info("World clock exists in Clock app")
+                    return "True"
+                else:
+                    logger.error("World clock does not exist in Clock app. Status text: %s", response.text)
+            except Exception as e:
+                logger.error(f"An error occurred while checking world clock: {e}")
+            time.sleep(self.retry_interval)
+        return "False"
 
     def get_all_installed_apps(self,):
         """
@@ -724,17 +865,18 @@ class PythonController:
         headers = {
             'Content-Type': 'application/json'
         }
-        try:
-            response = requests.post(self.http_server + "/execute", headers=headers, json=payload, timeout=90)
-            if response.status_code == 200:
-                logger.info("Command executed successfully: %s", response.text)
-                return response.json()
-            else:
-                logger.error("Failed to execute command. Status code: %d", response.status_code)
-                return None
-        except requests.exceptions.RequestException as e:
-            logger.error("An error occurred while trying to execute the command: %s", e)
-            return None
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/execute", headers=headers, json=payload, timeout=90)
+                if response.status_code == 200:
+                    logger.info("Command executed successfully: %s", response.text)
+                    return response.json()
+                else:
+                    logger.error("Failed to execute command. Status code: %d", response.status_code)
+            except requests.exceptions.RequestException as e:
+                logger.error("An error occurred while trying to execute the command: %s", e)
+            time.sleep(self.retry_interval)
+        return None
         
     def run_python_script(self, script: str) -> Optional[Dict[str, Any]]:
         """
