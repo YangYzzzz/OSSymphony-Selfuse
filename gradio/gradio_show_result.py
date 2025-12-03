@@ -1058,6 +1058,7 @@ def plot_token_usage_stacked(stats_data, title, save_path):
         print(f"An unexpected error occurred while generating stacked token usage plot for '{title}': {e}")
 
 
+
 def get_result(target_dir):
     """
     Analyzes experiment results from a target directory, calculates success rates,
@@ -1067,12 +1068,35 @@ def get_result(target_dir):
         print(f"Error: Target directory '{target_dir}' does not exist.")
         return None
 
+    # --- 0. Load Infeasible Task List (新增) ---
+    infeasible_path = "evaluation_examples/osworld/test_infeasible.json"
+    infeasible_task = {}
+    if os.path.exists(infeasible_path):
+        try:
+            infeasible_task = json.load(open(infeasible_path, "r", encoding="utf-8"))
+        except Exception as e:
+            print(f"Warning: Failed to load infeasible tasks from {infeasible_path}: {e}")
+    else:
+        # 如果找不到文件，默认所有任务都是 feasible，或者你可以根据需要调整路径
+        # print(f"Warning: Infeasible task file not found at {infeasible_path}.")
+        pass
+
     # --- Data Structures for Analysis ---
     all_result = []
-    domain_result_raw = {}
+    domain_result_raw = {} # 保留此结构以兼容旧逻辑
     all_result_for_analysis = {}
     overall_action_counts = Counter()
     domain_action_counts = {}
+
+    # --- 新增：用于详细统计 (All/Feasible/Infeasible) 的结构 ---
+    # 结构: raw_stats[domain][category] = {'scores': [], 'steps': []}
+    raw_stats = {} 
+    def init_domain_stats():
+        return {
+            'all':        {'scores': [], 'steps': []},
+            'feasible':   {'scores': [], 'steps': []},
+            'infeasible': {'scores': [], 'steps': []}
+        }
 
     # --- Token 统计结构 ---
     domain_token_stats = {}
@@ -1093,6 +1117,14 @@ def get_result(target_dir):
     domain_error_stats = {}
     overall_error_stats = init_error_stats()
 
+    # 辅助函数：解析 Reflection Type (你需要确保此函数存在，或者直接内嵌逻辑)
+    def parse_reflection_type(ref_str):
+        if not ref_str: return "None"
+        if "GUI" in ref_str: return "GUI Operation Error"
+        if "Tutorial" in ref_str: return "Lack of Tutorial"
+        if "Code" in ref_str: return "Code Error"
+        return "Other"
+
     print("Starting analysis...")
     # --- Data Collection Loop ---
     for domain in os.listdir(target_dir):
@@ -1103,12 +1135,21 @@ def get_result(target_dir):
         domain_token_stats[domain] = {}
         domain_error_stats[domain] = init_error_stats()
         
+        # 初始化新统计容器
+        if domain not in raw_stats: raw_stats[domain] = init_domain_stats()
+        # 获取当前 Domain 的 infeasible ID 列表
+        domain_infeasible_ids = infeasible_task.get(domain, [])
+
         for example_id in os.listdir(domain_path):
             example_path = os.path.join(domain_path, example_id)
             if not os.path.isdir(example_path): continue
 
             if domain not in all_result_for_analysis: all_result_for_analysis[domain] = {}
             if example_id not in all_result_for_analysis[domain]: all_result_for_analysis[domain][example_id] = {}
+
+            # 判断任务类型
+            is_infeasible = example_id in domain_infeasible_ids
+            task_type = 'infeasible' if is_infeasible else 'feasible'
 
             # --- 1. Process Success/Failure Result ---
             result_file = os.path.join(example_path, "result.txt")
@@ -1122,24 +1163,30 @@ def get_result(target_dir):
                 except Exception as e:
                     print(f"Warning: Could not parse result file {result_file}. Defaulting to 0.0. Error: {e}")
                     final_result = 0.0
+                
+                # 旧逻辑保留
                 if domain not in domain_result_raw: domain_result_raw[domain] = []
                 domain_result_raw[domain].append(final_result)
                 all_result.append(final_result)
+                
                 all_result_for_analysis[domain][example_id]["score"] = final_result
 
             # --- 2. Process Trajectory for Action and Step Statistics ---
             traj_file = os.path.join(example_path, "traj.jsonl")
+            step_count = 0 # 默认为 0
             if os.path.exists(traj_file):
                 try:
                     with open(traj_file, "r", encoding="utf-8") as f:
                         lines = f.readlines()
-                        all_result_for_analysis[domain][example_id]["step"] = len(lines)
+                        step_count = len(lines) # 获取步数
+                        all_result_for_analysis[domain][example_id]["step"] = step_count
+                        
                         for line in lines:
                             try:
                                 data = json.loads(line)
                                 plan_code = data.get("response", {}).get("plan_code") or data.get("plan_code")
                                 
-                                # 模拟 action 获取 (实际请替换为你的 extract_action_from_plan)
+                                # 模拟 action 获取
                                 action = "unknown"
                                 if plan_code: action = plan_code.split('(')[0]
 
@@ -1197,6 +1244,15 @@ def get_result(target_dir):
                             except (json.JSONDecodeError, AttributeError): continue
                 except Exception as e:
                     print(f"Warning: Could not read or process trajectory file {traj_file}. Error: {e}")
+            
+            # --- 新增：填充详细统计数据 ---
+            # 1. 填入对应类型 (Feasible 或 Infeasible)
+            raw_stats[domain][task_type]['scores'].append(final_result)
+            raw_stats[domain][task_type]['steps'].append(step_count)
+            # 2. 填入 All 类型
+            raw_stats[domain]['all']['scores'].append(final_result)
+            raw_stats[domain]['all']['steps'].append(step_count)
+
 
             # --- 3. Process Token Usage ---
             token_log_file = os.path.join(example_path, "token.jsonl")
@@ -1240,22 +1296,50 @@ def get_result(target_dir):
         print("New experiment or no valid results found.")
         return None
 
-   # 1. 打印 Sub-Domain (原始文件夹) 统计
-    domain_success_rate = {}
-    print("\n--- Sub-Domain Success Rate Summary ---")
-    # 排序以便查看
-    sorted_domains = sorted(domain_result_raw.keys())
-    for domain in sorted_domains:
-        results = domain_result_raw[domain]
-        if results:
-            rate = sum(results) / len(results) * 100
-            domain_success_rate[domain] = rate
-            print(f"Domain: {domain:<20} | Runs: {len(results):<5} | Success Rate: {rate:.2f}%")
-    
-    print("-" * 60)
+    # --- 新增：格式化打印函数 ---
+    def print_metrics(label, data_dict):
+        """
+        data_dict 结构: {'all': {'scores':[], 'steps':[]}, 'feasible': ..., 'infeasible': ...}
+        """
+        def get_stats(cat):
+            scores = data_dict[cat]['scores']
+            steps = data_dict[cat]['steps']
+            count = len(scores)
+            if count == 0: return "N/A", "N/A", 0
+            sr = sum(scores) / count * 100
+            avg_steps = sum(steps) / count
+            return f"{sr:.2f}%", f"{avg_steps:.1f}", count
 
-    # 2. 打印 Father Domain 统计 (如果有传入映射表)
-    if "thunderbird" in domain_result_raw.keys():
+        sr_all, step_all, cnt_all = get_stats('all')
+        sr_fea, step_fea, cnt_fea = get_stats('feasible')
+        sr_inf, step_inf, cnt_inf = get_stats('infeasible')
+
+        print(f"{label:<20} | "
+              f"ALL: SR={sr_all:<5} Stp={step_all:<4} ({cnt_all}) | "
+              f"FEA: SR={sr_fea:<5} Stp={step_fea:<4} ({cnt_fea}) | "
+              f"INF: SR={sr_inf:<5} Stp={step_inf:<4} ({cnt_inf})")
+
+    # --- 打印表头 ---
+    print("\n" + "="*120)
+    print(f"{'Domain Analysis':<20} | {'All Tasks':<30} | {'Feasible Tasks':<30} | {'Infeasible Tasks':<30}")
+    print(f"{'':<20} | {'SR':<6} {'Step':<5} {'(Num)':<6}      | {'SR':<6} {'Step':<5} {'(Num)':<6}      | {'SR':<6} {'Step':<5} {'(Num)':<6}")
+    print("-" * 120)
+
+    # 1. Sub-Domain 统计
+    domain_success_rate = {} # 重建此字典以供 Plot 3 使用
+    sorted_domains = sorted(raw_stats.keys())
+    for domain in sorted_domains:
+        print_metrics(domain, raw_stats[domain])
+        # 重建 domain_success_rate 用于后续绘图
+        scores = raw_stats[domain]['all']['scores']
+        if scores:
+            domain_success_rate[domain] = sum(scores) / len(scores) * 100
+    
+    print("-" * 120)
+
+    # 2. Father Domain 统计
+    # 动态判断使用哪套映射
+    if "thunderbird" in raw_stats.keys():
         father_domain_mapping = {
             "OS": ["os"],
             "Office": ["libreoffice_calc", "libreoffice_impress", "libreoffice_writer"],
@@ -1274,27 +1358,34 @@ def get_result(target_dir):
         }
 
     if father_domain_mapping:
-        print("\n--- Father Domain Success Rate Summary ---")
-        for father_name, sub_domains in father_domain_mapping.items():
-            father_scores = []
-            # 遍历该父类下的所有子类
-            for sub in sub_domains:
-                # 只有当子类确实在本次实验结果中存在时才统计
-                if sub in domain_result_raw:
-                    father_scores.extend(domain_result_raw[sub])
+        for father, children in father_domain_mapping.items():
+            father_stats = init_domain_stats()
+            has_data = False
+            for child in children:
+                if child in raw_stats:
+                    has_data = True
+                    for cat in ['all', 'feasible', 'infeasible']:
+                        father_stats[cat]['scores'].extend(raw_stats[child][cat]['scores'])
+                        father_stats[cat]['steps'].extend(raw_stats[child][cat]['steps'])
             
-            if father_scores:
-                rate = sum(father_scores) / len(father_scores) * 100
-                print(f"Domain: {father_name:<20} | Runs: {len(father_scores):<5} | Success Rate: {rate:.2f}%")
-            else:
-                # 如果该父类下没有任何有结果的子类
-                print(f"Domain: {father_name:<20} | Runs: 0     | Success Rate: N/A")
-        print("-" * 60)
+            if has_data:
+                print_metrics(f"[F] {father}", father_stats)
+        print("-" * 120)
 
-    # 3. 打印 Overall 统计
-    overall_rate = sum(all_result) / len(all_result) * 100
-    print(f"Overall    | Runs: {len(all_result):<5} | Total Score: {sum(all_result)}| Avg. Success Rate: {overall_rate:.2f}%")
-    print("-" * 60)
+    # 3. Overall 统计
+    overall_stats = init_domain_stats()
+    for domain in raw_stats:
+        for cat in ['all', 'feasible', 'infeasible']:
+            overall_stats[cat]['scores'].extend(raw_stats[domain][cat]['scores'])
+            overall_stats[cat]['steps'].extend(raw_stats[domain][cat]['steps'])
+    
+    print_metrics("OVERALL", overall_stats)
+    print("=" * 120)
+
+    # 计算 overall_rate 供 Plot 3 使用
+    overall_rate = 0.0
+    if all_result:
+        overall_rate = sum(all_result) / len(all_result) * 100
 
     json_output_path = os.path.join(target_dir, "all_result_summary.json")
     try:
@@ -1325,7 +1416,7 @@ def get_result(target_dir):
             
             sorted_actions = counts.most_common()
             actions = [i[0] for i in sorted_actions]
-            action_counts = [i[1] for i in sorted_actions] # 这是一个纯数字的列表
+            action_counts = [i[1] for i in sorted_actions] 
             
             bars = plt.barh(actions, action_counts, color='lightgreen')
             plt.xlabel('Usage Count')
@@ -1336,14 +1427,10 @@ def get_result(target_dir):
             if action_counts: 
                 plt.xlim(right=max(action_counts) * 1.15)
             
-            # --- 修复点开始 ---
-            # 计算总数时，使用 sum(action_counts) 或者 sum(counts.values())
             total_count = sum(action_counts)
-            # --- 修复点结束 ---
 
             for bar in bars: 
                 xval = bar.get_width()
-                # 这里将原本的 sum(counts) 替换为了 total_count
                 plt.text(xval + (max(action_counts) * 0.01), 
                          bar.get_y() + bar.get_height() / 2.0, 
                          f' {int(xval)} ({int(xval) / total_count * 100:.1f}%)', 
@@ -1369,7 +1456,6 @@ def get_result(target_dir):
 
 
     # Plot 4: Step Distribution Histograms
-
     step_stats = {'overall': {'success_steps': [], 'failure_steps': []}}
     for domain, tasks in all_result_for_analysis.items():
         if domain not in step_stats: step_stats[domain] = {'success_steps': [], 'failure_steps': []}
@@ -1381,24 +1467,32 @@ def get_result(target_dir):
     for name, data in step_stats.items():
         save_path = os.path.join(target_dir, 'overall_step_distribution.png' if name == 'overall' else f'step_distribution_{name}.png')
         title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
-        plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
+        try:
+            # 假设 plot_step_histogram 存在
+            plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
+        except NameError:
+            # 如果外部没有定义该函数，跳过
+            pass
 
 
 
     # --- Plot 5: 调用新的堆叠图函数 ---
     print("\nGenerating stacked token usage plots...")
-    # 为每个 domain 生成图表
-    for domain, token_data in domain_token_stats.items():
+    try:
+        # 为每个 domain 生成图表
+        for domain, token_data in domain_token_stats.items():
+            plot_token_usage_stacked(
+                stats_data=token_data,
+                title=f'Average Token Usage (Stacked) per Task in Domain: {domain}',
+                save_path=os.path.join(target_dir, f"token_usage_stacked_{domain}.png")
+            )
         plot_token_usage_stacked(
-            stats_data=token_data,
-            title=f'Average Token Usage (Stacked) per Task in Domain: {domain}',
-            save_path=os.path.join(target_dir, f"token_usage_stacked_{domain}.png")
+            stats_data=overall_token_stats,
+            title='Overall Average Token Usage (Stacked) per Task',
+            save_path=os.path.join(target_dir, "overall_token_usage_stacked.png")
         )
-    plot_token_usage_stacked(
-        stats_data=overall_token_stats,
-        title='Overall Average Token Usage (Stacked) per Task',
-        save_path=os.path.join(target_dir, "overall_token_usage_stacked.png")
-    )
+    except NameError:
+        print("Warning: plot_token_usage_stacked function not found. Skipping token plots.")
 
     # --- Plot 6: Error & Reflection Analysis (Combined & Enhanced) ---
     print("\nGenerating error analysis plots...")

@@ -488,7 +488,7 @@ class OSACI:
         Args:
             element_description:str, a detailed description of which element to enter text in.
             text:str, the text to type
-            overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
+            overwrite:bool, Default is False, assign it to True if the text should overwrite the whole existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
             is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
         """
@@ -518,10 +518,7 @@ class OSACI:
 
         # 使用剪贴板方法进行输入
         # repr(text) 会正确处理文本中的引号和特殊字符
-        # 通过输入一个空格再撤回的方式实现对文本框的指定, 而非创建新的文本框
         commands += (
-            "pyautogui.write(' ');"
-            "pyautogui.press('backspace');"
             f"pyperclip.copy({repr(text)});"
         )
         

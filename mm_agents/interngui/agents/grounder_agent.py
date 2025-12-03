@@ -43,7 +43,7 @@ class GrounderAgent:
         final_global_x = 0
         final_global_y = 0
 
-        cur_width, cur_height = self.width, self.height
+        cur_width, cur_height = self.screen_width, self.screen_height
         zoom_in_time = max(1, self.zoom_in_time)
         
         print(f"[Grounder] start to ground in {zoom_in_time} times!")
@@ -85,9 +85,10 @@ class GrounderAgent:
             # 计算当前的全局坐标 = 局部坐标 + 之前的累计偏移
             final_global_x = local_x + global_offset_x
             final_global_y = local_y + global_offset_y
-            if 'claude' in self.engine_params_for_grounder['model']:
-                final_global_x = int(final_global_x * self.screen_width / self.width)
-                final_global_y = int(final_global_y * self.screen_height / self.height)
+
+            # if 'claude' in self.engine_params_for_grounder['model']:
+            #     final_global_x = int(final_global_x * self.screen_width / self.width)
+            #     final_global_y = int(final_global_y * self.screen_height / self.height)
 
             # 调用 enhance_observation 获取裁剪后的图,偏移量与新图长宽
             cur_screenshot, delta_x, delta_y, cur_width, cur_height = enhance_observation(
@@ -110,6 +111,10 @@ class GrounderAgent:
         
     # Resize from grounding model dim into OSWorld dim (1920 * 1080)
     def _resize_coordinates(self, coordinates: List[int], width:int, height:int) -> List[int]:
+        """
+            width, height: 当前真实图像的长宽
+            grounding_width, grounding_height: 对于 Grounding模型 而言的长宽(1000分制 or 1280x800)
+        """
         grounding_width = self.engine_params_for_grounder["grounding_width"]
         grounding_height = self.engine_params_for_grounder["grounding_height"]
         grounding_smart_resize = self.engine_params_for_grounder["grounding_smart_resize"]

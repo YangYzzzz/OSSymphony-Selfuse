@@ -292,13 +292,13 @@ class LMMAgent:
             )
 
         # Regular generation
-        if use_thinking:
-            return self.engine.generate_with_thinking(
-                messages,
-                temperature=temperature,
-                max_new_tokens=max_new_tokens,
-                **kwargs,
-            )
+        # if use_thinking:
+        #     return self.engine.generate_with_thinking(
+        #         messages,
+        #         temperature=temperature,
+        #         max_new_tokens=max_new_tokens,
+        #         **kwargs,
+        #     )
 
         return self.engine.generate(
             messages,

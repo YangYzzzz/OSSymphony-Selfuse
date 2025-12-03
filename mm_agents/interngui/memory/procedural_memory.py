@@ -212,7 +212,7 @@ class PROCEDURAL_MEMORY:
                     - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
             - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
             """
-        ) 
+        )
         
         procedural_memory += textwrap.dedent(
             """

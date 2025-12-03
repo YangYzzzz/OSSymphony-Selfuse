@@ -227,9 +227,11 @@ class Worker(BaseModule):
             action_dict=self.action_dict_history[-1] if self.turn_count != 0 else {}
         )
         reflection = reflection_info['reflection']
+        logger.info(f'[Reflection]: {reflection}')
         if reflection:
             generator_message += f"REFLECTION: You MUST use this reflection on the latest action:\n{reflection}\n"
-
+        else:
+            generator_message += "You should go on with your plan.\n"
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (
