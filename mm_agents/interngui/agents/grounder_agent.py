@@ -68,7 +68,7 @@ class GrounderAgent:
             )
 
             # Generate and parse coordinates
-            response = call_llm_safe(self.grounding_model, temperature=0.1, **kwargs)
+            response = call_llm_safe(self.grounding_model, temperature=0.05, **kwargs)
             print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
 
             # 1. 第一优先级：尝试匹配明确带 key 的格式 (x1="...", y1="...", x="...", y="...")

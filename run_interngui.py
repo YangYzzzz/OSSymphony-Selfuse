@@ -306,7 +306,7 @@ def run_env_tasks(
         logger.info(f"{current_process().name} cleaning up environment...")
         try:
             if env:
-                env.close()
+                # env.close()
                 logger.info(f"{current_process().name} environment closed successfully")
             if search_env:
                 search_env.close()
