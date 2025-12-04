@@ -64,7 +64,8 @@ class Worker(BaseModule):
         self.engine_params_for_memoryer = engine_params_for_memoryer
         self.os_aci: OSACI = os_aci
 
-        self.max_trajectory_length = max_trajectory_length
+        # 最大上下文图像数量
+        self.max_trajectory_length = max_trajectory_length if not self.engine_params_for_orchestrator.get("keep_first_image", False) else max_trajectory_length - 1
         self.enable_reflection = enable_reflection
         self.use_search_first = use_search_first
         self.reset()
@@ -227,9 +228,11 @@ class Worker(BaseModule):
             action_dict=self.action_dict_history[-1] if self.turn_count != 0 else {}
         )
         reflection = reflection_info['reflection']
+        logger.info(f'[Reflection]: {reflection}')
         if reflection:
             generator_message += f"REFLECTION: You MUST use this reflection on the latest action:\n{reflection}\n"
-
+        else:
+            generator_message += "You should go on with your plan.\n"
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (
