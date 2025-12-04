@@ -18,8 +18,8 @@ class WindowsDockerProvider:
                  image_name="winarena-v2:latest", 
                  vm_storage_path="./storage", 
                  vm_backup_path="./storage_backup",
-                 ram_size="8G",
-                 cpu_cores="4"):
+                 ram_size="16G",
+                 cpu_cores="8"):
         """
         Args:
             image_name: Docker 镜像名称
