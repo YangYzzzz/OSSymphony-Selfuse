@@ -1463,7 +1463,7 @@ def get_result(target_dir):
             if data.get('score') is not None and data.get('step') is not None:
                 if data['score'] > 0.0: step_stats[domain]['success_steps'].append(data['step']); step_stats['overall']['success_steps'].append(data['step'])
                 else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
-
+    # print("="* 30, "Step Statistics: \n", "="* 30, step_stats)
     for name, data in step_stats.items():
         save_path = os.path.join(target_dir, 'overall_step_distribution.png' if name == 'overall' else f'step_distribution_{name}.png')
         title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"

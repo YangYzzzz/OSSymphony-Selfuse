@@ -371,7 +371,7 @@ class PROCEDURAL_MEMORY:
         - **No GUI Observations**: You must differentiate between "External Knowledge" (data you are seeking) and "GUI Observations" (how the software looks). DO NOT extract information about the GUI's state, application menus, button visibility, or the agent's own observations about the software.
         - **No Duplicates**: Check the existing_knowledge input. DO NOT extract any information that is already present. Your goal is to find new information only.
         - **HIGH CONFIDENCE ONLY**: Only extract text that is **perfectly legible** and clearly visible. **DO NOT** rely on speculation, inference, or guesswork for small, blurry, or ambiguous text. If you lack complete certainty, you must omit the information.
-    - Action: If you find **new**, relevant, **externel** knowledge, you will prepare it for the knowledge output field. 
+    - Action: If you find **new**, relevant, **external** knowledge, you will prepare it for the knowledge output field. 
     - Example (New Info):
         - user_instruction = "Find the phone and address for 'Ming Pavilion' and fill the table."
         - existing_knowledge = "Ming Pavilion Address: Level 8, Pacific Place, Supreme Court Road, Central"

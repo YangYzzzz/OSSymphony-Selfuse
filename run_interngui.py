@@ -491,6 +491,12 @@ def config() -> argparse.Namespace:
         help="Temperature to fix the memoryer model at (e.g. o3 can only be run with 1.0)",
     )
     parser.add_argument(
+        "--memoryer_traj_length",
+        type=int,
+        default=9,
+        help="Trajectory length of Memory Agent"
+    )
+    parser.add_argument(
         "--memoryer_level",
         type=int,
         default=3,
@@ -670,6 +676,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "api_key": getattr(args, "memoryer_api_key", ""),
         "temperature": getattr(args, "memoryer_temperature", None),
         "memoryer_level": args.memoryer_level,
+        "memoryer_traj_length": args.memoryer_traj_length,
         "agent_name": "memoryer"
     }
 

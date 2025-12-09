@@ -66,7 +66,7 @@ class ReflectionMemoryAgent:
     Responsible for maintaining long-term memory, extracting narratives from trajectories,
     providing reflections to the Main Agent, and validating task completion status.
     """
-    def __init__(self, engine_params: Dict, max_img_len: int = 9):
+    def __init__(self, engine_params: Dict):
         """
         Initialize the RMA.
 
@@ -88,9 +88,9 @@ class ReflectionMemoryAgent:
 
         self.engine_params = engine_params
 
-        self.max_img_len = max_img_len
+        self.max_img_len = engine_params.get('memoryer_traj_length', 8)
 
-        self.memoryer_level = engine_params['memoryer_level']
+        self.memoryer_level = engine_params.get('memoryer_level', 3)
         
         self.reset()
 
@@ -405,7 +405,7 @@ class ReflectionMemoryAgent:
                             text_content += f"\nscreenshot (after executing action): (attached below)"
 
                     # print(text_content)
-                    print(f"image content: step_{i+1}.png")
+                    # print(f"image content: step_{i+1}.png")
 
                     self.reflection_agent.add_message(
                         text_content=text_content,
