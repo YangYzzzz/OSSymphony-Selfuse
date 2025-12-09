@@ -13,63 +13,6 @@ from mm_agents.interngui.agents.memoryer_agent import StepBehavior
 
 logger = logging.getLogger("desktopenv.loop_detection")
 
-
-
-# 有很大优化空间, 可以随时存储图片之间的ssim值和pHash, 以避免重复计算, 后续分析复杂度时可以修订
-# TODO: Yang，优化复杂度并添加进Workflow中
-def _are_images_similar_combined(
-    image_binary1: bytes,
-    image_binary2: bytes,
-    phash_threshold: int,
-    ssim_threshold: float,
-) -> bool:
-    """
-    【内部辅助】综合 pHash 和 SSIM 比较两个图片二进制流是否相似。
-    只有两种算法都认为相似时，才返回 True。
-
-    Args:
-        image_binary1: 第一个图片的二进制数据。
-        image_binary2: 第二个图片的二进制数据。
-        phash_threshold: pHash 的汉明距离阈值。
-        ssim_threshold: SSIM 的相似度得分阈值 (0 到 1 之间)。
-
-    Returns:
-        如果综合判断为相似则返回 True，否则返回 False。
-    """
-    try:
-        # --- 准备图片 ---
-        img1 = Image.open(io.BytesIO(image_binary1))
-        img2 = Image.open(io.BytesIO(image_binary2))
-
-        # --- 1. pHash 比较 ---
-        phash1 = imagehash.phash(img1)
-        phash2 = imagehash.phash(img2)
-        hash_diff = phash1 - phash2
-        is_phash_similar = hash_diff <= phash_threshold
-        # print(f'hash_diff: {hash_diff}')
-        # 如果 pHash 已经不相似，提前返回 False，节省计算
-        if not is_phash_similar:
-            return False
-
-        # --- 2. SSIM 比较 ---
-        # SSIM 需要灰度图和 NumPy 数组
-        img1_gray = img1.convert('L')
-        img2_gray = img2.convert('L')
-        np_img1 = np.array(img1_gray)
-        np_img2 = np.array(img2_gray)
-        
-        # 计算 SSIM 得分
-        ssim_score = ssim(np_img1, np_img2, data_range=np_img1.max() - np_img1.min())
-        is_ssim_similar = ssim_score >= ssim_threshold
-        # print(f'ssim_score: {ssim_score}')
-        # --- 3. 综合判断 ---
-        return is_phash_similar and is_ssim_similar
-
-    except Exception:
-        # 如果任何图片处理步骤失败，则视为不相似
-        return False
-
-
 def _are_actions_similar(
     action1: Dict[str, Any],
     action2: Dict[str, Any],

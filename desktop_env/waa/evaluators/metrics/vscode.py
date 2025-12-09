@@ -1,10 +1,12 @@
 import copy
 import importlib.util
 import json
+import logging
 import sys
 import re
 from typing import Dict
 
+logger = logging.getLogger("desktopenv.vscode")
 
 def check_json_keybindings(actual: str, expected: str, **options) -> float:
     """
@@ -83,9 +85,9 @@ def compare_text_file(actual: str, expected: str, **options) -> float:
         return 0.
 
     with open(actual) as f1:
-        actual_text = f1.read()
+        actual_text = f1.read().strip()
     with open(expected) as f2:
-        expected_text = f2.read()
+        expected_text = f2.read().strip()
 
     ignore_blanks = options.get('ignore_blanks', False)
     if ignore_blanks:
@@ -193,6 +195,7 @@ def compare_answer(actual: str, rules: Dict, **options) -> float:
 
 
 def is_extension_installed(actual: str, rules: Dict, **options):
+    logger.info(f'[Extension]: actual {actual}, rules {rules}')
     if rules['type'] == 'contain':
         if rules['expected'] in actual:
             return 1.0

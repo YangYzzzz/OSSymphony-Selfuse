@@ -274,7 +274,7 @@ class OSACI:
         if alignment == "start":
             coords = [elem["left"], elem["top"] + (elem["height"] // 2)]
         elif alignment == "end":
-            coords = [elem["left"] + elem["width"] + 0.1 * elem["height"], elem["top"] + (elem["height"] // 2)]
+            coords = [elem["left"] + elem["width"] + 0.15 * elem["height"], elem["top"] + (elem["height"] // 2)]
         
         print(f'[OCR] 选择的坐标为: {[coords[0] + global_offset_x, coords[1] + global_offset_y]}')
         return [int(coords[0] + global_offset_x), int(coords[1] + global_offset_y)]
@@ -345,12 +345,7 @@ class OSACI:
         elif self.platform == "darwin":
             return (f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)", action)
         elif self.platform == "windows":
-            return (
-                "import pyautogui; import time; "
-                "pyautogui.hotkey('win'); time.sleep(0.5); "
-                f"pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); "
-                "pyautogui.press('enter'); time.sleep(0.5)"
-            )
+            return (f"import pyautogui; import time; pyautogui.hotkey('win'); time.sleep(0.5); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.press('enter'); time.sleep(0.5)", action)
         else:
             assert (
                 False
@@ -478,7 +473,7 @@ class OSACI:
     @agent_action
     def type(
         self,
-        element_description: str,
+        element_description: Optional[str|None] =  None,
         text: str = "",
         overwrite: bool = False,
         enter: bool = False,
@@ -486,7 +481,7 @@ class OSACI:
     ):
         """Type text/unicode into a specific element
         Args:
-            element_description:str, a detailed description of which element to enter text in.
+            element_description: optimal, A detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
             text:str, the text to type
             overwrite:bool, Default is False, assign it to True if the text should overwrite the whole existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
@@ -530,7 +525,10 @@ class OSACI:
         if enter:
             commands += "pyautogui.press('enter');"
 
-        action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
+        if element_description is not None:
+            action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
+        else:
+            action = {"function": "type", "args": {"text": text}}
         return (commands, action)
     
     @agent_action
@@ -552,7 +550,7 @@ class OSACI:
         # TODO: specified duration?
         for k in hold_keys:
             command += f"pyautogui.keyDown({repr(k)}); "
-        command += f"pyautogui.dragTo({x2}, {y2}, duration=1., button='left'); pyautogui.mouseUp(); "
+        command += f"pyautogui.dragTo({x2}, {y2}, duration=3., button='left'); pyautogui.mouseUp(); "
         for k in hold_keys:
             command += f"pyautogui.keyUp({repr(k)}); "
 
@@ -582,7 +580,7 @@ class OSACI:
         command += f"pyautogui.moveTo({x1}, {y1}); "
         # 提前点一下, 模拟选中文本框(应该不会产生副作用)
         command += f"pyautogui.click({x1}, {y1}, clicks=2); time.sleep(1.0); pyautogui.click({x1}, {y1}); time.sleep(1.0);"
-        command += f"pyautogui.dragTo({x2}, {y2}, duration=2., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
+        command += f"pyautogui.dragTo({x2}, {y2}, duration=5., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
 
         # Return pyautoguicode to drag and drop the elements
         action = {"function": "drag", "args": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}}
