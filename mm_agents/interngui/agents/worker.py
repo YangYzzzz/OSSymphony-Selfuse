@@ -86,7 +86,8 @@ class Worker(BaseModule):
         self.orchestrator_sys_prompt = PROCEDURAL_MEMORY.construct_simple_worker_procedural_memory(
             agent_class=type(self.os_aci), 
             skipped_actions=skipped_actions,
-            tool_config=self.tool_config
+            tool_config=self.tool_config,
+            platform=self.platform
         ).replace("CURRENT_OS", self.platform)
 
         # Worker 内设置了 重写Agent，反思Agent，规划Agent 三个智能体
