@@ -58,7 +58,7 @@ def get_info_from_website(env, config: Dict[Any, Any]) -> Any:
     """
     try:
         host = env.vm_ip
-        port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+        port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
         remote_debugging_url = f"http://{host}:{port}"
         with sync_playwright() as p:
             # connect to remote Chrome instance
@@ -474,10 +474,10 @@ def get_page_info(env, config: Dict[str, str]):
     """
     
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
     url = config["url"]
     load_state = config.get('load_state', 'load')
-    load_state = 'load'
+    # load_state = 'load'
     
     remote_debugging_url = f"http://{host}:{port}"
 
@@ -547,7 +547,7 @@ def get_page_info(env, config: Dict[str, str]):
 
 def get_open_tabs_info(env, config: Dict[str, str]):
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     
@@ -724,7 +724,7 @@ def get_active_tab_info(env, config: Dict[str, str]):
         logger.error("Failed to get the url of active tab")
         return None
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
 
@@ -787,7 +787,7 @@ def get_pdf_from_url(env, config: Dict[str, str]) -> str:
     _path = os.path.join(env.cache_dir, config["dest"])
 
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     
@@ -848,7 +848,7 @@ def get_pdf_from_url(env, config: Dict[str, str]) -> str:
 # fixme: needs to be changed (maybe through post-processing) since it's not working
 def get_chrome_saved_address(env, config: Dict[str, str]):
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     
@@ -958,7 +958,7 @@ def get_number_of_search_results(env, config: Dict[str, str]):
     # todo: move into the config file
     url, result_selector = "https://google.com/search?q=query", '.search-result'
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     with sync_playwright() as p:
@@ -1309,7 +1309,7 @@ def get_active_tab_html_parse(env, config: Dict[str, Any]):
         logger.error("active_tab_url is not a string")
         return None
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     with sync_playwright() as p:
@@ -1401,7 +1401,7 @@ def get_gotoRecreationPage_and_get_html_content(env, config: Dict[str, Any]):
     especially used for www.recreation.gov examples
     """
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     with sync_playwright() as p:
@@ -1511,7 +1511,10 @@ def get_url_dashPart(env, config: Dict[str, str]):
     active_tab_url = get_active_url_from_accessTree(env, config)
     if active_tab_url is None:
         return None
-
+    
+    if '#' in active_tab_url:
+        active_tab_url = active_tab_url.split('#')[0]
+        
     # extract the last dash-separated part of the URL, and delete all the characters after "id"
     dash_part = active_tab_url.split("/")[config["partIndex"]]
     if config["needDeleteId"]:

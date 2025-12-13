@@ -4,6 +4,7 @@ import datetime
 import json
 import logging
 import os
+import shutil
 import sys
 import signal
 import time
@@ -11,7 +12,8 @@ from typing import List
 from multiprocessing import Process, Manager
 from multiprocessing import current_process
 import lib_run_single
-from desktop_env.osworld.desktop_env import DesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
+from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 
 # Global variables for signal handling
@@ -24,6 +26,56 @@ if os.path.exists(".env"):
     from dotenv import load_dotenv
     load_dotenv()
 
+def prepare_worker_vm_paths(base_golden_path: str, worker_idx: int):
+    """
+    根据 golden 路径和 worker id 准备存储路径。
+    例如: /nvme/.../waa/golden -> /nvme/.../waa/storage_0, /nvme/.../waa/storage_0_backup
+    """
+    # 去除末尾斜杠以确保 dirname 计算正确
+    base_golden_path = base_golden_path.rstrip(os.sep)
+    
+    # 获取父目录 (例如 /nvme/yangbowen/vm_stroage/waa)
+    parent_dir = os.path.dirname(base_golden_path)
+    
+    # 定义该 worker 的路径
+    worker_storage_path = os.path.join(parent_dir, f"storage_{worker_idx}")
+    worker_backup_path = os.path.join(parent_dir, f"storage_{worker_idx}_backup")
+    
+    return worker_storage_path, worker_backup_path
+
+
+def initialize_worker_files(golden_path: str, worker_backup_path: str, worker_storage_path: str):
+    """
+    初始化 worker 的文件。如果 backup 不存在，从 golden 复制。
+    """
+    if not os.path.exists(golden_path):
+        raise FileNotFoundError(f"Golden VM path not found: {golden_path}")
+
+    # 1. 准备 Backup 目录
+    if not os.path.exists(worker_backup_path):
+        logger.info(f"Initializing backup for worker from {golden_path} to {worker_backup_path} ...")
+        try:
+            # 确保目标父目录存在
+            os.makedirs(os.path.dirname(worker_backup_path), exist_ok=True)
+
+            if os.path.isdir(golden_path):
+                # 如果是目录，使用 cp -r --sparse=always
+                # 注意：这里假设 worker_backup_path 是目标目录名，而不是父目录
+                subprocess.check_call(['cp', '-r', '--sparse=always', golden_path, worker_backup_path])
+            else:
+                # 如果是单文件 (如 qcow2)，使用 cp --sparse=always 保持稀疏性
+                subprocess.check_call(['cp', '--sparse=always', golden_path, worker_backup_path])
+                
+            logger.info(f"Backup initialization complete for {worker_backup_path}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to copy golden image to backup using cp: {e}")
+            raise e
+    else:
+        logger.info(f"Worker backup already exists at {worker_backup_path}, skipping copy.")
+
+    # 2. 准备 Storage 目录
+    if not os.path.exists(worker_storage_path):
+        os.makedirs(worker_storage_path, exist_ok=True)
 
 def config() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -112,7 +164,9 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--screen_height", type=int, default=1080, help="Screen height"
     )
-
+    parser.add_argument(
+        "--benchmark", type=str, default="waa", help="name of experiment"
+    )
     parser.add_argument(
         "--exp_name", type=str, default="debug-experiment", help="name of experiment"
     )
@@ -169,37 +223,60 @@ def distribute_tasks(test_all_meta: dict) -> List[tuple]:
     return all_tasks
 
 
-def run_env_tasks(task_queue, args: argparse.Namespace, shared_scores: list):
+def run_env_tasks(
+        task_queue, 
+        args: argparse.Namespace, 
+        shared_scores: list,
+        worker_id
+        ):
     active_environments = []
     env = None
     try:
         REGION = args.region
         screen_size = (args.screen_width, args.screen_height)
         snapshot_name = "init_state"
-        if args.provider_name == "aws":
-            from desktop_env.osworld.providers.aws.manager import IMAGE_ID_MAP
-            ami_id = IMAGE_ID_MAP[REGION].get(screen_size, IMAGE_ID_MAP[REGION][(1920, 1080)])
-            snapshot_name = ami_id
-        env = DesktopEnv(
-            path_to_vm=args.path_to_vm,
-            action_space=args.action_space,
-            provider_name=args.provider_name,
-            region=REGION,
-            snapshot_name=snapshot_name,
-            screen_size=screen_size,
-            headless=args.headless,
-            os_type="Ubuntu",
-            require_a11y_tree=args.observation_type in [
-                "a11y_tree",
-                "screenshot_a11y_tree",
-                "som",
-            ],
-            enable_proxy=True,
-            client_password=args.client_password,
-        )
+        
+        if args.benchmark == "osworld":
+            env = OSWorldDesktopEnv(
+                path_to_vm=args.path_to_vm,
+                action_space=args.action_space,
+                provider_name=args.provider_name,
+                region=REGION,
+                snapshot_name=snapshot_name,
+                screen_size=screen_size,
+                headless=args.headless,
+                os_type="Ubuntu",
+                require_a11y_tree=args.observation_type in [
+                    "a11y_tree",
+                    "screenshot_a11y_tree",
+                    "som",
+                ],
+                enable_proxy=True,
+                client_password=args.client_password,
+            )
+            
+            env.start()
 
-        # 新增逻辑：
-        env.start()
+        elif args.benchmark == "waa":
+            parent_dir = os.path.dirname(args.path_to_vm.rstrip(os.sep))
+            path_to_vm = os.path.join(parent_dir, f"storage_{worker_id}")
+            path_to_vm_backup = os.path.join(parent_dir, f"storage_{worker_id}_backup")
+            
+            logger.info(f"[{current_process().name}] Worker ID: {worker_id}")
+            logger.info(f"[{current_process().name}] Derived VM Storage: {path_to_vm}")
+            logger.info(f"[{current_process().name}] Derived VM Backup: {path_to_vm_backup}")
+            env = WindowsAgentArenaDesktopEnv(
+                path_to_vm=path_to_vm,
+                path_to_vm_backup=path_to_vm_backup,
+                action_space=args.action_space,
+                screen_size=(args.screen_width, args.screen_height),
+                headless=args.headless,
+                require_a11y_tree=args.observation_type
+                                in ["a11y_tree", "screenshot_a11y_tree", "som"],
+                provider_name=args.provider_name
+            )
+        else:
+            pass
 
         active_environments.append(env)
         agent = Qwen3VLAgent(
@@ -208,6 +285,7 @@ def run_env_tasks(task_queue, args: argparse.Namespace, shared_scores: list):
             max_tokens=args.max_tokens,
             top_p=args.top_p,
             temperature=args.temperature,
+            history_n=8,
             action_space=args.action_space,
             coordinate_type=args.coord,
             add_thought_prefix=args.add_thought_prefix,
@@ -221,7 +299,7 @@ def run_env_tasks(task_queue, args: argparse.Namespace, shared_scores: list):
             domain, example_id = item
             try:
                 config_file = os.path.join(
-                    args.test_config_base_dir, f"examples/{domain}/{example_id}.json"
+                    args.test_config_base_dir, f"waa/examples/{domain}/{example_id}.json"
                 )
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
@@ -230,9 +308,6 @@ def run_env_tasks(task_queue, args: argparse.Namespace, shared_scores: list):
                 logger.info(f"[{current_process().name}][Instruction]: {example['instruction']}")
                 example_result_dir = os.path.join(
                     args.result_dir,
-                    args.action_space,
-                    args.observation_type,
-                    args.model,
                     domain,
                     example_id,
                 )
@@ -252,15 +327,17 @@ def run_env_tasks(task_queue, args: argparse.Namespace, shared_scores: list):
                     import traceback
                     logger.error(f"Exception in {current_process().name} {domain}/{example_id}: {e}")
                     logger.error(traceback.format_exc())
-                    try:
-                        env.controller.end_recording(
-                            os.path.join(example_result_dir, "recording.mp4")
-                        )
-                    except Exception as rec_e:
-                        logger.error(f"Failed to end recording: {rec_e}")
                     with open(os.path.join(example_result_dir, "traj.jsonl"), "a") as f:
                         f.write(json.dumps({"Error": f"{domain}/{example_id} - {e}"}))
                         f.write("\n")
+
+                    # 处理非连接重置错误的情况
+                    is_connection_reset = isinstance(e, ConnectionResetError)
+                    if not is_connection_reset or "ConnectionResetError" not in str(e):
+                        result_file_path = os.path.join(example_result_dir, "result.txt")
+                        # with open(result_file_path, "w", encoding="utf-8") as f:
+                        #     f.write("0.0\n")
+
             except Exception as e:
                 logger.error(f"Task-level error in {current_process().name}: {e}")
                 import traceback
@@ -317,17 +394,24 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
     logger.info("Args: %s", args)
     all_tasks = distribute_tasks(test_all_meta)
     logger.info(f"Total tasks: {len(all_tasks)}")
+
+    num_envs = args.num_envs
+    if args.benchmark == "waa":
+        logger.info(f"[WindowsAgentArena] Initializing storage for {num_envs} workers from golden image: {args.path_to_vm}")
+        for i in range(num_envs):
+            s_path, b_path = prepare_worker_vm_paths(args.path_to_vm, i)
+            initialize_worker_files(args.path_to_vm, b_path, s_path)
+
     with Manager() as manager:
         shared_scores = manager.list()
         task_queue = manager.Queue()
         for item in all_tasks:
             task_queue.put(item)
-        num_envs = args.num_envs
         processes = []
-        for i in range(num_envs):
+        for worker_id in range(num_envs):
             p = Process(
                 target=run_env_tasks,
-                args=(task_queue, args, shared_scores),
+                args=(task_queue, args, shared_scores, worker_id),
                 name=f"EnvProcess-{i+1}"
             )
             p.daemon = True
@@ -342,7 +426,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                         logger.warning(f"Process {p.name} died, restarting...")
                         new_p = Process(
                             target=run_env_tasks,
-                            args=(task_queue, args, shared_scores),
+                            args=(task_queue, args, shared_scores, idx),
                             name=f"EnvProcess-Restart-{idx+1}"
                         )
                         new_p.daemon = True
@@ -378,9 +462,8 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
 
 
 def get_unfinished(
-    action_space, use_model, observation_type, result_dir, total_file_json
+    target_dir, total_file_json, turn: int, incremental_test: bool
 ):
-    target_dir = os.path.join(result_dir, action_space, observation_type, use_model)
 
     if not os.path.exists(target_dir):
         return total_file_json
@@ -396,11 +479,36 @@ def get_unfinished(
                 example_path = os.path.join(domain_path, example_id)
                 if os.path.isdir(example_path):
                     if "result.txt" not in os.listdir(example_path):
-                        for file in os.listdir(example_path):
-                            os.remove(os.path.join(example_path, file))
+                        # empty all files under example_id
+                        shutil.rmtree(path=example_path, ignore_errors=True)
                     else:
-                        finished[domain].append(example_id)
-
+                        with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
+                            score = f.read().strip()
+                            if score == "False":
+                                score = 0.0
+                            elif score == "True":
+                                score = 1.0
+                            else:
+                                score = float(score)
+                        
+                        if not incremental_test:
+                            # TODO: 特化一下后面需要修正!!!
+                            if score == 0 and turn != 1:
+                                # empty all files under example_id
+                                shutil.rmtree(path=example_path, ignore_errors=True)
+                            else:
+                                finished[domain].append(example_id)
+                        else:
+                            # 增量测试
+                            with open(os.path.join(example_path, "traj.jsonl"), "r", encoding="utf-8") as f:
+                                lines = f.readlines()
+                                non_empty_lines = [line for line in lines if line.strip() != '']
+                                cur_step = json.loads(non_empty_lines[-1].strip())["step_num"]
+                            # 当前写死了, 最小步数为50步
+                            if cur_step == 50 and score == 0:
+                                shutil.rmtree(path=example_path, ignore_errors=True)
+                            else:
+                                finished[domain].append(example_id)
     if not finished:
         return total_file_json
 
@@ -413,118 +521,98 @@ def get_unfinished(
     return total_file_json
 
 
-def get_result(action_space, use_model, observation_type, result_dir, total_file_json):
-    target_dir = os.path.join(result_dir, action_space, observation_type, use_model)
+
+def get_result(target_dir, total_file_json: dict):
     if not os.path.exists(target_dir):
         print("New experiment, no result yet.")
         return None
 
+    # 记录总共任务列表
     all_result = []
-    domain_result_dict = {}
 
-    for domain in os.listdir(target_dir):
-        domain_path = os.path.join(target_dir, domain)
-        if os.path.isdir(domain_path):
-            domain_result_dict[domain] = []     # add by jkm
-            for example_id in os.listdir(domain_path):
-                example_path = os.path.join(domain_path, example_id)
-                if os.path.isdir(example_path):
-                    if "result.txt" in os.listdir(example_path):
-                        try:
-                            value_str = open(
-                                os.path.join(example_path, "result.txt"), "r"
-                            ).read()
-                            all_result.append(float(value_str))
-                            domain_result_dict[domain].append(float(value_str))     # add by jkm
-                        except Exception:
-                            all_result.append(0.0)
+    for domain, example_id_list in total_file_json.items():
+        for example_id in example_id_list:
+            example_path = os.path.join(target_dir, domain, example_id)
+            if os.path.isdir(example_path):
+                if "result.txt" in os.listdir(example_path):
+                    # empty all files under example_id
+                    try:
+                        all_result.append(
+                            float(
+                                open(
+                                    os.path.join(example_path, "result.txt"), "r"
+                                ).read()
+                            )
+                        )
+                    except:
+                        all_result.append(0.0)
+                else:
+                    all_result.append(0.0)
+            # 确保统计的任务数量总和为 total_file_json 里的任务之和
+            else:
+                all_result.append(0.0)
 
     if not all_result:
         print("New experiment, no result yet.")
         return None
     else:
         print("Current Success Rate:", sum(all_result) / len(all_result) * 100, "%")
-
-        # add by jkm
-        print("Current Success Rate Per Domain:")
-        for domain, domain_result in domain_result_dict.items():
-            print(f"=== {domain}: {sum(domain_result) / len(domain_result) * 100} ===")
-
         return all_result
 
 
 if __name__ == "__main__":
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    try:
-        args = config()
-        path_to_args = os.path.join(
+    ####### The complete version of the list of examples #######
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    args = config()
+
+    # save args to json in result_dir/action_space/observation_type/model/args.json
+    if args.exp_name != "":
+        args.result_dir = os.path.join(
+            args.result_dir,
+            args.exp_name
+        )
+    else:
+        args.result_dir = os.path.join(
             args.result_dir,
             args.action_space,
             args.observation_type,
-            args.model,
-            "args.json",
+            args.model
         )
-        os.makedirs(os.path.dirname(path_to_args), exist_ok=True)
-        with open(path_to_args, "w", encoding="utf-8") as f:
-            json.dump(vars(args), f, indent=4)
 
-        with open(args.test_all_meta_path, "r", encoding="utf-8") as f:
-            test_all_meta = json.load(f)
+    path_to_args = os.path.join(
+        args.result_dir,
+        "args.json"
+    )
+    os.makedirs(os.path.dirname(path_to_args), exist_ok=True)
+    with open(path_to_args, "w", encoding="utf-8") as f:
+        json.dump(vars(args), f, indent=4)
 
-        if args.domain != "all":
-            test_all_meta = {args.domain: test_all_meta[args.domain]}
+    with open(args.test_all_meta_path, "r", encoding="utf-8") as f:
+        test_all_meta = json.load(f)
 
-        test_file_list = get_unfinished(
-            args.action_space,
-            args.model,
-            args.observation_type,
-            args.result_dir,
-            test_all_meta,
-        )
-        left_info = ""
-        for domain in test_file_list:
-            left_info += f"{domain}: {len(test_file_list[domain])}\n"
-        logger.info(f"Left tasks:\n{left_info}")
+    if args.domain != "all":
+        test_all_meta = {args.domain: test_all_meta[args.domain]}
 
-        get_result(
-            args.action_space,
-            args.model,
-            args.observation_type,
-            args.result_dir,
-            test_all_meta,
-        )
-        test(args, test_file_list)
-    except KeyboardInterrupt:
-        logger.info("Main process received KeyboardInterrupt.")
-    except Exception as e:
-        logger.error(f"Unexpected error in main process: {e}", exc_info=True)
-        signal_handler(signal.SIGTERM, None)
-    finally:
-        logger.info("Main process final cleanup...")
-        for env in active_environments:
-            if env is not None:
-                try:
-                    logger.info("Closing environment in final cleanup...")
-                    env.close()
-                    logger.info("Environment closed successfully in final cleanup")
-                except Exception as e:
-                    logger.error(f"Error during final environment cleanup: {e}")
-        for p in processes:
-            if p is not None and p.is_alive():
-                try:
-                    logger.info(f"Terminating process {p.name}...")
-                    p.terminate()
-                except Exception as e:
-                    logger.error(f"Error terminating process: {e}")
-        time.sleep(1)
-        for p in processes:
-            if p is not None and p.is_alive():
-                try:
-                    logger.info(f"Force killing process {p.name}...")
-                    os.kill(p.pid, signal.SIGKILL)
-                    logger.info(f"Process {p.name} force killed")
-                except Exception as e:
-                    logger.error(f"Error force killing process: {e}")
+    test_file_list = get_unfinished(
+        target_dir=args.result_dir,
+        total_file_json=test_all_meta,
+        turn=1,
+        incremental_test=False
+    )
+    left_info = ""
+    for domain in test_file_list:
+        left_info += f"{domain}: {len(test_file_list[domain])}\n"
+    logger.info(f"Left tasks:\n{left_info}")
+    # 获得迄今为止的准确率
+    get_result(
+        target_dir=args.result_dir,
+        total_file_json=test_all_meta
+    )
+    test(
+        args, 
+        test_file_list
+    )
 
+    

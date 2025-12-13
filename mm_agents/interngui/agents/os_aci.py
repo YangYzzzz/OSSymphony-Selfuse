@@ -481,7 +481,7 @@ class OSACI:
     ):
         """Type text/unicode into a specific element
         Args:
-            element_description: optimal, A detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
+            element_description: optimal, a detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
             text:str, the text to type
             overwrite:bool, Default is False, assign it to True if the text should overwrite the whole existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
