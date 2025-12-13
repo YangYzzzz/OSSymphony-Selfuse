@@ -504,7 +504,8 @@ class PROCEDURAL_MEMORY:
 
         **Additional Tips**: 
         - Your role is to record history, not to guide the future. Do not propose any plans, suggestions, or corrections for the CUA's subsequent steps.
-
+        - **Ambiguity Handling**: For actions such as `highlight_text_span`, `locate_cursor`, or operations involving "Select All", "Underline", etc., where visual changes are subtle or not obvious: if you cannot make a clear visual judgment, **default to evaluating them as 'successful'!!**.
+        
         **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
         
         (Thoughts)

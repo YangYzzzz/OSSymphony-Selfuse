@@ -92,6 +92,22 @@ def draw_coordinates(image_bytes: bytes, coordinates: List[Union[int, float]], s
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     image.save(save_path)
 
+# 解析 (next action) 后面(包含next action)的所有字符串，若无法解析，则返回全部
+def parse_action_from_string(string):
+    # 定义我们要查找的标记
+    marker = "(Next Action)"
+    
+    # 查找标记在字符串中的起始索引
+    start_index = string.find(marker)
+    
+    # 如果找到了标记 (find 返回值不为 -1)
+    if start_index != -1:
+        # 返回从标记开始到字符串结束的所有内容
+        return string[start_index:]
+    else:
+        # 如果无法解析（没找到标记），返回全部字符串
+        return string
+    
 def call_llm_safe(
     agent, temperature: float = 0.0, use_thinking: bool = False, **kwargs
 ) -> str:
