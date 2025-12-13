@@ -4,6 +4,7 @@ import datetime
 import json
 import logging
 import os
+import subprocess
 import sys
 import signal
 import time
@@ -44,27 +45,31 @@ def initialize_worker_files(golden_path: str, worker_backup_path: str, worker_st
     if not os.path.exists(golden_path):
         raise FileNotFoundError(f"Golden VM path not found: {golden_path}")
 
-    # 1. 准备 Backup 目录 (作为该 Worker 的只读/恢复源)
+    # 1. 准备 Backup 目录
     if not os.path.exists(worker_backup_path):
         logger.info(f"Initializing backup for worker from {golden_path} to {worker_backup_path} ...")
         try:
+            # 确保目标父目录存在
+            os.makedirs(os.path.dirname(worker_backup_path), exist_ok=True)
+
             if os.path.isdir(golden_path):
-                shutil.copytree(golden_path, worker_backup_path)
+                # 如果是目录，使用 cp -r --sparse=always
+                # 注意：这里假设 worker_backup_path 是目标目录名，而不是父目录
+                subprocess.check_call(['cp', '-r', '--sparse=always', golden_path, worker_backup_path])
             else:
-                # 如果是单文件 (如 qcow2)
-                os.makedirs(os.path.dirname(worker_backup_path), exist_ok=True)
-                shutil.copy2(golden_path, worker_backup_path)
+                # 如果是单文件 (如 qcow2)，使用 cp --sparse=always 保持稀疏性
+                subprocess.check_call(['cp', '--sparse=always', golden_path, worker_backup_path])
+                
             logger.info(f"Backup initialization complete for {worker_backup_path}")
-        except Exception as e:
-            logger.error(f"Failed to copy golden image to backup: {e}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to copy golden image to backup using cp: {e}")
             raise e
     else:
         logger.info(f"Worker backup already exists at {worker_backup_path}, skipping copy.")
 
-    # 2. 准备 Storage 目录 (运行目录)
+    # 2. 准备 Storage 目录
     if not os.path.exists(worker_storage_path):
         os.makedirs(worker_storage_path, exist_ok=True)
-
 
 #  Logger Configs {{{ #
 # 不带任何参数的是Logger的祖先
@@ -286,11 +291,11 @@ def run_env_tasks(
                         f.write("\n")
 
                     # 处理非连接重置错误的情况
-                    is_connection_reset = isinstance(e, ConnectionResetError)
-                    if not is_connection_reset or "ConnectionResetError" not in str(e):
-                        result_file_path = os.path.join(example_result_dir, "result.txt")
-                        with open(result_file_path, "w", encoding="utf-8") as f:
-                            f.write("0.0\n")
+                    # is_connection_reset = isinstance(e, ConnectionResetError)
+                    # if not is_connection_reset or "ConnectionResetError" not in str(e):
+                    #     result_file_path = os.path.join(example_result_dir, "result.txt")
+                    #     with open(result_file_path, "w", encoding="utf-8") as f:
+                    #         f.write("0.0\n")
 
             except Exception as e:
                 logger.error(f"Task-level error in {current_process().name}: {e}")

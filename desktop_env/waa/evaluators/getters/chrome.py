@@ -58,7 +58,7 @@ def get_info_from_website(env, config: Dict[Any, Any]) -> Any:
     """
     try:
         host = env.vm_ip
-        port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+        port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
         remote_debugging_url = f"http://{host}:{port}"
         with sync_playwright() as p:
             # connect to remote Chrome instance
@@ -122,7 +122,7 @@ def get_default_search_engine(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -180,7 +180,7 @@ def get_cookie_data(env, config: Dict[str, str]):
     else:
         if os_type == 'Windows':
             chrome_cookie_file_path = env.controller.execute_python_command(
-                "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Network/Cookies'))"
+                "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Network/Cookies'))"
             )['output'].strip()
         elif os_type == 'Darwin':
             chrome_cookie_file_path = env.controller.execute_python_command(
@@ -219,7 +219,7 @@ def get_history(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         chrome_history_path = env.controller.execute_python_command(
-            """import os; print(os.path.join(os.getenv('USERPROFILE'), "AppData", "Local", "Google", "Chrome", "User Data", "Default", "History"))""")[
+            """import os; print(os.path.join(os.getenv('USERPROFILE'), "AppData", "Local", "Google", "Chrome", "Temp User Data", "Default", "History"))""")[
             'output'].strip()
     elif os_type == 'Darwin':
         chrome_history_path = env.controller.execute_python_command(
@@ -258,7 +258,7 @@ def get_enabled_experiments(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Local State'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Local State'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -294,7 +294,7 @@ def get_profile_name(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -326,7 +326,7 @@ def get_chrome_language(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Local State'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Local State'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -358,7 +358,7 @@ def get_chrome_font_size(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -397,7 +397,7 @@ def get_bookmarks(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Bookmarks'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Bookmarks'))"
             # "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome', 'User Data', 'Default', 'Bookmarks'))"
         )['output'].strip()
     elif os_type == 'Darwin':
@@ -428,7 +428,7 @@ def get_extensions_installed_from_shop(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         chrome_extension_dir = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Extensions/'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Extensions/'))"
         )['output'].strip()
     elif os_type == 'Darwin':  # macOS
         chrome_extension_dir = env.controller.execute_python_command(
@@ -474,107 +474,151 @@ def get_page_info(env, config: Dict[str, str]):
     """
     
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
     url = config["url"]
     load_state = config.get('load_state', 'load')
-
+    # load_state = 'load'
+    
     remote_debugging_url = f"http://{host}:{port}"
-    with sync_playwright() as p:
-        # connect to remote Chrome instance
+
+    # 新增：重试和超时配置
+    max_retries = 2
+    timeout_ms = 60000
+
+    for attempt in range(max_retries):
         try:
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
+            with sync_playwright() as p:
+                # connect to remote Chrome instance
+                try:
+                    browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                except Exception as e:
+                    # If the connection fails, start a new browser instance
+                    platform.machine()
+                    if "arm" in platform.machine():
+                        # start a new browser instance if the connection fails
+                        payload = json.dumps({"command": [
+                            "chromium",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+                    else:
+                        payload = json.dumps({"command": [
+                            "google-chrome",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+
+                    headers = {"Content-Type": "application/json"}
+                    requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
+                    time.sleep(5)
+                    browser = p.chromium.connect_over_cdp(remote_debugging_url)
+
+                page = browser.contexts[0].new_page()
+                
+                # 新增：添加超时参数
+                page.goto(url, timeout=timeout_ms)
+
+                try:
+                    # Wait for the page to finish loading, this prevents the "execution context was destroyed" issue
+                    # 新增：添加超时参数
+                    page.wait_for_load_state(load_state, timeout=timeout_ms)  
+                    title = page.title()
+                    current_url = page.url
+                    page_info = {'title': title, 'url': current_url, 'content': page.content()}
+                except TimeoutError:
+                    # If page loading times out, catch the exception and store the current information in the list
+                    page_info = {'title': 'Load timeout', 'url': page.url, 'content': page.content()}
+                except Exception as e:
+                    # Catch other potential exceptions that might occur while reading the page title
+                    print(f'Error: {e}')
+                    page_info = {'title': 'Error encountered', 'url': page.url, 'content': page.content()}   
+
+                browser.close()
+                return page_info
+        
         except Exception as e:
-            # If the connection fails, start a new browser instance
-            platform.machine()
-            if "arm" in platform.machine():
-                # start a new browser instance if the connection fails
-                payload = json.dumps({"command": [
-                    "chromium",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
+            # 新增：重试等待逻辑
+            print(f"[PAGE_INFO] Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(3)
             else:
-                payload = json.dumps({"command": [
-                    "google-chrome",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
+                return {'title': 'Connection failed', 'url': url, 'content': ''}
 
-            headers = {"Content-Type": "application/json"}
-            requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
-            time.sleep(5)
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
-
-        page = browser.contexts[0].new_page()
-        page.goto(url)
-
-        try:
-            # Wait for the page to finish loading, this prevents the "execution context was destroyed" issue
-            page.wait_for_load_state(load_state)  # Wait for the 'load' event to complete
-            title = page.title()
-            url = page.url
-            page_info = {'title': title, 'url': url, 'content': page.content()}
-        except TimeoutError:
-            # If page loading times out, catch the exception and store the current information in the list
-            page_info = {'title': 'Load timeout', 'url': page.url, 'content': page.content()}
-        except Exception as e:
-            # Catch other potential exceptions that might occur while reading the page title
-            print(f'Error: {e}')
-            page_info = {'title': 'Error encountered', 'url': page.url, 'content': page.content()}   
-
-        browser.close()
-        return page_info
+    return {'title': 'Unknown error', 'url': url, 'content': ''}
 
 
 def get_open_tabs_info(env, config: Dict[str, str]):
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
-    with sync_playwright() as p:
-        # connect to remote Chrome instance
-        try:
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
-        except Exception as e:
-            # If the connection fails, start a new browser instance
-            platform.machine()
-            if "arm" in platform.machine():
-                # start a new browser instance if the connection fails
-                payload = json.dumps({"command": [
-                    "chromium",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
-            else:
-                payload = json.dumps({"command": [
-                    "google-chrome",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
+    
+    # 新增：重试和超时配置
+    max_retries = 3
+    timeout_ms = 60000
 
-            headers = {"Content-Type": "application/json"}
-            requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
-            time.sleep(5)
-            try:
-                browser = p.chromium.connect_over_cdp(remote_debugging_url)
-            except Exception as e:
+    for attempt in range(max_retries):
+        try:
+            with sync_playwright() as p:
+                # connect to remote Chrome instance
+                try:
+                    browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                except Exception as e:
+                    # If the connection fails, start a new browser instance
+                    platform.machine()
+                    if "arm" in platform.machine():
+                        # start a new browser instance if the connection fails
+                        payload = json.dumps({"command": [
+                            "chromium",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+                    else:
+                        payload = json.dumps({"command": [
+                            "google-chrome",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+
+                    headers = {"Content-Type": "application/json"}
+                    requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
+                    time.sleep(5)
+                    try:
+                        browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                    except Exception as e:
+                        # 如果连接彻底失败，且是最后一次尝试，则返回空列表
+                        if attempt == max_retries - 1:
+                            return []
+                        else:
+                            raise e # 抛出异常以触发外部重试
+
+                tabs_info = []
+                for context in browser.contexts:
+                    for page in context.pages:
+                        try:
+                            # Wait for the page to finish loading, this prevents the "execution context was destroyed" issue
+                            # 新增：添加超时参数
+                            page.wait_for_load_state('load', timeout=timeout_ms)  
+                            title = page.title()
+                            url = page.url
+                            tabs_info.append({'title': title, 'url': url})
+                        except TimeoutError:
+                            # If page loading times out, catch the exception and store the current information in the list
+                            tabs_info.append({'title': 'Load timeout', 'url': page.url})
+                        except Exception as e:
+                            # Catch other potential exceptions that might occur while reading the page title
+                            print(f'Error: {e}')
+                            tabs_info.append({'title': 'Error encountered', 'url': page.url})
+
+                browser.close()
+                return tabs_info
+        
+        except Exception as e:
+            # 新增：重试等待逻辑
+            print(f"[GET_OPEN_TABS] Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(3)
+            else:
                 return []
 
-        tabs_info = []
-        for context in browser.contexts:
-            for page in context.pages:
-                try:
-                    # Wait for the page to finish loading, this prevents the "execution context was destroyed" issue
-                    page.wait_for_load_state('networkidle')  # Wait for the 'load' event to complete
-                    title = page.title()
-                    url = page.url
-                    tabs_info.append({'title': title, 'url': url})
-                except TimeoutError:
-                    # If page loading times out, catch the exception and store the current information in the list
-                    tabs_info.append({'title': 'Load timeout', 'url': page.url})
-                except Exception as e:
-                    # Catch other potential exceptions that might occur while reading the page title
-                    print(f'Error: {e}')
-                    tabs_info.append({'title': 'Error encountered', 'url': page.url})
+    return []
 
-        browser.close()
-        return tabs_info
 
 
 def get_active_url_from_accessTree(env, config):
@@ -680,36 +724,59 @@ def get_active_tab_info(env, config: Dict[str, str]):
         logger.error("Failed to get the url of active tab")
         return None
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
-    with sync_playwright() as p:
-        # connect to remote Chrome instance, since it is supposed to be the active one, we won't start a new one if failed
+
+    # 新增：重试和超时配置
+    max_retries = 3
+    timeout_ms = 60000
+
+    for attempt in range(max_retries):
         try:
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
+            with sync_playwright() as p:
+                # connect to remote Chrome instance, since it is supposed to be the active one, we won't start a new one if failed
+                try:
+                    browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                except Exception as e:
+                    # 如果连接失败，抛出异常以触发重试
+                    raise Exception(f"Failed to connect to CDP: {e}")
+
+                active_tab_info = {}
+                # go to the target URL page
+                page = browser.new_page()
+                try:
+                    # 新增：添加超时参数
+                    page.goto(active_tab_url, timeout=timeout_ms)
+                except Exception as e:  
+                    logger.error("Failed to go to the target URL page: %s", str(e))  
+                    # 导航失败也抛出异常以触发重试（或者选择在此处直接返回None，取决于是否希望导航失败也重试）
+                    # 这里选择抛出异常进行重试
+                    raise e
+                
+                # 新增：添加超时参数
+                page.wait_for_load_state('load', timeout=timeout_ms)  
+                active_tab_info = {
+                    'title': page.title(),
+                    'url': page.url,
+                    'content': page.content()  # get the HTML content of the page
+                }
+
+                browser.close()
+                # print("active_tab_title: {}".format(active_tab_info.get('title', 'None')))
+                # print("active_tab_url: {}".format(active_tab_info.get('url', 'None')))
+                # print("active_tab_content: {}".format(active_tab_info.get('content', 'None')))
+                return active_tab_info
+        
         except Exception as e:
-            return None
-
-        active_tab_info = {}
-        # go to the target URL page
-        page = browser.new_page()
-        try:
-            page.goto(active_tab_url)
-        except Exception as e:  
-            logger.error("Failed to go to the target URL page: %s", str(e))  
-            return None  
-        page.wait_for_load_state('load')  # Wait for the 'load' event to complete
-        active_tab_info = {
-            'title': page.title(),
-            'url': page.url,
-            'content': page.content()  # get the HTML content of the page
-        }
-
-        browser.close()
-        # print("active_tab_title: {}".format(active_tab_info.get('title', 'None')))
-        # print("active_tab_url: {}".format(active_tab_info.get('url', 'None')))
-        # print("active_tab_content: {}".format(active_tab_info.get('content', 'None')))
-        return active_tab_info
+            # 新增：重试等待逻辑
+            logger.warning(f"[GET_ACTIVE_TAB] Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(3)
+            else:
+                return None
+    
+    return None
 
 
 def get_pdf_from_url(env, config: Dict[str, str]) -> str:
@@ -720,83 +787,129 @@ def get_pdf_from_url(env, config: Dict[str, str]) -> str:
     _path = os.path.join(env.cache_dir, config["dest"])
 
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
+    
+    # 新增：重试和超时配置
+    max_retries = 3
+    timeout_ms = 60000
 
-    with sync_playwright() as p:
+    for attempt in range(max_retries):
         try:
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
+            with sync_playwright() as p:
+                try:
+                    browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                except Exception as e:
+                    # If the connection fails, start a new browser instance
+                    platform.machine()
+                    if "arm" in platform.machine():
+                        # start a new browser instance if the connection fails
+                        payload = json.dumps({"command": [
+                            "chromium",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+                    else:
+                        payload = json.dumps({"command": [
+                            "google-chrome",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+
+                    headers = {"Content-Type": "application/json"}
+                    requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
+                    time.sleep(5)
+                    # 再次尝试连接，如果失败则抛出异常触发重试循环
+                    try:
+                        browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                    except Exception as connection_error:
+                        raise Exception(f"Failed to connect after relaunch: {connection_error}")
+
+                page = browser.new_page()
+                # 新增：添加超时参数
+                page.goto(_url, timeout=timeout_ms)
+                # 等待页面加载完成，确保PDF内容完整
+                page.wait_for_load_state('load', timeout=timeout_ms)
+                page.pdf(path=_path)
+                browser.close()
+
+            return _path
+        
         except Exception as e:
-            # If the connection fails, start a new browser instance
-            platform.machine()
-            if "arm" in platform.machine():
-                # start a new browser instance if the connection fails
-                payload = json.dumps({"command": [
-                    "chromium",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
+            print(f"[GET_PDF] Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(3)
             else:
-                payload = json.dumps({"command": [
-                    "google-chrome",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
-
-            headers = {"Content-Type": "application/json"}
-            requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
-            time.sleep(5)
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
-
-        page = browser.new_page()
-        page.goto(_url)
-        page.pdf(path=_path)
-        browser.close()
-
-    return _path
+                # 如果最后一次尝试也失败，根据需求可以返回 None 或抛出异常
+                # 这里保持原函数签名返回路径，但文件可能不存在，建议调用方检查
+                print(f"[GET_PDF] All retries failed.")
+                return _path # 或者 raise e
 
 
 # fixme: needs to be changed (maybe through post-processing) since it's not working
 def get_chrome_saved_address(env, config: Dict[str, str]):
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
-    with sync_playwright() as p:
-        # connect to remote Chrome instance
+    
+    # 新增：重试和超时配置
+    max_retries = 3
+    timeout_ms = 60000
+
+    for attempt in range(max_retries):
         try:
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
+            with sync_playwright() as p:
+                # connect to remote Chrome instance
+                try:
+                    browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                except Exception as e:
+                    # If the connection fails, start a new browser instance
+                    platform.machine()
+                    if "arm" in platform.machine():
+                        # start a new browser instance if the connection fails
+                        payload = json.dumps({"command": [
+                            "chromium",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+                    else:
+                        payload = json.dumps({"command": [
+                            "google-chrome",
+                            "--remote-debugging-port=1337"
+                        ], "shell": False})
+
+                    headers = {"Content-Type": "application/json"}
+                    requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
+                    time.sleep(5)
+                    # 再次尝试连接，如果失败则抛出异常触发重试循环
+                    try:
+                        browser = p.chromium.connect_over_cdp(remote_debugging_url)
+                    except Exception as connection_error:
+                        raise Exception(f"Failed to connect after relaunch: {connection_error}")
+
+                page = browser.new_page()
+
+                # Navigate to Chrome's settings page for autofill
+                # 新增：添加超时参数
+                page.goto("chrome://settings/addresses", timeout=timeout_ms)
+                
+                # 设置页面可能需要一点时间渲染
+                page.wait_for_load_state('load', timeout=timeout_ms)
+
+                # Get the HTML content of the page
+                content = page.content()
+
+                browser.close()
+
+            return content
+            
         except Exception as e:
-            # If the connection fails, start a new browser instance
-            platform.machine()
-            if "arm" in platform.machine():
-                # start a new browser instance if the connection fails
-                payload = json.dumps({"command": [
-                    "chromium",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
+            print(f"[GET_ADDRESS] Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(3)
             else:
-                payload = json.dumps({"command": [
-                    "google-chrome",
-                    "--remote-debugging-port=1337"
-                ], "shell": False})
-
-            headers = {"Content-Type": "application/json"}
-            requests.post("http://" + host + ":5000/setup" + "/launch", headers=headers, data=payload)
-            time.sleep(5)
-            browser = p.chromium.connect_over_cdp(remote_debugging_url)
-
-        page = browser.new_page()
-
-        # Navigate to Chrome's settings page for autofill
-        page.goto("chrome://settings/addresses")
-
-        # Get the HTML content of the page
-        content = page.content()
-
-        browser.close()
-
-    return content
-
+                return None # 失败返回 None
+    
+    return None
 
 def get_shortcuts_on_desktop(env, config: Dict[str, str]):
     # Find out the operating system
@@ -845,7 +958,7 @@ def get_number_of_search_results(env, config: Dict[str, str]):
     # todo: move into the config file
     url, result_selector = "https://google.com/search?q=query", '.search-result'
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     with sync_playwright() as p:
@@ -946,7 +1059,7 @@ def get_enable_do_not_track(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -980,7 +1093,7 @@ def get_enable_enhanced_safety_browsing(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -1014,7 +1127,7 @@ def get_new_startup_page(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -1053,7 +1166,7 @@ def get_find_unpacked_extension_path(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -1091,7 +1204,7 @@ def get_find_installed_extension_name(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -1132,7 +1245,7 @@ def get_data_delete_automacally(env, config: Dict[str, str]):
     os_type = env.vm_platform
     if os_type == 'Windows':
         preference_file_path = env.controller.execute_python_command(
-            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/User Data/Default/Preferences'))"
+            "import os; print(os.path.join(os.getenv('LOCALAPPDATA'), 'Google/Chrome/Temp User Data/Default/Preferences'))"
         )['output'].strip()
     elif os_type == 'Darwin':
         preference_file_path = env.controller.execute_python_command(
@@ -1196,7 +1309,7 @@ def get_active_tab_html_parse(env, config: Dict[str, Any]):
         logger.error("active_tab_url is not a string")
         return None
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     with sync_playwright() as p:
@@ -1225,7 +1338,7 @@ def get_active_tab_html_parse(env, config: Dict[str, Any]):
         target_page = None
         for context in browser.contexts:
             for page in context.pages:
-                page.wait_for_load_state("networkidle")
+                page.wait_for_load_state("load")
                 # the accTree and playwright can get encoding(percent-encoding) characters, we need to convert them to normal characters
                 if unquote(page.url) == unquote(active_tab_url):
                     target_page = page
@@ -1288,7 +1401,7 @@ def get_gotoRecreationPage_and_get_html_content(env, config: Dict[str, Any]):
     especially used for www.recreation.gov examples
     """
     host = env.vm_ip
-    port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+    port = env.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
     remote_debugging_url = f"http://{host}:{port}"
     with sync_playwright() as p:
@@ -1398,7 +1511,10 @@ def get_url_dashPart(env, config: Dict[str, str]):
     active_tab_url = get_active_url_from_accessTree(env, config)
     if active_tab_url is None:
         return None
-
+    
+    if '#' in active_tab_url:
+        active_tab_url = active_tab_url.split('#')[0]
+        
     # extract the last dash-separated part of the URL, and delete all the characters after "id"
     dash_part = active_tab_url.split("/")[config["partIndex"]]
     if config["needDeleteId"]:

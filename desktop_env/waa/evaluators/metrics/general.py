@@ -40,7 +40,6 @@ def check_include_exclude(result: str, rules: Dict[str, List[str]]) -> float:
 
 def exact_match(result, rules) -> float:
     expect = rules["expected"]
-    print(result, expect)
 
     if result == expect:
         return 1.

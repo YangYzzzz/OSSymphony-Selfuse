@@ -428,17 +428,18 @@ class DesktopEnv(gym.Env):
 
         # logger.info(f"ACTION HISTORY: {self.action_history}")
 
-        if self.evaluator['func'] == "infeasible":
-            if len(self.action_history) > 0 and self.action_history[-1] == "FAIL":
-                # logger.info("Infeasible task and last agent action = FAIL")
-                return 1
-            else:
-                # logger.info("Infeasible task but last agent action != FAIL")
-                return 0
-        else:
-            if len(self.action_history) > 0 and self.action_history[-1] == "FAIL":
-                # logger.info("Feasible task but last agent = FAIL")
-                return 0
+        # No infeasible!
+        # if self.evaluator['func'] == "infeasible":
+        #     if len(self.action_history) > 0 and self.action_history[-1] == "FAIL":
+        #         # logger.info("Infeasible task and last agent action = FAIL")
+        #         return 1
+        #     else:
+        #         # logger.info("Infeasible task but last agent action != FAIL")
+        #         return 0
+        # else:
+        #     if len(self.action_history) > 0 and self.action_history[-1] == "FAIL":
+        #         # logger.info("Feasible task but last agent = FAIL")
+        #         return 0
 
         if type(self.metric) == list:
             results = []

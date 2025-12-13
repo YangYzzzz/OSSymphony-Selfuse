@@ -391,7 +391,7 @@ def check_history_deleted(history_data, rule):
     """
     Check if the history is deleted.
     """
-
+    logger.info(f'[Chrome History]: history data: {history_data}, rule: {rule}')
     if rule['type'] == 'keywords':
         history_domains = [history[0] for history in history_data]
         for keyword in rule['keywords']:
@@ -433,6 +433,7 @@ def is_added_to_steam_cart(active_tab_info, rule):
     """
     Check if the item is added to the Steam cart.
     """
+    logger.info(f'[SteamCart]: content: {active_tab_info}, rule: {rule}')
     items = rule['items']
     content = active_tab_info['content']
 

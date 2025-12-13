@@ -25,7 +25,7 @@ class PythonController:
         self.server_port = server_port
         self.http_server = f"http://{vm_ip}:{server_port}"
         self.pkgs_prefix = pkgs_prefix 
-        self.retry_times = 3
+        self.retry_times = 10
         self.retry_interval = 10
     
     def update_connection_info(self, vm_ip: str, server_port: int):

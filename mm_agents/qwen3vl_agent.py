@@ -19,7 +19,7 @@ from google.api_core.exceptions import (
 from mm_agents.utils.qwen_vl_utils import smart_resize
 
 
-logger = None
+logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
 
@@ -64,7 +64,7 @@ class Qwen3VLAgent:
         temperature: float = 0.0,
         action_space: str = "pyautogui",
         observation_type: str = "screenshot",
-        history_n: int = 4,
+        history_n: int = 8,
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
     ):
@@ -133,7 +133,7 @@ class Qwen3VLAgent:
                 else "* The screen's resolution is 1000x1000."
             ),
             "* Whenever you intend to move the cursor to click on an element like an icon, you should consult a screenshot to determine the coordinates of the element before moving the cursor.",
-            "* If you tried clicking on a program or link but it failed to load even after waiting, try adjusting your cursor position so that the tip of the cursor visually falls on the element that you want to click.",
+            "* If you tried clicking on a program or link but it failed to load even after waiting, try adjusting yfour cursor position so that the tip of the cursor visually falls on the element that you want to click.",
             "* Make sure to click any buttons, links, icons, etc with the cursor tip in the center of the element. Don't click boxes on their edges unless asked.",
         ]
         description_prompt = "\n".join(description_prompt_lines)

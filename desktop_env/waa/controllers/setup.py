@@ -261,6 +261,10 @@ class SetupController:
             logger.warning("Command should be a list of strings. Now it is a string. Will split it by space.")
             command = command.split()
 
+        if isinstance(command, list) and command[0] == "google-chrome":
+            command.append("--proxy-server=http://10.1.8.5:23128")  # Use the proxy server set up by _proxy_setup
+            command.append("--user-data-dir=C:\\Users\\Docker\\AppData\\Local\\Google\\Chrome\\Temp User Data")
+
         payload = json.dumps({"command": command, "shell": shell})
         headers = {"Content-Type": "application/json"}
 
@@ -481,12 +485,12 @@ class SetupController:
     def _chrome_open_tabs_setup(self, urls_to_open: List[str]):
 
         host = self.vm_ip
-        port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+        port = self.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
         remote_debugging_url = f"http://{host}:{port}"
         logger.info("Connect to Chrome @: %s", remote_debugging_url)
         logger.debug("PLAYWRIGHT ENV: %s", repr(os.environ))
-        for attempt in range(15):
+        for attempt in range(50):
             if attempt > 0:
                 time.sleep(5)
 
@@ -496,7 +500,7 @@ class SetupController:
                     browser = p.chromium.connect_over_cdp(remote_debugging_url)
                     # break
                 except Exception as e:
-                    if attempt < 29:
+                    if attempt < 50:
                         logger.error(f"Attempt {attempt + 1}: Failed to connect, retrying. Error: {e}")
                         time.sleep(25)
                         continue
@@ -531,12 +535,12 @@ class SetupController:
     def _edge_open_tabs_setup(self, urls_to_open: List[str]):
 
         host = self.vm_ip
-        port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+        port = self.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
         remote_debugging_url = f"http://{host}:{port}"
         logger.info("Connect to Microsoft Edge @: %s", remote_debugging_url)
         logger.debug("PLAYWRIGHT ENV: %s", repr(os.environ))
-        for attempt in range(30):
+        for attempt in range(50):
             if attempt > 0:
                 time.sleep(5)
 
@@ -546,7 +550,7 @@ class SetupController:
                     browser = p.chromium.connect_over_cdp(remote_debugging_url)
                     # break
                 except Exception as e:
-                    if attempt < 29:
+                    if attempt < 49:
                         logger.error(f"Attempt {attempt + 1}: Failed to connect, retrying. Error: {e}")
                         continue
                     else:
@@ -581,17 +585,17 @@ class SetupController:
         time.sleep(5)  # Wait for Chrome to finish launching
 
         host = self.vm_ip
-        port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+        port = self.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
         remote_debugging_url = f"http://{host}:{port}"
         with sync_playwright() as p:
             browser = None
-            for attempt in range(30):
+            for attempt in range(50):
                 try:
                     browser = p.chromium.connect_over_cdp(remote_debugging_url)
                     break
                 except Exception as e:
-                    if attempt < 29:
+                    if attempt < 49:
                         logger.error(f"Attempt {attempt + 1}: Failed to connect, retrying. Error: {e}")
                         time.sleep(5)
                     else:
@@ -712,17 +716,17 @@ class SetupController:
 
         """
         host = self.vm_ip
-        port = 9222  # fixme: this port is hard-coded, need to be changed from config file
+        port = self.chromium_port  # fixme: this port is hard-coded, need to be changed from config file
 
         remote_debugging_url = f"http://{host}:{port}"
         with sync_playwright() as p:
             browser = None
-            for attempt in range(30):
+            for attempt in range(50):
                 try:
                     browser = p.chromium.connect_over_cdp(remote_debugging_url)
                     break
                 except Exception as e:
-                    if attempt < 29:
+                    if attempt < 49:
                         logger.error(f"Attempt {attempt + 1}: Failed to connect, retrying. Error: {e}")
                         time.sleep(5)
                     else:
@@ -885,8 +889,9 @@ class SetupController:
         os_type = controller.get_vm_platform()
 
         if os_type == 'Windows':
+            # CHECK: Modify
             chrome_history_path = controller.execute_python_command(
-                """import os; print(os.path.join(os.getenv('USERPROFILE'), "AppData", "Local", "Google", "Chrome", "User Data", "Default", "History"))""")[
+                """import os; print(os.path.join(os.getenv('USERPROFILE'), "AppData", "Local", "Google", "Chrome", "Temp User Data", "Default", "History"))""")[
                 'output'].strip()
         elif os_type == 'Darwin':
             chrome_history_path = controller.execute_python_command(

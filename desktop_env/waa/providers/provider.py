@@ -1,3 +1,4 @@
+import subprocess
 import docker
 import logging
 import os
@@ -11,7 +12,7 @@ from pathlib import Path
 from filelock import FileLock
 
 logger = logging.getLogger("desktopenv.providers.docker")
-LOCK_TIMEOUT = 1000
+LOCK_TIMEOUT = 10000
 
 class WindowsDockerProvider:
     def __init__(self, 
@@ -192,7 +193,15 @@ class WindowsDockerProvider:
         if self.container:
             try:
                 logger.info("Stopping container...")
+                # 1. 停止容器 (同步操作，会等待直到停止或超时)
                 self.container.stop(timeout=300)
+                
+                logger.info("Removing container...")
+                # 2. 删除容器 (同步操作)
+                # v=True 删除关联的卷 (如果需要)
+                # force=True 强制删除 (即使上面 stop 失败了也能删)
+                self.container.remove(force=True) 
+                
             except Exception as e:
                 logger.warning(f"Error stopping container: {e}")
             finally:
@@ -205,24 +214,40 @@ class WindowsDockerProvider:
     def revert_to_snapshot(self):
         """
         回滚快照：停止 -> 替换文件 -> 启动
+        使用系统级命令 cp 替代 shutil 以确保 VM 镜像文件的完整性和稀疏性。
         """
         logger.info("Reverting snapshot...")
         self.stop_emulator()
         
         try:
-            # 清理旧数据
+            # 1. 清理旧数据 (运行目录)
             if os.path.exists(self.vm_storage_path):
-                # 简单粗暴但有效：删除整个目录再重建
+                # 删除旧的运行目录
+                # shutil.rmtree 删除目录本身是很可靠的，这里可以保留使用，
+                # 或者为了统一风格也可以用 subprocess.run(['rm', '-rf', self.vm_storage_path])
                 shutil.rmtree(self.vm_storage_path, ignore_errors=True)
             
-            # 从备份恢复
+            # 2. 从备份恢复
             if os.path.exists(self.vm_backup_path):
-                shutil.copytree(self.vm_backup_path, self.vm_storage_path)
-                logger.info("Snapshot files restored.")
+                logger.info(f"Restoring from {self.vm_backup_path} to {self.vm_storage_path} ...")
+                
+                # 判断备份源是文件还是目录，采取不同的 cp 策略
+                if os.path.isdir(self.vm_backup_path):
+                    subprocess.check_call([
+                        'cp', '-r', '--sparse=always', 
+                        self.vm_backup_path, 
+                        self.vm_storage_path
+                    ])
+
+                logger.info("Snapshot files restored successfully.")
             else:
+                # 备份不存在的情况
                 os.makedirs(self.vm_storage_path, exist_ok=True)
                 logger.warning(f"Backup path {self.vm_backup_path} not found, initialized empty storage.")
 
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Snapshot revert failed during system copy: {e}")
+            raise e
         except Exception as e:
             logger.error(f"Snapshot revert failed: {e}")
             raise e
