@@ -51,6 +51,7 @@ def process_epub(filename: str) -> List[str]:
                 file_list.append(os.path.join(base_dir, "content.opf"))
             else:
                 logger.debug("content.opf not found in epub file: %s", filename)
+
             for f_n in z_f.namelist():
                 if f_n.endswith(".html"):
                     with z_f.open(f_n) as in_f \
@@ -63,6 +64,7 @@ def process_epub(filename: str) -> List[str]:
                         )
                         out_f.write(lxml.html.tostring(html, pretty_print=True, encoding="unicode"))
                     file_list.append(os.path.join(base_dir, f_n))
+                
         logger.debug("%s: %s", filename, file_list)
         return list(sorted(file_list))
     except zipfile.BadZipFile:

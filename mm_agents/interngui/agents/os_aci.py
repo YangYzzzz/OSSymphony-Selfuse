@@ -473,7 +473,7 @@ class OSACI:
     @agent_action
     def type(
         self,
-        element_description: Optional[str|None] =  None,
+        element_description: str,
         text: str = "",
         overwrite: bool = False,
         enter: bool = False,
@@ -481,11 +481,11 @@ class OSACI:
     ):
         """Type text/unicode into a specific element
         Args:
-            element_description: optimal, a detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
+            element_description: str, a detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
             text:str, the text to type
             overwrite:bool, Default is False, assign it to True if the text should overwrite the whole existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
-            is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
+            is_terminal:bool, (MANDATORY) You MUST set this to True whenever the target you will type into is a terminal.
         """
         commands = (
             "import pyautogui;"
@@ -561,13 +561,18 @@ class OSACI:
     # TODO: @Yang 如何消除重复字符的歧义? 对于复杂的Grounding任务，使用 CodeAgent 处理
     @agent_action
     def highlight_text_span(
-        self, starting_phrase: str, ending_phrase: str, button: str = "left"
+        self, 
+        starting_phrase: str, 
+        ending_phrase: str, 
+        button: str = "left",
+        text: Optional[str|None] = None
     ):
         """Highlight a text span between a provided starting phrase and ending phrase. Use this to highlight words, lines, and paragraphs.
         Args:
             starting_phrase: str, the sequence of words that marks the beginning of the text span. Provide a unique sequence of 5 to 10 words.
             ending_phrase: str, the sequence of words that marks the end of the text span. Provide a unique sequence of 5 to 10 words.
             button:str, the button to use to highlight the text span. Defaults to "left". Can be "left", "right", or "middle".
+            text: str | None, The text to overwrite the highlighted span with. Providing text here ensures the replacement happens immediately after selection, preventing focus loss.
         """
         x1, y1 = self.generate_text_coords(
             starting_phrase, self.obs, alignment="start"
@@ -581,6 +586,17 @@ class OSACI:
         # 提前点一下, 模拟选中文本框(应该不会产生副作用)
         command += f"pyautogui.click({x1}, {y1}, clicks=2); time.sleep(1.0); pyautogui.click({x1}, {y1}); time.sleep(1.0);"
         command += f"pyautogui.dragTo({x2}, {y2}, duration=5., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
+
+        if text:
+            if self.platform == "linux":
+                command += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
+
+            command += (
+                "original_clipboard = pyperclip.paste();"
+                f"pyperclip.copy({repr(text)});"
+            )
+            command += self._paste(is_terminal=False)
+            command += "pyperclip.copy(original_clipboard);"
 
         # Return pyautoguicode to drag and drop the elements
         action = {"function": "drag", "args": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}}
@@ -665,7 +681,7 @@ class OSACI:
 
         **Define a Self-Contained, Continuous Goal:**
         - The `task` you provide should be a single, continuous goal. The code agent is capable of handling a multi-step process internally (e.g., opening a file, processing its data, and then saving it) to achieve this one goal.
-        - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, create a chart, AND email the result," you should first pass the self-contained goal: "Analyze the sales data and create a chart." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
+        - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, AND email the result," you should first pass the self-contained goal: "Analyze the sales data." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
         - **If unsure, err on the side of caution.** If a task feels like it has two separate parts, break it down and pass only the first part.
         - Your instruction must describe the desired end-state, NOT the recipe to get there. Do not specify any solution!
         
