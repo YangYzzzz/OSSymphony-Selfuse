@@ -929,7 +929,7 @@ if __name__ == "__main__":
         for domain in test_file_list:
             left_info += f"{domain}: {len(test_file_list[domain])}\n"
         logger.info(f"Left tasks:\n{left_info}")
-        # 获得迄今为止的准确率
+
         get_result(
             target_dir=args.result_dir,
             total_file_json=test_all_meta
