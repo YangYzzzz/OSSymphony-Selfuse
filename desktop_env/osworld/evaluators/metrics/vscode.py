@@ -89,9 +89,9 @@ def compare_text_file(actual: str, expected: str, **options) -> float:
         return 0.
 
     with open(actual) as f1:
-        actual_text = f1.read()
+        actual_text = f1.read().strip()
     with open(expected) as f2:
-        expected_text = f2.read()
+        expected_text = f2.read().strip()
 
     ignore_blanks = options.get('ignore_blanks', False)
     if ignore_blanks:
