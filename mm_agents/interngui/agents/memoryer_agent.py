@@ -404,9 +404,6 @@ class ReflectionMemoryAgent:
                         else: 
                             text_content += f"\nscreenshot (after executing action): (attached below)"
 
-                    # print(text_content)
-                    # print(f"image content: step_{i+1}.png")
-
                     self.reflection_agent.add_message(
                         text_content=text_content,
                         image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     

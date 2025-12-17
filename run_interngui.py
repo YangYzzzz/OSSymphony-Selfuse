@@ -15,7 +15,7 @@ import shutil
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
-
+from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -190,9 +190,17 @@ def run_env_tasks(
 
             platform = "windows"
 
-        elif args.benchmark == "macos":
-            # TODO: zhenyu
-            pass
+        elif args.benchmark == "macosarena":
+            path_to_vm = args.path_to_vm.split(" ")[0]
+            path_to_base_vm = args.path_to_vm.split(" ")[1]
+            # 默认 1920 x 1080，目前不支持修改分辨率
+            env = MacOSArenaDesktopEnv(
+                path_to_vm=path_to_vm,
+                path_to_base_vm=path_to_base_vm,
+                action_space=args.action_space,
+                provider_name=args.provider_name
+            )
+            platform = "macos"
 
         search_env = OSWorldDesktopEnv(
             path_to_vm=args.searcher_path_to_vm,
@@ -291,11 +299,11 @@ def run_env_tasks(
                         f.write("\n")
 
                     # 处理非连接重置错误的情况
-                    is_connection_reset = isinstance(e, ConnectionResetError)
-                    if not is_connection_reset or "ConnectionResetError" not in str(e):
-                        result_file_path = os.path.join(example_result_dir, "result.txt")
-                        with open(result_file_path, "w", encoding="utf-8") as f:
-                            f.write("0.0\n")
+                    # is_connection_reset = isinstance(e, ConnectionResetError)
+                    # if not is_connection_reset or "ConnectionResetError" not in str(e):
+                    #     result_file_path = os.path.join(example_result_dir, "result.txt")
+                    #     with open(result_file_path, "w", encoding="utf-8") as f:
+                    #         f.write("0.0\n")
 
             except Exception as e:
                 logger.error(f"Task-level error in {current_process().name}: {e}")
@@ -936,7 +944,7 @@ if __name__ == "__main__":
         for domain in test_file_list:
             left_info += f"{domain}: {len(test_file_list[domain])}\n"
         logger.info(f"Left tasks:\n{left_info}")
-        # 获得迄今为止的准确率
+
         get_result(
             target_dir=args.result_dir,
             total_file_json=test_all_meta

@@ -124,7 +124,8 @@ class PROCEDURAL_MEMORY:
         # if has_code_agent:
         has_search_agent = "call_search_agent" in config.get("tools", {}).keys() and config["tools"]["call_search_agent"].get("enabled", False)
         has_code_agent = "call_code_agent" in config.get("tools", {}).keys() and config["tools"]["call_code_agent"].get("enabled", False)
-        
+        has_set_cell_values = "set_cell_values" in config.get("tools", {}).keys() and config["tools"]["set_cell_values"].get("enabled", False)
+
         gui_section = textwrap.dedent(
         f"""
             ## 1.1 GUI Agent
@@ -158,7 +159,7 @@ class PROCEDURAL_MEMORY:
                 * **Subtask**: Use `agent.call_code_agent("specific subtask")` for focused data tasks. Please refer to the args explaination of function `call_code_agent`.
                 * **When To Use**: 
                     * **Spreadsheet Automation (Strongly Recommended)**: For LibreOffice Calc or Excel tasks, specifically when filling entire rows/columns, performing batch data entry, or running calculations. 
-                    * **Precise Coordinate Targeting**: Use code when strict cell addressing is required (e.g., writing specifically to cell D2). The GUI agent often struggles to visually distinguish between adjacent cells or columns in dense grids (e.g., confusing Column D with Column F). Code actions ensure 100% address accuracy.
+                    * **Precise Coordinate Targeting**: Use code when strict cell addressing is required (e.g., writing specifically to cell D2). The GUI agent often struggles to visually distinguish between adjacent cells or columns in dense grids. Code actions ensure 100% address accuracy.
                 * **When NOT to Use**: NEVER use the code agent for charts, graphs, **pivot tables**, or visual elements. Always use the GUI for those.
             
             * **Code Agent Verification (MANDATORY)**
@@ -189,7 +190,7 @@ class PROCEDURAL_MEMORY:
         first_section = gui_section + search_section + code_section + reflection_section
         procedural_memory += first_section
 
-        if platform == "linux":
+        if platform == "linux" and has_set_cell_values:
             procedural_memory += textwrap.dedent(
             f"""\
                 ---
@@ -216,7 +217,8 @@ class PROCEDURAL_MEMORY:
                 - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
                 """
             )
-        elif platform == "windows" or platform == "macos":
+
+        elif platform == "windows":
             procedural_memory += textwrap.dedent(
             f"""\
                 ---
@@ -241,8 +243,40 @@ class PROCEDURAL_MEMORY:
                     - You MUST use Code agent when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
                 - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
                 """
-            )            
+            )  
+        elif platform == "macos":
+            procedural_memory += textwrap.dedent(
+            f"""\
+                ---
+                # 2. ACTION RULES
+                ## 2.1 Core Execution Constraints
+                - **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
+                - **No Interaction with User**: You MUST complete the task individually. There is **NO** additional input from someone else.
+                - **User**: Your username is "pipiwu".
+                - **Password**: Your password is "1234".
+                - **Home**: Your home path is "/Users/pipiwu"
 
+                ## 2.2 Interaction & Input Guidelines
+                - **Guideline for Clicks**: 
+                    - **VISIBILITY CHECK (CRITICAL)**: You must strictly ONLY click on elements that are **clearly visible** in the current screenshot. Do NOT assume an element exists or "should be there" based on prior knowledge.
+                    - The `element_description` for `agent.click()` must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
+                - **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
+                - **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
+
+<<<<<<< HEAD
+=======
+                ## 2.3 Efficiency & Tool Usage
+                - **Efficiency is Key**:
+                    - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
+                    - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps.
+                    - You MUST use Code agent when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
+                - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
+                """
+            ) 
+        else:
+            pass
+        
+>>>>>>> main
         procedural_memory += textwrap.dedent(
             """
             - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, invoke the Search Agent to retrieve detailed online tutorials for further guidance.
@@ -534,7 +568,8 @@ class PROCEDURAL_MEMORY:
 
         **Additional Tips**: 
         - Your role is to record history, not to guide the future. Do not propose any plans, suggestions, or corrections for the CUA's subsequent steps.
-
+        - **Ambiguity Handling**: For actions such as `highlight_text_span`, `locate_cursor`, or operations involving "Select All", "Underline", etc., where visual changes are subtle or not obvious: if you cannot make a clear visual judgment, **default to evaluating them as 'successful'!!**.
+        
         **Output Format**: Please format your response as follows below. On (Answer) part, you must output a valid JSON object wrapped by ```json and ```.
         
         (Thoughts)
@@ -688,7 +723,7 @@ class PROCEDURAL_MEMORY:
             PLATFORM_SPECIFIC_CONTEXT = textwrap.dedent(
                 """\
                 # 2. Environment & Execution
-                    * **Platform**: Linux
+                    * **Platform:** Linux
                     * **User:** "user"
                     * **Home:** "/home/user"
                     * **Shell:** Bash
@@ -702,7 +737,7 @@ class PROCEDURAL_MEMORY:
             PLATFORM_SPECIFIC_CONTEXT = textwrap.dedent(
                 """\
                 # 2. Environment & Execution
-                    * **Platform**: Windows
+                    * **Platform:** Windows
                     * **User:** "Docker"
                     * **Home:** "C:\\Users\\Docker"
                     * **Shell:** PowerShell
@@ -711,9 +746,19 @@ class PROCEDURAL_MEMORY:
                     * **Note:** Code execution might not be visible on screen immediately. GUI actions (like reopening files) may be needed to see changes.
                 """
             )
-        elif platform == "darwin":
+        elif platform == "macos":
             # Placeholder for macOS (Darwin) specific instructions
-            PLATFORM_SPECIFIC_CONTEXT = ""
+            PLATFORM_SPECIFIC_CONTEXT = textwrap.dedent(
+                """\
+                # 2. Environment & Execution
+                    * **Platform:** MacOS(Darwin)
+                    * **User:** "pipiwu"
+                    * **Home:** "/Users/pipiwu"
+                    * **Shell:** Bash
+                    * **Packages:** Install missing packages as needed.
+                    * **Note:** Code execution might not be visible on screen immediately. GUI actions (like reopening files) may be needed to see changes.
+                """
+            )
 
         # 2. Define Common Instructions (Universal)
         COMMON_INSTRUCTIONS = textwrap.dedent(

@@ -175,9 +175,9 @@ def detect_loop(
     image_height: int = 1080,
     N: int = 3,
     phash_threshold: int = 1,
-    ssim_threshold: float = 0.98,
-    relative_coord_threshold: float = 0.05,
-    fuzzy_text_threshold: float = 75.0,
+    ssim_threshold: float = 0.99,
+    relative_coord_threshold: float = 0.02,
+    fuzzy_text_threshold: float = 85.0,
 ) -> Tuple[bool, Optional[Dict[str, List[int]]]]:
     """
     基于预计算数据，高效检测是否存在循环模式。

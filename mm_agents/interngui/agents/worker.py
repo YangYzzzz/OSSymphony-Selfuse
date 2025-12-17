@@ -11,6 +11,7 @@ from mm_agents.interngui.utils.common_utils import (
     call_llm_safe,
     call_llm_formatted,
     extract_coords_from_action_dict,
+    parse_action_from_string,
     parse_code_from_string,
     split_thinking_response,
     create_pyautogui_code,
@@ -30,7 +31,7 @@ class Worker(BaseModule):
         engine_params_for_orchestrator: Dict,
         engine_params_for_memoryer: Dict,
         os_aci: OSACI,
-        platform: str = "ubuntu",
+        platform: str,
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
         use_search_first: bool = False,
@@ -222,7 +223,8 @@ class Worker(BaseModule):
         # 新设计的reflection!!!
         reflection_info = self.memoryer_agent.get_reflection(
             cur_obs=obs, 
-            generator_output=self.worker_history[-1] if self.turn_count != 0 else "", 
+            # 只选择(next action)后面的字符串呢 Modified by @Yang
+            generator_output=parse_action_from_string(self.worker_history[-1]) if self.turn_count != 0 else "", 
             coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
             mode=mode,
             code_exec_summary=last_code_summary,

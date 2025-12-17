@@ -313,23 +313,6 @@ class OSACI:
         action = {"function": "click", "args": {"x": x, "y": y, "button": button_type, "clicks": num_clicks}}
         return (command, action)
 
-    # @agent_action
-    # def switch_applications(self, app_code):
-    #     """Switch to a different application that is already open
-    #     Args:
-    #         app_code:str the code name of the application to switch to from the provided list of open applications
-    #     """
-    #     if self.platform == "darwin":
-    #         return f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_code)}); pyautogui.press('enter'); time.sleep(1.0)"
-    #     elif self.platform == "linux":
-    #         return UBUNTU_APP_SETUP.replace("APP_NAME", app_code)
-    #     elif self.platform == "windows":
-    #         return f"import pyautogui; import time; pyautogui.hotkey('win', 'd', interval=0.5); pyautogui.typewrite({repr(app_code)}); pyautogui.press('enter'); time.sleep(1.0)"
-    #     else:
-    #         assert (
-    #             False
-    #         ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
-
     @agent_action
     def open(self, app_or_filename: str):
         """Open any application or file with name app_or_filename. Use this action to open applications or files on the desktop, do not open manually.
@@ -342,7 +325,7 @@ class OSACI:
         action = {"function": "open", "args": {"name": app_or_filename}}
         if self.platform == "linux":
             return (f"import pyautogui; pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)", action)
-        elif self.platform == "darwin":
+        elif self.platform == "macos":
             return (f"import pyautogui; import time; pyautogui.hotkey('command', 'space', interval=0.5); pyautogui.typewrite({repr(app_or_filename)}); pyautogui.press('enter'); time.sleep(1.0)", action)
         elif self.platform == "windows":
             return (f"import pyautogui; import time; pyautogui.hotkey('win'); time.sleep(0.5); pyautogui.write({repr(app_or_filename)}); time.sleep(1.0); pyautogui.press('enter'); time.sleep(0.5)", action)
@@ -350,76 +333,9 @@ class OSACI:
             assert (
                 False
             ), f"Unsupported platform: {self.platform}. Supported platforms are: darwin, linux, windows."
-
-    # @agent_action
-    # def type(
-    #     self,
-    #     element_description: str,
-    #     text: str = "",
-    #     overwrite: bool = False,
-    #     enter: bool = False,
-    #     is_terminal = False
-    # ):
-    #     """Type text/unicode into a specific element
-    #     Args:
-    #         element_description:str, a detailed description of which element to enter text in.
-    #         text:str, the text to type
-    #         overwrite:bool, Default is False, assign it to True if the text should overwrite the existing text. Using this argument clears all text in an element.
-    #         enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
-    #         is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
-    #     """
-    #     commands = [
-    #         "import pyautogui",
-    #         "import pyperclip",
-    #         "import subprocess",
-    #         # 注意：这个安装命令每次执行都会尝试运行，可能效率不高且需要sudo权限
-    #         # 最好确保环境已经预先配置好
-    #         "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
-    #         # 存储原始剪贴板
-    #         "original_clipboard = pyperclip.paste()"
-    #     ]
-        
-    #     x, y = None, None
-    #     if element_description is not None:
-    #         x, y = self.grounder_agent.generate_coords(element_description, self.obs)
-    #         commands.append(f"pyautogui.click({x}, {y})")
-
-    #     if overwrite:
-    #         if not is_terminal:
-    #             # 使用 repr() 来确保 'command' 或 'ctrl' 字符串被正确引用
-    #             hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-    #             commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
-    #             commands.append("pyautogui.press('backspace')")
-    #         else:
-    #             # 在终端中，Ctrl+A/Backspace 可能不总是清空行，Ctrl+U 更常用
-    #             # 但 Ctrl+C 是中断，这里可能有逻辑错误，假设意图是清空行
-    #             commands.append("pyautogui.hotkey('ctrl', 'u')") # Ctrl+U 通常用于清空光标前的内容
-
-    #     # 使用剪贴板方法进行输入
-    #     # repr(text) 会正确处理文本中的引号和特殊字符
-    #     commands.append(f"pyperclip.copy({repr(text)})")
-        
-    #     if not is_terminal or self.platform == 'darwin':
-    #         hotkey_mod = repr('command' if self.platform == 'darwin' else 'ctrl')
-    #         commands.append(f"pyautogui.hotkey({hotkey_mod}, 'v')")
-    #     else:
-    #         # Linux 终端的粘贴
-    #         commands.append("pyautogui.hotkey('shift', 'ctrl', 'v')")
-
-    #     # 恢复原始剪贴板
-    #     commands.append("pyperclip.copy(original_clipboard)")
-        
-    #     if enter:
-    #         commands.append("pyautogui.press('enter')")
-
-    #     # 最后，将所有命令用分号和空格连接成一个最终的字符串
-    #     final_command = "; ".join(commands)
-
-    #     action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
-    #     return (final_command, action)
     
     def _paste(self, is_terminal):
-        if self.platform == 'darwin':
+        if self.platform == 'macos':
             # macOS: 无论是否为终端，通常都是 Command + V
             return "pyautogui.hotkey('command', 'v');"
         
@@ -446,7 +362,7 @@ class OSACI:
         # 1. 普通应用 (GUI) 的处理逻辑
         # -------------------------------------------------
         if not is_terminal:
-            if self.platform == 'darwin':
+            if self.platform == 'macos':
                 # macOS GUI: Command + A -> Backspace
                 return "pyautogui.hotkey('command', 'a'); pyautogui.press('backspace');"
             else:
@@ -469,11 +385,30 @@ class OSACI:
                 # 2. Ctrl + U: 删除光标之前的所有内容 (Unix Line Discard)
                 # 这样做比单纯 Ctrl+U 更安全，防止光标在中间时只删了一半。
                 return "pyautogui.hotkey('ctrl', 'e'); pyautogui.hotkey('ctrl', 'u');"
-            
+    
+    def _type(
+        self,
+        text: str,
+        is_terminal: bool
+    ):
+        commands = ""
+        if self.platform != "macos":
+            commands += (
+                "original_clipboard = pyperclip.paste();"
+                f"pyperclip.copy({repr(text)});"
+                "time.sleep(0.1);"
+            )
+            commands += self._paste(is_terminal=is_terminal)
+            commands += "pyperclip.copy(original_clipboard);"
+        else:
+            commands += f"pyautogui.write({repr(text)}, interval=0.1);"
+
+        return commands
+    
     @agent_action
     def type(
         self,
-        element_description: Optional[str|None] =  None,
+        element_description: str,
         text: str = "",
         overwrite: bool = False,
         enter: bool = False,
@@ -481,11 +416,11 @@ class OSACI:
     ):
         """Type text/unicode into a specific element
         Args:
-            element_description: optimal, A detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
+            element_description: str, a detailed description of which element to enter text in. If provided, the agent will click on this element before typing.
             text:str, the text to type
             overwrite:bool, Default is False, assign it to True if the text should overwrite the whole existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing all the text, otherwise assign it to False.
-            is_terminal:bool, Assign it to True if the target is a terminal. Defaults to False. If True, uses the 'Shift+Ctrl+V' paste shortcut common in terminals. If False, uses the standard 'Ctrl+V' shortcut.
+            is_terminal:bool, (MANDATORY) You MUST set this to True whenever the target you will type into is a terminal.
         """
         commands = (
             "import pyautogui;"
@@ -496,8 +431,6 @@ class OSACI:
         if self.platform == "linux":
             commands += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
             
-
-        commands += "original_clipboard = pyperclip.paste();"
 
         x, y = None, None
         if element_description is not None:
@@ -513,14 +446,7 @@ class OSACI:
 
         # 使用剪贴板方法进行输入
         # repr(text) 会正确处理文本中的引号和特殊字符
-        commands += (
-            f"pyperclip.copy({repr(text)});"
-        )
-        
-        commands += self._paste(is_terminal=is_terminal)
-
-        # 恢复原始剪贴板
-        commands += "pyperclip.copy(original_clipboard);"
+        commands += self._type(text=text, is_terminal=is_terminal)
         
         if enter:
             commands += "pyautogui.press('enter');"
@@ -561,13 +487,18 @@ class OSACI:
     # TODO: @Yang 如何消除重复字符的歧义? 对于复杂的Grounding任务，使用 CodeAgent 处理
     @agent_action
     def highlight_text_span(
-        self, starting_phrase: str, ending_phrase: str, button: str = "left"
+        self, 
+        starting_phrase: str, 
+        ending_phrase: str, 
+        button: str = "left",
+        text: Optional[str|None] = None
     ):
         """Highlight a text span between a provided starting phrase and ending phrase. Use this to highlight words, lines, and paragraphs.
         Args:
             starting_phrase: str, the sequence of words that marks the beginning of the text span. Provide a unique sequence of 5 to 10 words.
             ending_phrase: str, the sequence of words that marks the end of the text span. Provide a unique sequence of 5 to 10 words.
             button:str, the button to use to highlight the text span. Defaults to "left". Can be "left", "right", or "middle".
+            text: str | None, The text to overwrite the highlighted span with. Providing text here ensures the replacement happens immediately after selection, preventing focus loss.
         """
         x1, y1 = self.generate_text_coords(
             starting_phrase, self.obs, alignment="start"
@@ -581,6 +512,17 @@ class OSACI:
         # 提前点一下, 模拟选中文本框(应该不会产生副作用)
         command += f"pyautogui.click({x1}, {y1}, clicks=2); time.sleep(1.0); pyautogui.click({x1}, {y1}); time.sleep(1.0);"
         command += f"pyautogui.dragTo({x2}, {y2}, duration=5., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
+
+        if text:
+            if self.platform == "linux":
+                command += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
+
+            command += (
+                "original_clipboard = pyperclip.paste();"
+                f"pyperclip.copy({repr(text)});"
+            )
+            command += self._paste(is_terminal=False)
+            command += "pyperclip.copy(original_clipboard);"
 
         # Return pyautoguicode to drag and drop the elements
         action = {"function": "drag", "args": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}}
@@ -605,8 +547,9 @@ class OSACI:
             phrase, self.obs, alignment=start_or_end
         )
         command = (
-            "import pyautogui;" 
-            "import subprocess;" 
+            "import pyautogui;"
+            "import time;"
+            "import subprocess;"
             "import pyperclip;" 
             f"pyautogui.click({x}, {y}, button='left', clicks=2);"
             "time.sleep(1.0);"
@@ -616,12 +559,7 @@ class OSACI:
             if self.platform == "linux":
                 command += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
 
-            command += (
-                "original_clipboard = pyperclip.paste();"
-                f"pyperclip.copy({repr(text)});"
-            )
-            command += self._paste(is_terminal=False)
-            command += "pyperclip.copy(original_clipboard);"
+            command += self._type(text=text, is_terminal=False)
 
         if text:
             action = {"function": "type", "args": {"x": x, "y": y, "text": text}}
@@ -665,7 +603,7 @@ class OSACI:
 
         **Define a Self-Contained, Continuous Goal:**
         - The `task` you provide should be a single, continuous goal. The code agent is capable of handling a multi-step process internally (e.g., opening a file, processing its data, and then saving it) to achieve this one goal.
-        - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, create a chart, AND email the result," you should first pass the self-contained goal: "Analyze the sales data and create a chart." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
+        - **Crucially, do not pass a task that combines multiple distinct objectives.** For example, instead of passing "Analyze the sales data, AND email the result," you should first pass the self-contained goal: "Analyze the sales data." After that goal is complete, you can proceed with the next logical goal (e.g., emailing the result) in a subsequent step.
         - **If unsure, err on the side of caution.** If a task feels like it has two separate parts, break it down and pass only the first part.
         - Your instruction must describe the desired end-state, NOT the recipe to get there. Do not specify any solution!
         

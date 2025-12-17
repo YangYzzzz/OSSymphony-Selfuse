@@ -925,9 +925,11 @@ def plot_token_usage_stacked(stats_data, title, save_path):
     """
     Generates and saves a stacked bar chart for prompt and completion token usage.
     
-    Update: 
-    - For individual agents: Average is calculated based on active runs only (no zero-padding).
-    - For 'Total': Average is calculated based on the global number of tasks (system-wide average).
+    Updates:
+    1. Logic: Zero-padding is used. Averages are based on the global number of tasks.
+       (Even if an agent is not used in a task, it counts as 0 usage).
+    2. Export: Saves detailed statistics (Mean, Std, Max, Min) to a JSON file.
+    3. Error Bars: Represents Standard Deviation (Mean +/- Std), clipped at 0.
     """
     if not stats_data:
         print(f"Skipping stacked token plot for '{title}' due to no data.")
@@ -935,120 +937,160 @@ def plot_token_usage_stacked(stats_data, title, save_path):
 
     try:
         # --- 1. 确定全局任务总数 (num_tasks) ---
-        # 这个变量主要用于计算 "Total" 栏的平均值，以及对齐系统总方差
+        # 遍历所有 Agent 的所有记录，找到最大的列表长度作为任务总数
         num_tasks = 0
-        if "orchestrator" in stats_data and stats_data["orchestrator"].get('prompt'):
-            num_tasks = len(stats_data["orchestrator"]['prompt'])
-        else:
-            for agent_data in stats_data.values():
-                # 找出最长的列表作为任务总数
-                p_len = len(agent_data.get('prompt', []))
-                c_len = len(agent_data.get('completion', []))
-                num_tasks = max(num_tasks, p_len, c_len)
+        for agent_data in stats_data.values():
+            p_len = len(agent_data.get('prompt', []))
+            c_len = len(agent_data.get('completion', []))
+            num_tasks = max(num_tasks, p_len, c_len)
         
         if num_tasks == 0:
             print(f"Skipping stacked token plot for '{title}' as num_tasks is zero.")
             return
 
+        # 准备数据容器
         agents = sorted(stats_data.keys())
-        prompt_avgs = []
-        completion_avgs = []
-        total_stds = []
-
-        # 用于计算 "Total" 栏的累加器 (基于全局 num_tasks)
-        # 我们需要两个数组来存储每个任务的 Prompt 和 Completion 总和
-        global_task_prompts = np.zeros(num_tasks)
-        global_task_completions = np.zeros(num_tasks)
         
-        # --- 2. 计算每个 Agent 的统计数据 (修改点：只计算非空数据) ---
-        for agent in agents:
-            prompt_tokens = stats_data[agent].get('prompt', [])
-            completion_tokens = stats_data[agent].get('completion', [])
+        # 用于绘图的列表
+        plot_prompt_avgs = []
+        plot_completion_avgs = []
+        plot_total_stds = [] # 这里存的是 Total Token (Prompt+Completion) 的标准差
+        
+        # 用于 JSON 导出的字典
+        export_stats = {
+            "meta": {
+                "title": title,
+                "total_tasks": num_tasks,
+                "calculation_method": "Global Average (Zero-padded for missing tasks)"
+            },
+            "agents": {}
+        }
 
-            # A. 计算该 Agent 的平均值（仅基于它实际运行的次数）
-            # 如果列表为空，平均值为 0
-            p_avg = np.mean(prompt_tokens) if prompt_tokens else 0
-            c_avg = np.mean(completion_tokens) if completion_tokens else 0
+        # 用于计算 "Total" (系统级) 的累加器
+        global_prompt_matrix = np.zeros((len(agents), num_tasks))
+        global_completion_matrix = np.zeros((len(agents), num_tasks))
+
+        # --- 2. 处理每个 Agent 的数据 ---
+        for idx, agent in enumerate(agents):
+            raw_prompts = stats_data[agent].get('prompt', [])
+            raw_completions = stats_data[agent].get('completion', [])
+
+            # A. 零填充 (Zero-Padding)
+            # 将数据补齐到 num_tasks 长度
+            padded_prompts = np.pad(raw_prompts, (0, num_tasks - len(raw_prompts)), 'constant')
+            padded_completions = np.pad(raw_completions, (0, num_tasks - len(raw_completions)), 'constant')
             
-            prompt_avgs.append(p_avg)
-            completion_avgs.append(c_avg)
+            # 存入矩阵以便后续计算 Total
+            global_prompt_matrix[idx] = padded_prompts
+            global_completion_matrix[idx] = padded_completions
 
-            # B. 计算该 Agent 的标准差 (基于实际运行次数)
-            # 假设 prompt 和 completion 列表长度一致，如果不一致取最短进行 zip
-            agent_total_tokens = [p + c for p, c in zip(prompt_tokens, completion_tokens)]
-            agent_std = np.std(agent_total_tokens) if agent_total_tokens else 0
-            total_stds.append(agent_std)
-
-            # C. 累加到全局数据中 (为了计算 Total 栏)
-            # 这里必须填充 0，因为我们要把 Agent A 的第 i 个任务和 Agent B 的第 i 个任务加在一起
-            # 假设 stats_data 中的列表是按任务顺序记录的
-            for i in range(len(prompt_tokens)):
-                if i < num_tasks:
-                    global_task_prompts[i] += prompt_tokens[i]
+            # B. 计算统计量
+            # 单个任务的总消耗 = Prompt + Completion
+            agent_task_totals = padded_prompts + padded_completions
             
-            for i in range(len(completion_tokens)):
-                if i < num_tasks:
-                    global_task_completions[i] += completion_tokens[i]
+            p_avg = np.mean(padded_prompts)
+            c_avg = np.mean(padded_completions)
+            total_avg = np.mean(agent_task_totals)
+            total_std = np.std(agent_task_totals)
+            total_max = np.max(agent_task_totals)
+            total_min = np.min(agent_task_totals)
 
-        # --- 3. 计算并添加 "Total" 条目 ---
-        # Total 代表“系统级平均开销”，所以分母必须是 num_tasks
-        total_p_avg = np.mean(global_task_prompts) if num_tasks > 0 else 0
-        total_c_avg = np.mean(global_task_completions) if num_tasks > 0 else 0
-        
-        # 计算 Total 的标准差 (每个任务的总 token 数 vs 平均值)
-        global_task_totals = global_task_prompts + global_task_completions
-        total_all_agents_std = np.std(global_task_totals) if num_tasks > 0 else 0
-        
+            # 存入绘图列表
+            plot_prompt_avgs.append(p_avg)
+            plot_completion_avgs.append(c_avg)
+            plot_total_stds.append(total_std)
+
+            # 存入导出字典
+            export_stats["agents"][agent] = {
+                "prompt_avg": float(p_avg),
+                "completion_avg": float(c_avg),
+                "total_avg": float(total_avg),
+                "total_std": float(total_std),
+                "total_max": float(total_max),
+                "total_min": float(total_min)
+            }
+
+        # --- 3. 计算 "Total" (所有 Agent 加和) 的数据 ---
+        # 将矩阵沿轴 0 (Agent维度) 求和，得到每个任务的系统总消耗
+        system_task_prompts = np.sum(global_prompt_matrix, axis=0)
+        system_task_completions = np.sum(global_completion_matrix, axis=0)
+        system_task_totals = system_task_prompts + system_task_completions
+
+        total_p_avg = np.mean(system_task_prompts)
+        total_c_avg = np.mean(system_task_completions)
+        total_all_avg = np.mean(system_task_totals)
+        total_all_std = np.std(system_task_totals)
+        total_all_max = np.max(system_task_totals)
+        total_all_min = np.min(system_task_totals)
+
+        # 添加到绘图列表
         agents.append('Total')
-        prompt_avgs.append(total_p_avg)
-        completion_avgs.append(total_c_avg)
-        total_stds.append(total_all_agents_std)
+        plot_prompt_avgs.append(total_p_avg)
+        plot_completion_avgs.append(total_c_avg)
+        plot_total_stds.append(total_all_std)
 
-        # --- 4. 开始绘图 ---
+        # 添加到导出字典
+        export_stats["agents"]["Total"] = {
+            "prompt_avg": float(total_p_avg),
+            "completion_avg": float(total_c_avg),
+            "total_avg": float(total_all_avg),
+            "total_std": float(total_all_std),
+            "total_max": float(total_all_max),
+            "total_min": float(total_all_min)
+        }
+
+        # --- 4. 保存 JSON 文件 ---
+        json_path = os.path.splitext(save_path)[0] + '.json'
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(export_stats, f, indent=4)
+        print(f"Saved token statistics to {json_path}")
+
+        # --- 5. 开始绘图 ---
         plt.figure(figsize=(max(10, len(agents) * 1.5), 8))
         
         bar_width = 0.6
         indices = np.arange(len(agents))
-        prompt_avgs_np = np.array(prompt_avgs)
-        completion_avgs_np = np.array(completion_avgs)
+        
+        p_avgs_np = np.array(plot_prompt_avgs)
+        c_avgs_np = np.array(plot_completion_avgs)
+        stds_np = np.array(plot_total_stds)
+        total_heights = p_avgs_np + c_avgs_np
 
         # 绘制 Prompt 柱状图
-        plt.bar(indices, prompt_avgs_np, bar_width, label='Prompt Tokens', color='#1f77b4', alpha=0.8)
-        # 绘制 Completion 柱状图 (堆叠在 Prompt 之上)
-        plt.bar(indices, completion_avgs_np, bar_width, bottom=prompt_avgs_np, label='Completion Tokens', color='#ff7f0e', alpha=0.8)
+        plt.bar(indices, p_avgs_np, bar_width, label='Prompt Tokens', color='#1f77b4', alpha=0.8)
+        # 绘制 Completion 柱状图 (堆叠)
+        plt.bar(indices, c_avgs_np, bar_width, bottom=p_avgs_np, label='Completion Tokens', color='#ff7f0e', alpha=0.8)
 
         # 绘制误差棒
-        total_avgs = prompt_avgs_np + completion_avgs_np
-        total_stds_np = np.array(total_stds)
-        # 确保下限误差棒不会让图形低于 0
-        lower_errors = np.minimum(total_avgs, total_stds_np)
-        asymmetric_errors = np.array([lower_errors, total_stds_np])
+        # 逻辑：上限是 Mean + Std，下限是 Mean - Std。
+        # 但为了不让误差棒画到负数区域（不美观且无物理意义），我们将下限误差截断。
+        # lower_error = min(total_height, std) 意味着如果 std > mean，下限误差棒长度等于 mean，正好触底到0。
+        lower_errors = np.minimum(total_heights, stds_np)
+        upper_errors = stds_np
+        asymmetric_errors = np.array([lower_errors, upper_errors])
         
-        plt.errorbar(indices, total_avgs, yerr=asymmetric_errors, fmt='none', ecolor='black', capsize=5, elinewidth=1.5, markeredgewidth=1.5)
+        plt.errorbar(indices, total_heights, yerr=asymmetric_errors, fmt='none', ecolor='black', capsize=5, elinewidth=1.5, markeredgewidth=1.5)
 
-        plt.ylabel('Average Token Count (Active Tasks Only)')
-        plt.title(title)
+        plt.ylabel('Average Token Count (Global Average)')
+        plt.title(f"{title}\n(Averaged over {num_tasks} tasks, including idle runs)")
         plt.xticks(indices, agents, rotation=45, ha='right')
         plt.grid(axis='y', linestyle='--', alpha=0.7)
         plt.legend()
 
-        # --- 5. 添加数值标签 ---
+        # --- 6. 添加数值标签 ---
         for i in range(len(agents)):
-            total_height = total_avgs[i]
-            prompt_height = prompt_avgs_np[i]
-            completion_height = completion_avgs_np[i]
+            total_h = total_heights[i]
+            prompt_h = p_avgs_np[i]
+            completion_h = c_avgs_np[i]
 
-            # 格式化总数
-            total_label_part = f'{total_height/1000:,.1f}k' if total_height >= 1000 else f'{total_height:,.0f}'
-            final_label = total_label_part
+            # 格式化显示
+            val_str = f'{total_h/1000:,.1f}k' if total_h >= 1000 else f'{total_h:,.0f}'
+            
+            # 如果方差极大，标记一下
+            if stds_np[i] > total_h:
+                val_str += "*" # 标记表示高波动
 
-            # 添加百分比 (如果存在两种 token)
-            if total_height > 0 and prompt_height > 0 and completion_height > 0:
-                prompt_perc = (prompt_height / total_height) * 100
-                completion_perc = (completion_height / total_height) * 100
-                final_label += f' ({prompt_perc:.1f}%/{completion_perc:.1f}%)'
-
-            plt.text(indices[i], total_height, final_label, ha='center', va='bottom', fontsize=8, fontweight='bold')
+            plt.text(indices[i], total_h + upper_errors[i], val_str, ha='center', va='bottom', fontsize=8, fontweight='bold')
 
         plt.tight_layout()
         plt.savefig(save_path)
@@ -1057,7 +1099,8 @@ def plot_token_usage_stacked(stats_data, title, save_path):
 
     except Exception as e:
         print(f"An unexpected error occurred while generating stacked token usage plot for '{title}': {e}")
-
+        import traceback
+        traceback.print_exc()
 
 
 def get_result(target_dir):
@@ -1104,27 +1147,26 @@ def get_result(target_dir):
     overall_token_stats = {}
 
     # --- Error/Reflection 统计结构 ---
+    # 定义 4 类标签，保持行列一致
+    MATRIX_LABELS = ["GUI Operation Error", "Lack of Tutorial", "Code Error", "None/Other"]
+
     def init_error_stats():
         return {
-            'categories': {
-                'GUI Operation Error': {'hint': 0, 'type': 0, 'match': 0},
-                'Lack of Tutorial':    {'hint': 0, 'type': 0, 'match': 0},
-                'Code Error':          {'hint': 0, 'type': 0, 'match': 0}
-            },
-            'type_counts': Counter(),
+            # 这是一个 4x4 的计数器： matrix[Row_Hint][Col_Reflection] = count
+            'matrix': {r: {c: 0 for c in MATRIX_LABELS} for r in MATRIX_LABELS},
             'total_steps': 0
         }
 
     domain_error_stats = {}
     overall_error_stats = init_error_stats()
 
-    # 辅助函数：解析 Reflection Type (你需要确保此函数存在，或者直接内嵌逻辑)
+    # 辅助函数：解析 Reflection Type 归一化为 4 类
     def parse_reflection_type(ref_str):
-        if not ref_str: return "None"
+        if not ref_str or ref_str == "None": return "None/Other"
         if "GUI" in ref_str: return "GUI Operation Error"
         if "Tutorial" in ref_str: return "Lack of Tutorial"
         if "Code" in ref_str: return "Code Error"
-        return "Other"
+        return "None/Other" # 归类为 Other
 
     print("Starting analysis...")
     # --- Data Collection Loop ---
@@ -1200,47 +1242,34 @@ def get_result(target_dir):
                                 if "call_code_agent" in action:
                                     with open(os.path.join(example_path, "code.txt"), "w", encoding="utf-8") as f:
                                         f.write("1")
-                                # --- ErrorType 统计逻辑 ---
-                                reflection = data.get("response", {}).get("reflection", {})
-                                error_hint = reflection.get("hint", {})
+
+                                # --- ErrorType 统计逻辑 (Updated for Heatmap) ---
+                                reflection_data = data.get("response", {}).get("reflection", {})
+                                error_hint = reflection_data.get("hint", {})
                                 
-                                # 获取 Hint (Boolean)
+                                # 1. 确定 Ground Truth (Hint) - Row
+                                # 优先级：如果有明确的 True，取第一个；如果全 False，则为 None/Other
                                 gui_hint = error_hint.get("gui_operation_error", False)
                                 lack_of_tutorial_hint = error_hint.get("lack_of_tutorial", False)
                                 code_hint = error_hint.get("code_error", False)
+
+                                row_label = "None/Other"
+                                if gui_hint: row_label = "GUI Operation Error"
+                                elif lack_of_tutorial_hint: row_label = "Lack of Tutorial"
+                                elif code_hint: row_label = "Code Error"
                                 
-                                # 获取 Reflection Type (String)
-                                reflection_type = parse_reflection_type(reflection.get("reflection", "None"))
+                                # 2. 确定 Prediction (Reflection) - Column
+                                raw_ref_type = reflection_data.get("reflection", "None")
+                                col_label = parse_reflection_type(raw_ref_type)
 
-                                # 定义映射关系
-                                error_mapping = [
-                                    ("GUI Operation Error", gui_hint),
-                                    ("Lack of Tutorial", lack_of_tutorial_hint),
-                                    ("Code Error", code_hint)
-                                ]
+                                # 3. 更新统计
+                                # Domain Level
+                                domain_error_stats[domain]['total_steps'] += 1
+                                domain_error_stats[domain]['matrix'][row_label][col_label] += 1
 
-                                # 更新 Domain 统计
-                                domain_stats = domain_error_stats[domain]
-                                domain_stats['total_steps'] += 1
-                                domain_stats['type_counts'][reflection_type] += 1
-
-                                # 更新 Overall 统计
+                                # Overall Level
                                 overall_error_stats['total_steps'] += 1
-                                overall_error_stats['type_counts'][reflection_type] += 1
- 
-                                for err_name, is_hint_present in error_mapping:
-                                    is_type_present = (reflection_type == err_name)
-                                    is_true_positive = (is_hint_present and is_type_present)
-
-                                    # Domain Level Update
-                                    if is_hint_present:  domain_stats['categories'][err_name]['hint'] += 1
-                                    if is_type_present:  domain_stats['categories'][err_name]['type'] += 1
-                                    if is_true_positive: domain_stats['categories'][err_name]['match'] += 1
-                                    
-                                    # Overall Level Update
-                                    if is_hint_present:  overall_error_stats['categories'][err_name]['hint'] += 1
-                                    if is_type_present:  overall_error_stats['categories'][err_name]['type'] += 1
-                                    if is_true_positive: overall_error_stats['categories'][err_name]['match'] += 1
+                                overall_error_stats['matrix'][row_label][col_label] += 1
 
                             except (json.JSONDecodeError, AttributeError): continue
                 except Exception as e:
@@ -1495,95 +1524,91 @@ def get_result(target_dir):
     except NameError:
         print("Warning: plot_token_usage_stacked function not found. Skipping token plots.")
 
-    # --- Plot 6: Error & Reflection Analysis (Combined & Enhanced) ---
-    print("\nGenerating error analysis plots...")
 
-    def plot_error_analysis(stats, title_prefix, save_path):
+    # --- Plot 6: Error & Reflection Analysis (Heatmap / Confusion Matrix) ---
+    print("\nGenerating error analysis heatmaps...")
+
+    def plot_confusion_heatmap(stats, title_prefix, save_path):
         """
-        Generates a single combined grouped bar chart:
-        - Bar 1 (Left): Agent Prediction Count (Type)
-        - Bar 2 (Right): Ground Truth Hint Count (Hint)
-        - Annotation: Precision & Recall displayed above each group.
+        Generates a 4x4 Heatmap.
+        Y-axis (Rows): Ground Truth (Hint)
+        X-axis (Cols): Agent Reflection (Predicted)
         """
         if stats['total_steps'] == 0:
             return
 
-        # 1. 准备数据
-        categories = list(stats['categories'].keys()) # ['GUI Operation Error', ...]
+        # 准备数据矩阵 (4x4)
+        labels = MATRIX_LABELS # ["GUI Operation Error", "Lack of Tutorial", "Code Error", "None/Other"]
+        data_matrix = []
         
-        # 提取 Type (分母: Agent 预测数量)
-        type_counts = [stats['categories'][c]['type'] for c in categories]
-        # 提取 Hint (分母: Ground Truth 数量)
-        hint_counts = [stats['categories'][c]['hint'] for c in categories]
-        # 提取 Match (分子: 交集数量，用于计算指标)
-        match_counts = [stats['categories'][c]['match'] for c in categories]
-
-        x = np.arange(len(categories))
-        width = 0.35  # 柱子宽度
-
-        fig, ax = plt.subplots(figsize=(12, 8))
-
-        # 2. 绘制分组柱状图
-        # 左侧柱子：Type (Agent Prediction)
-        rects1 = ax.bar(x - width/2, type_counts, width, label='Agent Prediction (Type)', color='#8da0cb')
-        # 右侧柱子：Hint (Ground Truth)
-        rects2 = ax.bar(x + width/2, hint_counts, width, label='Ground Truth (Hint)', color='#fc8d62')
-
-        # 3. 设置图表属性
-        ax.set_ylabel('Count')
-        ax.set_title(f'{title_prefix}: Reflection Analysis (Type vs Hint)\nPrecision = Match/Type | Recall = Match/Hint')
-        ax.set_xticks(x)
-        ax.set_xticklabels(categories)
-        ax.legend()
-
-        # 4. 辅助函数：在柱子上显示原始数量
-        def autolabel_counts(rects):
-            for rect in rects:
-                height = rect.get_height()
-                ax.annotate(f'{height}',
-                            xy=(rect.get_x() + rect.get_width() / 2, height),
-                            xytext=(0, 3),  # 3 points vertical offset
-                            textcoords="offset points",
-                            ha='center', va='bottom', fontsize=9)
+        for row_label in labels:
+            row_data = []
+            for col_label in labels:
+                row_data.append(stats['matrix'][row_label][col_label])
+            data_matrix.append(row_data)
         
-        autolabel_counts(rects1)
-        autolabel_counts(rects2)
+        data_np = np.array(data_matrix)
 
-        # 5. 核心逻辑：在柱子组上方显示 Precision 和 Recall
-        for i in range(len(categories)):
-            n_type = type_counts[i]
-            n_hint = hint_counts[i]
-            n_match = match_counts[i]
+        # 开始绘图
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        # 使用 imshow 绘制热力图
+        # cmap='OrRd' (橙红) 或 'Blues' (蓝) 都不错
+        im = ax.imshow(data_np, cmap='Blues')
 
-            # 计算 Precision (精确率) = Match / Type
-            precision = (n_match / n_type * 100) if n_type > 0 else 0.0
-            
-            # 计算 Recall (召回率) = Match / Hint
-            recall = (n_match / n_hint * 100) if n_hint > 0 else 0.0
+        # 设置坐标轴
+        ax.set_xticks(np.arange(len(labels)))
+        ax.set_yticks(np.arange(len(labels)))
+        
+        # 标签换行处理，防止重叠
+        formatted_labels = [l.replace(" ", "\n") for l in labels]
+        ax.set_xticklabels(formatted_labels, fontsize=10)
+        ax.set_yticklabels(labels, fontsize=10)
 
-            # 确定文字显示的 Y 轴高度 (取两个柱子中较高的那个，再往上抬一点)
-            max_height = max(n_type, n_hint)
-            # 动态调整高度偏移，防止文字贴太紧
-            text_y = max_height + (max(type_counts + hint_counts) * 0.02) if (type_counts + hint_counts) else 1
+        # 轴标题
+        ax.set_xlabel("Agent Reflection (Predicted)", fontsize=12, fontweight='bold')
+        ax.set_ylabel("Environment Hint (Ground Truth)", fontsize=12, fontweight='bold')
+        
+        # 将 X 轴标签移到顶部，或者保持在底部但旋转
+        plt.setp(ax.get_xticklabels(), rotation=0, ha="center", rotation_mode="anchor")
 
-            # 显示文本
-            label_text = f"Prec: {precision:.1f}%\nRec: {recall:.1f}%"
-            ax.text(i, text_y, label_text, 
-                    ha='center', va='bottom', 
-                    fontsize=11, color='darkred', fontweight='bold',
-                    bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
+        # 标题
+        ax.set_title(f"{title_prefix}\nReflection Confusion Matrix", fontsize=14, pad=20)
+
+        # 添加颜色条
+        cbar = ax.figure.colorbar(im, ax=ax)
+        cbar.ax.set_ylabel("Count", rotation=-90, va="bottom")
+
+        # 在每个格子里填入数字
+        # 阈值用于自动调整字体颜色（深色背景用白字，浅色背景用黑字）
+        threshold = data_np.max() / 2.
+        
+        total_count = data_np.sum()
+
+        for i in range(len(labels)): # Row
+            for j in range(len(labels)): # Col
+                count = data_np[i, j]
+                # 计算该格子的百分比 (占总步数的比例)
+                pct = (count / total_count * 100) if total_count > 0 else 0
+                
+                text_color = "white" if count > threshold else "black"
+                
+                # 显示格式：数量 (百分比)
+                text_str = f"{count}\n({pct:.1f}%)"
+                
+                ax.text(j, i, text_str, ha="center", va="center", color=text_color, fontsize=11, fontweight='bold')
 
         plt.tight_layout()
         plt.savefig(save_path)
         plt.close()
-        print(f"Saved error analysis plot to {save_path}")
+        print(f"Saved error heatmap to {save_path}")
 
     # Generate Overall Plot
-    plot_error_analysis(overall_error_stats, "Overall", os.path.join(target_dir, "overall_error_analysis.png"))
+    plot_confusion_heatmap(overall_error_stats, "Overall", os.path.join(target_dir, "overall_error_analysis_heatmap.png"))
 
     # Generate Per-Domain Plots
     for domain, stats in domain_error_stats.items():
-        plot_error_analysis(stats, f"Domain: {domain}", os.path.join(target_dir, f"error_analysis_{domain}.png"))
+        plot_confusion_heatmap(stats, f"Domain: {domain}", os.path.join(target_dir, f"error_analysis_heatmap_{domain}.png"))
 
     print("\nAnalysis complete.")
     return all_result

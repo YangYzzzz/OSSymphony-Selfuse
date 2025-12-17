@@ -433,6 +433,7 @@ def is_added_to_steam_cart(active_tab_info, rule):
     """
     Check if the item is added to the Steam cart.
     """
+    logger.info(f'[SteamCart]: content: {active_tab_info}, rule: {rule}')
     items = rule['items']
     content = active_tab_info['content']
 
