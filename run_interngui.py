@@ -15,7 +15,7 @@ import shutil
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
-
+from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -190,9 +190,17 @@ def run_env_tasks(
 
             platform = "windows"
 
-        elif args.benchmark == "macos":
-            # TODO: zhenyu
-            pass
+        elif args.benchmark == "macosarena":
+            path_to_vm = args.path_to_vm.split(" ")[0]
+            path_to_base_vm = args.path_to_vm.split(" ")[1]
+            # 默认 1920 x 1080，目前不支持修改分辨率
+            env = MacOSArenaDesktopEnv(
+                path_to_vm=path_to_vm,
+                path_to_base_vm=path_to_base_vm,
+                action_space=args.action_space,
+                provider_name=args.provider_name
+            )
+            platform = "macos"
 
         search_env = OSWorldDesktopEnv(
             path_to_vm=args.searcher_path_to_vm,

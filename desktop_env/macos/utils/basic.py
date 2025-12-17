@@ -163,7 +163,7 @@ def transform_pyautogui_line(line):
 def reset_applications(env, application_list: List[str]):
     # Add application reset logic if required by the evaluation strategy.
     # Some evaluation tasks may depend on a clean or known initial application state.
-    from evaluators.getter import clock_reset_window_status, settings_reset_window_status, terminal_reset_window_status
+    from desktop_env.macos.evaluators.getter import clock_reset_window_status, settings_reset_window_status, terminal_reset_window_status
 
     if 'terminal' in application_list:
         terminal_reset_window_status(env)

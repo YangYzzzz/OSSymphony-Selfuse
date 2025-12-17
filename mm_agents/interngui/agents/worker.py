@@ -31,7 +31,7 @@ class Worker(BaseModule):
         engine_params_for_orchestrator: Dict,
         engine_params_for_memoryer: Dict,
         os_aci: OSACI,
-        platform: str = "ubuntu",
+        platform: str,
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
         use_search_first: bool = False,

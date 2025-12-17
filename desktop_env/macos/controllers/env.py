@@ -1,51 +1,93 @@
+import logging
+import os
 import yaml
 import paramiko
-
 import time
 import subprocess
 from pathlib import Path
 import json
+import psutil
+import docker
+import platform
 from typing import Optional
+from filelock import FileLock
 import importlib
 import uuid
 import tempfile
-from desktop_env.macos.utils.logger import ProjectLogger
 from desktop_env.macos.utils.basic import reset_applications, transform_pyautogui_line
 from desktop_env.macos.launcher.docker.restart_docker import docker_reset_container, docker_start_container, container_exists, docker_remove_container, docker_run_container, DOCKER_RUN_SCRIPT_PATH
 
 import shlex
 
-logger = ProjectLogger()
+logger = logging.getLogger("desktopenv.providers.macos")
+LOCK_TIMEOUT = 1000
 
 class MacOSEnv:
-    def __init__(self, config_file='config/gpt-linux_single.yaml'):
+    def __init__(
+        self,
+        path_to_vm: str = "/nvme/yangbowen/vm_stroage/macos/mac_hdd_ng_copy.img",
+        path_to_base_vm="/nvme/yangbowen/vm_stroage/macos/BaseSystem.img", 
+        provider_name: str = "docker",
+        action_space="pyautogui"
+    ):
         """
         Initialize the MacOSEnv class. Reads configurations from the provided YAML file.
         """
-        self.config = self._load_config(config_file)
-        self.mode = self.config.get('mode', 'docker')
-        self.platform = self.config.get('platform', 'wsl')
-        self.docker_name = self.config.get('docker_name', 'evalkit_macos')
-        self.host_ip = self.config.get('host_ip', 'localhost')
-        self.port = self.config.get('port', 50922)
-        self.password = self.config.get('password', '1234')
-        self.username = self.config.get('username', 'pipiwu')
-        self.action_space = self.config.get('action_space', 'pyautogui')
+        self.mode = provider_name
+        self.action_space = action_space
+
+        # SSH 配置
+        self.username = 'pipiwu'
+        self.password = '1234'
+        self.host_ip = "127.0.0.1" # Docker 映射到本地
+        self.ssh_port = -1  # 对应容器的 10022
+        self.vnc_port = -1  # 对应容器的 5901
+        self.ssh_port = -1
         
         self.ssh_client = None
         self.sftp_client = None
         self.task = None
+        
+        # Docker 配置
+        self.client = docker.from_env()
+        self.container = None # 保存容器对象
+        self.ram_size = "16G"
+        self.cpu_cores = "4"
+        # 镜像文件路径
+        self.mac_hdd_img_path = path_to_vm
+        self.base_system_img_path = path_to_base_vm
 
-    def _load_config(self, config_file):
-        """
-        Load the YAML configuration file.
-        """
+        # 端口锁文件
+        temp_dir = Path(os.getenv('TEMP') if platform.system() == 'Windows' else '/tmp')
+        self.lock_file = temp_dir / "mac_docker_port.lck"
+
+
+    def _get_used_ports(self):
+        """获取当前系统所有被占用的端口"""
+        system_ports = set(conn.laddr.port for conn in psutil.net_connections())
+        docker_ports = set()
         try:
-            with open(config_file, 'r') as file:
-                return yaml.safe_load(file)
+            for container in self.client.containers.list():
+                ports = container.attrs['NetworkSettings']['Ports']
+                if ports:
+                    for port_mappings in ports.values():
+                        if port_mappings:
+                            docker_ports.update(int(p['HostPort']) for p in port_mappings)
         except Exception as e:
-            logger.error(f"Error loading config file: {e}")
-            raise
+            logger.warning(f"Error checking docker ports: {e}")
+        return system_ports | docker_ports
+
+    def _get_available_port(self, start_port: int, exclude_ports: set = None) -> int:
+        """寻找可用端口"""
+        if exclude_ports is None:
+            exclude_ports = set()
+        used_ports = self._get_used_ports()
+        port = start_port
+        while port < 65535:
+            if port not in used_ports and port not in exclude_ports:
+                return port
+            port += 1
+        raise RuntimeError(f"No free ports available starting from {start_port}")
 
     def connect_ssh(self):
         """
@@ -56,8 +98,8 @@ class MacOSEnv:
             self.ssh_client = paramiko.SSHClient()
             self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             try:
-                self.ssh_client.connect(self.host_ip, port=self.port, username=self.username, password=self.password)
-                logger.info(f"Connected to {self.host_ip} on port {self.port}")
+                self.ssh_client.connect(self.host_ip, port=self.ssh_port, username=self.username, password=self.password)
+                logger.info(f"Connected to {self.host_ip} on port {self.ssh_port}")
             except Exception as e:
                 logger.error(f"SSH connection failed: {e}")
                 raise e
@@ -66,63 +108,121 @@ class MacOSEnv:
             pass
         
     def _reset_env(self):
-        self.close_connection()
-        if self.mode == "docker":
-            docker_remove_container(self.docker_name)
-            retry_time = 0
-            while container_exists(self.docker_name) and retry_time < 10:
-                time.sleep(3)
-                retry_time += 1
-            if container_exists(self.docker_name):
-                 raise TimeoutError(f"Remove Container {self.docker_name} Timeout")
-            docker_run_container(self.docker_name, platform=self.platform, docker_name=self.docker_name, port=self.port)
-            # if not container_exists(self.docker_name):
-            #     logger.info(f"Launching container: {self.docker_name}")
-            #     proc = subprocess.Popen(["bash", str(DOCKER_RUN_SCRIPT_PATH)])
+        """
+        重置环境：停止旧容器 -> 分配端口 -> 启动新容器 -> 等待 SSH
+        """
+        self._close_env() # 确保旧的被清理
 
-            #     for _ in range(100):
-            #         try:
-            #             self.connect_ssh() 
-            #             logger.info("SSH connection established.")
-            #             break
-            #         except Exception:
-            #             time.sleep(2)
-            #     else:
-            #         logger.error("Failed to SSH into the container after timeout.")
-            # docker_reset_container(self.docker_name)
-            # # docker_start_container(self.docker_name)
-        else:
-            raise ValueError(f"Unspported mode: {self.mode}")
+        if self.mode != "docker":
+            raise ValueError(f"Unsupported mode: {self.mode}")
+
+        lock = FileLock(str(self.lock_file), timeout=LOCK_TIMEOUT)
+        with lock:
+            # 1. 动态分配端口
+            self.ssh_port = self._get_available_port(10022) 
+            self.vnc_port = self._get_available_port(5901, exclude_ports={self.ssh_port})
+            
+            logger.info(f"Allocated Ports -> SSH: {self.ssh_port}, VNC: {self.vnc_port}")
+
+            # 2. 准备挂载卷 (Volumes)
+            # 对应 -v 参数
+            volumes = {
+                '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'},
+                self.mac_hdd_img_path: {'bind': '/home/arch/OSX-KVM/mac_hdd_ng_src.img', 'mode': 'rw'},
+                self.base_system_img_path: {'bind': '/home/arch/OSX-KVM/BaseSystem_src.img', 'mode': 'rw'}
+            }
+
+            # 3. 准备环境变量 (Environment)
+            # 对应 -e 参数
+            environment = {
+                "EXTRA": "-vnc 0.0.0.0:1,password=off",
+                "CPU": "Haswell-noTSX",
+                "CPUID_FLAGS": "kvm=on,vendor=GenuineIntel,+invtsc,vmware-cpuid-freq=on",
+                "SHORTNAME": "sonoma",
+                "USERNAME": self.username,
+                "PASSWORD": self.password,
+                "RAM_SIZE": self.ram_size,
+                "CPU_CORES": self.cpu_cores
+            }
+
+            # 4. 准备设备 (Devices)
+            # 对应 --device /dev/kvm
+            devices = ["/dev/kvm"] if os.path.exists("/dev/kvm") else []
+            if not devices:
+                logger.warning("/dev/kvm not found. MacOS container might be extremely slow or fail.")
+
+            try:
+                logger.info("Starting MacOS container...")
+                # 5. 启动容器 (对应 docker run 命令)
+                self.container = self.client.containers.run(
+                    image="numbmelon/docker-osx-evalkit-auto:latest",
+                    detach=True,       # -d
+                    tty=True,          # -t
+                    stdin_open=True,   # -i
+                    privileged=True,   # KVM 通常需要特权模式
+                    devices=devices,   # --device
+                    ports={
+                        '10022/tcp': self.ssh_port, # -p host:10022
+                        '5901/tcp': self.vnc_port   # -p host:5901
+                    },
+                    volumes=volumes,       # -v
+                    environment=environment # -e
+                )
+                logger.info(f"Container started with ID: {self.container.short_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to start container: {e}")
+                self._close_env()
+                raise e
+
+        # 6. 等待 SSH 服务就绪
+        self._wait_for_ssh_ready()
+    
+    def _wait_for_ssh_ready(self, timeout=1000):
+        """等待容器启动并建立 SSH 连接"""
+        logger.info("Waiting for SSH to become available...")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                self.connect_ssh()
+                logger.info("SSH connection established successfully.")
+                return
+            except Exception:
+                time.sleep(5) # 每 5 秒重试一次
         
+        # 超时处理
+        self._close_env()
+        raise TimeoutError("Failed to SSH into the MacOS container after timeout.")
+    
     def _close_env(self):
+        """清理环境：关闭 SSH，停止并删除容器"""
         self.close_connection()
-        if self.mode == "docker":
-            docker_remove_container(self.docker_name)
-            retry_time = 0
-            while container_exists(self.docker_name) and retry_time < 10:
-                time.sleep(3)
-                retry_time += 1
-            if container_exists(self.docker_name):
-                 raise TimeoutError(f"Remove Container {self.docker_name} Timeout")
-            # docker_run_container(self.docker_name, platform=self.platform, docker_name=self.docker_name, port=self.port)
-            # if not container_exists(self.docker_name):
-            #     logger.info(f"Launching container: {self.docker_name}")
-            #     proc = subprocess.Popen(["bash", str(DOCKER_RUN_SCRIPT_PATH)])
+        
+        if self.container:
+            try:
+                logger.info(f"Stopping container {self.container.short_id}...")
+                self.container.stop(timeout=10)
+                logger.info("Removing container...")
+                self.container.remove(force=True)
+            except docker.errors.NotFound:
+                logger.info("Container already removed.")
+            except Exception as e:
+                logger.warning(f"Error cleaning up container: {e}")
+            finally:
+                self.container = None
+                self.ssh_port = -1
+                self.vnc_port = -1
 
-            #     for _ in range(100):
-            #         try:
-            #             self.connect_ssh() 
-            #             logger.info("SSH connection established.")
-            #             break
-            #         except Exception:
-            #             time.sleep(2)
-            #     else:
-            #         logger.error("Failed to SSH into the container after timeout.")
-            # docker_reset_container(self.docker_name)
-            # # docker_start_container(self.docker_name)
-        else:
-            raise ValueError(f"Unspported mode: {self.mode}")
-                
+    def get_connection_info(self):
+        """返回连接信息供外部使用"""
+        return {
+            "ip": self.host_ip,
+            "ssh_port": self.ssh_port,
+            "vnc_port": self.vnc_port,
+            "username": self.username,
+            "password": self.password
+        }
+    
     def run_command(self, command: str, decode: bool = True):
         if not self.ssh_client:
             self.connect_ssh()
@@ -138,6 +238,40 @@ class MacOSEnv:
             return out, err
         else:
             return stdout, stderr  # raw paramiko ChannelFile
+    
+    def execute_bash_command(self, command: str, decode: bool = True):
+        if not self.ssh_client:
+            self.connect_ssh()
+            # raise ValueError("SSH client not connected.")
+        
+        out, err = "", ""
+        try:
+            stdin, stdout, stderr = self.ssh_client.exec_command(command)
+
+            if decode:
+                # logger.info(stdout)
+                # logger.info(command)
+                out = stdout.read().decode("utf-8", errors="replace").strip()
+                err = stderr.read().decode("utf-8", errors="replace").strip()
+                return {
+                    "output": out,
+                    "error": err,
+                    "status": "success"
+                }
+            else:
+                return {
+                    "output": stdout,
+                    "error": stderr,
+                    "status": "success"
+                }
+        except Exception as e:
+            logger.error(f"execute_bash_command failed: {e}")
+            return {
+                "status": "error",
+                "output": out,
+                "error": err
+            }
+
         
     def _get_obs(self):
         return {
@@ -147,7 +281,7 @@ class MacOSEnv:
             "instruction": None
         }
         
-    def step(self, action, pause=2):
+    def step(self, action, pause=2.0):
         if self.task is None:
             logger.info("Task is None, load a task before taking actions.")
             return None, None, None, None
@@ -221,34 +355,22 @@ class MacOSEnv:
         """
         # 生成远程临时脚本路径
         remote_tmp_path = f"/tmp/task_script_{uuid.uuid4().hex}.py"
+        assert self.task is not None
+        lines = []
+        for line in action.strip().splitlines():
+            stripped = line.strip()
+            # current_line = line
+            if not stripped or stripped.startswith("#"):
+                continue
+            # if "pyautogui.write" in stripped or "pyautogui.typewrite" in stripped:
+            #     indent = line[:len(line) - len(line.lstrip())]
+            #     line = f"{indent}pyautogui.keyUp('shift'); {line.lstrip()}"
+            # transformed_line = transform_pyautogui_line(line)
+            lines.append(line)
+        command_block = "\n".join(lines)
+        python_code = self.task.pkgs_prefix.format(command=command_block)
 
-        if self.task is None:
-            lines = []
-            lines.append("import pyautogui")
-            lines.append("import time")
-            lines.append("import pynput")
-            lines.append("import keyboard")
-            lines.append("pyautogui.FAILSAFE = False")
-            for line in action.strip().splitlines():
-                if line.strip():
-                    lines.append(line)
-            python_code = "\n".join(lines)
-
-        else:
-            lines = []
-            for line in action.strip().splitlines():
-                stripped = line.strip()
-                # current_line = line
-                if not stripped or stripped.startswith("#"):
-                    continue
-                # if "pyautogui.write" in stripped or "pyautogui.typewrite" in stripped:
-                #     indent = line[:len(line) - len(line.lstrip())]
-                #     line = f"{indent}pyautogui.keyUp('shift'); {line.lstrip()}"
-                transformed_line = transform_pyautogui_line(line)
-                lines.append(transformed_line)
-            command_block = "\n".join(lines)
-            python_code = self.task.pkgs_prefix.format(command=command_block)
-
+        stdout, stderr = "", ""
         try:
             self.connect_sftp()
             with self.sftp_client.open(remote_tmp_path, "w") as remote_script:
@@ -264,9 +386,18 @@ class MacOSEnv:
 
             # 清理远程脚本
             self.run_command(f"rm -f {remote_tmp_path}")
-
+            return {
+                "status": "success",
+                "output": stdout,
+                "error": stderr
+            }
         except Exception as e:
             logger.error(f"execute_python_command failed: {e}")
+            return {
+                "status": "error",
+                "output": stdout,
+                "error": stderr
+            }
         
     def get_screenshot(self, remote_tmp_path: str = "/tmp/fullscreen_dock.png") -> bytes:
         """
@@ -411,7 +542,7 @@ class MacOSEnv:
                     # logger.info(_)
             else:
                 try:
-                    basic_utils = importlib.import_module("utils.basic")
+                    basic_utils = importlib.import_module("desktop_env.macos.utils.basic")
                     if hasattr(basic_utils, step_type):
                         func = getattr(basic_utils, step_type)
                         logger.info(f"Executing: {step_type} with {parameters}")
@@ -453,7 +584,7 @@ class MacOSEnv:
         for func_name, params, expected in zip(func_list, param_list, expected_list):
             # Load the getter function from evaluators.getter (already imported in __init__.py)
             try:
-                evaluators_getter = importlib.import_module("evaluators.getter")
+                evaluators_getter = importlib.import_module("desktop_env.macos.evaluators.getter")
                 getter_func = getattr(evaluators_getter, func_name)
                 # logger.info(getter_func)
             except AttributeError as e:
@@ -475,7 +606,7 @@ class MacOSEnv:
                 metric_func_name = expected["rules"]["func"]
                 metric_params = expected["rules"]["parameters"]
 
-                metric_module = importlib.import_module(f"evaluators.metrics.{metric_type}")
+                metric_module = importlib.import_module(f"desktop_env.macos.evaluators.metrics.{metric_type}")
                 metric_func = getattr(metric_module, metric_func_name)
 
                 # Call the metric function with correct parameter format
@@ -497,7 +628,7 @@ class MacOSEnv:
         return all(results) if conj == "and" else any(results)
 
 class TaskController:
-    def __init__(self, json_path: Path = None, pkgs_prefix: str = "from AppKit import NSBundle; app_info = NSBundle.mainBundle().infoDictionary(); app_info[\"LSBackgroundOnly\"] = \"1\"; import pyautogui; import time; import pynput; import keyboard; pyautogui.FAILSAFE = False; {command}", json_config=None):
+    def __init__(self, json_path: Path = None, pkgs_prefix: str = "from AppKit import NSBundle; app_info = NSBundle.mainBundle().infoDictionary(); app_info[\"LSBackgroundOnly\"] = \"1\"; import pyautogui; import time; import pynput; import keyboard; pyautogui.FAILSAFE = False; import os; proxy_url = 'http://10.1.8.5:23128'; os.environ['http_proxy'] = proxy_url; os.environ['https_proxy'] = proxy_url; os.environ['HTTP_PROXY'] = proxy_url; os.environ['HTTPS_PROXY'] = proxy_url; {command}", json_config=None):
         if json_path:
             self.json_path = Path(json_path)
         else:
