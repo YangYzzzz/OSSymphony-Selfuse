@@ -64,6 +64,8 @@ class GrounderAgent:
                 cur_screenshot = output_buffer.getvalue()
             elif 'Holo' in self.engine_params_for_grounder['model']:
                 prompt += """\nPlease strictly follow the output format: (x1="100", y1="100") """
+            elif 'gta' in self.engine_params_for_grounder['model']:
+                self.grounding_model.add_system_prompt("You are a GUI agent. You are given a task and a screenshot of the screen. You need to perform a series of pyautogui actions to complete the task.")
             
             self.grounding_model.add_message(
                 text_content=prompt, image_content=cur_screenshot, put_text_last=True, role="user"
