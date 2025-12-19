@@ -1,6 +1,6 @@
 import paramiko
-from desktop_env.macos.controllers.env import MacOSEnv
-from desktop_env.macos.utils.logger import ProjectLogger
+from controllers.env import MacOSEnv
+from utils.logger import ProjectLogger
 from pathlib import Path
 import json
 import time
@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import shlex
 import textwrap
 import plistlib
+from typing import Union, List
 
 script_dir = Path(__file__).resolve().parent.parent
 
@@ -37,6 +38,29 @@ def finder_check_folder_exists(env, folder_path: str) -> bool:
     """
     env.connect_ssh()
     cmd = f'test -d "{folder_path}" && echo "Exists" || echo "Not found"'
+    stdout, stderr = env.run_command(cmd)
+    output = stdout.read().decode().strip() if hasattr(stdout, 'read') else stdout.strip()
+    return output == "Exists"
+
+def finder_check_file_exists(env, file_path: Union[str, List[str]]) -> bool:
+    """
+    Check if file(s) exist at the given path(s) on macOS via SSH.
+
+    :param env: MacOSEnv instance
+    :param file_path: Absolute file path or a list of absolute file paths
+    :return: True if all files exist, False otherwise
+    """
+    env.connect_ssh()
+
+    # Normalize to list
+    paths = [file_path] if isinstance(file_path, str) else file_path
+    if not paths:
+        return False
+
+    # Use test -f to check files
+    checks = " && ".join([f'test -f "{p}"' for p in paths])
+    cmd = f'{checks} && echo "Exists" || echo "Not found"'
+
     stdout, stderr = env.run_command(cmd)
     output = stdout.read().decode().strip() if hasattr(stdout, 'read') else stdout.strip()
     return output == "Exists"
