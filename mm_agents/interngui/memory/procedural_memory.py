@@ -263,6 +263,8 @@ class PROCEDURAL_MEMORY:
                 - **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
                 - **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
 
+<<<<<<< HEAD
+=======
                 ## 2.3 Efficiency & Tool Usage
                 - **Efficiency is Key**:
                     - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
@@ -274,6 +276,7 @@ class PROCEDURAL_MEMORY:
         else:
             pass
         
+>>>>>>> main
         procedural_memory += textwrap.dedent(
             """
             - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, invoke the Search Agent to retrieve detailed online tutorials for further guidance.
@@ -432,7 +435,7 @@ class PROCEDURAL_MEMORY:
         - **No GUI Observations**: You must differentiate between "External Knowledge" (data you are seeking) and "GUI Observations" (how the software looks). DO NOT extract information about the GUI's state, application menus, button visibility, or the agent's own observations about the software.
         - **No Duplicates**: Check the existing_knowledge input. DO NOT extract any information that is already present. Your goal is to find new information only.
         - **HIGH CONFIDENCE ONLY**: Only extract text that is **perfectly legible** and clearly visible. **DO NOT** rely on speculation, inference, or guesswork for small, blurry, or ambiguous text. If you lack complete certainty, you must omit the information.
-    - Action: If you find **new**, relevant, **externel** knowledge, you will prepare it for the knowledge output field. 
+    - Action: If you find **new**, relevant, **external** knowledge, you will prepare it for the knowledge output field. 
     - Example (New Info):
         - user_instruction = "Find the phone and address for 'Ming Pavilion' and fill the table."
         - existing_knowledge = "Ming Pavilion Address: Level 8, Pacific Place, Supreme Court Road, Central"
