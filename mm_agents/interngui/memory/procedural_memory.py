@@ -302,7 +302,7 @@ class PROCEDURAL_MEMORY:
             --- TUTORIALS START ---
             TUTORIAL_PLACEHOLDER
             --- TUTORIALS END ---
-            5. Access to the following class and methods to interact with the UI:
+            5. Access to the following class and methods to interact with the UI. You MUST select only one action to execute at a time.
             class Agent:
             """
         )

@@ -103,9 +103,9 @@ def calculate_global_stats(root_dir, merge_dirs=None):
         
         for task in tasks:
             total_tasks += 1
-            status, _, _ = _get_best_task_result(root_dir, domain, task, merge_dirs)
+            status, _, score = _get_best_task_result(root_dir, domain, task, merge_dirs)
             if status == 1:
-                total_success += 1
+                total_success += float(score)
                 
     if total_tasks == 0:
         return "### 📊 全局统计: 暂无任务数据"
@@ -1148,12 +1148,12 @@ def get_result(target_dir):
 
     # --- Error/Reflection 统计结构 ---
     # 定义 4 类标签，保持行列一致
-    MATRIX_LABELS = ["GUI Operation Error", "Lack of Tutorial", "Code Error", "None/Other"]
-
+    COLUMN_LABELS = ["GUI Operation Error", "Lack of Tutorial", "Code Error", "Other Error", "None"]
+    ROW_LABELS = ["GUI Error", "Loop Error", "None"]
     def init_error_stats():
         return {
             # 这是一个 4x4 的计数器： matrix[Row_Hint][Col_Reflection] = count
-            'matrix': {r: {c: 0 for c in MATRIX_LABELS} for r in MATRIX_LABELS},
+            'matrix': {r: {c: 0 for c in COLUMN_LABELS} for r in ROW_LABELS},
             'total_steps': 0
         }
 
@@ -1161,12 +1161,13 @@ def get_result(target_dir):
     overall_error_stats = init_error_stats()
 
     # 辅助函数：解析 Reflection Type 归一化为 4 类
-    def parse_reflection_type(ref_str):
-        if not ref_str or ref_str == "None": return "None/Other"
-        if "GUI" in ref_str: return "GUI Operation Error"
-        if "Tutorial" in ref_str: return "Lack of Tutorial"
-        if "Code" in ref_str: return "Code Error"
-        return "None/Other" # 归类为 Other
+    def parse_reflection_type(ref_str: str):
+        if not ref_str or ref_str == "None": return "None"
+        if "gui operation error" in ref_str.lower(): return "GUI Operation Error"
+        if "lack of tutorial" in ref_str.lower(): return "Lack of Tutorial"
+        if "code error" in ref_str.lower(): return "Code Error"
+        if "other error" in ref_str.lower(): return "Other Error"
+        return "None" # 归类为 Other
 
     print("Starting analysis...")
     # --- Data Collection Loop ---
@@ -1253,10 +1254,9 @@ def get_result(target_dir):
                                 lack_of_tutorial_hint = error_hint.get("lack_of_tutorial", False)
                                 code_hint = error_hint.get("code_error", False)
 
-                                row_label = "None/Other"
-                                if gui_hint: row_label = "GUI Operation Error"
-                                elif lack_of_tutorial_hint: row_label = "Lack of Tutorial"
-                                elif code_hint: row_label = "Code Error"
+                                row_label = "None"
+                                if gui_hint: row_label = "GUI Error"
+                                elif lack_of_tutorial_hint: row_label = "Loop Error"
                                 
                                 # 2. 确定 Prediction (Reflection) - Column
                                 raw_ref_type = reflection_data.get("reflection", "None")
@@ -1485,20 +1485,32 @@ def get_result(target_dir):
         except Exception as e: print(f"Error generating success rate plot: {e}")
 
 
-    # Plot 4: Step Distribution Histograms
+    # --- Plot 4: Step Distribution Histograms ---
     step_stats = {'overall': {'success_steps': [], 'failure_steps': []}}
     for domain, tasks in all_result_for_analysis.items():
         if domain not in step_stats: step_stats[domain] = {'success_steps': [], 'failure_steps': []}
         for task_id, data in tasks.items():
             if data.get('score') is not None and data.get('step') is not None:
-                if data['score'] > 0.0: step_stats[domain]['success_steps'].append(data['step']); step_stats['overall']['success_steps'].append(data['step'])
-                else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
+                if data['score'] > 0.0: 
+                    step_stats[domain]['success_steps'].append(data['step'])
+                    step_stats['overall']['success_steps'].append(data['step'])
+                else: 
+                    step_stats[domain]['failure_steps'].append(data['step'])
+                    step_stats['overall']['failure_steps'].append(data['step'])
 
     for name, data in step_stats.items():
         save_path = os.path.join(target_dir, 'overall_step_distribution.png' if name == 'overall' else f'step_distribution_{name}.png')
         title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
         try:
             # 假设 plot_step_histogram 存在
+            if name == "overall":
+                overall_step_stat = {
+                    "success_steps": data['success_steps'],
+                    "failure_steps": data['failure_steps']
+                }
+                with open(os.path.join(target_dir, "step_stat.json"), "w", encoding="utf-8") as f:
+                    json.dump(overall_step_stat, f, indent=4)
+                # print(f"Success Step: {data['success_steps']}, Failure Step: {data['failure_steps']}")
             plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
         except NameError:
             # 如果外部没有定义该函数，跳过
@@ -1538,12 +1550,11 @@ def get_result(target_dir):
             return
 
         # 准备数据矩阵 (4x4)
-        labels = MATRIX_LABELS # ["GUI Operation Error", "Lack of Tutorial", "Code Error", "None/Other"]
         data_matrix = []
         
-        for row_label in labels:
+        for row_label in ROW_LABELS:
             row_data = []
-            for col_label in labels:
+            for col_label in COLUMN_LABELS:
                 row_data.append(stats['matrix'][row_label][col_label])
             data_matrix.append(row_data)
         
@@ -1557,13 +1568,13 @@ def get_result(target_dir):
         im = ax.imshow(data_np, cmap='Blues')
 
         # 设置坐标轴
-        ax.set_xticks(np.arange(len(labels)))
-        ax.set_yticks(np.arange(len(labels)))
+        ax.set_xticks(np.arange(len(COLUMN_LABELS)))
+        ax.set_yticks(np.arange(len(ROW_LABELS)))
         
         # 标签换行处理，防止重叠
-        formatted_labels = [l.replace(" ", "\n") for l in labels]
+        formatted_labels = [l.replace(" ", "\n") for l in COLUMN_LABELS]
         ax.set_xticklabels(formatted_labels, fontsize=10)
-        ax.set_yticklabels(labels, fontsize=10)
+        ax.set_yticklabels(ROW_LABELS, fontsize=10)
 
         # 轴标题
         ax.set_xlabel("Agent Reflection (Predicted)", fontsize=12, fontweight='bold')
@@ -1585,8 +1596,8 @@ def get_result(target_dir):
         
         total_count = data_np.sum()
 
-        for i in range(len(labels)): # Row
-            for j in range(len(labels)): # Col
+        for i in range(len(ROW_LABELS)): # Row
+            for j in range(len(COLUMN_LABELS)): # Col
                 count = data_np[i, j]
                 # 计算该格子的百分比 (占总步数的比例)
                 pct = (count / total_count * 100) if total_count > 0 else 0
@@ -1604,6 +1615,7 @@ def get_result(target_dir):
         print(f"Saved error heatmap to {save_path}")
 
     # Generate Overall Plot
+    print(f'Overall Error Stats: {overall_error_stats}')
     plot_confusion_heatmap(overall_error_stats, "Overall", os.path.join(target_dir, "overall_error_analysis_heatmap.png"))
 
     # Generate Per-Domain Plots
