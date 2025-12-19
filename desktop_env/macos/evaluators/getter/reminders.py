@@ -1,6 +1,6 @@
 import paramiko
-from desktop_env.macos.controllers.env import MacOSEnv
-from desktop_env.macos.utils.logger import ProjectLogger
+from controllers.env import MacOSEnv
+from utils.logger import ProjectLogger
 from pathlib import Path
 import json
 import time
@@ -232,6 +232,92 @@ def reminders_check_all_completed_with_expected_items(
         logger.error(f"Failed to validate reminders in '{list_name}': {e}")
         return False
     
+
+def reminders_check_completed_and_incompleted_with_expected_items(
+    env,
+    list_name: str = "Groceries",
+    preset_items: list[str] | None = None,
+    should_completed: list[str] | None = None,
+    should_not_completed: list[str] | None = None,
+) -> bool:
+    """
+    Validate that:
+      1) The list contains exactly preset_items (no more, no less) if preset_items is provided.
+      2) Items in should_completed exist and are completed.
+      3) Items in should_not_completed exist and are NOT completed.
+    Return True iff ALL checks pass; otherwise False.
+    """
+    should_completed = set(should_completed or [])
+    should_not_completed = set(should_not_completed or [])
+
+    overlap = should_completed & should_not_completed
+    if overlap:
+        logger.warning(f"Items appear in both should_completed and should_not_completed: {sorted(overlap)}")
+        return False
+
+    env.connect_ssh()
+
+    apple_script = f'''
+    tell application "Reminders"
+        set theList to list "{list_name}"
+        set remindersInList to reminders of theList
+        set resultList to ""
+        repeat with r in remindersInList
+            set resultList to resultList & name of r & "||" & completed of r & ";;"
+        end repeat
+    end tell
+    return resultList
+    '''
+
+    try:
+        stdout, _ = env.run_command(f"osascript -e '{apple_script.strip()}'")
+        raw_output = stdout.read().decode().strip() if hasattr(stdout, 'read') else stdout.strip()
+
+        entries = [r.strip() for r in raw_output.split(";;") if r.strip()]
+        status_map: dict[str, bool] = {}
+        for entry in entries:
+            parts = entry.split("||", 1)
+            if len(parts) != 2:
+                continue
+            name = parts[0].strip()
+            is_completed = parts[1].strip().lower() == "true"
+            status_map[name] = is_completed
+
+        names_in_list = set(status_map.keys())
+
+        if preset_items is not None:
+            preset_set = set(preset_items)
+            if names_in_list != preset_set:
+                missing = preset_set - names_in_list
+                extra   = names_in_list - preset_set
+                if missing:
+                    logger.warning(f"Missing expected items (preset): {sorted(missing)}")
+                if extra:
+                    logger.warning(f"Unexpected extra items (preset): {sorted(extra)}")
+                return False
+
+        for item in should_completed:
+            if item not in status_map:
+                logger.warning(f"Expected completed item missing: {item}")
+                return False
+            if not status_map[item]:
+                logger.warning(f"Item should be completed but is not: {item}")
+                return False
+
+        for item in should_not_completed:
+            if item not in status_map:
+                logger.warning(f"Expected not-completed item missing: {item}")
+                return False
+            if status_map[item]:
+                logger.warning(f"Item should NOT be completed but is completed: {item}")
+                return False
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to validate reminders in '{list_name}': {e}")
+        return False
+
 
 def reminders_check_on_date(env, reminder_name: str, date_str: str = "20250512") -> bool:
     """
