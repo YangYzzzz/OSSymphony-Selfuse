@@ -76,6 +76,7 @@ def run_single_example(agent, env, example, max_steps, instruction, args, exampl
                 }, f, indent=4, ensure_ascii=False)
             if done:
                 logger.info("The episode is done.")
+                time.sleep(60)
                 break
         step_idx += 1
     end_time = time.time()

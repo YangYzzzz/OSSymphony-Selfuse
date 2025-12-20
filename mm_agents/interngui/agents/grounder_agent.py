@@ -54,7 +54,7 @@ class GrounderAgent:
             prompt = self.user_message.replace("REF_EXPR", ref_expr)
             if 'claude' in self.engine_params_for_grounder['model']:
                 ### 规范一下系统提示词!!!
-                self.grounding_model.add_system_prompt("""Please strictly follow the output format: x1=100, y1=100""")
+                self.grounding_model.add_system_prompt("""Please strictly follow the output format: (x1="100", y1="100") """)
                 screenshot_image = Image.open(io.BytesIO(cur_screenshot))
                 ### Claude 只接受 (1280, 800) 分辨率的图片，Resize the image!!!
                 resized_image = screenshot_image.resize((self.width, self.height), Image.Resampling.LANCZOS)
@@ -62,6 +62,10 @@ class GrounderAgent:
                 output_buffer = io.BytesIO()
                 resized_image.save(output_buffer, format='PNG')
                 cur_screenshot = output_buffer.getvalue()
+            elif 'Holo' in self.engine_params_for_grounder['model']:
+                prompt += """\nPlease strictly follow the output format: (x1="100", y1="100") """
+            elif 'gta' in self.engine_params_for_grounder['model']:
+                self.grounding_model.add_system_prompt("You are a GUI agent. You are given a task and a screenshot of the screen. You need to perform a series of pyautogui actions to complete the task.")
             
             self.grounding_model.add_message(
                 text_content=prompt, image_content=cur_screenshot, put_text_last=True, role="user"
@@ -69,7 +73,13 @@ class GrounderAgent:
 
             # Generate and parse coordinates
             response = call_llm_safe(self.grounding_model, temperature=0.05, **kwargs)
-            print(f"[Grounder]: prompt {prompt}, model {self.engine_params_for_grounder['model']}, response: {response}")
+            print(f"[Grounder] prompt: {prompt}\nmodel: {self.engine_params_for_grounder['model']}, \nresponse: {response}")
+
+            # 为了测试HOLO，整理代码时需要删掉！Holo基于司马Qwen3-VL微调，会输出思考过程，尽管已经让他只输出一个点的坐标。
+            if 'Holo' in self.engine_params_for_grounder['model']:
+                if '</think>' in response:
+                    response = response.split('</think>')[1]
+                print('[Grounder] Holo输出了</think>, 解析后的回答为:', response)
 
             # 1. 第一优先级：尝试匹配明确带 key 的格式 (x1="...", y1="...", x="...", y="...")
             numericals = re.findall(r'(?:x1|y1|x|y)=["\']?(\d+)["\']?', response)
@@ -80,15 +90,15 @@ class GrounderAgent:
                 clean_response = re.sub(r'[xXyY]\d', '', response)
                 numericals = re.findall(r'\d+', clean_response)
             assert len(numericals) >= 2
+            
+            print(f"[Grounder] 匹配到的坐标: {numericals}")
+
             local_x, local_y = self._resize_coordinates([int(numericals[0]), int(numericals[1])], width=cur_width, height=cur_height)
             
             # 计算当前的全局坐标 = 局部坐标 + 之前的累计偏移
             final_global_x = local_x + global_offset_x
             final_global_y = local_y + global_offset_y
 
-            # if 'claude' in self.engine_params_for_grounder['model']:
-            #     final_global_x = int(final_global_x * self.screen_width / self.width)
-            #     final_global_y = int(final_global_y * self.screen_height / self.height)
 
             # 调用 enhance_observation 获取裁剪后的图,偏移量与新图长宽
             cur_screenshot, delta_x, delta_y, cur_width, cur_height = enhance_observation(

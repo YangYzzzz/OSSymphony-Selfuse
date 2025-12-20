@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import copy
+=======
+>>>>>>> 10d8cd6301458e67191c93e37dedc1ae8794c455
 import json
 import logging
 import os
@@ -13,7 +16,7 @@ from openai import (
     OpenAI,
     RateLimitError,
 )
-
+logger = logging.getLogger("desktopenv.agents.engine")
 
 logger = logging.getLogger("desktopenv.agents.engine")
 
@@ -111,11 +114,11 @@ class LMMEngineOpenAI(LMMEngine):
                     default_headers=custom_headers
                 )
 
+        # print(**kwargs)
         payload_size = len(json.dumps(messages)) / 1024 / 1024
         logger.info(f"Payload size: {len(json.dumps(messages)) / 1024 / 1024:.2f} MB")
         if payload_size > 30:
-            payload_check = beauty_print(messages)
-            logger.info(f"Payload Check: {payload_check}")
+            logger.info("Payload size exceeds 30MB!!!")
             
         result = self.llm_client.chat.completions.create(
             model=self.model,
