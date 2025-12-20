@@ -392,6 +392,7 @@ class OSACI:
         is_terminal: bool
     ):
         commands = ""
+        # Method1: 复制粘贴流派
         if self.platform != "macos":
             commands += (
                 "original_clipboard = pyperclip.paste();"
@@ -402,7 +403,8 @@ class OSACI:
             commands += "pyperclip.copy(original_clipboard);"
         else:
             commands += f"pyautogui.write({repr(text)}, interval=0.1);"
-
+        # Method2: 直接键入流
+        # commands += f"pyautogui.write({repr(text)}, interval=0.1);"
         return commands
     
     @agent_action

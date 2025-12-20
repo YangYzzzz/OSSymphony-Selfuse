@@ -1377,7 +1377,7 @@ def get_result(target_dir):
             "Professional": ["vscode", "gimp"],
             "Workflow": ["multi_apps"]
         }
-    else:
+    elif "msedge" in raw_stats.keys():
         father_domain_mapping = {
             "Office": ["libreoffice_writer", "libreoffice_calc"],
             "Web Browing": ["msedge", "chrome"],
@@ -1386,7 +1386,11 @@ def get_result(target_dir):
             "Media & Video": ["vlc"],
             "Windows Utilities": ["microsoft_paint",  "clock", "windows_calc", "notepad"]
         }
-
+    else:
+        father_domain_mapping = {
+            "SingleApps": ["calendar", "clock", "finder", "mac_system_settings", "notes", "reminders", "safari", "terminal", "vscode"],
+            "MultiApps": ["multi_app"]
+        }
     if father_domain_mapping:
         for father, children in father_domain_mapping.items():
             father_stats = init_domain_stats()

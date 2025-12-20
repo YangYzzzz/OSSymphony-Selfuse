@@ -279,7 +279,7 @@ class LMMAgent:
         user_message=None,
         messages=None,
         temperature=0.0,
-        max_new_tokens=None,
+        max_new_tokens=32168,
         use_thinking=False,
         **kwargs,
     ):

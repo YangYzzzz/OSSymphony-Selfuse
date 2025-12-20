@@ -51,7 +51,7 @@ class MacOSEnv:
         # Docker 配置
         self.client = docker.from_env()
         self.container = None # 保存容器对象
-        self.ram_size = "16G"
+        self.ram_size = "8G"
         self.cpu_cores = "4"
         # 镜像文件路径
         self.mac_hdd_img_path = path_to_vm
@@ -201,13 +201,11 @@ class MacOSEnv:
         if self.container:
             try:
                 logger.info(f"Stopping container {self.container.short_id}...")
-                self.container.stop(timeout=10)
+                self.container.stop(timeout=300)
                 logger.info("Removing container...")
                 self.container.remove(force=True)
-            except docker.errors.NotFound:
-                logger.info("Container already removed.")
             except Exception as e:
-                logger.warning(f"Error cleaning up container: {e}")
+                logger.warning(f"Error stopping container: {e}")
             finally:
                 self.container = None
                 self.ssh_port = -1
@@ -229,7 +227,7 @@ class MacOSEnv:
             # raise ValueError("SSH client not connected.")
 
         stdin, stdout, stderr = self.ssh_client.exec_command(command)
-
+        
         if decode:
             # logger.info(stdout)
             # logger.info(command)
@@ -521,6 +519,7 @@ class MacOSEnv:
             logger.info(stdout)
             logger.info(_)
 
+        time.sleep(30) # wait for turn on
         disable_caps_lock()
         
         self.init_task_info(task_json_path, task_json_config)
@@ -533,12 +532,13 @@ class MacOSEnv:
         for step in self.task.config:
             step_type = step.get("type")
             parameters = step.get("parameters", {})
-
+            logger.info(f"[Task Set Up] type: {step_type}, parameter: {parameters}, task is setting up!")
             if step_type == "cmd":
                 commands = parameters.get("command", [])
                 for cmd in commands:
                     stdout, _ = self.run_command(cmd)
-                    # logger.info(stdout)
+                    logger.info(f"[Task Set Up]: CMD {cmd} is done!")
+                    logger.info(stdout)
                     # logger.info(_)
             else:
                 try:
@@ -547,6 +547,7 @@ class MacOSEnv:
                         func = getattr(basic_utils, step_type)
                         logger.info(f"Executing: {step_type} with {parameters}")
                         func(self, **parameters)
+                        logger.info(f"[Task Set Up]: Basic utils setup is done!")
                     else:
                         logger.warning(f"Function '{step_type}' not found in utils.basic")
                 except Exception as e:
