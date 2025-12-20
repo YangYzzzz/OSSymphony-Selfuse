@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 import copy
-=======
->>>>>>> 10d8cd6301458e67191c93e37dedc1ae8794c455
 import json
 import logging
 import os

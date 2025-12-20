@@ -97,7 +97,7 @@ class Worker(BaseModule):
             system_prompt=self.orchestrator_sys_prompt
 
         )
-        self.memoryer_agent = ReflectionMemoryAgent(self.engine_params_for_memoryer, max_img_len=self.max_trajectory_length)
+        self.memoryer_agent = ReflectionMemoryAgent(self.engine_params_for_memoryer)
 
         self.rewrite_agent = self._create_agent(
             engine_params=self.engine_params_for_orchestrator,
