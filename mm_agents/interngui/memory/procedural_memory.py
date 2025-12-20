@@ -780,6 +780,7 @@ class PROCEDURAL_MEMORY:
                     * **Shell:** Bash
                     * **Packages:** Install missing packages as needed.
                     * **Note:** Code execution might not be visible on screen immediately. GUI actions (like reopening files) may be needed to see changes.
+                    * **Note:** You have sudo privileges. It is recommended to use sudo when performing Bash actions.
                 """
             )
 

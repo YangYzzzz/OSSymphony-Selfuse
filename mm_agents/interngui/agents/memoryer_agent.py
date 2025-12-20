@@ -408,6 +408,7 @@ class ReflectionMemoryAgent:
                         text_content=text_content,
                         image_content=step.obs['screenshot'] if i in self.active_img_idx else None,     
                         role="user",
+                        put_text_last=False
                     )
                 # print("=" * 30)
                     
@@ -416,6 +417,7 @@ class ReflectionMemoryAgent:
                 text_content=text_content,
                 image_content=cur_obs['screenshot'],
                 role="user",
+                put_text_last=False
             )
             
             required_fields = ["is_milestone", "reflection", "knowledge"]
