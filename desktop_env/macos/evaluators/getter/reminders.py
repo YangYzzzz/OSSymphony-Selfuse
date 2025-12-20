@@ -1,6 +1,6 @@
+import logging
 import paramiko
-from controllers.env import MacOSEnv
-from utils.logger import ProjectLogger
+from desktop_env.macos.controllers.env import MacOSEnv
 from pathlib import Path
 import json
 import time
@@ -9,9 +9,7 @@ from bs4 import BeautifulSoup
 import datetime
 import shlex
 
-script_dir = Path(__file__).resolve().parent.parent
-
-logger = ProjectLogger(log_dir=script_dir / "logs")
+logger = logging.getLogger("desktopenv.env")
 
 
 def reminders_debug(env, reminder_name="111") -> bool:

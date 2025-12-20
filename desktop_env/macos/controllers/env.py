@@ -20,7 +20,7 @@ from desktop_env.macos.launcher.docker.restart_docker import docker_reset_contai
 
 import shlex
 
-logger = logging.getLogger("desktopenv.providers.macos")
+logger = logging.getLogger("desktopenv.env")
 LOCK_TIMEOUT = 1000
 
 class MacOSEnv:

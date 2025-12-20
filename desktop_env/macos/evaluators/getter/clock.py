@@ -1,12 +1,12 @@
 import json
+import logging
 from typing import List
 from desktop_env.macos.controllers.env import MacOSEnv
-from desktop_env.macos.utils.logger import ProjectLogger
 import time
 import datetime
 import pytz
 
-logger = ProjectLogger().get()
+logger = logging.getLogger("desktopenv.env")
 
 def force_close_clock(env: MacOSEnv):
     env.connect_ssh()
