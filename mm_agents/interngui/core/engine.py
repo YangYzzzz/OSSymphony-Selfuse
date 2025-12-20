@@ -1,3 +1,6 @@
+import copy
+import json
+import logging
 import os
 import base64
 import backoff
@@ -10,6 +13,45 @@ from openai import (
     OpenAI,
     RateLimitError,
 )
+logger = logging.getLogger("desktopenv.agents.engine")
+
+logger = logging.getLogger("desktopenv.agents.engine")
+
+def beauty_print(messages):
+    """
+    处理 OpenAI 格式的 messages 列表，将所有的 Base64 图片字符串替换为占位符。
+    
+    Args:
+        messages (list): 原始的 OpenAI messages 列表
+        
+    Returns:
+        list: 处理后的新列表，Base64 已被缩略
+    """
+    # 1. 深拷贝，确保不修改传入的原始变量
+    new_messages = copy.deepcopy(messages)
+    
+    # 2. 遍历消息
+    for msg in new_messages:
+        content = msg.get('content')
+        
+        # OpenAI 的 content 有两种形式：字符串 或 内容块列表
+        if isinstance(content, list):
+            for part in content:
+                # 检查是否是图片类型的块
+                if part.get('type') == 'image_url':
+                    image_url_obj = part.get('image_url', {})
+                    url_str = image_url_obj.get('url', '')
+                    
+                    # 3. 检查是否为 Base64 格式 (通常以 data:image 开头)
+                    if url_str.startswith('data:image'):
+                        # 获取原始长度，方便调试时知道图片大概大小
+                        original_len = len(url_str)
+                        # 替换为填充字符
+                        image_url_obj['url'] = f"<Base64 Image Data (Length: {original_len} chars)>"
+    
+    # 4. 为了达到 "beauty print" 的效果，通常建议在这里打印出来，或者返回对象供外部打印
+    # 这里按照你的要求返回处理后的对象
+    return new_messages
 
 
 class LMMEngine:
@@ -68,7 +110,13 @@ class LMMEngineOpenAI(LMMEngine):
                     organization=organization,
                     default_headers=custom_headers
                 )
-        print(**kwargs)
+
+        # print(**kwargs)
+        payload_size = len(json.dumps(messages)) / 1024 / 1024
+        logger.info(f"Payload size: {len(json.dumps(messages)) / 1024 / 1024:.2f} MB")
+        if payload_size > 30:
+            logger.info("Payload size exceeds 30MB!!!")
+            
         result = self.llm_client.chat.completions.create(
             model=self.model,
             messages=messages,

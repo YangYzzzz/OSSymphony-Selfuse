@@ -830,7 +830,8 @@ def get_unfinished(
                         
                         if not incremental_test:
                             # TODO: 特化一下后面需要修正!!!
-                            if score == 0 and turn != 1:
+                            # if score == 0 and turn != 1:
+                            if score == 0:
                                 # empty all files under example_id
                                 shutil.rmtree(path=example_path, ignore_errors=True)
                             else:

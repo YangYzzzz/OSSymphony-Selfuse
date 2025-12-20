@@ -103,9 +103,9 @@ def calculate_global_stats(root_dir, merge_dirs=None):
         
         for task in tasks:
             total_tasks += 1
-            status, _, _ = _get_best_task_result(root_dir, domain, task, merge_dirs)
+            status, _, score = _get_best_task_result(root_dir, domain, task, merge_dirs)
             if status == 1:
-                total_success += 1
+                total_success += float(score)
                 
     if total_tasks == 0:
         return "### 📊 全局统计: 暂无任务数据"
@@ -195,7 +195,7 @@ def get_tasks_merged(root_dir, domain, compare_dir=None, merge_dirs=None):
         
         # 统计成功数
         if best_status == 1:
-            merged_success_count += 1
+            merged_success_count += float(best_result_str)
 
         # 生成显示的文字
         display_text = "未知"
@@ -1148,12 +1148,12 @@ def get_result(target_dir):
 
     # --- Error/Reflection 统计结构 ---
     # 定义 4 类标签，保持行列一致
-    MATRIX_LABELS = ["GUI Operation Error", "Lack of Tutorial", "Code Error", "None/Other"]
-
+    COLUMN_LABELS = ["GUI Operation Error", "Lack of Tutorial", "Code Error", "Other Error", "None"]
+    ROW_LABELS = ["GUI Error", "Loop Error", "None"]
     def init_error_stats():
         return {
             # 这是一个 4x4 的计数器： matrix[Row_Hint][Col_Reflection] = count
-            'matrix': {r: {c: 0 for c in MATRIX_LABELS} for r in MATRIX_LABELS},
+            'matrix': {r: {c: 0 for c in COLUMN_LABELS} for r in ROW_LABELS},
             'total_steps': 0
         }
 
@@ -1161,12 +1161,13 @@ def get_result(target_dir):
     overall_error_stats = init_error_stats()
 
     # 辅助函数：解析 Reflection Type 归一化为 4 类
-    def parse_reflection_type(ref_str):
-        if not ref_str or ref_str == "None": return "None/Other"
-        if "GUI" in ref_str: return "GUI Operation Error"
-        if "Tutorial" in ref_str: return "Lack of Tutorial"
-        if "Code" in ref_str: return "Code Error"
-        return "None/Other" # 归类为 Other
+    def parse_reflection_type(ref_str: str):
+        if not ref_str or ref_str == "None": return "None"
+        if "gui operation error" in ref_str.lower(): return "GUI Operation Error"
+        if "lack of tutorial" in ref_str.lower(): return "Lack of Tutorial"
+        if "code error" in ref_str.lower(): return "Code Error"
+        if "other error" in ref_str.lower(): return "Other Error"
+        return "None" # 归类为 Other
 
     print("Starting analysis...")
     # --- Data Collection Loop ---
@@ -1214,112 +1215,111 @@ def get_result(target_dir):
                 
                 all_result_for_analysis[domain][example_id]["score"] = final_result
 
-            # --- 2. Process Trajectory for Action and Step Statistics ---
-            traj_file = os.path.join(example_path, "traj.jsonl")
-            step_count = 0 # 默认为 0
-            if os.path.exists(traj_file):
-                try:
-                    with open(traj_file, "r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                        step_count = len(lines) # 获取步数
-                        all_result_for_analysis[domain][example_id]["step"] = step_count
-                        
-                        for line in lines:
-                            try:
-                                data = json.loads(line)
-                                plan_code = data.get("response", {}).get("plan_code") or data.get("plan_code")
-                                
-                                # 模拟 action 获取
-                                action = "unknown"
-                                if plan_code: action = plan_code.split('(')[0]
-
-                                if action:
-                                    overall_action_counts[action] += 1
-                                    domain_action_counts[domain][action] += 1
-                                if "call_search_agent" in action:
-                                    with open(os.path.join(example_path, "search.txt"), "w", encoding="utf-8") as f:
-                                        f.write("1")
-                                if "call_code_agent" in action:
-                                    with open(os.path.join(example_path, "code.txt"), "w", encoding="utf-8") as f:
-                                        f.write("1")
-
-                                # --- ErrorType 统计逻辑 (Updated for Heatmap) ---
-                                reflection_data = data.get("response", {}).get("reflection", {})
-                                error_hint = reflection_data.get("hint", {})
-                                
-                                # 1. 确定 Ground Truth (Hint) - Row
-                                # 优先级：如果有明确的 True，取第一个；如果全 False，则为 None/Other
-                                gui_hint = error_hint.get("gui_operation_error", False)
-                                lack_of_tutorial_hint = error_hint.get("lack_of_tutorial", False)
-                                code_hint = error_hint.get("code_error", False)
-
-                                row_label = "None/Other"
-                                if gui_hint: row_label = "GUI Operation Error"
-                                elif lack_of_tutorial_hint: row_label = "Lack of Tutorial"
-                                elif code_hint: row_label = "Code Error"
-                                
-                                # 2. 确定 Prediction (Reflection) - Column
-                                raw_ref_type = reflection_data.get("reflection", "None")
-                                col_label = parse_reflection_type(raw_ref_type)
-
-                                # 3. 更新统计
-                                # Domain Level
-                                domain_error_stats[domain]['total_steps'] += 1
-                                domain_error_stats[domain]['matrix'][row_label][col_label] += 1
-
-                                # Overall Level
-                                overall_error_stats['total_steps'] += 1
-                                overall_error_stats['matrix'][row_label][col_label] += 1
-
-                            except (json.JSONDecodeError, AttributeError): continue
-                except Exception as e:
-                    print(f"Warning: Could not read or process trajectory file {traj_file}. Error: {e}")
-            
-            # --- 新增：填充详细统计数据 ---
-            # 1. 填入对应类型 (Feasible 或 Infeasible)
-            raw_stats[domain][task_type]['scores'].append(final_result)
-            raw_stats[domain][task_type]['steps'].append(step_count)
-            # 2. 填入 All 类型
-            raw_stats[domain]['all']['scores'].append(final_result)
-            raw_stats[domain]['all']['steps'].append(step_count)
-
-
-            # --- 3. Process Token Usage ---
-            token_log_file = os.path.join(example_path, "token.jsonl")
-            if os.path.exists(token_log_file):
-                task_token_summary = {}
-                try:
-                    with open(token_log_file, "r", encoding="utf-8") as f:
-                        for line in f:
-                            try:
-                                data = json.loads(line.strip())
-                                agent_name = data.get("agent_name")
-                                if not agent_name: continue
-                                if agent_name not in task_token_summary:
-                                    task_token_summary[agent_name] = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
-                                task_token_summary[agent_name]["completion_tokens"] += data.get("completion_tokens", 0)
-                                task_token_summary[agent_name]["prompt_tokens"] += data.get("prompt_tokens", 0)
-                                task_token_summary[agent_name]["total_tokens"] += data.get("total_tokens", 0)
-                            except (json.JSONDecodeError, AttributeError): continue
-                    
-                    if task_token_summary:
-                        task_token_output_path = os.path.join(example_path, "token.json")
-                        with open(task_token_output_path, "w", encoding="utf-8") as f:
-                            json.dump(task_token_summary, f, indent=4)
-                        
-                        for agent, tokens in task_token_summary.items():
-                            if agent not in domain_token_stats[domain]:
-                                domain_token_stats[domain][agent] = {'prompt': [], 'completion': []}
-                            domain_token_stats[domain][agent]['prompt'].append(tokens['prompt_tokens'])
-                            domain_token_stats[domain][agent]['completion'].append(tokens['completion_tokens'])
+                # --- 2. Process Trajectory for Action and Step Statistics ---
+                traj_file = os.path.join(example_path, "traj.jsonl")
+                step_count = 0 # 默认为 0
+                if os.path.exists(traj_file):
+                    try:
+                        with open(traj_file, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                            step_count = len(lines) # 获取步数
+                            all_result_for_analysis[domain][example_id]["step"] = step_count
                             
-                            if agent not in overall_token_stats:
-                                overall_token_stats[agent] = {'prompt': [], 'completion': []}
-                            overall_token_stats[agent]['prompt'].append(tokens['prompt_tokens'])
-                            overall_token_stats[agent]['completion'].append(tokens['completion_tokens'])
+                            for line in lines:
+                                try:
+                                    data = json.loads(line)
+                                    plan_code = data.get("response", {}).get("plan_code") or data.get("plan_code")
+                                    
+                                    # 模拟 action 获取
+                                    action = "unknown"
+                                    if plan_code: action = plan_code.split('(')[0]
 
-                except Exception as e:
-                    print(f"Warning: Could not process token file {token_log_file}. Error: {e}")
+                                    if action:
+                                        overall_action_counts[action] += 1
+                                        domain_action_counts[domain][action] += 1
+                                    if "call_search_agent" in action:
+                                        with open(os.path.join(example_path, "search.txt"), "w", encoding="utf-8") as f:
+                                            f.write("1")
+                                    if "call_code_agent" in action:
+                                        with open(os.path.join(example_path, "code.txt"), "w", encoding="utf-8") as f:
+                                            f.write("1")
+
+                                    # --- ErrorType 统计逻辑 (Updated for Heatmap) ---
+                                    reflection_data = data.get("response", {}).get("reflection", {})
+                                    error_hint = reflection_data.get("hint", {})
+                                    
+                                    # 1. 确定 Ground Truth (Hint) - Row
+                                    # 优先级：如果有明确的 True，取第一个；如果全 False，则为 None/Other
+                                    gui_hint = error_hint.get("gui_operation_error", False)
+                                    lack_of_tutorial_hint = error_hint.get("lack_of_tutorial", False)
+                                    code_hint = error_hint.get("code_error", False)
+
+                                    row_label = "None"
+                                    if gui_hint: row_label = "GUI Error"
+                                    elif lack_of_tutorial_hint: row_label = "Loop Error"
+                                    
+                                    # 2. 确定 Prediction (Reflection) - Column
+                                    raw_ref_type = reflection_data.get("reflection", "None")
+                                    col_label = parse_reflection_type(raw_ref_type)
+
+                                    # 3. 更新统计
+                                    # Domain Level
+                                    domain_error_stats[domain]['total_steps'] += 1
+                                    domain_error_stats[domain]['matrix'][row_label][col_label] += 1
+
+                                    # Overall Level
+                                    overall_error_stats['total_steps'] += 1
+                                    overall_error_stats['matrix'][row_label][col_label] += 1
+
+                                except (json.JSONDecodeError, AttributeError): continue
+                    except Exception as e:
+                        print(f"Warning: Could not read or process trajectory file {traj_file}. Error: {e}")
+            
+                # --- 新增：填充详细统计数据 ---
+                # 1. 填入对应类型 (Feasible 或 Infeasible)
+                raw_stats[domain][task_type]['scores'].append(final_result)
+                raw_stats[domain][task_type]['steps'].append(step_count)
+                # 2. 填入 All 类型
+                raw_stats[domain]['all']['scores'].append(final_result)
+                raw_stats[domain]['all']['steps'].append(step_count)
+
+
+                # --- 3. Process Token Usage ---
+                token_log_file = os.path.join(example_path, "token.jsonl")
+                if os.path.exists(token_log_file):
+                    task_token_summary = {}
+                    try:
+                        with open(token_log_file, "r", encoding="utf-8") as f:
+                            for line in f:
+                                try:
+                                    data = json.loads(line.strip())
+                                    agent_name = data.get("agent_name")
+                                    if not agent_name: continue
+                                    if agent_name not in task_token_summary:
+                                        task_token_summary[agent_name] = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+                                    task_token_summary[agent_name]["completion_tokens"] += data.get("completion_tokens", 0)
+                                    task_token_summary[agent_name]["prompt_tokens"] += data.get("prompt_tokens", 0)
+                                    task_token_summary[agent_name]["total_tokens"] += data.get("total_tokens", 0)
+                                except (json.JSONDecodeError, AttributeError): continue
+                        
+                        if task_token_summary:
+                            task_token_output_path = os.path.join(example_path, "token.json")
+                            with open(task_token_output_path, "w", encoding="utf-8") as f:
+                                json.dump(task_token_summary, f, indent=4)
+                            
+                            for agent, tokens in task_token_summary.items():
+                                if agent not in domain_token_stats[domain]:
+                                    domain_token_stats[domain][agent] = {'prompt': [], 'completion': []}
+                                domain_token_stats[domain][agent]['prompt'].append(tokens['prompt_tokens'])
+                                domain_token_stats[domain][agent]['completion'].append(tokens['completion_tokens'])
+                                
+                                if agent not in overall_token_stats:
+                                    overall_token_stats[agent] = {'prompt': [], 'completion': []}
+                                overall_token_stats[agent]['prompt'].append(tokens['prompt_tokens'])
+                                overall_token_stats[agent]['completion'].append(tokens['completion_tokens'])
+
+                    except Exception as e:
+                        print(f"Warning: Could not process token file {token_log_file}. Error: {e}")
 
     # --- Result Summary and JSON Output ---
     if not all_result:
@@ -1377,7 +1377,7 @@ def get_result(target_dir):
             "Professional": ["vscode", "gimp"],
             "Workflow": ["multi_apps"]
         }
-    else:
+    elif "msedge" in raw_stats.keys():
         father_domain_mapping = {
             "Office": ["libreoffice_writer", "libreoffice_calc"],
             "Web Browing": ["msedge", "chrome"],
@@ -1386,7 +1386,11 @@ def get_result(target_dir):
             "Media & Video": ["vlc"],
             "Windows Utilities": ["microsoft_paint",  "clock", "windows_calc", "notepad"]
         }
-
+    else:
+        father_domain_mapping = {
+            "SingleApps": ["calendar", "clock", "finder", "mac_system_settings", "notes", "reminders", "safari", "terminal", "vscode"],
+            "MultiApps": ["multi_app"]
+        }
     if father_domain_mapping:
         for father, children in father_domain_mapping.items():
             father_stats = init_domain_stats()
@@ -1485,20 +1489,32 @@ def get_result(target_dir):
         except Exception as e: print(f"Error generating success rate plot: {e}")
 
 
-    # Plot 4: Step Distribution Histograms
+    # --- Plot 4: Step Distribution Histograms ---
     step_stats = {'overall': {'success_steps': [], 'failure_steps': []}}
     for domain, tasks in all_result_for_analysis.items():
         if domain not in step_stats: step_stats[domain] = {'success_steps': [], 'failure_steps': []}
         for task_id, data in tasks.items():
             if data.get('score') is not None and data.get('step') is not None:
-                if data['score'] > 0.0: step_stats[domain]['success_steps'].append(data['step']); step_stats['overall']['success_steps'].append(data['step'])
-                else: step_stats[domain]['failure_steps'].append(data['step']); step_stats['overall']['failure_steps'].append(data['step'])
-    # print("="* 30, "Step Statistics: \n", "="* 30, step_stats)
+                if data['score'] > 0.0: 
+                    step_stats[domain]['success_steps'].append(data['step'])
+                    step_stats['overall']['success_steps'].append(data['step'])
+                else: 
+                    step_stats[domain]['failure_steps'].append(data['step'])
+                    step_stats['overall']['failure_steps'].append(data['step'])
+
     for name, data in step_stats.items():
         save_path = os.path.join(target_dir, 'overall_step_distribution.png' if name == 'overall' else f'step_distribution_{name}.png')
         title = f"{'Overall' if name == 'overall' else 'Domain: ' + name} Task Outcome by Number of Steps"
         try:
             # 假设 plot_step_histogram 存在
+            if name == "overall":
+                overall_step_stat = {
+                    "success_steps": data['success_steps'],
+                    "failure_steps": data['failure_steps']
+                }
+                with open(os.path.join(target_dir, "step_stat.json"), "w", encoding="utf-8") as f:
+                    json.dump(overall_step_stat, f, indent=4)
+                # print(f"Success Step: {data['success_steps']}, Failure Step: {data['failure_steps']}")
             plot_step_histogram(data['success_steps'], data['failure_steps'], title, save_path)
         except NameError:
             # 如果外部没有定义该函数，跳过
@@ -1538,12 +1554,11 @@ def get_result(target_dir):
             return
 
         # 准备数据矩阵 (4x4)
-        labels = MATRIX_LABELS # ["GUI Operation Error", "Lack of Tutorial", "Code Error", "None/Other"]
         data_matrix = []
         
-        for row_label in labels:
+        for row_label in ROW_LABELS:
             row_data = []
-            for col_label in labels:
+            for col_label in COLUMN_LABELS:
                 row_data.append(stats['matrix'][row_label][col_label])
             data_matrix.append(row_data)
         
@@ -1557,13 +1572,13 @@ def get_result(target_dir):
         im = ax.imshow(data_np, cmap='Blues')
 
         # 设置坐标轴
-        ax.set_xticks(np.arange(len(labels)))
-        ax.set_yticks(np.arange(len(labels)))
+        ax.set_xticks(np.arange(len(COLUMN_LABELS)))
+        ax.set_yticks(np.arange(len(ROW_LABELS)))
         
         # 标签换行处理，防止重叠
-        formatted_labels = [l.replace(" ", "\n") for l in labels]
+        formatted_labels = [l.replace(" ", "\n") for l in COLUMN_LABELS]
         ax.set_xticklabels(formatted_labels, fontsize=10)
-        ax.set_yticklabels(labels, fontsize=10)
+        ax.set_yticklabels(ROW_LABELS, fontsize=10)
 
         # 轴标题
         ax.set_xlabel("Agent Reflection (Predicted)", fontsize=12, fontweight='bold')
@@ -1585,8 +1600,8 @@ def get_result(target_dir):
         
         total_count = data_np.sum()
 
-        for i in range(len(labels)): # Row
-            for j in range(len(labels)): # Col
+        for i in range(len(ROW_LABELS)): # Row
+            for j in range(len(COLUMN_LABELS)): # Col
                 count = data_np[i, j]
                 # 计算该格子的百分比 (占总步数的比例)
                 pct = (count / total_count * 100) if total_count > 0 else 0
@@ -1604,6 +1619,7 @@ def get_result(target_dir):
         print(f"Saved error heatmap to {save_path}")
 
     # Generate Overall Plot
+    print(f'Overall Error Stats: {overall_error_stats}')
     plot_confusion_heatmap(overall_error_stats, "Overall", os.path.join(target_dir, "overall_error_analysis_heatmap.png"))
 
     # Generate Per-Domain Plots

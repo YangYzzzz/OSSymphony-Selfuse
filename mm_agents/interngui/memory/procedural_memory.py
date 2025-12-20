@@ -218,6 +218,32 @@ class PROCEDURAL_MEMORY:
                 """
             )
 
+        elif platform == "linux" and not has_set_cell_values:
+            procedural_memory += textwrap.dedent(
+            f"""\
+                ---
+                # 2. ACTION RULES
+                ## 2.1 Core Execution Constraints
+                - **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
+                - **No Interaction with User**: You MUST complete the task individually. There is **NO** additional input from someone else.
+                - **Password**: Your sudo password is "password".
+
+                ## 2.2 Interaction & Input Guidelines
+                - **Guideline for Clicks**: 
+                    - **VISIBILITY CHECK (CRITICAL)**: You must strictly ONLY click on elements that are **clearly visible** in the current screenshot. Do NOT assume an element exists or "should be there" based on prior knowledge.
+                    - The `element_description` for `agent.click()` must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
+                - **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
+                - **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
+
+                ## 2.3 Efficiency & Tool Usage
+                - **Efficiency is Key**:
+                    - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
+                    - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps.
+                    - You MUST use Code agent when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
+                - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
+                """
+            )
+
         elif platform == "windows":
             procedural_memory += textwrap.dedent(
             f"""\
@@ -302,7 +328,7 @@ class PROCEDURAL_MEMORY:
             --- TUTORIALS START ---
             TUTORIAL_PLACEHOLDER
             --- TUTORIALS END ---
-            5. Access to the following class and methods to interact with the UI:
+            5. Access to the following class and methods to interact with the UI. You MUST select only one action to execute at a time.
             class Agent:
             """
         )
@@ -754,6 +780,7 @@ class PROCEDURAL_MEMORY:
                     * **Shell:** Bash
                     * **Packages:** Install missing packages as needed.
                     * **Note:** Code execution might not be visible on screen immediately. GUI actions (like reopening files) may be needed to see changes.
+                    * **Note:** You have sudo privileges. It is recommended to use sudo when performing Bash actions.
                 """
             )
 

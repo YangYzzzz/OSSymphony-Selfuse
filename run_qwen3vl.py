@@ -14,6 +14,7 @@ from multiprocessing import current_process
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
+from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 
 # Global variables for signal handling
@@ -275,8 +276,16 @@ def run_env_tasks(
                                 in ["a11y_tree", "screenshot_a11y_tree", "som"],
                 provider_name=args.provider_name
             )
-        else:
-            pass
+        elif args.benchmark == "macosarena":
+            path_to_vm = args.path_to_vm.split(" ")[0]
+            path_to_base_vm = args.path_to_vm.split(" ")[1]
+            # 默认 1920 x 1080，目前不支持修改分辨率
+            env = MacOSArenaDesktopEnv(
+                path_to_vm=path_to_vm,
+                path_to_base_vm=path_to_base_vm,
+                action_space=args.action_space,
+                provider_name=args.provider_name
+            )
 
         active_environments.append(env)
         agent = Qwen3VLAgent(
@@ -299,7 +308,7 @@ def run_env_tasks(
             domain, example_id = item
             try:
                 config_file = os.path.join(
-                    args.test_config_base_dir, f"waa/examples/{domain}/{example_id}.json"
+                    args.test_config_base_dir, f"{args.benchmark}/examples/{domain}/{example_id}.json"
                 )
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
@@ -412,7 +421,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
             p = Process(
                 target=run_env_tasks,
                 args=(task_queue, args, shared_scores, worker_id),
-                name=f"EnvProcess-{i+1}"
+                name=f"EnvProcess-{worker_id+1}"
             )
             p.daemon = True
             p.start()

@@ -392,6 +392,7 @@ class OSACI:
         is_terminal: bool
     ):
         commands = ""
+        # Method1: 复制粘贴流派
         if self.platform != "macos":
             commands += (
                 "original_clipboard = pyperclip.paste();"
@@ -402,7 +403,8 @@ class OSACI:
             commands += "pyperclip.copy(original_clipboard);"
         else:
             commands += f"pyautogui.write({repr(text)}, interval=0.1);"
-
+        # Method2: 直接键入流
+        # commands += f"pyautogui.write({repr(text)}, interval=0.1);"
         return commands
     
     @agent_action
@@ -510,7 +512,10 @@ class OSACI:
         command = "import pyautogui; import time;"
         command += f"pyautogui.moveTo({x1}, {y1}); "
         # 提前点一下, 模拟选中文本框(应该不会产生副作用)
-        command += f"pyautogui.click({x1}, {y1}, clicks=2); time.sleep(1.0); pyautogui.click({x1}, {y1}); time.sleep(1.0);"
+        command += (
+            f"pyautogui.click({x1}, {y1}, clicks=2);"
+            f"time.sleep(1.0); pyautogui.click({x1}, {y1}); time.sleep(1.0);"
+        )
         command += f"pyautogui.dragTo({x2}, {y2}, duration=5., button='{button}'); time.sleep(0.5); pyautogui.mouseUp(); "
 
         if text:
