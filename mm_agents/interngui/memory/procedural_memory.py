@@ -263,8 +263,6 @@ class PROCEDURAL_MEMORY:
                 - **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
                 - **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
 
-<<<<<<< HEAD
-=======
                 ## 2.3 Efficiency & Tool Usage
                 - **Efficiency is Key**:
                     - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
@@ -276,7 +274,6 @@ class PROCEDURAL_MEMORY:
         else:
             pass
         
->>>>>>> main
         procedural_memory += textwrap.dedent(
             """
             - **Search Usage**: When the overall execution logic appears flawed, or if you are unable to accomplish the task after multiple attempts (indicating a lack of specific know-how), or if the Reflection Agent reports a "Lack of Tutorial" error, invoke the Search Agent to retrieve detailed online tutorials for further guidance.
