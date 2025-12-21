@@ -14,6 +14,7 @@ class OSSymphony:
         engine_params_for_memoryer: Dict,
         os_aci: OSACI,
         platform: str = platform.system().lower(),
+        client_password: str = "",
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
     ):
@@ -30,6 +31,7 @@ class OSSymphony:
         self.engine_params_for_memoryer = engine_params_for_memoryer
         self.os_aci: OSACI = os_aci
         self.platform =platform
+        self.client_password = client_password
         self.max_trajectory_length = max_trajectory_length
         self.enable_reflection = enable_reflection
 
@@ -42,6 +44,7 @@ class OSSymphony:
             engine_params_for_memoryer=self.engine_params_for_memoryer,
             os_aci=self.os_aci,
             platform=self.platform,
+            client_password=self.client_password,
             max_trajectory_length=self.max_trajectory_length,
             enable_reflection=self.enable_reflection,
         )

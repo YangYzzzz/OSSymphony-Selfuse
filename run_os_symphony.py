@@ -9,6 +9,8 @@ import sys
 import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
+
+from flask import cli
 from mm_agents.os_symphony.agents.os_symphony import OSSymphony
 from mm_agents.os_symphony.agents.os_aci import OSACI
 import lib_run_single
@@ -213,6 +215,7 @@ def run_env_tasks(
             env=env, 
             search_env=search_env,
             platform=platform,
+            client_password=args.client_password,
             engine_params_for_ocr=engine_params_for_ocr, 
             engine_params_for_grounder=engine_params_for_grounder,
             engine_params_for_coder=engine_params_for_coder,
@@ -225,6 +228,7 @@ def run_env_tasks(
             engine_params_for_memoryer,
             os_aci,
             platform=platform,
+            client_password=args.client_password,
             max_trajectory_length=args.max_trajectory_length,
             enable_reflection=args.enable_reflection,
         )

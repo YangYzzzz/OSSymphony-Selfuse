@@ -29,6 +29,7 @@ class Worker(BaseModule):
         engine_params_for_memoryer: Dict,
         os_aci: OSACI,
         platform: str,
+        client_password: str,
         max_trajectory_length: int = 8,
         enable_reflection: bool = True,
     ):
@@ -47,6 +48,7 @@ class Worker(BaseModule):
                 Whether to enable reflection
         """
         super().__init__(platform=platform)
+        self.client_password = client_password
 
         self.temperature = engine_params_for_orchestrator.get("temperature", 0.0)
         self.tool_config = engine_params_for_orchestrator.get("tool_config", "")
@@ -82,7 +84,7 @@ class Worker(BaseModule):
             skipped_actions=skipped_actions,
             tool_config=self.tool_config,
             platform=self.platform
-        ).replace("CURRENT_OS", self.platform)
+        ).replace("CURRENT_OS", self.platform).replace("CLIENT_PASSWORD", self.client_password)
 
         # Worker contains orchestrator and reflection agent
         self.orchestrator_agent = self._create_agent(
@@ -181,44 +183,50 @@ class Worker(BaseModule):
 
             self.orchestrator_agent.add_system_prompt(prompt_with_instructions)
         
+        # print(self.orchestrator_agent.system_prompt)
 
         ### Reflection Part
-        # set instruction to memory agent
-        self.memoryer_agent.add_instruction(instruction)
-        reflection = None
-        # Differentiate the operation mode of last step
-        last_code_summary = ""
-        mode = "gui"
-        if (
-            hasattr(self.os_aci, "last_code_agent_result")
-            and self.os_aci.last_code_agent_result is not None
-        ):
-            # If code agent is called last step, we use its execution result as step behavior. 
-            code_result = self.os_aci.last_code_agent_result
-            mode = "code"
-            last_code_summary += f"Subtask Instruction: {code_result['task_instruction']}\nSteps Completed: {code_result['steps_executed']}\nCompletion Reason: {code_result['completion_reason']}\nExec Summary: {code_result['summary']}\n"
-        
-        if (
-            hasattr(self.os_aci, "last_search_agent_result")
-            and self.os_aci.last_search_agent_result is not None
-        ):
-            mode = "search"
-        # retrieve reflection!!!
-        reflection_info = self.memoryer_agent.get_reflection(
-            cur_obs=obs, 
-            # only use the string after "(next action)" in orchestrator's output
-            generator_output=parse_action_from_string(self.worker_history[-1]) if self.turn_count != 0 else "", 
-            coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
-            mode=mode,
-            code_exec_summary=last_code_summary,
-            action_dict=self.action_dict_history[-1] if self.turn_count != 0 else {}
-        )
-        reflection = reflection_info['reflection']
-        logger.info(f'[Reflection]: {reflection}')
-        if reflection:
-            generator_message += f"REFLECTION: You MUST use this reflection on the latest action:\n{reflection}\n"
-        else:
+        reflection_info = {}
+        if self.enable_reflection:
+            # set instruction to memory agent
+            self.memoryer_agent.add_instruction(instruction)
+            reflection = None
+            # Differentiate the operation mode of last step
+            last_code_summary = ""
+            mode = "gui"
+            if (
+                hasattr(self.os_aci, "last_code_agent_result")
+                and self.os_aci.last_code_agent_result is not None
+            ):
+                # If code agent is called last step, we use its execution result as step behavior. 
+                code_result = self.os_aci.last_code_agent_result
+                mode = "code"
+                last_code_summary += f"Subtask Instruction: {code_result['task_instruction']}\nSteps Completed: {code_result['steps_executed']}\nCompletion Reason: {code_result['completion_reason']}\nExec Summary: {code_result['summary']}\n"
+            
+            if (
+                hasattr(self.os_aci, "last_search_agent_result")
+                and self.os_aci.last_search_agent_result is not None
+            ):
+                mode = "search"
+            # retrieve reflection!!!
+            reflection_info = self.memoryer_agent.get_reflection(
+                cur_obs=obs, 
+                # only use the string after "(next action)" in orchestrator's output
+                generator_output=parse_action_from_string(self.worker_history[-1]) if self.turn_count != 0 else "", 
+                coordinates=self.coords_history[-1] if self.turn_count != 0 else [],
+                mode=mode,
+                code_exec_summary=last_code_summary,
+                action_dict=self.action_dict_history[-1] if self.turn_count != 0 else {}
+            )
+            reflection = reflection_info['reflection']
+            logger.info(f'[Reflection]: {reflection}')
+            if reflection:
+                generator_message += f"REFLECTION: You MUST use this reflection on the latest action:\n{reflection}\n"
+            else:
+                generator_message += "You should go on with your plan.\n"
+        else: 
             generator_message += "You should go on with your plan.\n"
+
 
         # Add code agent result from previous step if available (from full task or subtask execution)
         if (

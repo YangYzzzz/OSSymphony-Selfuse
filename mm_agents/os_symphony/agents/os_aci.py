@@ -44,6 +44,7 @@ class OSACI:
         env,
         search_env,
         platform: str,
+        client_password: str,
         engine_params_for_ocr: Dict,
         engine_params_for_grounder: Dict,
         engine_params_for_coder: Dict,
@@ -69,7 +70,8 @@ class OSACI:
         # Configure code agent
         self.coder_agent = CoderAgent(
             engine_params=engine_params_for_coder,
-            platform=self.platform
+            platform=self.platform,
+            client_password=client_password
         )
 
         # Configure search agent
