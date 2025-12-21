@@ -156,6 +156,7 @@ def run_env_tasks(
                 in ["a11y_tree", "screenshot_a11y_tree", "som"],
                 enable_proxy=True,
                 client_password=getattr(args, "client_password", ""),
+                proxy=args.proxy
             )
             env.start()
             
@@ -177,7 +178,8 @@ def run_env_tasks(
                 headless=args.headless,
                 require_a11y_tree=args.observation_type
                                 in ["a11y_tree", "screenshot_a11y_tree", "som"],
-                provider_name=args.provider_name
+                provider_name=args.provider_name,
+                proxy=args.proxy
             )
 
             platform = "windows"
@@ -207,6 +209,7 @@ def run_env_tasks(
             in ["a11y_tree", "screenshot_a11y_tree", "som"],
             enable_proxy=True,
             client_password=getattr(args, "client_password", ""),
+            proxy=args.proxy
         )
 
         engine_params_for_ocr = copy.deepcopy(engine_params_for_orchestrator)
@@ -398,6 +401,9 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--client_password", type=str, default="password", help="Client password for OSWorld. Aws is 'osworld-public-evaluation', other is 'password'"
+    )
+    parser.add_argument(
+        "--proxy", type=str, default="http://10.1.8.5:23128", help="Important! Proxy setting, format should be http://<ip>:<port>, if no-use, set it empty"
     )
 
     # agent config

@@ -27,7 +27,14 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class SetupController:
-    def __init__(self, vm_ip: str, cache_dir: str, server_port: int = 5000, chromium_port: int = 9222):
+    def __init__(
+            self, 
+            vm_ip: str, 
+            cache_dir: str, 
+            server_port: int = 5000, 
+            chromium_port: int = 9222,
+            proxy: str = ""
+        ):
         """
         Changed: Added 'port' and 'chromium_port' to support dynamic docker port mapping.
         """
@@ -37,6 +44,7 @@ class SetupController:
         self.http_server: str = f"http://{vm_ip}:{server_port}"
         self.http_server_setup_root: str = f"http://{vm_ip}:{server_port}/setup"
         self.cache_dir: str = cache_dir
+        self.proxy = proxy
 
     def update_connection_info(self, vm_ip: str, server_port: int, chromium_port: int):
         """
@@ -262,7 +270,8 @@ class SetupController:
             command = command.split()
 
         if isinstance(command, list) and command[0] == "google-chrome":
-            command.append("--proxy-server=http://10.1.8.5:23128")  # Use the proxy server set up by _proxy_setup
+            if self.proxy:
+                command.append(f"--proxy-server={self.proxy}")  # Use the proxy server set up by _proxy_setup
             command.append("--user-data-dir=C:\\Users\\Docker\\AppData\\Local\\Google\\Chrome\\Temp User Data")
 
         payload = json.dumps({"command": command, "shell": shell})

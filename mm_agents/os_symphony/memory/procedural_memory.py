@@ -631,6 +631,7 @@ class PROCEDURAL_MEMORY:
                 # 2. Environment & Execution
                     * **Platform:** MacOS(Darwin)
                     * **User:** "pipiwu"
+                    * **Password:** "1234"
                     * **Home:** "/Users/pipiwu"
                     * **Shell:** Bash
                     * **Packages:** Install missing packages as needed.

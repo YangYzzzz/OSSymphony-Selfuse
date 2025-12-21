@@ -109,8 +109,9 @@ class DesktopEnv(gym.Env):
             require_a11y_tree: bool = True,
             require_terminal: bool = False,
             os_type: str = "Ubuntu",
-            enable_proxy: bool = False,
+            enable_proxy: bool = False, # No Use
             client_password: str = "",
+            proxy: str = ""
     ):
         """
         Args:
@@ -127,6 +128,7 @@ class DesktopEnv(gym.Env):
             require_terminal (bool): whether to require terminal output
             os_type (str): operating system type, default to "Ubuntu"
             enable_proxy (bool): whether to enable proxy support, default to False
+            client_password(str): password of the environment
         """
         # Initialize VM manager and vitualization provider
         self.region = region
@@ -167,6 +169,9 @@ class DesktopEnv(gym.Env):
 
         # Initialize environment variables
         self.path_to_vm = path_to_vm
+        self.proxy = proxy # http://<ip>:<port>
+        self.proxy_ip = self.proxy.split("//")[-1].split(":")[0] if self.proxy else ""
+        self.proxy_port = self.proxy.split(":")[-1] if self.proxy else ""
 
         self.snapshot_name = snapshot_name
         self.cache_dir_base: str = cache_dir
@@ -218,8 +223,23 @@ class DesktopEnv(gym.Env):
                 self.chromium_port = int(vm_ip_ports[2])
                 self.vnc_port = int(vm_ip_ports[3])
                 self.vlc_port = int(vm_ip_ports[4])
-            self.controller = PythonController(vm_ip=self.vm_ip, server_port=self.server_port, width=self.screen_width, height=self.screen_height)
-            self.setup_controller = SetupController(vm_ip=self.vm_ip, server_port=self.server_port, chromium_port=self.chromium_port, vlc_port=self.vlc_port, cache_dir=self.cache_dir_base, client_password=self.client_password, screen_width=self.screen_width, screen_height=self.screen_height)
+            self.controller = PythonController(
+                vm_ip=self.vm_ip, 
+                server_port=self.server_port, 
+                width=self.screen_width, 
+                height=self.screen_height
+            )
+            self.setup_controller = SetupController(
+                vm_ip=self.vm_ip, 
+                server_port=self.server_port, 
+                chromium_port=self.chromium_port, 
+                vlc_port=self.vlc_port, 
+                cache_dir=self.cache_dir_base, 
+                client_password=self.client_password, 
+                screen_width=self.screen_width, 
+                screen_height=self.screen_height,
+                proxy=self.proxy
+            )
 
         except Exception as e:
             try:
@@ -286,16 +306,17 @@ class DesktopEnv(gym.Env):
             else:
                 logger.info("Environment is clean, skipping snapshot revert (provider: {}).".format(self.provider_name))
 
-            system_proxy_commands = [
-                ["gsettings", "set", "org.gnome.system.proxy", "mode", "'manual'"],
-                ["gsettings", "set", "org.gnome.system.proxy.http", "host", "'10.1.8.5'"],
-                ["gsettings", "set", "org.gnome.system.proxy.http", "port", "23128"],
-                ["gsettings", "set", "org.gnome.system.proxy.https", "host", "'10.1.8.5'"],
-                ["gsettings", "set", "org.gnome.system.proxy.https", "port", "23128"]
-            ]
-            # Notice: Modified by Yang. Global Proxy set up!
-            for system_proxy_command in system_proxy_commands:
-                self.setup_controller._execute_setup(system_proxy_command)
+            if self.proxy:
+                system_proxy_commands = [
+                    ["gsettings", "set", "org.gnome.system.proxy", "mode", "'manual'"],
+                    ["gsettings", "set", "org.gnome.system.proxy.http", "host", f"'{self.proxy_ip}'"],
+                    ["gsettings", "set", "org.gnome.system.proxy.http", "port", f"{self.proxy_port}"],
+                    ["gsettings", "set", "org.gnome.system.proxy.https", "host", f"'{self.proxy_ip}'"],
+                    ["gsettings", "set", "org.gnome.system.proxy.https", "port", f"{self.proxy_port}"]
+                ]
+                # Notice: Modified by Yang. Global Proxy set up!
+                for system_proxy_command in system_proxy_commands:
+                    self.setup_controller._execute_setup(system_proxy_command)
 
             if task_config is not None:
                 if task_config.get("proxy", False) and self.enable_proxy:

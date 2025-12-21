@@ -101,6 +101,7 @@ class DesktopEnv(gym.Env):
         headless: bool = True,
         require_a11y_tree: bool = True,
         provider_name: str = "docker", # 默认为 docker
+        proxy: str = ""
     ):
         self.screen_size = screen_size
         self.headless = headless
@@ -139,7 +140,7 @@ class DesktopEnv(gym.Env):
         self.controller = PythonController(vm_ip=self.vm_ip, server_port=self.server_port)
         
         # SetupController 通常用于文件传输等，可能也需要端口
-        self.setup_controller = SetupController(vm_ip=self.vm_ip, server_port=self.server_port, chromium_port=self.chromium_port, cache_dir=self.cache_dir_base)
+        self.setup_controller = SetupController(vm_ip=self.vm_ip, server_port=self.server_port, chromium_port=self.chromium_port, cache_dir=self.cache_dir_base, proxy=proxy)
 
         self._traj_no = -1
         self._step_no = 0
