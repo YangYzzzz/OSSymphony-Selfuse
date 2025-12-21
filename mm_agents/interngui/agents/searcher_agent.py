@@ -92,7 +92,7 @@ class VLMSearcherAgent(SearcherAgent):
 
         self.grounder_agent = grounder_agent
         self.env: DesktopEnv = search_env
-
+        self.engine = engine_params.get("engine", "google")
         self.use_thinking = engine_params.get("model", "") in [
             "claude-opus-4-20250514",
             "claude-sonnet-4-20250514",
@@ -157,9 +157,9 @@ class VLMSearcherAgent(SearcherAgent):
         )
         # 启动Search环境, 内部逻辑为若已经实例化则直接返回, 交给下面的reset即可
         self.env.start()
-        # 配置URL并初始化Search环境
-        google_search_url = f"https://www.google.com/search?q=" + urllib.parse.quote_plus(query)
-        self.task_config["config"][2]["parameters"]["urls_to_open"][0] = google_search_url
+        # 配置URL并初始化Search环境 google/duckduckgo
+        search_url = f"https://www.google.com/search?q=" + urllib.parse.quote_plus(query) if self.engine == "google" else f"https://www.duckduckgo.com/?q=" + urllib.parse.quote_plus(query)
+        self.task_config["config"][2]["parameters"]["urls_to_open"][0] = search_url
         self.env.reset(task_config=self.task_config)
 
     def flush_messages(self):
