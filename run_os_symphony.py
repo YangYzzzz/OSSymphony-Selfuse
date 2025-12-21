@@ -14,8 +14,8 @@ from flask import cli
 from mm_agents.os_symphony.agents.os_symphony import OSSymphony
 from mm_agents.os_symphony.agents.os_aci import OSACI
 import lib_run_single
-# from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
-from desktop_env_official.desktop_env import DesktopEnv as OSWorldDesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
+from desktop_env_official.desktop_env import DesktopEnv as OSWorldOfficialDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
 from dotenv import load_dotenv
@@ -143,7 +143,7 @@ def run_env_tasks(
         region = getattr(args, "region", None)
 
         platform = 'linux'
-        if "osworld" in args.benchmark  :
+        if args.benchmark == "osworld":
             env = OSWorldDesktopEnv(
                 path_to_vm=args.path_to_vm,
                 action_space=args.action_space,
@@ -162,7 +162,24 @@ def run_env_tasks(
             env.start()
             
             platform = "linux"
-
+        elif args.benchmark == "osworld_official":
+            env = OSWorldOfficialDesktopEnv(
+                path_to_vm=args.path_to_vm,
+                action_space=args.action_space,
+                provider_name=args.provider_name,
+                region=region,
+                snapshot_name=snapshot_name,
+                screen_size=(args.screen_width, args.screen_height),
+                headless=args.headless,
+                os_type="Ubuntu",
+                require_a11y_tree=args.observation_type
+                in ["a11y_tree", "screenshot_a11y_tree", "som"],
+                enable_proxy=True,
+                client_password=getattr(args, "client_password", ""),
+            )
+            env.start()
+            
+            platform = "linux"
         elif args.benchmark == "waa":
             parent_dir = os.path.dirname(args.path_to_vm.rstrip(os.sep))
             path_to_vm = os.path.join(parent_dir, f"storage_{worker_id}")
