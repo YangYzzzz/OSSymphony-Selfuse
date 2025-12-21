@@ -482,7 +482,7 @@ def config() -> argparse.Namespace:
         "--memoryer_max_images",
         type=int,
         default=9,
-        help="Max images of Memory Agent"
+        help="Max images of memoryer model"
     )
 
     # search model config
