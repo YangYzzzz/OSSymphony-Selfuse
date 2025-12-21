@@ -1,7 +1,7 @@
 # OS-Symphony
 
 
-<img src="./assets/logo.jpg" alt="overview" style="width:40%;" />
+<img src="./assets/logo.jpg" alt="overview" style="width:40%; display: block; margin: 0 auto;" />
 
 
 [![arXiv](https://img.shields.io/badge/arXiv-2412.19723-b31b1b.svg)]() 
