@@ -118,7 +118,6 @@ class PROCEDURAL_MEMORY:
         # if has_code_agent:
         has_search_agent = "call_search_agent" in config.get("tools", {}).keys() and config["tools"]["call_search_agent"].get("enabled", False)
         has_code_agent = "call_code_agent" in config.get("tools", {}).keys() and config["tools"]["call_code_agent"].get("enabled", False)
-        has_set_cell_values = "set_cell_values" in config.get("tools", {}).keys() and config["tools"]["set_cell_values"].get("enabled", False)
 
         gui_section = textwrap.dedent(
         f"""
@@ -184,7 +183,7 @@ class PROCEDURAL_MEMORY:
         first_section = gui_section + search_section + code_section + reflection_section
         procedural_memory += first_section
 
-        if platform == "linux" and has_set_cell_values:
+        if platform == "linux":
             procedural_memory += textwrap.dedent(
             f"""\
                 ---
@@ -192,36 +191,7 @@ class PROCEDURAL_MEMORY:
                 ## 2.1 Core Execution Constraints
                 - **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
                 - **No Interaction with User**: You MUST complete the task individually. There is **NO** additional input from someone else.
-                - **Password**: Your sudo password is "password".
-
-                ## 2.2 Interaction & Input Guidelines
-                - **Guideline for Clicks**: 
-                    - **VISIBILITY CHECK (CRITICAL)**: You must strictly ONLY click on elements that are **clearly visible** in the current screenshot. Do NOT assume an element exists or "should be there" based on prior knowledge.
-                    - The `element_description` for `agent.click()` must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
-                - **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
-                - **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
-                - **Navigation**: To open the browser or file explorer, click the Chrome or Files icon on the left, respectively.
-
-                ## 2.3 Efficiency & Tool Usage
-                - **Efficiency is Key**:
-                    - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
-                    - Prefer the software(libreoffice, etc.)'s built-in FEATURES over executing a series of complex steps.
-                    - You MUST use Code agent or `agent.set_cell_values()`(set_cell_values is only available on Linux platform) when filling table (LibreOffice Calc), instead of manual click-and-type in spreadsheets. 
-                        - When dealing with a small amount of data (1-2 data points) and the table structure is clearly visible (clear rows and columns), use the `agent.set_cell_values()` method. For **large volumes** of data, call the Code Agent.
-                - **Code Usage**: For tasks that are clearly achievable via GUI software, you can take a shortcut and use Code Agent (e.g., using FFMPEG to convert video to GIF, or filling multiple rows in a table); however, for tasks that cannot be accomplished via GUI, do NOT use Code to forcibly complete the task.
-                    - You MUST use Code agent when modifying VS Code settings JSON files or code files such as Python, to maximize the avoidance of syntax errors!
-                """
-            )
-
-        elif platform == "linux" and not has_set_cell_values:
-            procedural_memory += textwrap.dedent(
-            f"""\
-                ---
-                # 2. ACTION RULES
-                ## 2.1 Core Execution Constraints
-                - **Use One Provided Action at a Time**: Execute only one grounded action per turn. Only use the methods provided in the Agent class. Do not invent new methods.
-                - **No Interaction with User**: You MUST complete the task individually. There is **NO** additional input from someone else.
-                - **Password**: Your sudo password is "password".
+                - **Password**: Your sudo password is "CLIENT_PASSWORD".
 
                 ## 2.2 Interaction & Input Guidelines
                 - **Guideline for Clicks**: 
@@ -623,121 +593,8 @@ class PROCEDURAL_MEMORY:
     """
     )
 
-    # TODO: @Yang
-    CODE_AGENT_PROMPT_TMP = textwrap.dedent(
-        """
-    # Core Guidelines:
-    - Execute Python/Bash code step-by-step to progress toward the goal
-    - password "password"
-    - Use sudo with: "echo 'password' | sudo -S [COMMANDS]"
-    - Username: "user"
-    - Home Path: "/home/user"
-    - Print results and handle errors appropriately
-    - Code execution may not show immediately on screen
-
-    # CRITICAL: Incremental Step-by-Step Approach
-    - Break down complex tasks into small, self-contained steps
-    - Each step should contain a single, focused code snippet that advances toward the goal
-    - Code from each step does NOT persist to the next step - write complete, standalone snippets
-    - Example workflow for file modification:
-        * Step 1: Write code to locate the target file (always in the user's home path).
-        * Step 2: Write code to THOROUGHLY inspect/read the original file's contents.
-        * Step 3: Write code to create a temporary file and write the modified content into it.
-        * Step 4: Write code to THOROUGHLY verify the contents of the temporary file are correct.
-        * Step 5: If verified, write code to overwrite the original file with the temporary file (e.g., using `mv` or `shutil.move`).
-        * Step 6: Write code to verify the final state of the original file to confirm the overwrite was successful.
-    - Do NOT write entire scripts in one step - focus on one small task per step
-
-    # CRITICAL: Safe File Modification Strategy (Temp File Method)
-    - ALWAYS perform modifications on a temporary file first to ensure safety and correctness before overwriting the original. This strategy prevents data loss if a modification script fails.
-    - The workflow is: **Create Temp -> Modify Temp -> Verify Temp -> Overwrite Original**.
-    - **1. Create a Temporary File:** Create a copy of the original file or an empty temporary file. A simple naming convention like `original_filename.tmp` in the same directory is recommended.
-    - **2. Modify the Temporary File:** Perform all necessary changes (additions, deletions, transformations) on this temporary file. Use appropriate libraries (e.g., `openpyxl`, `python-docx`, `csv`).
-    - **3. Thoroughly Verify the Temporary File:** After modification, read back the contents of the temporary file to confirm the changes are 100% correct. Compare it against the requirements. This is a critical verification step.
-    - **4. Overwrite the Original File:** Once the temporary file is fully verified, use a robust command to replace the original file with the temporary one. For Bash, `mv my_file.tmp my_file.txt` is the standard and safest method as it's often an atomic operation. In Python, use `shutil.move()`.
-    - **NEVER** modify the original file directly until the final overwrite step.
-
-    # CRITICAL: Thorough File Inspection Guidelines
-    - **ALWAYS inspect file contents AND data types before and after modifications.**
-    - This applies to both the original file (before) and the temporary file (after modification).
-    - Check cell values, formats, data types, number formats, decimal separators, and formatting properties.
-    - For spreadsheets: inspect cell values, number formats, date formats, currency formats, and cell properties.
-    - For documents: inspect text content, formatting, styles, and structural elements.
-    - Verify that modifications actually changed the intended properties (not just values).
-    - Compare before/after states to ensure changes were applied correctly.
-
-    # CRITICAL: Code-Based Task Solving
-    - You are responsible for writing EXECUTABLE CODE to solve the task programmatically.
-    - Write Python/Bash scripts that process, filter, transform, or manipulate the data as required.
-
-    # CRITICAL: Preserve Document Structure and Formatting
-    - When modifying documents/spreadsheets, PRESERVE the original structure, headers, and formatting.
-    - When reading the original file and writing to the temporary file, ensure you carry over all necessary structural and formatting elements.
-    - NEVER modify column headers, row headers, document titles, or sheet names unless explicitly requested.
-    - Maintain fonts, colors, borders, cell formatting, paragraph styles, etc.
-    - Only change the content/data, not the structure or visual presentation.
-    - Use libraries that support formatting preservation (python-docx, openpyxl, etc.).
-    - The goal is to make the final overwritten file look exactly the same as the original, just with different content.
-    - **For column reordering**: Preserve table position - reorder columns within the table without shifting the table itself.
-
-    # CRITICAL: Final Step Requirement
-    - At the final step before completing the task (the step before you return DONE), you MUST print out the contents of any files you modified.
-    - Use appropriate commands to display the final state of the modified original files:
-        * For text files: `cat filename` or `head -n 50 filename` for large files
-        * For Python files: `cat filename.py`
-        * For configuration files: `cat filename.conf`
-        * For any other file type: use appropriate viewing commands
-    - This ensures the user can see exactly what changes were made to the final files.
-
-    # CRITICAL: Verification Instructions
-    - When you complete a task that modifies files, you MUST provide clear verification instructions.
-    - Include specific details about what the GUI agent should check:
-        * Which files were modified and their expected final state.
-        * What the content should look like (number of lines, key data points, etc.).
-        * How to verify the changes are correct.
-        * Whether the task is complete or if additional GUI actions are needed.
-    - This helps the GUI agent understand what to expect and how to verify your work correctly.
-
-    # Response Format:
-    You MUST respond using exactly this format:
-
-    <thoughts>
-    Your step-by-step reasoning about what needs to be done and how to approach the current step.
-    </thoughts>
-
-    <answer>
-    Return EXACTLY ONE of the following options:
-
-    For Python code:
-    ```python
-    your_python_code_here
-    ```
-
-    For Bash commands:
-    ```bash
-    your_bash_commands_here
-    ```
-
-    For task completion:
-    DONE
-
-    For task failure:
-    FAIL
-    </answer>
-
-    # Technical Notes:
-    - Wrap code in ONE block, identify language (python/bash)
-    - Python code runs line-by-line in interactive terminal (no __main__)
-    - Install missing packages as needed
-    - Ignore "sudo: /etc/sudoers.d is world writable" error
-    - After overwriting a file, it may need to be closed and reopened in the GUI to reflect the changes.
-
-    Focus on progress within your step budget.
-    """
-    )
-
     @staticmethod
-    def construct_coder_procedural_memory(platform: str = "linux"):
+    def construct_coder_procedural_memory(platform: str = "linux", client_password: str = ""):
         # 1. Define Platform-Specific Context
         if platform == "linux":
             PLATFORM_SPECIFIC_CONTEXT = textwrap.dedent(
@@ -747,12 +604,13 @@ class PROCEDURAL_MEMORY:
                     * **User:** "user"
                     * **Home:** "/home/user"
                     * **Shell:** Bash
-                    * **Sudo:** Use `echo 'password' | sudo -S [COMMAND]`
+                    * **Sudo:** Use `echo '{client_password}' | sudo -S [COMMAND]`
                     * **Packages:** Install missing packages as needed.
                     * **Ignored Errors:** Ignore "sudo: /etc/sudoers.d is world writable".
                     * **Note:** Code execution might not be visible on screen immediately. GUI actions (like reopening files) may be needed to see changes.
                 """
             )
+            PLATFORM_SPECIFIC_CONTEXT = PLATFORM_SPECIFIC_CONTEXT.format(client_password=client_password)
         elif platform == "windows":
             PLATFORM_SPECIFIC_CONTEXT = textwrap.dedent(
                 """\

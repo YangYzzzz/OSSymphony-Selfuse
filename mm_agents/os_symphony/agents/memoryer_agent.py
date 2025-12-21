@@ -129,7 +129,7 @@ class ReflectionMemoryAgent:
         else:
             self.active_img_idx.append(len(self.trajectory) - 1)        # less than max_img_len, feed all images
             
-        assert len(self.active_img_idx) <= self.max_images, "[RMA] StepBehavior更新逻辑有问题!!"
+        assert len(self.active_img_idx) <= self.max_images, "[RMA] Errors in updating StepBehavior!!"
 
     def _summarize_step_behavior(
             self, 
