@@ -1,16 +1,14 @@
 import json
+import logging
 from typing import List
 from desktop_env.macos.controllers.env import MacOSEnv
-from desktop_env.macos.utils.logger import ProjectLogger
 import time
 from pathlib import Path
 import shlex
 import base64
 
-script_dir = Path(__file__).resolve().parent.parent
-
 MACNOTESAPP_PATH = "/usr/local/bin/notes"
-logger = ProjectLogger(log_dir=script_dir / "logs")
+logger = logging.getLogger("desktopenv.env")
 
 def notes_find_note_by_title(env: MacOSEnv, title: str) -> bool:
     """
