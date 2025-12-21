@@ -39,7 +39,19 @@ init_proxy_pool(PROXY_CONFIG_FILE)  # initialize the global proxy pool
 MAX_RETRIES = 20
 
 class SetupController:
-    def __init__(self, vm_ip: str, server_port: int = 5000, chromium_port: int = 9222, vlc_port: int = 8080, cache_dir: str = "cache", client_password: str = "", screen_width: int = 1920, screen_height: int = 1080):
+    def __init__(
+            self, 
+            vm_ip: str, 
+            server_port: int = 5000, 
+            chromium_port: int = 9222, 
+            vlc_port: int = 8080, 
+            cache_dir: str = "cache", 
+            client_password: str = "", 
+            screen_width: int = 1920, 
+            screen_height: int = 1080,
+            proxy: str = ""
+        ):
+        self.proxy = proxy
         self.vm_ip: str = vm_ip
         self.server_port: int = server_port
         self.chromium_port: int = chromium_port
@@ -308,8 +320,8 @@ class SetupController:
         
         # Notice: Proxy modified!
         # if command[0] == "google-chrome" and self.use_proxy:
-        if command[0] == "google-chrome":
-            command.append("--proxy-server=http://10.1.8.5:23128")  # Use the proxy server set up by _proxy_setup
+        if isinstance(command, list) and command[0] == "google-chrome" and self.proxy:
+            command.append(f"--proxy-server={self.proxy}")  # Use the proxy server set up by _proxy_setup
 
         payload = json.dumps({"command": command, "shell": shell})
         headers = {"Content-Type": "application/json"}
