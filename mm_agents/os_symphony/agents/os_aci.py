@@ -77,7 +77,11 @@ class OSACI:
 
         # Configure search agent
         self.searcher_agent = SearcherAgent.create(
-            engine_params=engine_params_for_searcher, search_env=search_env, grounder_agent=self.grounder_agent, platform=self.platform
+            engine_params=engine_params_for_searcher, 
+            search_env=search_env, 
+            grounder_agent=self.grounder_agent, 
+            platform=self.platform,
+            client_password=self.client_password
         )
 
         # Store task instruction for code agent

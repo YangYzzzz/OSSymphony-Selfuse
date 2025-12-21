@@ -35,10 +35,10 @@ class SearcherAgent:
         self.budget = engine_params.get("budget", 20)
 
     @staticmethod
-    def create(engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str):
+    def create(engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str, client_password: str="password"):
         searcher_type = engine_params.get("type", "vlm")
         if searcher_type == "vlm":
-            return VLMSearcherAgent(engine_params=engine_params, search_env=search_env, grounder_agent=grounder_agent, platform=platform)
+            return VLMSearcherAgent(engine_params=engine_params, search_env=search_env, grounder_agent=grounder_agent, platform=platform, client_password=client_password)
         else:
             raise NotImplementedError
         
@@ -73,10 +73,11 @@ class VLMSearcherAgent(SearcherAgent):
     """
     Start a new, isolated vm, and open chrome in advance
     """
-    def __init__(self, engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str):
+    def __init__(self, engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str, client_password: str):
         SearcherAgent.__init__(self, engine_params=engine_params, platform=platform)
 
         self.grounder_agent = grounder_agent
+        self.client_password = client_password
         self.env = search_env
 
         self.use_thinking = engine_params.get("model", "") in [
@@ -364,46 +365,48 @@ class VLMSearcherAgent(SearcherAgent):
             overwrite:bool, Default is True, assign it to False if the text should not overwrite the existing text. Using this argument clears all text in an element.
             enter:bool, Assign it to True if the enter key should be pressed after typing the text, otherwise assign it to False.
         """
-        commands = [
-            "import pyautogui",
-            "import pyperclip",
-            "import subprocess",
-            "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"})",
-            "original_clipboard = pyperclip.paste()"
-        ]
+        commands = (
+            "import os;"
+            "import pyautogui;"
+            "import pyperclip;"
+            "import subprocess;"
+            "import time;"
+            "p_http = os.environ.get('http_proxy') or os.environ.get('HTTP_PROXY');"
+            "p_https = os.environ.get('https_proxy') or os.environ.get('HTTPS_PROXY');"
+            "proxy_prefix = (f'http_proxy={p_http} ' if p_http else '') + (f'https_proxy={p_https} ' if p_https else '');"
+            f"subprocess.run(f'echo \"{self.client_password}\" | sudo -S {{proxy_prefix}}apt-get install -y xclip xsel', shell=True, check=True);"
+        )
+
+
         
         click_coords = None
         if element_description is not None:
             x, y = self.grounder_agent.generate_coords(element_description, self.obs)
-            commands.append(f"pyautogui.click({x}, {y})")
             click_coords = [x, y]
 
-        if overwrite:
-            # use repr() to ensure 'command' or 'ctrl' is used correctly
-            hotkey_mod = repr('ctrl')
-            commands.append(f"pyautogui.hotkey({hotkey_mod}, 'a')")
-            commands.append("pyautogui.press('backspace')")
+            commands += f"pyautogui.click({x}, {y});"
 
+        if overwrite:
+            commands += (
+                f"pyautogui.hotkey('ctrl', 'a');"
+                "pyautogui.press('backspace');"
+            )
 
         # use paste to input
-        commands.append(f"pyperclip.copy({repr(text)})")
-        
-        # searcher only uses Linux
-        commands.append("pyautogui.hotkey('ctrl', 'v')")
-
-        # restore the original clipboard
-        commands.append("pyperclip.copy(original_clipboard)")
+        commands += (
+            "original_clipboard = pyperclip.paste();"
+            f"pyperclip.copy({repr(text)});"
+            "pyautogui.hotkey('ctrl', 'v');"
+            "pyperclip.copy(original_clipboard);"
+        )
         
         if enter:
-            commands.append("pyautogui.press('enter')")
-
-        # combine all commands to a final string
-        final_command = "; ".join(commands)
+            commands += "pyautogui.press('enter');"
 
         if click_coords is not None:
-            return (final_command, click_coords)
+            return (commands, click_coords)
         else:
-            return final_command
+            return commands
 
     @searcher_agent_action
     def scroll(self, element_description: str, clicks: int, shift: bool = False):
