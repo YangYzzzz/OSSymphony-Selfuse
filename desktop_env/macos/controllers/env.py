@@ -14,12 +14,13 @@ from filelock import FileLock
 import importlib
 import uuid
 import tempfile
+from desktop_env.macos.utils.compress import compress_image_data
 from desktop_env.macos.utils.basic import reset_applications, transform_pyautogui_line
 from desktop_env.macos.launcher.docker.restart_docker import docker_reset_container, docker_start_container, container_exists, docker_remove_container, docker_run_container, DOCKER_RUN_SCRIPT_PATH
 
 import shlex
 
-logger = logging.getLogger("desktopenv.providers.macos")
+logger = logging.getLogger("desktopenv.env")
 LOCK_TIMEOUT = 1000
 
 class MacOSEnv:
@@ -419,7 +420,8 @@ class MacOSEnv:
             self.connect_sftp()
             with self.sftp_client.open(remote_tmp_path, "rb") as remote_file:
                 image_data = remote_file.read()
-
+            
+            image_data = compress_image_data(image_data, quality=90, format="JPEG")
             logger.info("Screenshot successfully captured and returned.")
             return image_data
 

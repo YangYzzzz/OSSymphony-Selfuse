@@ -1,6 +1,6 @@
+import logging
 import paramiko
 from desktop_env.macos.controllers.env import MacOSEnv
-from desktop_env.macos.utils.logger import ProjectLogger
 from pathlib import Path
 import json
 import time
@@ -9,9 +9,7 @@ import shlex
 import textwrap
 import plistlib
 
-script_dir = Path(__file__).resolve().parent.parent
-
-logger = ProjectLogger(log_dir=script_dir / "logs")
+logger = logging.getLogger("desktopenv.env")
 
 def calendar_check_weekly_event(env, event_name: str, start_hour: int = 10, start_minute: int = 0) -> bool:
     """

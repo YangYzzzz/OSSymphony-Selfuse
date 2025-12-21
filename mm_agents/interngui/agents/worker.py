@@ -73,8 +73,10 @@ class Worker(BaseModule):
 
     def reset(self):
         # set_cell_values 仅适用于 linux, 同时另外两个Benchmark不允许失败
-        if self.platform in ["windows", "macos"]:
+        if self.platform == "macos":
             skipped_actions = ["set_cell_values", "fail"]
+        elif self.platform == "windows":
+            skipped_actions = ["set_cell_values"]
         else:
             skipped_actions = []
 

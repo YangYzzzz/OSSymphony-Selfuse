@@ -1,6 +1,6 @@
+import logging
 import paramiko
-from controllers.env import MacOSEnv
-from utils.logger import ProjectLogger
+from desktop_env.macos.controllers.env import MacOSEnv
 from pathlib import Path
 import json
 import time
@@ -10,9 +10,7 @@ import textwrap
 import plistlib
 from typing import Union, List
 
-script_dir = Path(__file__).resolve().parent.parent
-
-logger = ProjectLogger(log_dir=script_dir / "logs")
+logger = logging.getLogger("desktopenv.env")
 
 def finder_check_file_exists(env, file_path: str) -> bool:
     """

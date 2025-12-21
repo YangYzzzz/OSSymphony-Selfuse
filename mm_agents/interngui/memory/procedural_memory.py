@@ -206,8 +206,7 @@ class PROCEDURAL_MEMORY:
                     - The `element_description` for `agent.click()` must be unambiguous. If similar elements exist, be specific to avoid confusion. Describe the target using its appearance, position, and your purpose.
                 - **Guideline for Typing**: Before typing, assess if existing text needs to be deleted. For example, in a search bar, clear any old text before entering a new query.
                 - **Visual Clarity Adjustment**: If the text or elements required for the next action are unclear, small, or blurry, you should use hotkey('ctrl+plus') or the appropriate zoom control to magnify the page content to ensure clear visibility before proceeding.
-                - **Navigation**: To open the browser or file explorer, click the Chrome or Files icon on the left, respectively.
-
+                
                 ## 2.3 Efficiency & Tool Usage
                 - **Efficiency is Key**:
                     - Prefer `agent.hotkey()` over mouse clicks for shortcuts.
