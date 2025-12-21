@@ -390,10 +390,10 @@ def config() -> argparse.Namespace:
     parser.add_argument("--result_dir", type=str, default="./results")
 
     parser.add_argument(
-        "--region", type=str, default="us-east-1", help="AWS region for the VM"
+        "--region", type=str, default="us-east-1", help="AWS region for the VM for OSWorld."
     )
     parser.add_argument(
-        "--client_password", type=str, default="password", help="Client password"
+        "--client_password", type=str, default="password", help="Client password for OSWorld. Aws is 'osworld-public-evaluation', other is 'password'"
     )
 
     # agent config
@@ -479,10 +479,10 @@ def config() -> argparse.Namespace:
         help="Temperature to fix the memoryer model at (e.g. o3 can only be run with 1.0)",
     )
     parser.add_argument(
-        "--memoryer_traj_length",
+        "--memoryer_max_images",
         type=int,
         default=9,
-        help="Trajectory length of Memory Agent"
+        help="Max images of Memory Agent"
     )
 
     # search model config
@@ -647,7 +647,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "base_url": getattr(args, "memoryer_url", ""),
         "api_key": getattr(args, "memoryer_api_key", ""),
         "temperature": getattr(args, "memoryer_temperature", None),
-        "memoryer_traj_length": args.memoryer_traj_length,
+        "max_images": args.memoryer_max_images,
         "agent_name": "memoryer"
     }
 

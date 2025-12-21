@@ -13,7 +13,6 @@ from mm_agents.os_symphony.agents.grounder_agent import GrounderAgent
 import os
 import time
 import json
-from desktop_env.osworld.desktop_env import DesktopEnv
 
 
 logger = logging.getLogger("desktopenv.searcher_agent")
@@ -36,7 +35,7 @@ class SearcherAgent:
         self.budget = engine_params.get("budget", 20)
 
     @staticmethod
-    def create(engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
+    def create(engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str):
         searcher_type = engine_params.get("type", "vlm")
         if searcher_type == "vlm":
             return VLMSearcherAgent(engine_params=engine_params, search_env=search_env, grounder_agent=grounder_agent, platform=platform)
@@ -74,11 +73,11 @@ class VLMSearcherAgent(SearcherAgent):
     """
     Start a new, isolated vm, and open chrome in advance
     """
-    def __init__(self, engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
+    def __init__(self, engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str):
         SearcherAgent.__init__(self, engine_params=engine_params, platform=platform)
 
         self.grounder_agent = grounder_agent
-        self.env: DesktopEnv = search_env
+        self.env = search_env
 
         self.use_thinking = engine_params.get("model", "") in [
             "claude-opus-4-20250514",

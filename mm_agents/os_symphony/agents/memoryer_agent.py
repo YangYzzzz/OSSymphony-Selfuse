@@ -77,7 +77,7 @@ class ReflectionMemoryAgent:
 
         self.engine_params = engine_params
 
-        self.max_img_len = engine_params.get('memoryer_traj_length', 8)
+        self.max_images = engine_params.get('max_images', 8)
 
         self.memoryer_level = engine_params.get('memoryer_level', 3)
         
@@ -122,14 +122,14 @@ class ReflectionMemoryAgent:
 
     def _update_trajectory(self, step_behavior):
         self.trajectory.append(step_behavior)
-        if len(self.active_img_idx) >= self.max_img_len:
+        if len(self.active_img_idx) >= self.max_images:
             if step_behavior.is_milestone:
                 self.active_img_idx.append(len(self.trajectory) - 1)      # over max_img_len，only milestone image
                 del self.active_img_idx[1]          # FIFO starts from index 1
         else:
             self.active_img_idx.append(len(self.trajectory) - 1)        # less than max_img_len, feed all images
             
-        assert len(self.active_img_idx) <= self.max_img_len, "[RMA] StepBehavior更新逻辑有问题!!"
+        assert len(self.active_img_idx) <= self.max_images, "[RMA] StepBehavior更新逻辑有问题!!"
 
     def _summarize_step_behavior(
             self, 
@@ -316,7 +316,6 @@ class ReflectionMemoryAgent:
             ### make additional hints
             additional_hints = []
             if not last_gui_check:
-                print("[Reflection & Memory Agent] GUI Error is detected!!")
                 additional_hints.append(f"\t- Warning: The last GUI operation is unsuccessful. Careful review is required to avoid GUI Operation Error.")
 
             code_error_hint = False

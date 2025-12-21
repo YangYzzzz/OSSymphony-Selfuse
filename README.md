@@ -24,4 +24,7 @@ We propose OS-Symphony, a robust desktop CUA framework that organically integrat
 ```bash
 bash scripts/run_os_symphony.sh
 ```
+
+## Acknowledgement
+
 ## 📃 Citation
