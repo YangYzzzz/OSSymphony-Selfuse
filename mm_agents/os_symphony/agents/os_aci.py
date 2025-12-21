@@ -55,6 +55,7 @@ class OSACI:
 
         self.env = env
         self.platform = platform
+        self.client_password = client_password
 
         self.result_dir = ""
         
@@ -265,14 +266,21 @@ class OSACI:
             is_terminal:bool, (MANDATORY) You MUST set this to True whenever the target you will type into is a terminal.
         """
         commands = (
+            "import os;"
             "import pyautogui;"
             "import pyperclip;"
             "import subprocess;"
             "import time;"
         )
+
+
         if self.platform == "linux":
-            commands += "subprocess.run('echo \"password\" | sudo -S apt-get install -y xclip xsel', shell=True, check=True, env={\"http_proxy\": \"http://10.1.8.5:23128\", \"https_proxy\": \"http://10.1.8.5:23128\"});"
-            
+            commands += (
+                "p_http = os.environ.get('http_proxy') or os.environ.get('HTTP_PROXY');"
+                "p_https = os.environ.get('https_proxy') or os.environ.get('HTTPS_PROXY');"
+                "proxy_prefix = (f'http_proxy={p_http} ' if p_http else '') + (f'https_proxy={p_https} ' if p_https else '');"
+                f"subprocess.run(f'echo \"{self.client_password}\" | sudo -S {{proxy_prefix}}apt-get install -y xclip xsel', shell=True, check=True);"
+            )
 
         x, y = None, None
         if element_description is not None:
