@@ -11,6 +11,7 @@ from mm_agents.os_symphony.utils.common_utils import (
 from mm_agents.os_symphony.core.mllm import LMMAgent
 from mm_agents.os_symphony.agents.grounder_agent import GrounderAgent
 import os
+import time
 import json
 from desktop_env.osworld.desktop_env import DesktopEnv
 
@@ -86,6 +87,8 @@ class VLMSearcherAgent(SearcherAgent):
             "claude-sonnet-4-5-20250929",
         ]
 
+        self.engine = engine_params.get("engine", "google")
+
         # Reuse OSWorld's initialization script to set up Chrome, then directly perform a Google search using the query—currently, the query can be substituted by a placeholder field.
         self.task_config = {
             "id": "searcher",
@@ -141,10 +144,13 @@ class VLMSearcherAgent(SearcherAgent):
             system_prompt=self.system_prompt
         )
         self.env.start()
-        # config URL and initialize search environment
-        google_search_url = f"https://www.google.com/search?q=" + urllib.parse.quote_plus(query)
-        self.task_config["config"][2]["parameters"]["urls_to_open"][0] = google_search_url
+        # config URL and initialize search environment (google/duckduckgo)
+        search_url = f"https://www.google.com/search?q=" + urllib.parse.quote_plus(query) if self.engine == "google" else f"https://www.duckduckgo.com/?q=" + urllib.parse.quote_plus(query)
+        self.task_config["config"][2]["parameters"]["urls_to_open"][0] = search_url
+        
         self.env.reset(task_config=self.task_config)
+        print("[Searcher] sleeping...")
+        time.sleep(5)
 
     def flush_messages(self):
         """Flush messages based on the model's context limits.

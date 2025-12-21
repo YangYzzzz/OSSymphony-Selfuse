@@ -513,6 +513,12 @@ def config() -> argparse.Namespace:
         help="Type of search agent, vlm/llm(all in search action), default is vlm",
     )
     parser.add_argument(
+        "--searcher_engine",
+        type=str,
+        default="google",
+        help="Type of search engine, google / duckduckgo",
+    )
+    parser.add_argument(
         "--searcher_budget",
         type=int,
         default=20,
@@ -653,6 +659,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         "temperature": getattr(args, "searcher_temperature", None),
         "budget": args.searcher_budget,
         "type": args.searcher_type,
+        "engine": args.searcher_engine,
         "agent_name": "searcher"
     }
 
