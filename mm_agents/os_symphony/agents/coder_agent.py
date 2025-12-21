@@ -129,7 +129,6 @@ class CoderAgent:
 
         self.reset()
 
-        print("!!!!", self.agent.system_prompt)
 
         # Add initial task instruction and screenshot context as user message
         context = (
