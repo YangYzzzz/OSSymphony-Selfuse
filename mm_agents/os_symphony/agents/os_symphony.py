@@ -2,7 +2,6 @@ import logging
 import platform
 from typing import Dict, List, Tuple
 from mm_agents.os_symphony.agents.os_aci import OSACI
-from mm_agents.os_symphony.agents.searcher_agent import VLMSearcherAgent
 from mm_agents.os_symphony.agents.worker import Worker
 
 logger = logging.getLogger("desktopenv.agent")
