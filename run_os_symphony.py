@@ -14,8 +14,7 @@ from flask import cli
 from mm_agents.os_symphony.agents.os_symphony import OSSymphony
 from mm_agents.os_symphony.agents.os_aci import OSACI
 import lib_run_single
-# from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
-from desktop_env_official.desktop_env import DesktopEnv as OSWorldDesktopEnv
+from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
 from dotenv import load_dotenv
