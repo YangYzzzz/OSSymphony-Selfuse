@@ -72,7 +72,7 @@ class OSACI:
         self.coder_agent = CoderAgent(
             engine_params=engine_params_for_coder,
             platform=self.platform,
-            client_password=client_password
+            client_password=self.client_password
         )
 
         # Configure search agent
@@ -252,6 +252,7 @@ class OSACI:
 
         return commands
     
+    @agent_action
     @agent_action
     def type(
         self,
