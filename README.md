@@ -1,6 +1,6 @@
 
 
-# <img src="D:/AILab/Computer Use Framework and RL/InternGUIFramework/assets/logo.jpg" alt="overview" style="width:40%; display: block; margin: 0 auto;" /> OS-Symphony
+# <img src="assets/logo.jpg" alt="overview" style="width:40%; display: block; margin: 0 auto;" /> OS-Symphony
 
 **Official repository for the paper: [OS-Symphony: Orchestrating Desktop Agents via Reflection and Specialized Tools]()**
 
