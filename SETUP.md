@@ -1,12 +1,12 @@
 # 🛠️ Environment Setup & Configuration Guide
 
-This document details the resource download, startup, and network proxy configuration processes for the three operating system environments required for evaluation (Linux, Windows, and macOS).
+This document details the resource download, startup, and network proxy configuration processes for the three operating system environments required for evaluation (Linux, Windows, and MacOS).
 
 ## 1. Resource Download
 
 Please download the required Docker images and Virtual Machine "Golden Image" files according to the table below.
 
-| Component          | Linux (OSWorld / SearchEnv)                                  | Windows (WindowsAgentArena)                                  | macOS (MacOSArena)                                           |
+| Component          | Linux (OSWorld / SearchEnv)                                  | Windows (WindowsAgentArena)                                  | MacOS (MacOSArena)                                           |
 | :----------------- | :----------------------------------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
 | **Docker Image**   | `docker pull happysixd/osworld-docker`                       | `docker pull yang695/winarena:latest`                        | `docker pull numbmelon/docker-osx-evalkit-auto:latest`       |
 | **Golden Image**   | **[Ubuntu.qcow2](https://huggingface.co/datasets/xlangai/ubuntu_osworld/resolve/main/Ubuntu.qcow2.zip)** | **[waa.tar.gz](https://huggingface.co/datasets/YYangzzzz/OSSymphony/blob/main/winarena/waa.tar.gz)**<br>*(After unzipping, please rename the folder to `golden_image`)* | **[BaseSystem.img](https://huggingface.co/OpenGVLab/ScaleCUA_Env/blob/main/resources/macos/BaseSystem.img)** + **[mac_hdd_ng.img](https://huggingface.co/OpenGVLab/ScaleCUA_Env/blob/main/resources/macos/mac_hdd_ng.img)** |
@@ -20,7 +20,7 @@ Please download the required Docker images and Virtual Machine "Golden Image" fi
     *   **Operation:** Please edit the script before use to fill in the path to your locally downloaded Golden Image.
     *   **VNC:** It is recommended to use **RealVNC** to connect to the GUI interface of the virtual machine.
 3.  **Persistence Mechanism:**
-    *   **Linux/macOS:** Modifications made on the GUI interface will **not** be automatically reflected in the original Golden Image file.
+    *   **Linux/MacOS:** Modifications made on the GUI interface will **not** be automatically reflected in the original Golden Image file.
     *   **Windows:** Operations will **directly modify** the original image file. **Please be sure to back up the original `golden_image` folder before starting any operations.**
 4.  **Cleanup Script:** The "Cleanup Script" provides a one-click function to clear residual containers from the evaluation.
 
@@ -123,7 +123,7 @@ The Windows Enterprise Evaluation image has a 90-day validity period (expiring a
 
 3.  **LibreOffice:** Currently, LibreOffice download fails even with a proxy configured. Please download and install it manually after the automated installation completes.
 
-### 🍎 macOS (MacOSArena)
+### 🍎 MacOS (MacOSArena)
 
 Docker creates an overlay layer. Changes made in the GUI will **not** be automatically saved to the source `mac_hdd_ng.img` file. You must manually extract the modified file.
 
@@ -139,4 +139,4 @@ Docker creates an overlay layer. Changes made in the GUI will **not** be automat
     docker cp <your_container_id>:/home/arch/OSX-KVM/mac_hdd_ng.img <target_path>/mac_hdd_ng_proxy.img
     ```
 
-*Note: The macOS environment transmits commands via SSH and does not use a Flask Server, so there is no need to configure server-side code proxies.*
+*Note: The MacOS environment transmits commands via SSH and does not use a Flask Server, so there is no need to configure server-side code proxies.*
