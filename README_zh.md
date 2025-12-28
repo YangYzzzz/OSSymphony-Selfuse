@@ -2,7 +2,7 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2412.19723-b31b1b.svg)]() ![License](https://img.shields.io/badge/License-MIT-blue)[![🌐 Website](https://img.shields.io/badge/Website-🌐-informational)]()
 
-**论文官方代码库: [OS-Symphony: Orchestrating Desktop Agents via Reflection and Specialized Tools]()**
+**论文官方代码库: [OS-SYMPHONY: Orchestrating Reflection, Memory, and Tools for Robust GUI Automation]()**
 
 ## 🗞️ Updates
 

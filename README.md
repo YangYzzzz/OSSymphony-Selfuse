@@ -2,7 +2,7 @@
 
 # <img src="assets/logo.jpg" alt="overview" style="width:40%; display: block; margin: 0 auto;" /> OS-Symphony
 
-**Official repository for the paper: [OS-Symphony: Orchestrating Desktop Agents via Reflection and Specialized Tools]()**
+**Official repository for the paper: [OS-SYMPHONY: Orchestrating Reflection, Memory, and Tools for Robust GUI Automation]()**
 
 [![arXiv](https://img.shields.io/badge/arXiv-2412.19723-b31b1b.svg)]() ![License](https://img.shields.io/badge/License-MIT-blue)[![🌐 Website](https://img.shields.io/badge/Website-🌐-informational)]()
 
