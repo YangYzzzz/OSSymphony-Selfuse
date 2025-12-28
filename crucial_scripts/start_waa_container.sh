@@ -1,103 +1,120 @@
 #!/bin/bash
 
-# ================= 配置区域 =================
+# ==============================================================================
+# Script to launch the WinArena (Windows Server) Docker container.
+# ==============================================================================
 
-# 1. 镜像与容器名
-IMAGE_NAME="winarena-v2:latest"
-CONTAINER_NAME="win_server_only"
+# 1. Configuration Variables
+# ------------------------------------------------------------------------------
 
-# 2. 虚拟机存储目录 (宿主机路径) -> 挂载为 /storage
-HOST_STORAGE_DIR="/nvme/yangbowen/vm_stroage/waa_ding/golden_for_test"
+# Container and Image Identity
+IMAGE_NAME="yang695/winarena:latest"
+CONTAINER_NAME="winarena-test"
 
-# 4. 端口配置 (外部Client连接需要用到 API 端口)
-PORT_BROWSER=5989  # 浏览器查看 VM
-PORT_RDP=3399      # RDP 远程连接
-PORT_API=5101      # HTTP API 端口 (外部 Client 通过这个控制 VM)
+# Host Storage Directory (Maps to /storage inside container)
+HOST_STORAGE_DIR="TODO"
 
-OPENAI_API_KEY="no use"
-OPENAI_BASE_URL="no use"
-# 5. 硬件配置
+# Port Configuration
+PORT_BROWSER=5989  # VNC/NoVNC Browser Access (Internal: 8006)
+PORT_RDP=3399      # Remote Desktop Protocol (Internal: 3389)
+PORT_API=5101      # HTTP API for Client Control (Internal: 5000)
+
+# Environment / Hardware
 RAM_SIZE="8G"
 CPU_CORES="8"
 
-# ===========================================
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-# --- 1. 检查目录 ---
+echo -e "${GREEN}=== WinArena Container Launcher ===${NC}"
+
+# 2. Pre-flight Checks
+# ------------------------------------------------------------------------------
+
+# Check if Docker is running
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}Error: Docker is not installed or not in PATH.${NC}"
+    exit 1
+fi
+
+# Check and Create Storage Directory
 if [ ! -d "$HOST_STORAGE_DIR" ]; then
-    echo "创建存储目录: $HOST_STORAGE_DIR"
+    echo -e "${YELLOW}Storage directory not found. Creating: $HOST_STORAGE_DIR${NC}"
     mkdir -p "$HOST_STORAGE_DIR"
-fi
-
-# --- 2. 检查 KVM ---
-KVM_ARGS=""
-KVM_ENV="N"
-if [ -e /dev/kvm ]; then
-    echo "✅ 检测到 KVM，启用硬件加速"
-    KVM_ARGS="--device /dev/kvm"
-    KVM_ENV="Y"
 else
-    echo "⚠️ 未检测到 KVM，性能受限"
+    echo "Storage directory exists: $HOST_STORAGE_DIR"
 fi
 
-# --- 3. 清理旧容器 ---
-if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
-    echo "删除旧容器: ${CONTAINER_NAME}..."
-    docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1
+# Check KVM (Hardware Acceleration)
+KVM_DEVICE_FLAG=""
+if [ -e /dev/kvm ]; then
+    echo -e "${GREEN}✅ KVM detected. Hardware acceleration enabled.${NC}"
+    KVM_DEVICE_FLAG="--device=/dev/kvm"
+else
+    echo -e "${RED}⚠️  WARNING: KVM not detected (/dev/kvm).${NC}"
+    echo "The VM may run very slowly or fail to start."
+    # We proceed, but the docker run command might fail if it strictly requires the device
+    # If strictly required, uncomment the exit below:
+    # exit 1
 fi
 
-# --- 4. 启动逻辑 ---
-# 逻辑说明：
-# 1. 启动 entry.sh 初始化 VM。
-# 2. sleep 15 等待初始化。
-# 3. pkill -f python：杀掉容器内自带的 Client/Agent (如果有的话)，防止它抢占控制权。
-# 4. tail -f /dev/null：保持容器不退出，等待你在宿主机运行代码连接。
+# 3. Cleanup Old Container
+# ------------------------------------------------------------------------------
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    echo -e "${YELLOW}Removing existing container [ $CONTAINER_NAME ]...${NC}"
+    docker rm -f "$CONTAINER_NAME" > /dev/null
+    echo "  -> Old container removed."
+fi
 
-CMD_STRING="
-/usr/bin/tini -s /run/entry.sh &
-# 然后等待VM服务器就绪
-while true; do
-  response=\$(curl --write-out '%{http_code}' --silent --output /dev/null localhost:5000/probe)
-  echo 'Response {\$response}'
-  if [ \$response -eq 200 ]; then
-    break
-  fi
-  echo 'Waiting for Windows Arena Server...'
-  sleep 5
-done
-echo 'Windows Arena Server is ready!!!!!!!!'
-tail -f /dev/null
-"
+# 4. Start Docker Container
+# ------------------------------------------------------------------------------
+echo -e "${YELLOW}Starting container...${NC}"
 
-echo "🚀 正在启动服务容器..."
+# Logic Explanation:
+# 1. --privileged / --cap-add=NET_ADMIN: Required for VM networking and KVM.
+# 2. --entrypoint /bin/bash: Overrides default entrypoint to allow custom command.
+# 3. -c "./entry_setup.sh & tail -f /dev/null": Runs the setup script in background, keeps container alive.
 
 docker run -d \
-    --name ${CONTAINER_NAME} \
+    --name "${CONTAINER_NAME}" \
     --privileged \
     --cap-add=NET_ADMIN \
     --stop-timeout 50 \
     --platform linux/amd64 \
-    --device=/dev/kvm \
+    $KVM_DEVICE_FLAG \
     -e KVM=Y \
     --add-host host.docker.internal:host-gateway \
-    -p ${PORT_BROWSER}:8006 \
-    -p ${PORT_RDP}:3389 \
-    -p ${PORT_API}:5000 \
+    -p "${PORT_BROWSER}:8006" \
+    -p "${PORT_RDP}:3389" \
+    -p "${PORT_API}:5000" \
     -v "${HOST_STORAGE_DIR}:/storage" \
-    -e RAM_SIZE=${RAM_SIZE} \
-    -e CPU_CORES=${CPU_CORES} \
-    -e OPENAI_API_KEY_FOR_CHECK_SETUP=${OPENAI_API_KEY} \
-    -e OPENAI_BASE_URL_FOR_CHECK_SETUP=${OPENAI_BASE_URL} \
+    -e RAM_SIZE="${RAM_SIZE}" \
+    -e CPU_CORES="${CPU_CORES}" \
     --entrypoint /bin/bash \
     --shm-size "2g" \
-    ${IMAGE_NAME} \
+    "${IMAGE_NAME}" \
     -c "./entry_setup.sh & tail -f /dev/null"
 
+# Check exit status
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to start Docker container.${NC}"
+    exit 1
+fi
+
+# 5. Final Summary
+# ------------------------------------------------------------------------------
+echo -e "${GREEN}Container started successfully!${NC}"
 echo "---------------------------------------------------"
-echo "容器已启动! ID: $(docker ps -aq -f name=${CONTAINER_NAME} | head -n 1)"
+echo -e "${YELLOW}Connection Information:${NC}"
+echo -e "1. API (Client):   http://127.0.0.1:${PORT_API}"
+echo -e "2. Browser VNC:    http://127.0.0.1:${PORT_BROWSER}"
+echo -e "3. RDP Access:     127.0.0.1:${PORT_RDP}"
 echo "---------------------------------------------------"
-echo "外部连接信息:"
-echo "1. API 地址 (Client用): http://127.0.0.1:${PORT_API}"
-echo "2. 浏览器 VNC:          http://127.0.0.1:${PORT_BROWSER}"
-echo "3. RDP 远程桌面:        127.0.0.1:${PORT_RDP}"
+echo -e "${YELLOW}Useful Commands:${NC}"
+echo -e "View Logs:    docker logs -f ${CONTAINER_NAME}"
+echo -e "Enter Shell:  docker exec -it ${CONTAINER_NAME} /bin/bash"
 echo "---------------------------------------------------"
-echo "查看日志: docker logs -f ${CONTAINER_NAME}"
+echo "Note: It may take a few moments for the internal Windows VM to boot."

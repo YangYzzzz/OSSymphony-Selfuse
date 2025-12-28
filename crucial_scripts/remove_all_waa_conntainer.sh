@@ -1,42 +1,53 @@
 #!/bin/bash
 
-# 定义需要清理的目标镜像列表
+# ==============================================================================
+# Script to stop and remove running Docker containers for a list of images.
+# ==============================================================================
+
+# Define the list of target images to clean up
 TARGET_IMAGES=(
-    "windowsarena/winarena:latest"
-    "winarena-v2:latest"
-    "windowsarena/winarena-v2:latest"
+    "yang695/winarena:latest"
 )
 
+# Alternative image example
 # TARGET_IMAGES=(
 #     "windowsarena/winarena:latest"
 # )
 
+# Set colors for clearer output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
 echo "=========================================="
-echo "开始清理指定镜像的容器..."
+echo "Starting cleanup of containers for specified images..."
 echo "=========================================="
 
 for img in "${TARGET_IMAGES[@]}"; do
-    echo "正在检查基于镜像 [ $img ] 的容器..."
+    echo -e "${YELLOW}Checking for containers based on image [ $img ]...${NC}"
     
-    # 使用 ancestor 过滤器查找容器ID (-q 只输出ID, -a 包含已停止的)
+    # Use ancestor filter to find container IDs (-q for ID only, -a for all statuses)
     CONTAINER_IDS=$(docker ps -a -q --filter "ancestor=$img")
     
     if [ -n "$CONTAINER_IDS" ]; then
-        echo "  -> 发现容器 ID: $(echo $CONTAINER_IDS | tr '\n' ' ')"
+        # Format IDs for display (replace newlines with spaces)
+        DISPLAY_IDS=$(echo "$CONTAINER_IDS" | tr '\n' ' ')
+        echo "  -> Found Container IDs: $DISPLAY_IDS"
         
-        # 停止容器
-        echo "  -> 正在停止容器..."
+        # Stop containers
+        echo "  -> Stopping containers..."
+        # We use unquoted $CONTAINER_IDS here to pass multiple IDs as separate arguments
         docker stop $CONTAINER_IDS 2>/dev/null
         
-        # 删除容器
-        echo "  -> 正在删除容器..."
+        # Remove containers
+        echo "  -> Removing containers..."
         docker rm $CONTAINER_IDS
         
-        echo "  -> [成功] 清理完毕"
+        echo -e "  -> ${GREEN}[Success] Cleanup complete${NC}"
     else
-        echo "  -> [跳过] 未发现相关容器"
+        echo -e "  -> ${GREEN}[Skip] No related containers found${NC}"
     fi
     echo "------------------------------------------"
 done
 
-echo "所有任务执行结束。"
+echo -e "${GREEN}All tasks completed.${NC}"

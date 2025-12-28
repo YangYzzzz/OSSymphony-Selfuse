@@ -16,7 +16,7 @@ LOCK_TIMEOUT = 10000
 
 class WindowsDockerProvider:
     def __init__(self, 
-                 image_name="winarena-v2:latest", 
+                 image_name="yang695/winarena:latest", 
                  vm_storage_path="./storage", 
                  vm_backup_path="./storage_backup",
                  ram_size="8G",

@@ -1,37 +1,36 @@
 #!/bin/bash
 
-# 定义需要清理的目标镜像列表
+# Define the list of target images to clean up
 TARGET_IMAGES=(
     "numbmelon/docker-osx-evalkit-auto:latest"
 )
 
-
 echo "=========================================="
-echo "开始清理指定镜像的容器..."
+echo "Starting cleanup of containers for specified images..."
 echo "=========================================="
 
 for img in "${TARGET_IMAGES[@]}"; do
-    echo "正在检查基于镜像 [ $img ] 的容器..."
+    echo "Checking for containers based on image [ $img ]..."
     
-    # 使用 ancestor 过滤器查找容器ID (-q 只输出ID, -a 包含已停止的)
+    # Find container IDs using the ancestor filter (-q for IDs only, -a includes stopped ones)
     CONTAINER_IDS=$(docker ps -a -q --filter "ancestor=$img")
     
     if [ -n "$CONTAINER_IDS" ]; then
-        echo "  -> 发现容器 ID: $(echo $CONTAINER_IDS | tr '\n' ' ')"
+        echo "  -> Found Container IDs: $(echo $CONTAINER_IDS | tr '\n' ' ')"
         
-        # 停止容器
-        echo "  -> 正在停止容器..."
+        # Stop containers
+        echo "  -> Stopping containers..."
         docker stop $CONTAINER_IDS 2>/dev/null
         
-        # 删除容器
-        echo "  -> 正在删除容器..."
+        # Remove containers
+        echo "  -> Removing containers..."
         docker rm $CONTAINER_IDS
         
-        echo "  -> [成功] 清理完毕"
+        echo "  -> [Success] Cleanup completed"
     else
-        echo "  -> [跳过] 未发现相关容器"
+        echo "  -> [Skipped] No related containers found"
     fi
     echo "------------------------------------------"
 done
 
-echo "所有任务执行结束。"
+echo "All tasks finished."

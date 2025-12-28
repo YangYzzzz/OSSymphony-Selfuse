@@ -1,53 +1,74 @@
 #!/bin/bash
 
 # ==============================================================================
-# Bash script to run the happysixd/osworld-docker container.
-# This script is an equivalent of the provided Python docker-py code.
-#
-# Before running, please configure the variables in the "CONFIGURATION" section.
+# Script to launch the OSWorld Docker container.
+# This script automates cleanup, configuration, and startup.
 # ==============================================================================
 
-# --- CONFIGURATION ---
-# 请根据您的实际情况修改以下变量
+# 1. Configuration Variables
+# ------------------------------------------------------------------------------
 
-# 容器和镜像名称
+# Container and Image Identity
 IMAGE_NAME="happysixd/osworld-docker"
-# CONTAINER_NAME="os-world-jkm" # 为容器指定一个唯一的名称
+CONTAINER_NAME="osworld-test" 
 
-# 资源配置 (对应 Python 中的 self.environment)
+# Resource Allocation
 DISK_SIZE="32G"
 RAM_SIZE="4G"
 CPU_CORES="4"
 
-# 卷挂载 (对应 Python 中的 volumes)
-# !! 重要: 请将 "/path/to/your/vm.qcow2" 替换为您宿主机上 .qcow2 文件的真实绝对路径
-PATH_TO_VM_QCOW2="/nvme/yangbowen/osworld/docker_vm_data/Ubuntu.qcow2"
+# Volume Mapping
+# !! IMPORTANT: Update this path to the actual location of your .qcow2 file
+PATH_TO_VM_QCOW2="TODO"
 
-# 端口映射 (对应 Python 中的 ports)
-# 格式: <宿主机端口>:<容器端口>
-HOST_VNC_PORT=5923     # VNC 端口, 对应 self.vnc_port
-HOST_SERVER_PORT=5099    # Server 端口, 对应 self.server_port
-HOST_CHROMIUM_PORT=9289  # Chromium 调试端口, 对应 self.chromium_port
-HOST_VLC_PORT=8199       # VLC 端口, 对应 self.vlc_port
+# Port Mapping (Host:Container)
+HOST_VNC_PORT=5923       # Maps to internal 8006 (NoVNC/VNC)
+HOST_SERVER_PORT=5099    # Maps to internal 5000 (API Server)
+HOST_CHROMIUM_PORT=9289  # Maps to internal 9222 (Chromium Debugging)
+HOST_VLC_PORT=8199       # Maps to internal 8080 (VLC)
 
-# --- SCRIPT LOGIC ---
-# 通常不需要修改以下部分
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-# 检查 qcow2 文件路径是否存在
-if [ ! -f "$PATH_TO_VM_QCOW2" ]; then
-    echo "Error: The QCOW2 file path does not exist: $PATH_TO_VM_QCOW2"
-    echo "Please edit the script and set the PATH_TO_VM_QCOW2 variable correctly."
+echo -e "${GREEN}=== OSWorld Container Launcher ===${NC}"
+
+# 2. Pre-flight Checks
+# ------------------------------------------------------------------------------
+
+# Check if Docker is running/installed
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}Error: Docker is not installed or not in PATH.${NC}"
     exit 1
 fi
 
-echo "Attempting to stop and remove any existing container with the name '$CONTAINER_NAME'..."
-docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+# Check if the VM image exists
+if [ ! -f "$PATH_TO_VM_QCOW2" ]; then
+    echo -e "${RED}Error: QCOW2 file not found at: $PATH_TO_VM_QCOW2${NC}"
+    echo "Please update the 'PATH_TO_VM_QCOW2' variable in the script."
+    exit 1
+fi
 
-echo "Starting a new container named '$CONTAINER_NAME'..."
+# 3. Cleanup Old Container
+# ------------------------------------------------------------------------------
+# Check if a container with the same name exists (running or stopped)
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    echo -e "${YELLOW}Found existing container [ $CONTAINER_NAME ]. Removing it...${NC}"
+    docker rm -f "$CONTAINER_NAME" > /dev/null
+    echo "  -> Old container removed."
+fi
 
+# 4. Start Docker Container
+# ------------------------------------------------------------------------------
+echo -e "${YELLOW}Starting Docker container: $CONTAINER_NAME ...${NC}"
+
+# Note: Removed '--rm' so logs persist if the container crashes.
+# Added '--name' to ensure the container gets the specific name defined above.
 docker run \
     -d \
-    --rm \
+    --name "$CONTAINER_NAME" \
     -e "DISK_SIZE=${DISK_SIZE}" \
     -e "RAM_SIZE=${RAM_SIZE}" \
     -e "CPU_CORES=${CPU_CORES}" \
@@ -60,12 +81,23 @@ docker run \
     -p "${HOST_VLC_PORT}:8080" \
     "$IMAGE_NAME"
 
-# 检查容器是否成功启动
-if [ $? -eq 0 ]; then
-    echo "Container '$CONTAINER_NAME' started successfully."
-    echo "You can check its logs with: docker logs -f $CONTAINER_NAME"
-    echo "To access the container shell, run: docker exec -it $CONTAINER_NAME /bin/bash"
-else
-    echo "Error: Failed to start container '$CONTAINER_NAME'."
-    echo "Check the docker daemon logs for more details."
+# Check exit status of the docker run command
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to start Docker container.${NC}"
+    exit 1
 fi
+
+# 5. Final Summary
+# ------------------------------------------------------------------------------
+echo -e "${GREEN}Container started successfully!${NC}"
+echo "---------------------------------------------------"
+echo -e "${YELLOW}Access Information:${NC}"
+echo -e "1. VNC (Web):      http://localhost:$HOST_VNC_PORT"
+echo -e "2. Server API:     http://localhost:$HOST_SERVER_PORT"
+echo -e "3. Chromium Debug: http://localhost:$HOST_CHROMIUM_PORT"
+echo -e "4. VLC Stream:     http://localhost:$HOST_VLC_PORT"
+echo "---------------------------------------------------"
+echo -e "${YELLOW}Useful Commands:${NC}"
+echo -e "View Logs:    docker logs -f $CONTAINER_NAME"
+echo -e "Enter Shell:  docker exec -it $CONTAINER_NAME /bin/bash"
+echo "---------------------------------------------------"
