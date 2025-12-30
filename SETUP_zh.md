@@ -1,17 +1,17 @@
 # 🛠️ 环境搭建与配置指南
 
-本文档详细说明了评测所需的三个操作系统环境（Linux、Windows 和 macOS）的资源下载、启动及网络代理配置流程。
+本文档详细说明了评测所需的三个操作系统环境（Linux、Windows 和 MacOS）的资源下载、启动及网络代理配置流程。
 
 ## 1. 资源下载
 
 请根据下表下载所需的 Docker 镜像及虚拟机“黄金镜像”文件。
 
-| 组件               | Linux (OSWorld / SearchEnv)                                  | Windows (WindowsAgentArena)                                  | macOS (MacOSArena)                                           |
+| 组件               | Linux (OSWorld / SearchEnv)                                  | Windows (WindowsAgentArena)                                  | MacOS (MacOSArena)                                           |
 | :----------------- | :----------------------------------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
 | **Docker Image**   | `docker pull happysixd/osworld-docker`                       | `docker pull yang695/winarena:latest`                        | `docker pull numbmelon/docker-osx-evalkit-auto:latest`       |
 | **Golden Image**   | **[Ubuntu.qcow2](https://huggingface.co/datasets/xlangai/ubuntu_osworld/resolve/main/Ubuntu.qcow2.zip)** | **[waa.tar.gz](https://huggingface.co/datasets/YYangzzzz/OSSymphony/blob/main/winarena/waa.tar.gz)**<br>*(解压后请将文件夹命名为 `golden_image`)* | **[BaseSystem.img](https://huggingface.co/OpenGVLab/ScaleCUA_Env/blob/main/resources/macos/BaseSystem.img)** + **[mac_hdd_ng.img](https://huggingface.co/OpenGVLab/ScaleCUA_Env/blob/main/resources/macos/mac_hdd_ng.img)** |
-| **Start Script**   | `crucial_scripts/start_osworld_container.sh`                 | `crucial_scripts/start_waa_container.sh`                     | `crucial_scripts/start_macosarena_container.sh`              |
-| **Cleanup Script** | `crucial_scripts/remove_all_osworld_container.sh`            | `crucial_scripts/remove_all_waa_conntainer.sh`               | `crucial_scripts/remove_all_macosarena_container.sh`         |
+| **Start Script**   | `crucial_scripts/start_osworld_container.sh`                 | `crucial_scripts/start_waa_container.sh`                     | `crucial_scripts/start_Macosarena_container.sh`              |
+| **Cleanup Script** | `crucial_scripts/remove_all_osworld_container.sh`            | `crucial_scripts/remove_all_waa_conntainer.sh`               | `crucial_scripts/remove_all_Macosarena_container.sh`         |
 
 ### 注意事项：
 
@@ -20,7 +20,7 @@
     *   **操作：** 请在使用前编辑脚本，填入您本地下载好的黄金镜像路径。
     *   **VNC：** 推荐使用 **RealVNC** 连接虚拟机的 GUI 界面。
 3.  **持久化机制：**
-    *   **Linux/macOS：** 在 GUI 界面上的修改**不会**自动反映到原始黄金镜像文件中。
+    *   **Linux/MacOS：** 在 GUI 界面上的修改**不会**自动反映到原始黄金镜像文件中。
     *   **Windows：** 操作会**直接修改**原始镜像文件。**请务必在一切操作开始之前对原 `golden_image` 文件夹进行备份。**
 4.  **清理脚本：** "Cleanup Script" 提供了一键清除评测残留容器的功能。
 
@@ -116,15 +116,15 @@ Windows 企业评估版镜像存在 90 天有效期（约于 **2026.03.10** 到�
     ```
 3.  **LibreOffice：** LibreOffice 目前即使配置代理也会下载失败。请在自动化安装完成后手动下载并安装。
 
-### 🍎 macOS (MacOSArena)
+### 🍎 MacOS (MacOSArena)
 
-Docker 会创建覆盖层。在 GUI 中所做的更改**不会**自动保存到源 `mac_hdd_ng.img` 文件中。您必须手动提取修改后的文件。
+Docker 会创建覆盖层。在 GUI 中所做的更改**不会**自动保存到源 `Mac_hdd_ng.img` 文件中。您必须手动提取修改后的文件。
 
 **步骤：**
 
 1. **系统代理：** 进入 **System Settings** > **Network** > **Ethernet** > **Details** > **Proxies**。分别配置 **HTTP** 和 **HTTPS** 的代理。
 
-   ![image-20251228170510410](assets/mac_1.png)
+   ![image-20251228170510410](assets/Mac_1.png)
 
 2. **保存更改：**将修改后的虚拟机镜像从容器中拷贝出来，作为接下来评测的黄金镜像：
 
@@ -132,4 +132,4 @@ Docker 会创建覆盖层。在 GUI 中所做的更改**不会**自动保存到�
    docker cp <your_container_id>:/home/arch/OSX-KVM/mac_hdd_ng.img <target_path>/mac_hdd_ng_proxy.img
    ```
 
-*注：macOS 环境通过 SSH 传输命令，不使用 Flask Server，因此无需配置服务端代码代理。*
+*注：MacOS 环境通过 SSH 传输命令，不使用 Flask Server，因此无需配置服务端代码代理。*
