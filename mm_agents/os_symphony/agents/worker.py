@@ -111,6 +111,7 @@ class Worker(BaseModule):
             - Modifies the messages of generator, reflection, and bon_judge agents to fit within the context limits.
         """
         engine_type = self.engine_params_for_orchestrator.get("engine_type", "")
+        keep_first_image = self.engine_params_for_orchestrator.get("keep_first_image", False)
 
         # Flush strategy for long-context models: keep all text, only keep latest images
         if engine_type in ["anthropic", "openai", "gemini", "vllm"]:
@@ -121,7 +122,7 @@ class Worker(BaseModule):
                     continue
                 # keep latest k images
                 img_count = 0
-                stop_idx = 1 if self.engine_params_for_orchestrator.get("keep_first_image", False) else -1
+                stop_idx = 1 if keep_first_image else -1
                 for i in range(len(agent.messages) - 1, stop_idx, -1):
                     # for j in range(len(agent.messages[i]["content"])):
                     for j in range(len(agent.messages[i]["content"]) - 1, -1, -1):
@@ -134,8 +135,13 @@ class Worker(BaseModule):
         else:
             # generator msgs are alternating [user, assistant], so 2 per round
             if len(self.orchestrator_agent.messages) > 2 * self.max_trajectory_length + 1:
-                self.orchestrator_agent.messages.pop(1)
-                self.orchestrator_agent.messages.pop(1)
+                # Check if we need to protect the first round (where the first image usually lives)
+                if keep_first_image:
+                    self.orchestrator_agent.messages.pop(2)
+                    self.orchestrator_agent.messages.pop(2)
+                else:
+                    self.orchestrator_agent.messages.pop(1)
+                    self.orchestrator_agent.messages.pop(1)
 
 
     def generate_next_action(self, instruction: str, obs: Dict, is_last_step: bool) -> Tuple[Dict, List]:
