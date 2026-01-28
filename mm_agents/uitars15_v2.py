@@ -237,11 +237,12 @@ def parse_action_to_structure_output(text, factor, origin_resized_height, origin
                         num = float(num)
                         if (num_idx + 1) % 2 == 0:
                             float_numbers.append(float(num/smart_resize_height))
-                            replace_num_str = str(int(num/smart_resize_height*1080))
+                            # replace_num_str = str(int(num/smart_resize_height*1080))
+                            replace_num_str = str(int(num))
                         else:
                             float_numbers.append(float(num/smart_resize_width))
-                            replace_num_str = str(int(num/smart_resize_width*1920))
-                        
+                            # replace_num_str = str(int(num/smart_resize_width*1920))
+                            replace_num_str = str(int(num))
                         print(f'[Smart Resize]: {num_str} -> {replace_num_str}')
                         switch_str = switch_str.replace(str(num_str), replace_num_str, 1)
                 # 不考虑这种情况
@@ -253,7 +254,7 @@ def parse_action_to_structure_output(text, factor, origin_resized_height, origin
                 action_inputs[param_name.strip()] = str(float_numbers)
 
         # import pdb; pdb.set_trace()
-        # 需要对 rawstr 进行 smart_resize 后坐标的替换, raw_str 的一个例子是 click(start_box='(1000, 238)') 这个时候我需要将 里面的两个数字替换为 smart_resize 后的坐标, 请你为我
+        # 需要对 rawstr 进行 smart_resize 后坐标的替换, raw_str 的一个例子是 click(start_box='(1000, 238)') 这个时候我需要将 里面的两个数字替换为 smart_resize 后的坐标
         actions.append({
             "reflection": reflection,
             "thought": thought,
@@ -650,7 +651,7 @@ class UITarsAgent:
         # UI-TARS specific settings
         use_thinking: bool = True,
         language: str = "Chinese",
-        critic_agent: CriticAgent = None,
+        critic_agent: CriticAgent|None = None,
         critic_times = 1
     ):
         """
@@ -816,6 +817,20 @@ class UITarsAgent:
                 "details": response.text
             }
 
+    def add_critic_message(self, messages, critic_text):
+        # 找到最后一个 user
+        for m in reversed(messages):
+            if m["role"] == "user" and isinstance(m["content"], list):
+                if m["content"][-1]["type"] == "text":
+                    m["content"][-1]["text"] += f"\n Critic Model Hints: {critic_text}"
+                else:
+                    m["content"].append({"type": "text", "text": f"Critic Model Hints: {critic_text}"})
+                break
+        return messages
+
+    def evaluate(self) -> float:
+        return 1
+    
     def predict(self, task_instruction: str, obs: dict):
         """Predict the next action based on the current observation."""
         
@@ -845,9 +860,9 @@ class UITarsAgent:
             {
                 "role": "user",
                 "content": [{"type": "text", "text": self.system_prompt.format(
-            instruction=task_instruction,
-            language=self.language
-        )}]
+                        instruction=task_instruction,
+                        language=self.language
+                )}]
             }
         ]
         
@@ -881,14 +896,18 @@ class UITarsAgent:
         origin_resized_height = 1080
         origin_resized_width = 1920
         # 开始 critic 循环
+        critic_text = ""
         for _ in range(self.critic_times):
             try_times = 3
             prediction = None
             while True:
                 if try_times <= 0:
                     self.logger.error(f"Reach max retry times to fetch response from client, as error flag.")
-                    return prediction, ["FAIL"]
+                    return ["FAIL"], ["FAIL"]
                 try:
+                    # 当当前存在reason
+                    if critic_text:
+                        messages = self.add_critic_message(messages, critic_text)
                     prediction = self.inference_func(messages)
 
                 except Exception as e:
@@ -916,12 +935,14 @@ class UITarsAgent:
             for parsed_idx, parsed_response in enumerate(parsed_dict):
                 if parsed_idx == 0:
                     cur_action_str += parsed_response["action"]
-            critic_result = self.critic_agent.critic(task=task_instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+            critic_flag, critic_text = self.critic_agent.critic(task=task_instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+
             # True 则终止循环
-            if critic_result:
+            if critic_flag:
                 break
             # False 代表检查不过关, 继续生成
             else:
+                print(f'Incorrect, suggestions: {critic_text}')
                 continue
 
         self.history_responses.append(prediction)
@@ -932,7 +953,7 @@ class UITarsAgent:
             
         except Exception as e:
             self.logger.error(f"Parsing action error: {prediction}, with error:\n{e}")
-            return prediction, ["FAIL"]
+            return ["FAIL"], ["FAIL"]
         
         thoughts = ""
         for parsed_response in parsed_dict:
@@ -949,16 +970,16 @@ class UITarsAgent:
                 if parsed_response["action_type"] == FINISH_WORD:
                     self.actions.append(["DONE"])
 
-                    return prediction, ["DONE"]
+                    return parsed_dict, ["DONE"]
                 
                 elif parsed_response["action_type"] == WAIT_WORD:
                     self.actions.append(["WAIT"])
 
-                    return prediction, ["WAIT"]
+                    return parsed_dict, ["WAIT"]
                 
                 elif parsed_response["action_type"] == ENV_FAIL_WORD:
                     self.actions.append(["FAIL"])
-                    return prediction, ["FAIL"]
+                    return parsed_dict, ["FAIL"]
 
             
         self.actions.append([parsed_pyautogui_code])

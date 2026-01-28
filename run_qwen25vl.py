@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import sys
 import signal
 import time
@@ -15,8 +16,8 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
-from mm_agents.qwen3vl_agent import Qwen3VLAgent
 from mm_agents.interngui.agents.critic_agent import CriticAgent
+from mm_agents.qwen25vl_agent import Qwen25VLAgent
 
 # Global variables for signal handling
 active_environments = []
@@ -323,17 +324,15 @@ def run_env_tasks(
                 engine_params=critic_params
             )
 
-        agent = Qwen3VLAgent(
+        agent = Qwen25VLAgent(
             model=args.model,
-            base_url=args.base_url,
             max_tokens=args.max_tokens,
             top_p=args.top_p,
             temperature=args.temperature,
-            history_n=8,
             action_space=args.action_space,
-            coordinate_type=args.coord,
             add_thought_prefix=args.add_thought_prefix,
-            critic_agent=critic_agent, # type: ignore
+            base_url=args.base_url,
+            critic_agent=critic_agent,
             critic_times=args.critic_times
         )
         

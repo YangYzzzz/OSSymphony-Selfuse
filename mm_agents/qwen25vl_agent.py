@@ -18,9 +18,7 @@ from google.api_core.exceptions import (
 )
 from mm_agents.utils.qwen_vl_utils import smart_resize
 
-
-
-logger = None
+logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
 
@@ -74,6 +72,9 @@ class Qwen25VLAgent:
         observation_type="screenshot",
         history_n=4,  # Number of previous interactions to include in full detail
         add_thought_prefix=False,
+        base_url="",
+        critic_agent=None,
+        critic_times=1
     ):
         self.platform = platform
         self.model = model
@@ -88,10 +89,26 @@ class Qwen25VLAgent:
         assert observation_type in ["screenshot"], "Invalid observation type"
         self.thoughts = []
         self.actions = []
+        self.critic_actions = []
         self.observations = []
         self.responses = []  # Store model responses
         self.screenshots = []  # Store processed screenshots
 
+        self.base_url = base_url
+        self.critic_agent = critic_agent
+        self.critic_times = critic_times
+
+    def add_critic_message(self, messages, critic_text):
+        # 找到最后一个 user
+        for m in reversed(messages):
+            if m["role"] == "user" and isinstance(m["content"], list):
+                if m["content"][-1]["type"] == "text":
+                    m["content"][-1]["text"] += f"\nCritic Model Hints: {critic_text}"
+                else:
+                    m["content"].append({"type": "text", "text": f"Critic Model Hints: {critic_text}"})
+                break
+        return messages
+    
     def predict(self, instruction: str, obs: Dict) -> List:
         """
         Predict the next action(s) based on the current observation.
@@ -280,42 +297,72 @@ Previous actions:
             append_text = f"""Thought:"""
             messages.append({"role": "assistant", "content": [{"type": "text", "text": append_text}]})
 
-        # Call the LLM
-        response = self.call_llm(
-            {
-                "model": self.model,
-                "messages": messages,
-                "max_tokens": self.max_tokens,
-                "top_p": self.top_p,
-                "temperature": self.temperature,
-            },
-            self.model,
-        )
+        # 添加 critic model 逻辑
+        low_level_instruction = ""
+        pyautogui_code = []
+        action_str = []
+        critic_text = ""
+        for _ in range(self.critic_times):
+            if critic_text:
+                messages = self.add_critic_message(messages, critic_text)
+            response = self.call_llm(
+                {
+                    "model": self.model,
+                    "messages": messages,
+                    "max_tokens": self.max_tokens,
+                    "top_p": self.top_p,
+                    "temperature": self.temperature,
+                },
+                self.model,
+            )
 
-        logger.info(f"Qwen25VL Output: {response}")
-        
+            logger.info(f"Qwen25VL Output: {response}")
+
+
+            low_level_instruction, pyautogui_code, action_str = self.parse_response(
+                response,
+                width,
+                height,
+                processed_width,
+                processed_height,
+            )
+
+            logger.info(f"Low level instruction: {low_level_instruction}")
+            logger.info(f"Pyautogui code: {pyautogui_code}")
+
+            # 不存在 critic model 时, 直接使用第一次结果
+            if self.critic_agent is None:
+                break
+            
+            # 构建历史信息
+            history_action_str = ""
+            cur_action_str = ""
+
+            # 需要对原始action来一个映射才能对齐
+            for action_idx, action in enumerate(self.critic_actions, start=1):
+                history_action_str += f"Step: {action_idx}: {action}\n"
+
+            # 选择第一个 action 作为当前 action
+            if len(action_str) >= 1:
+                cur_action_str = action_str[0]
+
+            critic_flag, critic_text = self.critic_agent.critic(task=instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+            if critic_flag:
+                break
+            else:
+                print(f'Incorrect, suggestions: {critic_text}')
+                continue
+
         # Save response to history
         self.responses.append(response)
-
-        # Parse response and extract pyautogui code
-        low_level_instruction, pyautogui_code = self.parse_response(
-            response, 
-            width, 
-            height, 
-            processed_width, 
-            processed_height
-        )
-
-        logger.info(f"Low level instruction: {low_level_instruction}")
-        logger.info(f"Pyautogui code: {pyautogui_code}")
-
         # Add the action to history
         self.actions.append(low_level_instruction)
+        self.critic_actions.extend(action_str)
 
         return response, pyautogui_code
 
     def parse_response(self, response: str, original_width: int = None, original_height: int = None, 
-                       processed_width: int = None, processed_height: int = None) -> Tuple[str, List[str]]:
+                       processed_width: int = None, processed_height: int = None):
         """
         Parse LLM response and convert it to low level action and pyautogui code.
         
@@ -331,9 +378,10 @@ Previous actions:
         """
         low_level_instruction = ""
         pyautogui_code = []
-        
+        action_str = []
+
         if response is None or not response.strip():
-            return low_level_instruction, pyautogui_code
+            return low_level_instruction, pyautogui_code, []
         
         # Define function to adjust coordinates based on original and processed dimensions
         def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
@@ -370,37 +418,46 @@ Previous actions:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.click({adj_x}, {adj_y})")
+                            action_str.append(f'left_click({adj_x}, {adj_y})')
                         else:
                             pyautogui_code.append("pyautogui.click()")
+                            action_str.append(f'left_click()')
                             
                     elif action == "right_click":
                         if "coordinate" in args:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.rightClick({adj_x}, {adj_y})")
+                            action_str.append(f'right_click({adj_x}, {adj_x})')
                         else:
                             pyautogui_code.append("pyautogui.rightClick()")
-                            
+                            action_str.append(f'right_click()')
+
                     elif action == "middle_click":
                         if "coordinate" in args:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.middleClick({adj_x}, {adj_y})")
+                            action_str.append(f'middle_click({adj_x}, {adj_x})')
                         else:
                             pyautogui_code.append("pyautogui.middleClick()")
+                            action_str.append(f'middle_click()')
                             
                     elif action == "double_click":
                         if "coordinate" in args:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.doubleClick({adj_x}, {adj_y})")
+                            action_str.append(f'double_click({adj_x}, {adj_x})')
                         else:
                             pyautogui_code.append("pyautogui.doubleClick()")
+                            action_str.append(f'double_click()')
                             
                     elif action == "type":
                         text = args.get("text", "")
                         pyautogui_code.append(f"pyautogui.typewrite('{text}')")
-                        
+                        action_str.append(f"type('{text}')")
+
                     elif action == "key":
                         keys = args.get("keys", [])
                         # Fix possible formatting issues in the keys parameter
@@ -435,33 +492,41 @@ Previous actions:
                             pyautogui_code.append(f"pyautogui.hotkey({keys_str})")
                         else:
                             pyautogui_code.append(f"pyautogui.press({keys_str})")
-                            
+                        action_str.append(f'key({keys_str})')
+
                     elif action == "scroll":
                         pixels = args.get("pixels", 0)
                         pyautogui_code.append(f"pyautogui.scroll({pixels})")
-                        
+                        action_str.append(f'scroll({pixels})')
+
                     elif action == "wait":
                         pyautogui_code.append("WAIT")  # Special code for wait action
-                        
+                        action_str.append(f'wait()')
                     elif action == "terminate":
                         pyautogui_code.append("DONE")  # Special code for termination
-                        
+                        action_str.append(f'terminate()')
+
                     elif action == "mouse_move":
                         if "coordinate" in args:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.moveTo({adj_x}, {adj_y})")
+                            action_str.append(f'mouse_move({adj_x}, {adj_x})')
                         else:
                             pyautogui_code.append("pyautogui.moveTo(0, 0)")
-                            
+                            action_str.append(f'mouse_move(0, 0)')
+
                     elif action == "left_click_drag":
                         if "coordinate" in args:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             duration = args.get("duration", 0.5)
                             pyautogui_code.append(f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})")
+                            action_str.append(f'left_click_drag({adj_x}, {adj_x})')
                         else:
                             pyautogui_code.append("pyautogui.dragTo(0, 0)")
+                            action_str.append(f'left_click_drag(0, 0)')
+
             except (json.JSONDecodeError, KeyError) as e:
                 logger.error(f"Failed to parse tool call: {e}")
         
@@ -516,7 +581,7 @@ Previous actions:
             action_type = pyautogui_code[0].split(".", 1)[1].split("(", 1)[0]
             low_level_instruction = f"Performing {action_type} action"
         
-        return low_level_instruction, pyautogui_code
+        return low_level_instruction, pyautogui_code, action_str
 
     @backoff.on_exception(
         backoff.constant,
@@ -544,13 +609,14 @@ Previous actions:
     )
     def call_llm(self, payload, model):
         messages = payload["messages"]
-
-        base_url = os.getenv('DASHSCOPE_BASE_URL', "https://dashscope.aliyuncs.com/compatible-mode/v1")
-        api_key = os.getenv('DASHSCOPE_API_KEY', "sk-123")
         
+        custom_headers = {
+            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
+        }
+
         client = openai.OpenAI(
-            base_url=base_url,
-            api_key=api_key
+            base_url=self.base_url,
+            default_headers=custom_headers
         )
 
         for _ in range(MAX_RETRY_TIMES):
@@ -578,6 +644,7 @@ Previous actions:
         self.thoughts = []
         self.action_descriptions = []
         self.actions = []
+        self.critic_actions = []
         self.observations = []
         self.responses = []  # Reset responses
         self.screenshots = []  # Reset screenshots

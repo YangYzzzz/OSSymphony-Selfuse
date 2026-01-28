@@ -110,7 +110,7 @@ class DesktopEnv(gym.Env):
             require_terminal: bool = False,
             os_type: str = "Ubuntu",
             enable_proxy: bool = False,
-            client_password: str = "",
+            client_password: str = ""
     ):
         """
         Args:

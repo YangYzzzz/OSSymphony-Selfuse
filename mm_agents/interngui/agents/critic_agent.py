@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import re
 import requests
 from typing import Dict
 from mm_agents.interngui.core.mllm import LMMAgent
@@ -11,6 +12,7 @@ class CriticAgent:
     def __init__(self, engine_params: Dict, platform: str = "desktop") -> None:
         self.engine_params = engine_params
         self.platform = platform
+        # 这部分不用管即可
         self.gpt_4o_engine_params = {
             "engine_type": "openai",
             "api_key": "sk-lZYCt4IDPC0kBJU3wO03KjmNhgE5f4p5MsZQvYBpw2A4i64D",
@@ -27,7 +29,7 @@ class CriticAgent:
         
     def critic(self, task, screenshot, action, history):
         # zhenyu的API, 特殊处理一下
-        if self.engine_params["model"] == "os-oracle":
+        if self.engine_params["model"] in ["gui-critic-r1", "os-oracle"]:
             base_url = self.engine_params["base_url"]
             endpoint = f"{base_url}/critic/predict"
             ak = "5ad34100ee055a4bae66370a5e683bac"
@@ -52,34 +54,54 @@ class CriticAgent:
 
             try:
                 osoracle_result = resp.json()
-                print(f'[OS-Oracle Critic Result]: {osoracle_result}')
+                print(f'[{self.engine_params["model"]} Critic Result]: {osoracle_result}')
+                if self.engine_params["model"] == "gui-critic-r1":
+                    text_content = osoracle_result["text"]
+                    
+                    # 使用正则表达式提取内容
+                    # pattern 解释:
+                    # <suggestion>  : 匹配开始标签
+                    # (.*?)         : 捕获组，非贪婪匹配任意字符（除了换行符，除非加 re.DOTALL）
+                    # </suggestion> : 匹配结束标签
+                    pattern = r"<suggestion>(.*?)</suggestion>"
+                    
+                    # re.DOTALL 使得 . 可以匹配换行符，防止内容跨行时匹配失败
+                    match = re.search(pattern, text_content, re.DOTALL)
+                    
+                    if match:
+                        suggestions = match.group(1).strip() # .strip() 去除首尾可能的空白字符
+                    else:
+                        # 如果没有找到标签，你可以决定是返回空字符串还是原始文本
+                        suggestions = ""
+                else:
+                    suggestions = osoracle_result["text"]
+                # # 对于 GPT-4o 等通用模型，获得一个输出用于对比即可
+                # self.reset()
 
-                # 对于 GPT-4o 等通用模型，获得一个输出用于对比即可
-                self.reset()
+                # # 1. 构建用户输入，清晰地组织所有信息
+                # user_prompt = f"""
+                #     [Goal]
+                #     {task}
 
-                # 1. 构建用户输入，清晰地组织所有信息
-                user_prompt = f"""
-                    [Goal]
-                    {task}
+                #     [History]
+                #     {history}
 
-                    [History]
-                    {history}
+                #     [Platform]
+                #     {self.platform}
 
-                    [Platform]
-                    {self.platform}
+                #     [Proposed Action]
+                #     {action}
+                # """
 
-                    [Proposed Action]
-                    {action}
-                """
-
-                self.critic_agent.add_message(text_content=user_prompt, image_content=screenshot, role="user")
-                raw_response = call_llm_safe(self.critic_agent, temperature=0.1)
-                print(f"[GPT-4o Critic Raw Response]:\n{raw_response}")
+                # self.critic_agent.add_message(text_content=user_prompt, image_content=screenshot, role="user")
+                # raw_response = call_llm_safe(self.critic_agent, temperature=0.1)
+                # print(f"[GPT-4o Critic Raw Response]:\n{raw_response}")
 
                 
-                return True if osoracle_result["result"] == "Yes" else False
+                return (True, suggestions) if osoracle_result["result"] == "Yes" else (False, suggestions)
             except Exception:
-                return False
+                return (False, "")
+        return (False, "")
 # ==============================================================================
 
 
