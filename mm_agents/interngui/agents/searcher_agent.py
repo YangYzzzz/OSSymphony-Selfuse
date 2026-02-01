@@ -23,7 +23,6 @@ from mm_agents.interngui.utils.formatters import (
     SINGLE_ACTION_FORMATTER,
     CODE_VALID_FORMATTER,
 )
-from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.interngui.utils.single_searcher_agent import SearcherAgentSearXNG
 from mm_agents.interngui.utils.parser_agent import ParserAgentCrawl4AI
 
@@ -46,7 +45,7 @@ class SearcherAgent:
         self.budget = engine_params.get("budget", 20)
 
     @staticmethod
-    def create(engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
+    def create(engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str):
         searcher_type = engine_params.get("type", "vlm")
         if searcher_type == "vlm":
             return VLMSearcherAgent(engine_params=engine_params, search_env=search_env, grounder_agent=grounder_agent, platform=platform)
@@ -86,12 +85,12 @@ class VLMSearcherAgent(SearcherAgent):
     """
     需要启动一个全新的虚拟机，并将Chrome作为初始化条件
     """
-    def __init__(self, engine_params: Dict, search_env: DesktopEnv, grounder_agent: GrounderAgent, platform: str):
+    def __init__(self, engine_params: Dict, search_env, grounder_agent: GrounderAgent, platform: str):
         # 检索智能体父类
         SearcherAgent.__init__(self, engine_params=engine_params, platform=platform)
 
         self.grounder_agent = grounder_agent
-        self.env: DesktopEnv = search_env
+        self.env = search_env
         self.engine = engine_params.get("engine", "google")
         self.use_thinking = engine_params.get("model", "") in [
             "claude-opus-4-20250514",
@@ -743,6 +742,7 @@ class LLMSearcherAgent(SearcherAgent):
 
 if __name__=="__main__":
     query = input("Query: ")
+    from desktop_env.osworld.desktop_env import DesktopEnv
     search_env = DesktopEnv(
         path_to_vm="/nvme/yangbowen/osworld/docker_vm_data/Ubuntu.qcow2",
         action_space="pyautogui",

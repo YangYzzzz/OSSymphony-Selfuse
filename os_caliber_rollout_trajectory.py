@@ -1,3 +1,9 @@
+"""
+    这个文件的目的旨在 Scale Ubuntu Desktop, 整体功能其实和测评 OSWorld 没啥区别
+    去除 env.evaluate 功能, 转而增加 agent.evaluate() 实现 LLM-AS-A-Judge
+    不使用太复杂的框架了, 使用传统Agent即可
+"""
+
 from __future__ import annotations
 import argparse
 import datetime
@@ -16,7 +22,8 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.uitars15_v2 import UITarsAgent
 import os
-from mm_agents.interngui.agents.critic_agent import CriticAgent
+from os_caliber_task_generator import OSCaliberTaskGenerator
+from mm_agents.qwen3vl_agent import Qwen3VLAgent
 
 # Global variables for signal handling
 active_environments = []
@@ -35,7 +42,7 @@ def config() -> argparse.Namespace:
     )
 
     # environment config
-    parser.add_argument("--path_to_vm", type=str, default="/nvme/yangbowen/osworld/docker_vm_data/Ubuntu.qcow2")
+    parser.add_argument("--path_to_vm", type=str, default="/nvme/yangbowen/osworld/docker_vm_data/Ubuntu_write.qcow2")
     parser.add_argument(
         "--headless", action="store_true", help="Run in headless machine"
     )
@@ -69,12 +76,6 @@ def config() -> argparse.Namespace:
     parser.add_argument("--max_image_history_length", type=int, default=5, help="The max number of images in the history.")
     parser.add_argument("--language", type=str, default="Chinese", help="Language for the agent.")
 
-    # example config
-    parser.add_argument("--domain", type=str, default="all")
-    parser.add_argument(
-        "--test_all_meta_path", type=str, default="evaluation_examples/test_all.json"
-    )
-
     # logging related
     parser.add_argument("--result_dir", type=str, default="./results")
     parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to run in parallel")  
@@ -87,6 +88,7 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--provider_name", type=str, default="aws", choices=["aws", "virtualbox", "vmware", "docker", "azure"], help="Provider name"
     )
+
     parser.add_argument(
         "--client_password", type=str, default="", help="Client password"
     )
@@ -99,23 +101,6 @@ def config() -> argparse.Namespace:
 
     parser.add_argument(
         "--exp_name", type=str, default="", help="Experiment name"
-    )
-
-    # Critic Model
-    parser.add_argument(
-        "--critic_model", type=str, default="os-oracle"
-    )
-    parser.add_argument(
-        "--critic_provider", type=str, default="openai"
-    )
-    parser.add_argument(
-        "--critic_api_key", type=str, default=""
-    )
-    parser.add_argument(
-        "--critic_base_url", type=str, default="https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/wzy-proxy-lk85v-151269-worker-0.wuzhenyu/7871"
-    )
-    parser.add_argument(
-        "--critic_times", type=int, default=3
     )
 
     args = parser.parse_args()
@@ -205,6 +190,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
             except Exception as e:
                 logger.error(f"Failed to get snapshot_name from IMAGE_ID_MAP: {e}")
                 snapshot_name = None
+
         env = DesktopEnv(
             path_to_vm=args.path_to_vm,
             action_space=args.action_space,
@@ -220,33 +206,40 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
         )
         env.start()
         active_environments.append(env)
-        critic_params = {
-            "engine_type": args.critic_provider,
-            "api_key": args.critic_api_key,
-            "model": args.critic_model,
-            "base_url": args.critic_base_url
-        }
 
-        if args.critic_times == 1:
-            critic_agent = None
-        else:
-            critic_agent = CriticAgent(
-                engine_params=critic_params
+        if "ui" in args.model.lower():
+            agent = UITarsAgent(
+                model=args.model,
+                model_type=args.model_type,
+                base_url=args.base_url,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                max_trajectory_length=args.max_trajectory_length,
+                max_image_history_length=args.max_image_history_length,
+                use_thinking=args.use_thinking,
+                language=args.language,
+                critic_agent=None,
+                critic_times=1
             )
-        agent = UITarsAgent(
-            model=args.model,
-            model_type=args.model_type,
-            base_url=args.base_url,
-            max_tokens=args.max_tokens,
-            top_p=args.top_p,
-            temperature=args.temperature,
-            max_trajectory_length=args.max_trajectory_length,
-            max_image_history_length=args.max_image_history_length,
-            use_thinking=args.use_thinking,
-            language=args.language,
-            critic_agent=critic_agent,
-            critic_times=args.critic_times
-        )
+        elif "qwen3" in args.model.lower():
+            agent = Qwen3VLAgent(
+                model=args.model,
+                base_url=args.base_url,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                history_n=8,
+                action_space=args.action_space,
+                coordinate_type="relative",
+                add_thought_prefix=args.add_thought_prefix,
+                critic_agent=None,
+                critic_times=1
+            )
+        else:
+            # TODO
+            pass
+
         logger.info(f"Process {current_process().name} started.")
         while True:
             try:
@@ -256,7 +249,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
             domain, example_id = item
             try:
                 config_file = os.path.join(
-                    args.test_config_base_dir, f"osworld/examples/{domain}/{example_id}.json"
+                    args.test_config_base_dir, f"{domain}/{example_id}.json"
                 )
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
@@ -270,7 +263,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 )
                 os.makedirs(example_result_dir, exist_ok=True)
                 try:
-                    lib_run_single.run_single_example_uitars15(
+                    lib_run_single.run_single_example_os_caliber_omni(
                         agent,
                         env,
                         example,
@@ -421,87 +414,6 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
     logger.info(f"Average score: {sum(scores) / len(scores) if scores else 0}")
 
 
-def get_unfinished(
-    action_space, use_model, observation_type, result_dir, total_file_json
-):
-    target_dir = result_dir
-
-    if not os.path.exists(target_dir):
-        return total_file_json
-
-    finished = {}
-    for domain in os.listdir(target_dir):
-        finished[domain] = []
-        domain_path = os.path.join(target_dir, domain)
-        if os.path.isdir(domain_path):
-            for example_id in os.listdir(domain_path):
-                if example_id == "onboard":
-                    continue
-                example_path = os.path.join(domain_path, example_id)
-                if os.path.isdir(example_path):
-                    # Modified, 不只没有 result.txt 的重测, 0 分的也重测
-                    if "result.txt" not in os.listdir(example_path):
-                        # empty all files under example_id
-                        for file in os.listdir(example_path):
-                            os.remove(os.path.join(example_path, file))
-                        # shutil.rmtree(path=example_path, ignore_errors=True)
-                    # else:
-                    #     with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
-                    #         score = float(f.read())
-                    #     if score == 0:
-                    #         # empty all files under example_id
-                    #         for file in os.listdir(example_path):
-                    #             os.remove(os.path.join(example_path, file))
-                    else:
-                        finished[domain].append(example_id)
-
-    if not finished:
-        return total_file_json
-
-    for domain, examples in finished.items():
-        if domain in total_file_json:
-            total_file_json[domain] = [
-                x for x in total_file_json[domain] if x not in examples
-            ]
-
-    return total_file_json
-
-
-def get_result(result_dir):
-    target_dir = result_dir
-    if not os.path.exists(target_dir):
-        print("New experiment, no result yet.")
-        return None
-
-    all_result = []
-
-    for domain in os.listdir(target_dir):
-        domain_path = os.path.join(target_dir, domain)
-        if os.path.isdir(domain_path):
-            for example_id in os.listdir(domain_path):
-                example_path = os.path.join(domain_path, example_id)
-                if os.path.isdir(example_path):
-                    if "result.txt" in os.listdir(example_path):
-                        # empty all files under example_id
-                        try:
-                            all_result.append(
-                                float(
-                                    open(
-                                        os.path.join(example_path, "result.txt"), "r"
-                                    ).read()
-                                )
-                            )
-                        except:
-                            all_result.append(0.0)
-
-    if not all_result:
-        print("New experiment, no result yet.")
-        return None
-    else:
-        print("Current Success Rate:", sum(all_result) / len(all_result) * 100, "%")
-        return all_result
-
-
 if __name__ == "__main__":
     ####### The complete version of the list of examples #######
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -535,28 +447,11 @@ if __name__ == "__main__":
         with open(path_to_args, "w", encoding="utf-8") as f:
             json.dump(vars(args), f, indent=4)
 
-        with open(args.test_all_meta_path, "r", encoding="utf-8") as f:
-            test_all_meta = json.load(f)
-
-        if args.domain != "all":
-            test_all_meta = {args.domain: test_all_meta[args.domain]}
-
-        test_file_list = get_unfinished(
-            args.action_space,
-            args.model,
-            args.observation_type,
-            args.result_dir,
-            test_all_meta,
-        )
-        left_info = ""
-        for domain in test_file_list:
-            left_info += f"{domain}: {len(test_file_list[domain])}\n"
-        logger.info(f"Left tasks:\n{left_info}")
-
-        get_result(
-            args.result_dir
-        )
+        task_generator = OSCaliberTaskGenerator()
+        # 返回 test_file_list 和 对应的 json 文件的基目录 base_dir/{domain}/{example_id}.json
+        test_file_list, args.test_config_base_dir = task_generator.generate_task()
         test(args, test_file_list)
+
     except KeyboardInterrupt:
         logger.info("Main process received KeyboardInterrupt.")
         # Signal handler will take care of cleanup
