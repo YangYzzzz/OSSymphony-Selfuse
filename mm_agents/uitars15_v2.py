@@ -6,7 +6,7 @@ import requests
 import logging
 from typing import Optional, Dict, List, Tuple, Union
 from loguru import logger
-from mm_agents.interngui.agents.critic_agent import CriticAgent
+from mm_agents.os_symphony.agents.critic_agent import CriticAgent
 import ast
 import base64
 import math

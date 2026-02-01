@@ -16,7 +16,7 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
-from mm_agents.interngui.agents.critic_agent import CriticAgent
+from mm_agents.os_symphony.agents.critic_agent import CriticAgent
 from mm_agents.qwen25vl_agent import Qwen25VLAgent
 
 # Global variables for signal handling

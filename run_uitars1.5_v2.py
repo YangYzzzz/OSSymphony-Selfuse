@@ -16,7 +16,7 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.uitars15_v2 import UITarsAgent
 import os
-from mm_agents.interngui.agents.critic_agent import CriticAgent
+from mm_agents.os_symphony.agents.critic_agent import CriticAgent
 
 # Global variables for signal handling
 active_environments = []

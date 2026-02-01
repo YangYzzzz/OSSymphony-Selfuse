@@ -10,7 +10,7 @@ from typing import Literal, Dict, Any
 import sys
 
 sys.path.insert(0, "/nvme/yangbowen/jinkaiming/InternGUIFramework")
-from mm_agents.interngui.agents.grounder_agent import GrounderAgent
+from mm_agents.os_symphony.agents.grounder_agent import GrounderAgent
 
 # --- 配置与初始化 ---
 ModelName = Literal["ui-tars-1.5-7b", "holo-72b", "scalecua-32b", "groundnext-7b", "claude-sonnet-4.5"]

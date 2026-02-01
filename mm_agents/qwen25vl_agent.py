@@ -346,7 +346,7 @@ Previous actions:
             if len(action_str) >= 1:
                 cur_action_str = action_str[0]
 
-            critic_flag, critic_text = self.critic_agent.critic(task=instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+            critic_flag, critic_text = self.critic_agent.critic(task=instruction, screenshot=processed_image, action=cur_action_str, history=history_action_str)
             if critic_flag:
                 break
             else:
@@ -418,7 +418,7 @@ Previous actions:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.click({adj_x}, {adj_y})")
-                            action_str.append(f'left_click({adj_x}, {adj_y})')
+                            action_str.append(f'left_click({x}, {y})')
                         else:
                             pyautogui_code.append("pyautogui.click()")
                             action_str.append(f'left_click()')
@@ -428,7 +428,7 @@ Previous actions:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.rightClick({adj_x}, {adj_y})")
-                            action_str.append(f'right_click({adj_x}, {adj_x})')
+                            action_str.append(f'right_click({x}, {y})')
                         else:
                             pyautogui_code.append("pyautogui.rightClick()")
                             action_str.append(f'right_click()')
@@ -438,7 +438,7 @@ Previous actions:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.middleClick({adj_x}, {adj_y})")
-                            action_str.append(f'middle_click({adj_x}, {adj_x})')
+                            action_str.append(f'middle_click({x}, {y})')
                         else:
                             pyautogui_code.append("pyautogui.middleClick()")
                             action_str.append(f'middle_click()')
@@ -448,7 +448,7 @@ Previous actions:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.doubleClick({adj_x}, {adj_y})")
-                            action_str.append(f'double_click({adj_x}, {adj_x})')
+                            action_str.append(f'double_click({x}, {y})')
                         else:
                             pyautogui_code.append("pyautogui.doubleClick()")
                             action_str.append(f'double_click()')
@@ -511,7 +511,7 @@ Previous actions:
                             x, y = args["coordinate"]
                             adj_x, adj_y = adjust_coordinates(x, y)
                             pyautogui_code.append(f"pyautogui.moveTo({adj_x}, {adj_y})")
-                            action_str.append(f'mouse_move({adj_x}, {adj_x})')
+                            action_str.append(f'mouse_move({x}, {y})')
                         else:
                             pyautogui_code.append("pyautogui.moveTo(0, 0)")
                             action_str.append(f'mouse_move(0, 0)')
@@ -522,7 +522,7 @@ Previous actions:
                             adj_x, adj_y = adjust_coordinates(x, y)
                             duration = args.get("duration", 0.5)
                             pyautogui_code.append(f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})")
-                            action_str.append(f'left_click_drag({adj_x}, {adj_x})')
+                            action_str.append(f'left_click_drag({x}, {y})')
                         else:
                             pyautogui_code.append("pyautogui.dragTo(0, 0)")
                             action_str.append(f'left_click_drag(0, 0)')

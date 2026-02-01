@@ -7,8 +7,8 @@ from PIL import Image, ImageDraw
 from wrapt_timeout_decorator import *
 import io
 from typing import List, Union
-from mm_agents.interngui.utils.common_utils import draw_coordinates
-from mm_agents.interngui.utils.process_context import set_current_result_dir
+from mm_agents.os_symphony.utils.common_utils import draw_coordinates
+from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 
 logger = logging.getLogger("desktopenv.experiment")
 
