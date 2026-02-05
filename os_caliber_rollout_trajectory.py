@@ -25,6 +25,10 @@ import os
 from os_caliber_task_generator import OSCaliberTaskGenerator
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import CoarseInstructionGenerationAgent
+from mm_agents.anthropic.main import AnthropicAgent
+from mm_agents.kimi.kimi_agent import KimiAgent
+from mm_agents.glm4v.glm4v_agent import GLM4VAgent
+from mm_agents.seed_agent import SeedAgent
 
 # Global variables for signal handling
 active_environments = []
@@ -72,7 +76,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--max_tokens", type=int, default=32768)
     parser.add_argument("--use_thinking", action="store_true", default=False)
-    parser.add_argument("--max_trajectory_length", type=int, default=None, help="The max number of trajectory steps.")
+    parser.add_argument("--max_trajectory_length", type=int, default=None, help="The max number of trajectory steps.") # 一般没用, 目前强模型通常选择保留全部文本
     parser.add_argument("--max_image_history_length", type=int, default=5, help="The max number of images in the history.")
     parser.add_argument("--language", type=str, default="Chinese", help="Language for the agent.")
 
@@ -260,9 +264,61 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 action_space=args.action_space,
                 coordinate_type="relative"
             )
-        else:
+        elif "claude" in args.model.lower():
+            agent = AnthropicAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+            )
+        elif "kimi" in args.model.lower():
+            # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
+            agent = KimiAgent(
+                env=env,
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p if args.top_p == 0.95 else 0.95,
+                temperature=args.temperature if args.temperature == 1 else 1,
+                action_space=args.action_space,
+                observation_type=args.observation_type,
+                screen_size=(args.screen_width, args.screen_height),
+                coordinate_type=args.coord,
+                max_image_history_length=args.max_image_history_length,
+                max_steps=args.max_steps,
+                thinking=args.use_thinking,
+                password=args.client_password
+            )
+        elif "glm" in args.model.lower():
+            agent = GLM4VAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                max_tokens=args.max_tokens,
+                max_image_history_length=args.max_image_history_length,
+                screen_width=args.screen_width,
+                screen_height=args.screen_height
+            )
+        elif "seed" in args.model.lower():
+            agent = SeedAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                max_trajectory_length=args.max_trajectory_length,
+                history_n=args.max_image_history_length,
+                use_thinking=args.use_thinking,
+            )
+        elif "gemini" in args.model.lower():
             # TODO
             pass
+        else:
+            raise Exception(f"Not support {args.model} model!")
 
         logger.info(f"Process {current_process().name} started.")
         while True:

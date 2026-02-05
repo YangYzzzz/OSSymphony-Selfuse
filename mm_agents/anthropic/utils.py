@@ -51,6 +51,9 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[(APIProvider, str), str] = {
     (APIProvider.BEDROCK, "claude-4-sonnet-20250514"): "us.anthropic.claude-sonnet-4-20250514-v1:0",
     (APIProvider.VERTEX, "claude-4-sonnet-20250514"): "claude-sonnet-4-v1@20250514",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-20250514"): "claude-sonnet-4-20250514",
+
+    (APIProvider.ANTHROPIC, "anthropic/claude-sonnet-4.5"): "anthropic/claude-sonnet-4.5",
+    (APIProvider.ANTHROPIC, "claude-opus-4-5-20251101"): "claude-opus-4-5-20251101",
 }
 
 

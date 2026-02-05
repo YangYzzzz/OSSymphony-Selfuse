@@ -11,12 +11,6 @@ import openai
 from openai import OpenAI
 from PIL import Image
 from requests.exceptions import SSLError
-from google.api_core.exceptions import (
-    InvalidArgument,
-    ResourceExhausted,
-    InternalServerError,
-    BadRequest,
-)
 from mm_agents.utils.qwen_vl_utils import smart_resize
 from mm_agents.os_symphony.agents.critic_agent import CriticAgent
 from mm_agents.uitars15_v2 import IMAGE_FACTOR
@@ -25,7 +19,6 @@ from mm_agents.base import ComputerUseBaseAgent
 logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
-
 
 def encode_image(image_content):
     return base64.b64encode(image_content).decode("utf-8")
@@ -594,10 +587,6 @@ Previous actions:
             openai.RateLimitError,
             openai.BadRequestError,
             openai.InternalServerError,
-            InvalidArgument,
-            ResourceExhausted,
-            InternalServerError,
-            BadRequest,
         ),
         interval=30,
         max_tries=5,

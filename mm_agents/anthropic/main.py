@@ -345,11 +345,9 @@ class AnthropicAgent:
             
         enable_prompt_caching = False
         betas = ["computer-use-2025-01-24"]
-        if self.model_name == "claude-3-7-sonnet-20250219" or self.model_name == "claude-4-opus-20250514" or self.model_name == "claude-4-sonnet-20250514":
-            betas = ["computer-use-2025-01-24"]
-        elif self.model_name == "claude-3-5-sonnet-20241022":
+        if self.model_name == "claude-3-5-sonnet-20241022":
             betas = [COMPUTER_USE_BETA_FLAG]
-            
+
         image_truncation_threshold = 10
         if self.provider == APIProvider.ANTHROPIC:
             client = Anthropic(
@@ -393,7 +391,8 @@ class AnthropicAgent:
                 ] if self.platform == 'Ubuntu' else [
                     {'name': 'computer', 'type': 'computer_20241022', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
                 ]
-            elif self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-sonnet-4-20250514"]:
+            # Claude-4.5
+            elif self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-opus-4-5-20251101", "anthropic/claude-sonnet-4.5"]:
                 tools = [
                     {'name': 'computer', 'type': 'computer_20250124', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
                     # {'type': 'bash_20250124', 'name': 'bash'},
@@ -408,7 +407,7 @@ class AnthropicAgent:
             
             for attempt in range(API_RETRY_TIMES):
                 try:
-                    if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-sonnet-4-20250514"]:
+                    if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-opus-4-5-20251101", "anthropic/claude-sonnet-4.5"]:
                         # response = client.beta.messages.create(
                         #     max_tokens=self.max_tokens,
                         #     messages=self.messages,
