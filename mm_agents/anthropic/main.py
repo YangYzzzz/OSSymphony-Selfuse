@@ -29,17 +29,18 @@ API_RETRY_INTERVAL = 5
 
 class AnthropicAgent:
     def __init__(self,
-                 platform: str = "Ubuntu",
-                 model: str = "claude-3-5-sonnet-20241022",
-                 provider: APIProvider = APIProvider.BEDROCK,
-                 max_tokens: int = 4096,
-                 api_key: str = os.environ.get("ANTHROPIC_API_KEY", None),
-                 system_prompt_suffix: str = "",
-                 only_n_most_recent_images: Optional[int] = 10,
-                 action_space: str = "claude_computer_use",
-                 screen_size: tuple[int, int] = (1920, 1080),
-                 *args, **kwargs
-                 ):
+                platform: str = "Ubuntu",
+                model: str = "claude-3-5-sonnet-20241022",
+                provider: APIProvider = APIProvider.ANTHROPIC,
+                max_tokens: int = 4096,
+                api_key: str = os.environ.get("ANTHROPIC_API_KEY", ""),
+                base_url: str = "",
+                system_prompt_suffix: str = "",
+                only_n_most_recent_images: Optional[int] = 10,
+                action_space: str = "claude_computer_use",
+                screen_size: tuple[int, int] = (1920, 1080),
+                *args, **kwargs
+            ):
         self.platform = platform
         self.action_space = action_space
         self.logger = logger
@@ -48,6 +49,7 @@ class AnthropicAgent:
         self.provider = provider
         self.max_tokens = max_tokens
         self.api_key = api_key
+        self.base_url = base_url
         self.system_prompt_suffix = system_prompt_suffix
         self.only_n_most_recent_images = only_n_most_recent_images
         self.messages: list[BetaMessageParam] = []
@@ -350,7 +352,11 @@ class AnthropicAgent:
             
         image_truncation_threshold = 10
         if self.provider == APIProvider.ANTHROPIC:
-            client = Anthropic(api_key=self.api_key, max_retries=4)
+            client = Anthropic(
+                base_url=self.base_url, 
+                api_key=self.api_key, 
+                max_retries=4
+            )
             enable_prompt_caching = True
         elif self.provider == APIProvider.VERTEX:
             client = AnthropicVertex()
@@ -387,7 +393,7 @@ class AnthropicAgent:
                 ] if self.platform == 'Ubuntu' else [
                     {'name': 'computer', 'type': 'computer_20241022', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
                 ]
-            elif self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514"]:
+            elif self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-sonnet-4-20250514"]:
                 tools = [
                     {'name': 'computer', 'type': 'computer_20250124', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
                     # {'type': 'bash_20250124', 'name': 'bash'},
@@ -402,8 +408,17 @@ class AnthropicAgent:
             
             for attempt in range(API_RETRY_TIMES):
                 try:
-                    if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514"]:
-                        response = client.beta.messages.create(
+                    if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-sonnet-4-20250514"]:
+                        # response = client.beta.messages.create(
+                        #     max_tokens=self.max_tokens,
+                        #     messages=self.messages,
+                        #     model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
+                        #     system=[system],
+                        #     tools=tools,
+                        #     betas=betas,
+                        #     extra_body=extra_body
+                        # )
+                        with client.beta.messages.stream(
                             max_tokens=self.max_tokens,
                             messages=self.messages,
                             model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
@@ -411,7 +426,8 @@ class AnthropicAgent:
                             tools=tools,
                             betas=betas,
                             extra_body=extra_body
-                        )
+                        ) as stream:
+                            response = stream.get_final_message()
                     elif self.model_name == "claude-3-5-sonnet-20241022":
                         response = client.beta.messages.create(
                             max_tokens=self.max_tokens,
@@ -421,7 +437,13 @@ class AnthropicAgent:
                             tools=tools,
                             betas=betas,
                         )
-                    logger.info(f"Response: {response}")
+                    if response and response.content:
+                        for block in response.content:
+                            if block.type == "thinking":
+                                logger.info(f"\nThinking summary: {block.thinking}")
+                            elif block.type == "text":
+                                logger.info(f"\nResponse: {block.text}")
+                        
                     break  
                 except (APIError, APIStatusError, APIResponseValidationError) as e:
                     error_msg = str(e)
@@ -498,7 +520,7 @@ class AnthropicAgent:
             return None, None
 
         response_params = _response_to_params(response)
-        logger.info(f"Received response params: {response_params}")
+        # logger.info(f"Received response params: {response_params}")
 
         # Store response in message history
         self.messages.append({
@@ -539,7 +561,7 @@ class AnthropicAgent:
                 response = None
                 for attempt in range(API_RETRY_TIMES):
                     try:
-                        if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514"]:
+                        if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-sonnet-4-20250514"]:
                             response = client.beta.messages.create(
                                 max_tokens=self.max_tokens,
                                 messages=self.messages,
@@ -568,7 +590,7 @@ class AnthropicAgent:
                         else:
                             raise
                 response_params = _response_to_params(response)
-                logger.info(f"Received response params: {response_params}")
+                # logger.info(f"Received response params: {response_params}")
                 self.messages.append({
                     "role": "assistant",
                     "content": response_params

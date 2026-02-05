@@ -708,3 +708,79 @@ def run_single_example_uipath(agent, env, example, max_steps, instruction, args,
     with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
         f.write(f"{result}\n")
     env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
+
+
+def run_single_example_claude(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
+    set_current_result_dir(example_result_dir)
+    
+    agent.reset()
+    env.reset(task_config=example)
+    time.sleep(30) # Wait for the environment to be ready
+    obs = env._get_obs() # Get the initial observation
+    done = False
+    step_idx = 0
+    # env.controller.start_recording()
+    start_time = time.time()
+
+    while not done and step_idx < max_steps:
+        reasonings, actions = agent.predict(
+            instruction,
+            obs
+        )
+        
+        # 理论上每一轮只会产生一个操作
+        for action in actions:
+            # Save screenshot and trajectory information
+            
+            img_name = f"step_{step_idx + 1}.png"
+                
+            with open(os.path.join(example_result_dir, img_name),
+                      "wb") as _f:
+                _f.write(obs['screenshot'])
+            
+            # claude的不同点：action的返回形式不同于其他
+            if "input" in action and "coordinate" in action['input']:
+                draw_coordinates(
+                    image_bytes=obs['screenshot'], 
+                    coordinates=action['input']["coordinate"], 
+                    save_path=os.path.join(example_result_dir, img_name[:-4] + "_draw.png")
+                )
+
+            logger.info("Step %d: %s", step_idx + 1, action)
+            obs, reward, done, info = env.step(action, args.sleep_after_execution)
+            logger.info("Done: %s", done)
+
+            with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "instruction": instruction,
+                    "step_num": step_idx + 1,
+                    "action": action,
+                    "response": reasonings,
+                    "done": done,
+                    "info": info,
+                    "screenshot_file": img_name
+                }))
+                f.write("\n")
+            with open(os.path.join(example_result_dir, f"traj_{step_idx+1}.json"), "w", encoding="utf-8") as f:
+                json.dump({
+                    "step_num": step_idx + 1,
+                    "action": action,
+                    "response": reasonings,
+                    "done": done,
+                    "info": info,
+                    "screenshot_file": img_name
+                }, f, indent=4, ensure_ascii=False)
+            if done:
+                logger.info("The episode is done.")
+                time.sleep(60)
+                break
+        step_idx += 1
+    end_time = time.time()
+    result = float(env.evaluate())
+    logger.info("Result: %.2f", result)
+    scores.append(result)
+    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
+        f.write(f"{result}\n")
+
+    with open(os.path.join(example_result_dir, "time.txt"), "w", encoding="utf-8") as f:
+        f.write(f"{end_time-start_time:.2f}\n")
