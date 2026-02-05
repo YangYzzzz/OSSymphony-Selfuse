@@ -75,7 +75,6 @@ class DockerProvider(Provider):
                 return response.status_code == 200
             except Exception:
                 return False
-        
         while time.time() - start_time < timeout:
             if check_screenshot():
                 return True
@@ -87,7 +86,6 @@ class DockerProvider(Provider):
     def start_emulator(self, path_to_vm: str, headless: bool, os_type: str):
         # Use a single lock for all port allocation and container startup
         lock = FileLock(str(self.lock_file), timeout=LOCK_TIMEOUT)
-        
         try:
             with lock:
                 # Allocate all required ports
