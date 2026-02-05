@@ -416,7 +416,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             "agent_name": "coarse_instruction_generator"
         }
         ig_agent = CoarseInstructionGenerationAgent(engine_params=engine_params)
-        task_generator = OSCaliberTaskGenerator(rollout_task_dir=args.rollout_task_dir)
+        task_generator = OSCaliberTaskGenerator(rollout_task_dir=args.rollout_task_dir, env=env, agent=ig_agent)
 
         while True:
             try:
@@ -424,7 +424,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             except Exception:
                 break
 
-            task_file_list = task_generator.generate_task(env=env, agent=ig_agent, task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])
