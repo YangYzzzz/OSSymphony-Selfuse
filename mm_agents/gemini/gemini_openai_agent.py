@@ -47,9 +47,6 @@ SYSTEM_PROMPT = f"""
 * Use ONE function each time.
 """
 
-
-MAX_RECENT_TURN_WITH_SCREENSHOTS = 8
-
 # OpenAI 需要明确的 Tool Schema 定义，以此模拟 Gemini 的 ComputerUse
 TOOLS_SCHEMA = [
     {
@@ -202,7 +199,7 @@ TOOLS_SCHEMA = [
     }
 ]
 
-class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
+class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
     def __init__(
         self,
         platform: str = "Ubuntu",
@@ -214,7 +211,8 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
         action_space: str = "pyautogui",
         screen_size: tuple[int, int] = (1920, 1080),
         temperature: float = 0.1,
-        top_p: float = 0.1, # OpenAI 通常不设为0，给个低值
+        top_p: float = 0.95, # OpenAI 通常不设为0，给个低值
+        max_image_history_length: int = 8,
     ):
         self.platform = platform
         self.verbose = verbose
@@ -232,7 +230,8 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
         self.temperature = temperature
         self.top_p = top_p
         self.max_tokens = max_tokens
-        
+        self.max_image_history_length = max_image_history_length
+
         # 保存 system prompt 到消息历史
         self.messages.append({"role": "system", "content": SYSTEM_PROMPT})
         
@@ -267,6 +266,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
                         }
                     }
                 )
+                logger.info(f'LLM Output: {response}')
                 return response
             except Exception as e:
                 print(e)
@@ -291,7 +291,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
     def denormalize_y(self, y: int) -> int:
         return int(y / 1000 * self.screen_size[1])
 
-    def handle_action(self, action_name: str, action_args: dict) -> dict:
+    def handle_action(self, action_name: str, action_args: dict) -> Tuple[Dict, List]:
         """Handles the action and returns the environment state."""
         env_state = {}
         coordinates = []        
@@ -386,7 +386,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
 
         return env_state, coordinates
 
-    def predict(self, task_instruction: str, obs: Dict = {}) -> Tuple[str, List[str]]:
+    def predict(self, task_instruction: str, obs: Dict = {}) -> Tuple[Dict, List[str]]:
         
         # 处理截图 (Resize Logic unchanged)
         base64_screenshot = None
@@ -441,7 +441,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
         try:
             response = self.get_model_response()
         except Exception as e:
-            return "", []
+            return {}, []
 
         choice = response.choices[0]
         message = choice.message
@@ -450,17 +450,18 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
         self.messages.append(message.model_dump(exclude_none=True))
 
         reasoning = message.content or ""
+        logger.info(f'Response: {reasoning}')
         tool_calls = message.tool_calls
 
         # 如果没有内容也没有工具调用，可能是异常
         if not reasoning and not tool_calls:
             if choice.finish_reason == "length":
                  print("Error: Max tokens reached.")
-            return "", []
+            return {}, []
 
         if not tool_calls:
             print(f"Agent Loop Complete: {reasoning}")
-            return "DONE", ["DONE"]
+            return {"reasoning": "DONW"}, ["DONE"]
 
         function_call_strs = []
         action_strs = []
@@ -487,7 +488,6 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
                 coordinates.extend(fc_coords)
             except ValueError as e:
                 print(f"Error handling action: {e}")
-                # 在 OpenAI 中，通常需要给工具返回错误信息，这里简单处理，后续流程会继续
         
         # 可视化
         table = Table(expand=True)
@@ -510,7 +510,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
     def _cleanup_old_screenshots(self):
         """
         清理旧截图以节省 Token。
-        逻辑：保留最近 MAX_RECENT_TURN_WITH_SCREENSHOTS 轮包含图片的 User 消息。
+        逻辑：保留最近 max_image_history_length 轮包含图片的 User 消息。
         """
         turns_with_screenshots = 0
         # 从后往前遍历
@@ -526,7 +526,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
                 if has_image:
                     turns_with_screenshots += 1
                     # 如果超过了保留数量，移除该图片部分
-                    if turns_with_screenshots > MAX_RECENT_TURN_WITH_SCREENSHOTS:
+                    if turns_with_screenshots > self.max_image_history_length:
                         # 过滤掉 image_url 类型的 part
                         new_content = [
                             p for p in msg["content"] 

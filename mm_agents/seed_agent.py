@@ -376,7 +376,7 @@ class SeedAgent:
         
         # History settings
         max_trajectory_length: Optional[int],
-        history_n: Optional[int],
+        history_n: int,
         
         # UI-TARS specific settings
         use_thinking: bool = True,

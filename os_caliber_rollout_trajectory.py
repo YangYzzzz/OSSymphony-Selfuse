@@ -29,6 +29,7 @@ from mm_agents.kimi.kimi_agent import KimiAgent
 from mm_agents.glm4v.glm4v_agent import GLM4VAgent
 from mm_agents.seed_agent import SeedAgent
 from mm_agents.uitars15_v2 import UITarsAgent
+from mm_agents.gemini.gemini_openai_agent import GeminiOpenAIAgent as GeminiAgent
 # Global variables for signal handling
 active_environments = []
 processes = []
@@ -260,7 +261,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 max_tokens=args.max_tokens,
                 top_p=args.top_p,
                 temperature=args.temperature,
-                history_n=8,
+                history_n=args.max_trajectory_length,
                 action_space=args.action_space,
                 coordinate_type="relative"
             )
@@ -315,8 +316,15 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 use_thinking=args.use_thinking,
             )
         elif "gemini" in args.model.lower():
-            # TODO
-            pass
+            agent = GeminiAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                max_image_history_length=args.max_image_history_length
+            )
         else:
             raise Exception(f"Not support {args.model} model!")
 
