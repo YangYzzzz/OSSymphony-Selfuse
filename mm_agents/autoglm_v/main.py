@@ -1,14 +1,19 @@
 import logging
+import os
 import re
 from base64 import b64encode
 from PIL import Image
 from io import BytesIO
 from typing import Dict, List
 
+import requests
+import backoff
+
 from .prompt.accessibility_tree_handle import linearize_accessibility_tree, trim_accessibility_tree
 from .prompt.grounding_agent import GroundingAgent as Agent
 from .tools.package.google_chrome import BrowserTools
 from .prompt.procedural_memory import Prompt
+from openai import APIConnectionError, APIError, RateLimitError
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -61,6 +66,12 @@ def parse_code_from_string(input_string):
 class AutoGLMAgent:
     def __init__(
         self,
+        model: str = "glm-4.6v",
+        base_url: str = "",
+        api_key: str = "",
+        max_tokens: int = 32768,
+        temperature: float = 0.0,
+        top_p: float = 0.95,
         action_space="autoglm_computer_use",
         observation_type="a11y_tree",
         max_trajectory_length=3,
@@ -75,6 +86,13 @@ class AutoGLMAgent:
         gen_func=None,
         tool_in_sys_msg: bool = True,
     ):
+        assert base_url, "Invalid base url"
+        self.model = model
+        self.base_url = base_url
+        self.api_key = api_key
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.top_p = top_p
         self.action_space = action_space
         self.observation_type = observation_type
         assert action_space in ["autoglm_computer_use"], "Invalid action space"
@@ -108,6 +126,53 @@ class AutoGLMAgent:
     def turn_number(self):
         return len(self.contents)
 
+     @backoff.on_exception(backoff.constant, (RateLimitError, APIConnectionError), interval=0.1)
+    def call_llm(self, messages):
+        logger.info("Calling LLM...")
+        
+        # Prepare the request data
+        data = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "skip_special_tokens": False,
+            "stream": False,
+            "include_stop_str_in_output": True,
+            "stop": ["<|user|>", "<|observation|>", "</answer>"]
+        }
+        
+        # Set up proxy
+        # if os.environ.get('LAN_PROXY', None):
+        #     proxies = {
+        #         "http": os.environ.get('LAN_PROXY'),
+        #         "https": os.environ.get('LAN_PROXY')
+        #     }
+        # else:
+        #     proxies = None
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        
+        # Get API base URL from environment or use default
+        url = f"{self.base_url}/chat/completions"
+        
+        response = requests.post(
+            url,
+            json=data,
+            headers=headers,
+            # proxies=proxies,
+            timeout=60.0
+        )
+        response.raise_for_status()
+        
+        result = response.json()
+        logger.info("LLM called successfully.")
+        return result['choices'][0]['message']['content']
+    
     def prepare(self, instruction: str, obs: Dict, history: List, last_result: str = "") -> List:
         """
         Predict the next action(s) based on the current observation.
@@ -230,7 +295,7 @@ class AutoGLMAgent:
 
         return history[-max_turns * 2:]
 
-    def predict(self, instruction: str, obs: Dict) -> List:
+    def predict(self, instruction: str, obs: Dict):
         history = self.format_history()
         messages = self.prepare(instruction, obs, history)
 

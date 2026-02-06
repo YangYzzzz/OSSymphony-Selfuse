@@ -24,6 +24,11 @@ from mm_agents.uitars15_v2 import UITarsAgent
 import os
 from os_caliber_task_generator import OSCaliberTaskGenerator
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
+from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import CoarseInstructionGenerationAgent
+from mm_agents.anthropic.main import AnthropicAgent
+from mm_agents.kimi.kimi_agent import KimiAgent
+from mm_agents.glm4v.glm4v_agent import GLM4VAgent
+from mm_agents.seed_agent import SeedAgent
 
 # Global variables for signal handling
 active_environments = []
@@ -65,19 +70,18 @@ def config() -> argparse.Namespace:
 
     # lm config
     parser.add_argument("--model", type=str, default="ui-tars-1.5-7b")
+    parser.add_argument("--api_key", type=str, default="")
     parser.add_argument("--base_url", type=str, default="https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/ybw-gui-framework.yangbowen/10001/v1")
-    parser.add_argument("--model_type", type=str, default="doubao", choices=["doubao", "qwen25vl"])
     parser.add_argument("--temperature", type=float, default=0)
-    parser.add_argument("--top_p", type=float, default=None)
-    parser.add_argument("--max_tokens", type=int, default=3000)
+    parser.add_argument("--top_p", type=float, default=0.9)
+    parser.add_argument("--max_tokens", type=int, default=32768)
     parser.add_argument("--use_thinking", action="store_true", default=False)
-
-    parser.add_argument("--max_trajectory_length", type=int, default=None, help="The max number of trajectory steps.")
+    parser.add_argument("--max_trajectory_length", type=int, default=None, help="The max number of trajectory steps.") # 一般没用, 目前强模型通常选择保留全部文本
     parser.add_argument("--max_image_history_length", type=int, default=5, help="The max number of images in the history.")
     parser.add_argument("--language", type=str, default="Chinese", help="Language for the agent.")
 
     # logging related
-    parser.add_argument("--result_dir", type=str, default="./results")
+    parser.add_argument("--result_dir", type=str, default="./oscaliber_results")
     parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to run in parallel")  
     parser.add_argument("--log_level", type=str, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
                        default='INFO', help="Set the logging level")
@@ -102,6 +106,35 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--exp_name", type=str, default="", help="Experiment name"
     )
+
+    # rollout config
+    parser.add_argument("--rollout_mode", type=str, default="online rollout / offline rollout") # online: 一边roll指令一边采集轨迹, offline: 类似OSWorld测评, 起始给定任务文件, 再采集轨迹
+    parser.add_argument(
+        "--rollout_test_all_meta_path", type=str, default="evaluation_examples/osworld/test_all.json" # 当 mode 为 offline 时生效
+    )
+    parser.add_argument(
+        "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout" # 保存的任务文件基目录, 当 mode 为 online 时生效
+    )
+    parser.add_argument(
+        "--rollout_times", type=int, default=10, help="Rollout times" # 也就是随机选择多少次app, 当 mode 为 online 时生效
+    )
+    parser.add_argument(
+        "--rollout_task_nums", type=int, default=10, help="Task numbers per rollout" # 每次roll多少个任务, 当 mode 为 online 时生效
+    )
+    parser.add_argument(
+        "--rollout_app_list", type=str, default="all", help="Rollout application list, default all" # roll的应用列表, 当 mode 为 online 时生效
+    )
+
+    # instrction generation model config ig: instrction generation model
+    parser.add_argument("--ig_provider", type=str, default="openai")
+    parser.add_argument("--ig_model", type=str, default="gpt-5")
+    parser.add_argument("--ig_base_url", type=str, default="https://api.boyuerichdata.opensphereai.com/v1")
+    parser.add_argument("--ig_api_key", type=str, default="")
+    parser.add_argument("--ig_temperature", type=float, default=0.5)
+    parser.add_argument("--ig_max_tokens", type=int, default=32768)
+
+    # mode
+    parser.add_argument("--enable_self_judge", action="store_true", default=False) # 是否采用 self-judge, TODO: @Yang
 
     args = parser.parse_args()
     return args
@@ -210,7 +243,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
         if "ui" in args.model.lower():
             agent = UITarsAgent(
                 model=args.model,
-                model_type=args.model_type,
+                model_type="qwen25vl",
                 base_url=args.base_url,
                 max_tokens=args.max_tokens,
                 top_p=args.top_p,
@@ -218,9 +251,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 max_trajectory_length=args.max_trajectory_length,
                 max_image_history_length=args.max_image_history_length,
                 use_thinking=args.use_thinking,
-                language=args.language,
-                critic_agent=None,
-                critic_times=1
+                language=args.language
             )
         elif "qwen3" in args.model.lower():
             agent = Qwen3VLAgent(
@@ -231,14 +262,63 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 temperature=args.temperature,
                 history_n=8,
                 action_space=args.action_space,
-                coordinate_type="relative",
-                add_thought_prefix=args.add_thought_prefix,
-                critic_agent=None,
-                critic_times=1
+                coordinate_type="relative"
             )
-        else:
+        elif "claude" in args.model.lower():
+            agent = AnthropicAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+            )
+        elif "kimi" in args.model.lower():
+            # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
+            agent = KimiAgent(
+                env=env,
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p if args.top_p == 0.95 else 0.95,
+                temperature=args.temperature if args.temperature == 1 else 1,
+                action_space=args.action_space,
+                observation_type=args.observation_type,
+                screen_size=(args.screen_width, args.screen_height),
+                coordinate_type=args.coord,
+                max_image_history_length=args.max_image_history_length,
+                max_steps=args.max_steps,
+                thinking=args.use_thinking,
+                password=args.client_password
+            )
+        elif "glm" in args.model.lower():
+            agent = GLM4VAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                max_tokens=args.max_tokens,
+                max_image_history_length=args.max_image_history_length,
+                screen_width=args.screen_width,
+                screen_height=args.screen_height
+            )
+        elif "seed" in args.model.lower():
+            agent = SeedAgent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                max_trajectory_length=args.max_trajectory_length,
+                history_n=args.max_image_history_length,
+                use_thinking=args.use_thinking,
+            )
+        elif "gemini" in args.model.lower():
             # TODO
             pass
+        else:
+            raise Exception(f"Not support {args.model} model!")
 
         logger.info(f"Process {current_process().name} started.")
         while True:
@@ -249,7 +329,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
             domain, example_id = item
             try:
                 config_file = os.path.join(
-                    args.test_config_base_dir, f"{domain}/{example_id}.json"
+                    args.rollout_task_dir, f"{domain}/{example_id}.json"
                 )
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
@@ -348,8 +428,79 @@ def signal_handler(signum, frame):
     logger.info("Shutdown complete. Exiting.")
     sys.exit(0)
 
+def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_meta: dict, lock):
+    active_environments = []
+    env = None
+    try:
+        screen_size = (args.screen_width, args.screen_height)
+        region = getattr(args, "region", None)
+        snapshot_name = None
+        if args.provider_name == "aws" and region is not None:
+            try:
+                from desktop_env.osworld.providers.aws.manager import IMAGE_ID_MAP
 
-def test(args: argparse.Namespace, test_all_meta: dict) -> None:
+                screen_size = (args.screen_width, args.screen_height)
+                snapshot_name = IMAGE_ID_MAP[region].get(
+                    screen_size, IMAGE_ID_MAP[region][(1920, 1080)]
+                )
+            except Exception as e:
+                logger.error(f"Failed to get snapshot_name from IMAGE_ID_MAP: {e}")
+                snapshot_name = None
+
+        env = DesktopEnv(
+            path_to_vm=args.path_to_vm,
+            action_space=args.action_space,
+            provider_name=args.provider_name,
+            region=region,
+            snapshot_name=snapshot_name,
+            screen_size=screen_size,
+            headless=args.headless,
+            os_type="Ubuntu",
+            require_a11y_tree=args.observation_type in ["a11y_tree", "screenshot_a11y_tree", "som"],
+            enable_proxy=True,
+            client_password=args.client_password
+        )
+        env.start()
+        active_environments.append(env)
+
+        engine_params = {
+            "engine_type": args.ig_provider,
+            "model": args.ig_model,
+            "base_url": getattr(args, "ig_url", ""),
+            "api_key": getattr(args, "ig_api_key", ""),
+            "temperature": getattr(args, "ig_temperature", None),
+            "agent_name": "coarse_instruction_generator"
+        }
+        ig_agent = CoarseInstructionGenerationAgent(engine_params=engine_params)
+        task_generator = OSCaliberTaskGenerator(rollout_task_dir=args.rollout_task_dir, env=env, agent=ig_agent)
+
+        while True:
+            try:
+                task_queue.get(timeout=5)
+            except Exception:
+                break
+
+            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            with lock:
+                for app_name, new_tasks in task_file_list.items():
+                    existing_tasks = task_all_meta.get(app_name, [])
+                    updated_tasks = existing_tasks + new_tasks
+                    task_all_meta[app_name] = updated_tasks
+        
+    except Exception as e:
+        logger.error(f"Process-level error in {current_process().name}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+    finally:
+        logger.info(f"{current_process().name} cleaning up environment...")
+        try:
+            if env:
+                env.close()
+                logger.info(f"{current_process().name} environment closed successfully")
+        except Exception as e:
+            logger.error(f"{current_process().name} error during environment cleanup: {e}")
+
+def offline_test(args: argparse.Namespace, test_all_meta: dict) -> None:
     global processes
     logger.info("Args: %s", args)
     all_tasks = distribute_tasks(test_all_meta)
@@ -413,6 +564,103 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         scores = list(shared_scores)
     logger.info(f"Average score: {sum(scores) / len(scores) if scores else 0}")
 
+def online_test(args: argparse.Namespace):
+    """
+    Online testing with two-phase concurrency:
+    1. Multiple processes concurrently generate tasks (each handles all apps)
+    2. All generated tasks are executed concurrently
+    """
+    # Prepare directories
+    args.rollout_task_dir = os.path.join(
+        args.rollout_base_dir, 
+        f'oscaliber_{args.exp_name}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}'
+    )
+    os.makedirs(args.rollout_task_dir, exist_ok=True)
+    
+    # Phase 1: Concurrent task generation
+    logger.info(f"=== PHASE 1: CONCURRENT TASK GENERATION ===")
+    
+    # Shared dictionary to collect generated tasks from all processes
+    with Manager() as manager:
+        shared_task_meta = manager.dict()
+        task_queue = manager.Queue()
+        lock = manager.Lock() 
+        for _ in range(args.rollout_times):
+            task_queue.put({})
+
+        # Start task generation processes
+        processes = []
+
+        for i in range(args.num_envs):
+            p = Process(
+                target=run_online_rollout,
+                args=(task_queue, args, shared_task_meta, lock),
+                name=f"TaskGenProcess-{i+1}"
+            )
+            p.daemon = True
+            p.start()
+            processes.append(p)
+            logger.info(f"Started task generation process {p.name} with PID {p.pid}")
+            
+        try:
+            while True:
+                alive_count = 0
+                for idx, p in enumerate(processes):
+                    if not p.is_alive():
+                        logger.warning(f"Process {p.name} died, restarting...")
+                        new_p = Process(
+                            target=run_online_rollout,
+                            args=(task_queue, args, shared_task_meta, lock),
+                            name=f"TaskGenProcess-Restart-{idx+1}"
+                        )
+                        new_p.daemon = True
+                        new_p.start()
+                        processes[idx] = new_p
+                        logger.info(f"Restarted process {new_p.name} with PID {new_p.pid}")
+                    else:
+                        alive_count += 1
+                if task_queue.empty():
+                    logger.info("All tasks finished.")
+                    break
+                if alive_count == 0:
+                    logger.error("All processes died, exiting.")
+                    break
+                time.sleep(5)
+            for p in processes:
+                p.join()
+        except KeyboardInterrupt:
+            logger.info("Main process received KeyboardInterrupt. Initiating graceful shutdown...")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error while waiting for processes: {e}", exc_info=True)
+            for p in processes:
+                if p.is_alive():
+                    try:
+                        logger.info(f"Terminating process {p.name} due to error...")
+                        p.terminate()
+                    except Exception as term_e:
+                        logger.error(f"Error terminating process {p.name}: {term_e}")
+            raise
+        
+        # Convert shared dict to regular dict for Phase 2
+        test_all_meta = dict(shared_task_meta)
+    
+    # Phase 1 Summary
+    total_tasks = sum(len(tasks) for tasks in test_all_meta.values())
+    total_apps = len(test_all_meta)
+    logger.info(f"Generated {total_apps} app groups with {total_tasks} total tasks")
+    logger.info(f"Output directory: {args.rollout_task_dir}")
+    with open(os.path.join(args.rollout_task_dir, "test_all.json"), "w", encoding="utf-8") as f:
+        json.dump(test_all_meta, f, indent=4, ensure_ascii=False)
+
+    # Phase 2: Concurrent task execution
+    logger.info(f"\n=== PHASE 2: CONCURRENT TASK EXECUTION ===")
+    
+    # Call offline_test with generated tasks
+    offline_test(
+        args=args,
+        test_all_meta=test_all_meta
+    )
 
 if __name__ == "__main__":
     ####### The complete version of the list of examples #######
@@ -447,10 +695,12 @@ if __name__ == "__main__":
         with open(path_to_args, "w", encoding="utf-8") as f:
             json.dump(vars(args), f, indent=4)
 
-        task_generator = OSCaliberTaskGenerator()
-        # 返回 test_file_list 和 对应的 json 文件的基目录 base_dir/{domain}/{example_id}.json
-        test_file_list, args.test_config_base_dir = task_generator.generate_task()
-        test(args, test_file_list)
+        if args.rollout_mode == "offline":
+            with open(args.rollout_test_all_meta_path, "r", encoding="utf-8") as f:
+                test_file_list = json.load(f)
+            offline_test(args, test_file_list)
+        elif args.rollout_mode == "online":
+            online_test(args)
 
     except KeyboardInterrupt:
         logger.info("Main process received KeyboardInterrupt.")

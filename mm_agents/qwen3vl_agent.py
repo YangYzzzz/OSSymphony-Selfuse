@@ -11,20 +11,14 @@ import openai
 from openai import OpenAI
 from PIL import Image
 from requests.exceptions import SSLError
-from google.api_core.exceptions import (
-    InvalidArgument,
-    ResourceExhausted,
-    InternalServerError,
-    BadRequest,
-)
 from mm_agents.utils.qwen_vl_utils import smart_resize
-from mm_agents.interngui.agents.critic_agent import CriticAgent
+from mm_agents.os_symphony.agents.critic_agent import CriticAgent
 from mm_agents.uitars15_v2 import IMAGE_FACTOR
+from mm_agents.base import ComputerUseBaseAgent
 
 logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
-
 
 def encode_image(image_content):
     return base64.b64encode(image_content).decode("utf-8")
@@ -54,7 +48,7 @@ def process_image(image_bytes):
     return base64.b64encode(processed_bytes).decode("utf-8")
 
 
-class Qwen3VLAgent:
+class Qwen3VLAgent(ComputerUseBaseAgent):
 
     def __init__(
         self,
@@ -368,7 +362,8 @@ Previous actions:
             if len(action_str) >= 1:
                 cur_action_str = action_str[0]
 
-            critic_result = self.critic_agent.critic(task=instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+            # critic_result = self.critic_agent.critic(task=instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
+            critic_result = self.critic_agent.critic(task=instruction, screenshot=processed_image, action=cur_action_str, history=history_action_str)
             if critic_result:
                 break
             else:
@@ -592,10 +587,6 @@ Previous actions:
             openai.RateLimitError,
             openai.BadRequestError,
             openai.InternalServerError,
-            InvalidArgument,
-            ResourceExhausted,
-            InternalServerError,
-            BadRequest,
         ),
         interval=30,
         max_tries=5,

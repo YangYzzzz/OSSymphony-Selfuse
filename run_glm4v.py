@@ -16,8 +16,7 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
-from mm_agents.os_symphony.agents.critic_agent import CriticAgent
-from mm_agents.qwen25vl_agent import Qwen25VLAgent
+from mm_agents.glm4v.glm4v_agent import GLM4VAgent
 
 # Global variables for signal handling
 active_environments = []
@@ -99,39 +98,26 @@ def config() -> argparse.Namespace:
         default="screenshot",
         help="Observation type",
     )
-    parser.add_argument("--sleep_after_execution", type=float, default=0.0)
+    parser.add_argument("--sleep_after_execution", type=float, default=3.0)
     parser.add_argument("--max_steps", type=int, default=15)
-
-    # agent config
-    parser.add_argument("--max_trajectory_length", type=int, default=3)
-    parser.add_argument(
-        "--test_config_base_dir", type=str, default="evaluation_examples"
-    )
 
     # lm config
     parser.add_argument("--model", type=str, default="qwen3-vl")
     parser.add_argument("--base_url", type=str, default=None)
+    parser.add_argument("--api_key", type=str, default=None)
     parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--max_tokens", type=int, default=32768)
-    parser.add_argument("--stop_token", type=str, default=None)
-    parser.add_argument(
-        "--coord",
-        type=str,
-        choices=["absolute", "relative"],
-        default="relative",
-        help="Coordinate system for agent outputs (absolute or relative)",
-    )
-    parser.add_argument(
-        "--add_thought_prefix",
-        action="store_true",
-        help="Add thought prefix to the response",
-    )
+    parser.add_argument("--max_trajectory_length", type=int, default=5)
+    parser.add_argument("--max_image_history_length", type=int, default=5)
 
     # example config
     parser.add_argument("--domain", type=str, default="all")
     parser.add_argument(
         "--test_all_meta_path", type=str, default="evaluation_examples/test_nogdrive.json"
+    )
+    parser.add_argument(
+        "--test_config_base_dir", type=str, default="evaluation_examples"
     )
 
     # logging related
@@ -159,7 +145,7 @@ def config() -> argparse.Namespace:
         help="Provider name",
     )
     parser.add_argument(
-        "--client_password", type=str, default="", help="Client password"
+        "--client_password", type=str, default="password", help="Client password"
     )
     parser.add_argument(
         "--screen_width", type=int, default=1920, help="Screen width"
@@ -172,24 +158,6 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--exp_name", type=str, default="debug-experiment", help="name of experiment"
-    )
-
-
-    # Critic Model
-    parser.add_argument(
-        "--critic_model", type=str, default="os-oracle"
-    )
-    parser.add_argument(
-        "--critic_provider", type=str, default="openai"
-    )
-    parser.add_argument(
-        "--critic_api_key", type=str, default=""
-    )
-    parser.add_argument(
-        "--critic_base_url", type=str, default="https://h.pjlab.org.cn/kapi/workspace.kubebrain.io/ailab-intern11/wzy-proxy-lk85v-151269-worker-0.wuzhenyu/7871"
-    )
-    parser.add_argument(
-        "--critic_times", type=int, default=3
     )
 
     args = parser.parse_args()
@@ -309,33 +277,19 @@ def run_env_tasks(
             )
 
         active_environments.append(env)
-
-        critic_params = {
-            "engine_type": args.critic_provider,
-            "api_key": args.critic_api_key,
-            "model": args.critic_model,
-            "base_url": args.critic_base_url
-        }
-
-        if args.critic_times == 1:
-            critic_agent = None
-        else:
-            critic_agent = CriticAgent(
-                engine_params=critic_params
-            )
-
-        agent = Qwen25VLAgent(
-            model=args.model,
-            max_tokens=args.max_tokens,
-            top_p=args.top_p,
-            temperature=args.temperature,
-            action_space=args.action_space,
-            add_thought_prefix=args.add_thought_prefix,
-            base_url=args.base_url,
-            critic_agent=critic_agent,
-            critic_times=args.critic_times
-        )
         
+        agent = GLM4VAgent(
+            model=args.model,
+            base_url=args.base_url,
+            api_key=args.api_key,
+            temperature=args.temperature,
+            top_p=args.top_p,
+            max_tokens=args.max_tokens,
+            max_image_history_length=args.max_image_history_length,
+            screen_width=args.screen_width,
+            screen_height=args.screen_height
+        )
+
         logger.info(f"Process {current_process().name} started.")
         while True:
             try:
@@ -359,7 +313,7 @@ def run_env_tasks(
                 )
                 os.makedirs(example_result_dir, exist_ok=True)
                 try:
-                    lib_run_single.run_single_example_qwen3vl(
+                    lib_run_single.run_single_example_glm4v(
                         agent,
                         env,
                         example,

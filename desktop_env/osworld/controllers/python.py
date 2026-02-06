@@ -501,6 +501,24 @@ class PythonController:
         # logger.error("Failed to get screen size.")
         # return None
 
+    def get_file_lists(self, base_path):
+        for _ in range(self.retry_times):
+            try:
+                response = requests.post(self.http_server + "/list_files", data={"path": base_path})
+                if response.status_code == 200:
+                    logger.info("Got file lists successfully")
+                    return response.json()['file_lists']
+                else:
+                    logger.error("Failed to get file lists %s. Status code: %d", base_path, response.status_code)
+                    logger.info("Retrying to get file lists.")
+            except Exception as e:
+                logger.error("An error occurred while trying to get the file lists: %s", e)
+                logger.info("Retrying to get file lists.")
+            time.sleep(self.retry_interval)
+
+        logger.error("Failed to get file lists.")
+        return None
+
     def get_vm_window_size(self, app_class_name: str):
         """
         Gets the size of the vm app window.
