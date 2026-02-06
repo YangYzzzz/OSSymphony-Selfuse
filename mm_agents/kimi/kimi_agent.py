@@ -19,7 +19,7 @@ INSTRUCTION_TEMPLATE = "# Task Instruction:\n{instruction}\n\nPlease generate th
 STEP_TEMPLATE = "# Step {step_num}:\n"
 
 SYSTEM_PROMPT_THINKING = """
-You are a GUI agent. You are given an instruction, a screenshot of the screen and your previous interactions with the computer. You need to perform a series of actions to complete the task. The passoword of the computer is {password}.
+You are a GUI agent. You are given an instruction, a screenshot of the screen and your previous interactions with the computer. You need to perform a series of actions to complete the task. The password of the computer is {password}.
 
 For each step, provide your response in this format:
 {thought}

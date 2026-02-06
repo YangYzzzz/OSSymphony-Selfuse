@@ -20,7 +20,6 @@ from multiprocessing import Process, Manager
 from multiprocessing import current_process
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
-from mm_agents.uitars15_v2 import UITarsAgent
 import os
 from os_caliber_task_generator import OSCaliberTaskGenerator
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
@@ -29,7 +28,7 @@ from mm_agents.anthropic.main import AnthropicAgent
 from mm_agents.kimi.kimi_agent import KimiAgent
 from mm_agents.glm4v.glm4v_agent import GLM4VAgent
 from mm_agents.seed_agent import SeedAgent
-
+from mm_agents.uitars15_v2 import UITarsAgent
 # Global variables for signal handling
 active_environments = []
 processes = []

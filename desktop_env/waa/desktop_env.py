@@ -239,7 +239,7 @@ class DesktopEnv(gym.Env):
                 "human_input": human_input
             }
         else:
-            return None
+            return {}
         # print("terminal done")
         # print("LOG: Observation collected")
         

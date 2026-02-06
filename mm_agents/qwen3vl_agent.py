@@ -55,6 +55,7 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         platform: str = "ubuntu",
         model: str = "qwen3-vl",
         base_url: str = "",
+        api_key: str = "",
         max_tokens: int = 1500,
         top_p: float = 0.9,
         temperature: float = 0.0,
@@ -69,6 +70,7 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         self.platform = platform
         self.model = model
         self.base_url = base_url
+        self.api_key = api_key
         self.max_tokens = max_tokens
         self.top_p = top_p
         self.temperature = temperature
@@ -596,10 +598,10 @@ Previous actions:
 
         if "service" not in self.base_url:
             basic_auth_header = f"Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
-            client = OpenAI(base_url=self.base_url, api_key="none", default_headers={"Authorization": basic_auth_header})
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers={"Authorization": basic_auth_header})
         else:
             logger.info(f"H Service VLLM: {self.base_url}")
-            client = OpenAI(base_url=self.base_url)
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
         # base_url = "https://poc-dashscope.aliyuncs.com/compatible-mode/v1"
         # api_key = "sk-123"
         # client = openai.OpenAI(base_url=base_url, api_key=api_key)

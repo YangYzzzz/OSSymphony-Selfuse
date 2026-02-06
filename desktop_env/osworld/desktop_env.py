@@ -110,7 +110,8 @@ class DesktopEnv(gym.Env):
             require_terminal: bool = False,
             os_type: str = "Ubuntu",
             enable_proxy: bool = False,
-            client_password: str = ""
+            client_password: str = "",
+            proxy: str = ""
     ):
         """
         Args:
@@ -148,6 +149,7 @@ class DesktopEnv(gym.Env):
         self.chromium_port = 9222
         self.vnc_port = 8006
         self.vlc_port = 8080
+        self.proxy = proxy
         
         # Initialize with default (no proxy) provider
         self.current_use_proxy = False

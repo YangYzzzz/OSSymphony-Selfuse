@@ -635,6 +635,7 @@ class UITarsAgent:
         top_p: Optional[float],
         temperature: float,
         base_url: str,
+        api_key: str,
         # History settings
         max_trajectory_length: Optional[int],
         max_image_history_length: Optional[int],  # UI-TARS uses history-5 logic
@@ -684,6 +685,7 @@ class UITarsAgent:
         self.history_images = []
         self.history_responses = []
         self.base_url = base_url
+        self.api_key = api_key
         if use_thinking:
             self.system_prompt = COMPUTER_USE_DOUBAO
         else:
@@ -750,10 +752,10 @@ class UITarsAgent:
 
 
     def inference_with_thinking(self, messages):
-        api_key = os.environ['DOUBAO_API_KEY']
-        api_url = os.environ['DOUBAO_API_URL']
+        # api_key = os.environ['DOUBAO_API_KEY']
+        # api_url = os.environ['DOUBAO_API_URL']
         headers = {
-            'Authorization': f'Bearer {api_key}',
+            'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
         }
         data = {
@@ -765,7 +767,7 @@ class UITarsAgent:
             "temperature": self.temperature,
         }
         
-        response = requests.post(api_url, headers=headers, json=data)
+        response = requests.post(f'{self.base_url}/chat/completions', headers=headers, json=data)
         
         print(response.json()["choices"][0])
         if response.status_code == 200:
@@ -778,20 +780,18 @@ class UITarsAgent:
     
     # 使用该函数
     def inference_without_thinking(self, messages):
-        api_key = None
-        api_url = self.base_url if self.base_url is not None else os.environ['DOUBAO_API_URL']
         ak = "5ad34100ee055a4bae66370a5e683bac"
         sk = "607de8249657a3b3bd036dc96d4c0b2f"
         token = base64.b64encode(f"{ak}:{sk}".encode()).decode()
 
-        if api_key is None:
+        if not self.api_key:
             headers = {
                 "Authorization":  f"Basic {token}",
                 'Content-Type': 'application/json'
             }
         else:
             headers = {
-                'Authorization': f'Bearer {api_key}',
+                'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json'
             }
 
@@ -804,7 +804,7 @@ class UITarsAgent:
             "temperature": self.temperature,
         }
         
-        response = requests.post(api_url, headers=headers, json=data)
+        response = requests.post(f'{self.base_url}/chat/completions', headers=headers, json=data)
         
         
         if response.status_code == 200:
