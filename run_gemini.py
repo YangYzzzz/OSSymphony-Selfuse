@@ -14,7 +14,8 @@ from multiprocessing import Process, Manager
 from multiprocessing import current_process
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
-from mm_agents.gemini.main import GeminiAgent
+from mm_agents.gemini.gemini_agent import GeminiAgent
+from mm_agents.gemini.gemini_openai_agent import GeminiOpenaiAgent
 import os
 
 
@@ -189,7 +190,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
         env.start()
         active_environments.append(env)
 
-        agent = GeminiAgent(
+        agent = GeminiOpenaiAgent(
             model=args.model,
             base_url=args.base_url,
             api_key=args.api_key,
