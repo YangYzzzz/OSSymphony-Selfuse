@@ -599,6 +599,7 @@ class AnthropicAgent:
                     logger.error(f"parse_actions_from_tool_call parsing failed 3 times consecutively, terminating: {e}")
                     actions = ["FAIL"]
                     return reasonings, actions
+                
     def reset(self, _logger = None, *args, **kwargs):
         """
         Reset the agent's state.
