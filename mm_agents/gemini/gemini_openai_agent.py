@@ -264,7 +264,7 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
                     extra_body={
                         "thinking_config": {
                             "include_thoughts": True
-                        },
+                        }
                     }
                 )
                 return response
@@ -431,19 +431,12 @@ class GeminiOpenaiAgent: # 重命名类以反映底层变更，但功能不变
         if len(self.messages) == 1: 
             content_parts = [{"type": "text", "text": f"User Instruction: {task_instruction}"}]
             if base64_screenshot:
-                content_parts.append({
-                    "type": "image_url", 
-                    "image_url": {"url": base64_screenshot}
-                })
+                content_parts.append({"type": "image_url", "image_url": {"url": base64_screenshot}})
             
             self.messages.append({
                 "role": "user",
                 "content": content_parts
             })
-        
-        # print("!!!!!!!!!!!  Messages !!!!!!!!!!!")
-        # print(self.messages)
-
 
         try:
             response = self.get_model_response()

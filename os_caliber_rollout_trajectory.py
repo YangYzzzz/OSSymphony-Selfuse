@@ -245,6 +245,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 model=args.model,
                 model_type="qwen25vl",
                 base_url=args.base_url,
+                api_key=args.api_key,
                 max_tokens=args.max_tokens,
                 top_p=args.top_p,
                 temperature=args.temperature,
