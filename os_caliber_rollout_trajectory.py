@@ -30,6 +30,9 @@ from mm_agents.glm4v.glm4v_agent import GLM4VAgent
 from mm_agents.seed_agent import SeedAgent
 from mm_agents.uitars15_v2 import UITarsAgent
 from mm_agents.gemini.gemini_openai_agent import GeminiOpenAIAgent as GeminiAgent
+from mm_agents.os_symphony.utils.process_context import set_current_result_dir
+
+
 # Global variables for signal handling
 active_environments = []
 processes = []
@@ -76,7 +79,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--max_tokens", type=int, default=32768)
     parser.add_argument("--use_thinking", action="store_true", default=False)
-    parser.add_argument("--max_trajectory_length", type=int, default=None, help="The max number of trajectory steps.") # 一般没用, 目前强模型通常选择保留全部文本
+    parser.add_argument("--max_trajectory_length", type=int, default=8, help="The max number of trajectory steps.") # 一般没用, 目前强模型通常选择保留全部文本
     parser.add_argument("--max_image_history_length", type=int, default=5, help="The max number of images in the history.")
     parser.add_argument("--language", type=str, default="Chinese", help="Language for the agent.")
 
@@ -168,8 +171,8 @@ stdout_handler.setFormatter(formatter)
 
 stdout_handler.addFilter(logging.Filter("desktopenv"))
 
-logger.addHandler(file_handler)
-logger.addHandler(debug_handler)
+# logger.addHandler(file_handler)
+# logger.addHandler(debug_handler)
 logger.addHandler(stdout_handler)
 #  }}} Logger Configs #
 
@@ -326,7 +329,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 max_image_history_length=args.max_image_history_length
             )
         else:
-            raise Exception(f"Not support {args.model} model!")
+            raise Exception(f"Do not support {args.model} model!")
 
         logger.info(f"Process {current_process().name} started.")
         while True:
@@ -436,9 +439,11 @@ def signal_handler(signum, frame):
     logger.info("Shutdown complete. Exiting.")
     sys.exit(0)
 
+
 def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_meta: dict, lock):
     active_environments = []
     env = None
+    set_current_result_dir(args.rollout_task_dir)
     try:
         screen_size = (args.screen_width, args.screen_height)
         region = getattr(args, "region", None)
@@ -572,6 +577,7 @@ def offline_test(args: argparse.Namespace, test_all_meta: dict) -> None:
         scores = list(shared_scores)
     logger.info(f"Average score: {sum(scores) / len(scores) if scores else 0}")
 
+
 def online_test(args: argparse.Namespace):
     """
     Online testing with two-phase concurrency:
@@ -669,6 +675,7 @@ def online_test(args: argparse.Namespace):
         args=args,
         test_all_meta=test_all_meta
     )
+
 
 if __name__ == "__main__":
     ####### The complete version of the list of examples #######

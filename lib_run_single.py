@@ -241,6 +241,7 @@ def run_single_example_agents3(agent, env, example, max_steps, instruction, args
 
 def run_single_example_os_caliber_omni(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)
+    set_current_result_dir(example_result_dir)
 
     agent.reset()
     env.reset(task_config=example)

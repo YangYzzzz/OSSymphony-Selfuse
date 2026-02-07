@@ -93,7 +93,7 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         self.critic_agent = critic_agent
         self.critic_times = critic_times if critic_agent else 1
 
-    def predict(self, instruction: str, obs: Dict) -> List:
+    def predict(self, instruction: str, obs: Dict) -> List:     # type: ignore
         """
         Predict the next action(s) based on the current observation.
         Returns (response, pyautogui_code).
@@ -623,7 +623,7 @@ Previous actions:
                 continue
         return ""
 
-    def evaluate(self) -> float:
+    def evaluate(self) -> float:    # type: ignore
         return 1
     
     def reset(self, _logger=None):

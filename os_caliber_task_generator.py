@@ -207,6 +207,8 @@ OSWORLD_APP_SETUP_DICT = {
 }
 
 APP_SETUP_DICT = OSWORLD_APP_SETUP_DICT | EXTRA_APP_SETUP_DICT
+# 为了测试新的app
+# APP_SETUP_DICT = EXTRA_APP_SETUP_DICT
 ENV_FILE_BASE_DIR = "/home/user/Desktop/test_files"
 
 class OSCaliberTaskGenerator:
@@ -311,7 +313,7 @@ class OSCaliberTaskGenerator:
         if isinstance(app_list, list) and len(app_list) > 0:
             available_apps = app_list
         else:
-            available_apps = list(APP_SETUP_DICT.keys())
+            available_apps = list(APP_SETUP_DICT.keys())  
 
         if not available_apps:
             raise ValueError("No apps available to generate tasks.")

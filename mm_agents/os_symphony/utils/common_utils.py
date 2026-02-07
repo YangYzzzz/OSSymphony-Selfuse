@@ -114,8 +114,10 @@ def call_llm_safe(
     # 通过 .get() 方法安全地获取当前线程的上下文值
     try:
         example_result_dir = get_current_result_dir()
-    except Exception:
+    except Exception as e:
+        print("调用线程上下文发生错误:", e)
         example_result_dir = "logs/tokens"
+    
     # Retry if fails
     max_retries = 3  # Set the maximum number of retries
     attempt = 0
