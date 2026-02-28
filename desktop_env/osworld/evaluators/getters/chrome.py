@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import platform
+import re
 import sqlite3
 import time
 from urllib.parse import unquote
