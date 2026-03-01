@@ -315,13 +315,6 @@ def config() -> argparse.Namespace:
     parser.add_argument("--max_trajectory_length", type=int, default=8)
     parser.add_argument("--enable_reflection", type=bool, default=True)
 
-    parser.add_argument(
-        "--tool_config", 
-        type=str, 
-        default="/nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml",
-        help="The path of tool config yaml, default uses /nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml"
-    )
-
     # generator model config
     parser.add_argument("--orchestrator_provider", type=str, default="openai")
     parser.add_argument("--orchestrator_model", type=str, default="gpt-4o")
@@ -458,16 +451,17 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
     logger.info(f"Total tasks: {len(all_tasks)}")
 
     engine_params_for_orchestrator = {
+        "agent_name": "orchestrator",
         "engine_type": args.orchestrator_provider,
         "model": args.orchestrator_model,
         "base_url": getattr(args, "orchestrator_url", ""),
         "api_key": getattr(args, "orchestrator_api_key", ""),
-        "temperature": getattr(args, "orchestrator_temperature", None),
-        "tool_config": args.tool_config,
+        "temperature": getattr(args, "orchestrator_temperature", None)
     }
 
 
     engine_params_for_grounder = {
+        "agent_name": "grounder",
         "engine_type": args.grounder_provider,
         "model": args.grounder_model,
         "base_url": getattr(args, "grounder_url", ""),
@@ -478,6 +472,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
     }
 
     engine_params_for_coder = {
+        "agent_name": "coder",
         "engine_type": args.coder_provider,
         "model": args.coder_model,
         "base_url": getattr(args, "coder_url", ""),

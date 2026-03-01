@@ -1,4 +1,5 @@
 import base64
+import copy
 import os
 import time
 from PIL import Image
@@ -31,7 +32,6 @@ PREDEFINED_COMPUTER_USE_FUNCTIONS = [
     "drag_and_drop",
 ]
 
-# 没找到gemini的system prompt，可能是不需要，先用claude的顶一下
 SYSTEM_PROMPT = f"""
 * You are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
 * You can feel free to install Ubuntu applications with your bash tool. Use curl instead of wget.
@@ -47,7 +47,20 @@ SYSTEM_PROMPT = f"""
 * Use ONE function each time.
 """
 
-# OpenAI 需要明确的 Tool Schema 定义，以此模拟 Gemini 的 ComputerUse
+# 修改: 评估系统提示词，要求输出 JSON 格式的思考和分数
+EVALUATION_SYSTEM_PROMPT = """
+* You are an expert evaluator for an autonomous computer agent.
+* Your job is to review the conversation history, the actions taken by the agent, and the final screenshot of the screen.
+* You must determine if the user's initial instruction has been successfully completed based on the visual evidence in the final screenshot.
+* Be strict. If the screenshot does not show clear evidence that the task is finished (e.g., the specific webpage is not open, the file is not created, the text is not typed), consider it a failure.
+* You must output your result in valid JSON format with exactly two keys:
+  - "thought": A brief explanation of your reasoning.
+  - "score": The integer 1 if the task is successfully completed, or 0 if failed/incomplete.
+* Example Output: {"thought": "The browser is open and shows the correct website.", "score": 1}
+* Do not output any other text outside the JSON object.
+"""
+
+# OpenAI 需要明确的 Tool Schema 定义
 TOOLS_SCHEMA = [
     {
         "type": "function",
@@ -199,29 +212,28 @@ TOOLS_SCHEMA = [
     }
 ]
 
-class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
+class GeminiOpenAIAgent:
     def __init__(
         self,
         platform: str = "Ubuntu",
         verbose: bool = True,
-        model: str = "gemini-3-flash-preview", # 默认模型更改为适合 OpenAI 的模型
+        model: str = "gemini-3-flash-preview",
         max_tokens: int = 4096,
         api_key: str = "",
         base_url: str = "",
         action_space: str = "pyautogui",
         screen_size: tuple[int, int] = (1920, 1080),
         temperature: float = 0.1,
-        top_p: float = 0.95, # OpenAI 通常不设为0，给个低值
+        top_p: float = 0.95,
         max_image_history_length: int = 8,
     ):
         self.platform = platform
         self.verbose = verbose
         self.action_space = action_space
-        self.model_name = model
-        self.messages: list = [] # 存储 OpenAI 格式的消息字典
+        self.model = model
+        self.messages: list = []
         self.screen_size = screen_size
         
-        # 初始化 OpenAI Client
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url if base_url else None
@@ -232,10 +244,7 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
         self.max_tokens = max_tokens
         self.max_image_history_length = max_image_history_length
 
-        # 保存 system prompt 到消息历史
         self.messages.append({"role": "system", "content": SYSTEM_PROMPT})
-        
-        # 存储待处理的 tool calls (OpenAI 格式对象)
         self.pending_tool_calls = []
 
     def reset(self):
@@ -244,17 +253,14 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
         logger.info("OpenAIAgent reset.")
 
     def _encode_image_to_base64(self, image_bytes: bytes, mime_type: str = "image/png") -> str:
-        """Helper to encode bytes to base64 data url for OpenAI."""
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
         return f"data:{mime_type};base64,{base64_image}"
 
-    def get_model_response(
-        self, max_retries=5, base_delay_s=1
-    ):
+    def get_model_response(self, max_retries=5, base_delay_s=1):
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model=self.model_name,
+                    model=self.model,
                     messages=self.messages,
                     temperature=self.temperature,
                     top_p=self.top_p,
@@ -272,17 +278,8 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
                 print(e)
                 if attempt < max_retries - 1:
                     delay = base_delay_s * (2**attempt)
-                    message = (
-                        f"Generating content failed on attempt {attempt + 1}. "
-                        f"Retrying in {delay} seconds...\n"
-                    )
-                    termcolor.cprint(message, color="yellow")
                     time.sleep(delay)
                 else:
-                    termcolor.cprint(
-                        f"Generating content failed after {max_retries} attempts.\n",
-                        color="red",
-                    )
                     raise
 
     def denormalize_x(self, x: int) -> int:
@@ -291,104 +288,98 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
     def denormalize_y(self, y: int) -> int:
         return int(y / 1000 * self.screen_size[1])
 
-    def handle_action(self, action_name: str, action_args: dict) -> Tuple[Dict, List]:
-        """Handles the action and returns the environment state."""
-        env_state = {}
-        coordinates = []        
-        
+    def handle_action(self, action_name: str, action_args: dict) -> str:
+        """
+        Handles the action and returns the PyAutoGUI command string.
+        Note: Coordinates calculation is moved to predict to ensure consistency in metadata.
+        """
         if action_name == "open_web_browser":
-            env_state['action'] = "pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write('chrome'); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)"
+            return "pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write('chrome'); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0)"
         
         elif action_name == "click_at":
             x = self.denormalize_x(action_args["x"])
             y = self.denormalize_y(action_args["y"])
-            env_state['action'] = f"pyautogui.click(x={x}, y={y})"
-            coordinates += [x, y]
+            return f"pyautogui.click(x={x}, y={y})"
 
         elif action_name == "hover_at":
             x = self.denormalize_x(action_args["x"])
             y = self.denormalize_y(action_args["y"])
-            env_state['action'] = f"pyautogui.moveTo(x={x}, y={y})"
-            coordinates += [x, y]
+            return f"pyautogui.moveTo(x={x}, y={y})"
 
         elif action_name == "type_text_at":
             x = self.denormalize_x(action_args["x"])
             y = self.denormalize_y(action_args["y"])
-            coordinates += [x, y]
-
             text = action_args["text"]
             press_enter = action_args.get("press_enter", False)
             clear_before_typing = action_args.get("clear_before_typing", True)
-            env_state['action'] = f"pyautogui.click(x={x}, y={y}); "
+            
+            action_str = f"pyautogui.click(x={x}, y={y}); "
             if clear_before_typing:
-                env_state['action'] += "time.sleep(0.1); pyautogui.hotkey('ctrl', 'a'); pyautogui.press('backspace'); "
-
-            env_state['action'] += f"pyautogui.write('{text}'); "
-
+                action_str += "time.sleep(0.1); pyautogui.hotkey('ctrl', 'a'); pyautogui.press('backspace'); "
+            action_str += f"pyautogui.write('{text}'); "
             if press_enter:
-                env_state['action'] += "pyautogui.press('enter')"
+                action_str += "pyautogui.press('enter')"
+            return action_str
         
         elif action_name == "scroll_document":
             direction = action_args["direction"]
             amount = -self.screen_size[1] if direction == "down" else self.screen_size[1]
             if direction in ["left", "right"]:
-                env_state['action'] = f"pyautogui.hscroll({amount})"
+                return f"pyautogui.hscroll({amount})"
             else:
-                env_state['action'] = f"pyautogui.scroll({amount})"
+                return f"pyautogui.scroll({amount})"
 
         elif action_name == "scroll_at":
             x = self.denormalize_x(action_args["x"])
             y = self.denormalize_y(action_args["y"])
-            coordinates += [x, y]
-
             magnitude = action_args.get("magnitude", 800)
             direction = action_args["direction"]
-            env_state['action'] = f"pyautogui.moveTo({x}, {y}); "
-
+            
+            action_str = f"pyautogui.moveTo({x}, {y}); "
             if direction in ("up", "down"):
                 magnitude = self.denormalize_y(magnitude)
                 scroll_amount = magnitude if direction == "up" else -magnitude
-                env_state['action'] = f"pyautogui.scroll({scroll_amount})"
+                action_str += f"pyautogui.scroll({scroll_amount})"
             elif direction in ("left", "right"):
                 magnitude = self.denormalize_x(magnitude)
                 scroll_amount = magnitude if direction == "left" else -magnitude
-                env_state['action'] = f"pyautogui.hscroll({scroll_amount})"
-            else:
-                raise ValueError("Unknown direction: ", direction)
+                action_str += f"pyautogui.hscroll({scroll_amount})"
+            return action_str
             
         elif action_name == "wait_5_seconds":
-            env_state['action'] = "time.sleep(5)"
+            return "time.sleep(5)"
         
         elif action_name == "search":
-            env_state['action'] = "pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write('chrome'); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0); "
-            env_state['action'] += "pyautogui.hotkey('ctrl', 'l'); pyautogui.write('www.google.com'); pyautogui.press('enter')"
+            return "pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write('chrome'); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0); pyautogui.hotkey('ctrl', 'l'); pyautogui.write('www.google.com'); pyautogui.press('enter')"
         
         elif action_name == "navigate":
             url = action_args["url"]
-            env_state['action'] = "pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write('chrome'); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0); "
-            env_state['action'] += f"pyautogui.hotkey('ctrl', 'l'); pyautogui.write('{url}'); pyautogui.press('enter')"
+            return f"pyautogui.hotkey('win'); time.sleep(1.0); pyautogui.write('chrome'); time.sleep(1.0); pyautogui.hotkey('enter'); time.sleep(1.0); pyautogui.hotkey('ctrl', 'l'); pyautogui.write('{url}'); pyautogui.press('enter')"
         
         elif action_name == "key_combination":
             keys = action_args["keys"].split("+")
             py_keys = [k.replace('control', 'ctrl') for k in keys]
             keys_str = ", ".join([f"'{k}'" for k in py_keys])
-            env_state['action'] = f"pyautogui.hotkey({keys_str})"
+            return f"pyautogui.hotkey({keys_str})"
 
         elif action_name == "drag_and_drop":
             x = self.denormalize_x(action_args["x"])
             y = self.denormalize_y(action_args["y"])
             destination_x = self.denormalize_x(action_args["destination_x"])
             destination_y = self.denormalize_y(action_args["destination_y"])
-            env_state['action'] = f"pyautogui.moveTo({x}, {y}); pyautogui.dragTo({destination_x}, {destination_y}, duration=0.5)"
-            coordinates += [x, y, destination_x, destination_y]
+            return f"pyautogui.moveTo({x}, {y}); pyautogui.dragTo({destination_x}, {destination_y}, duration=0.5)"
+        
         else:
             raise ValueError(f"Unsupported function: {action_name}")
 
-        return env_state, coordinates
-
-    def predict(self, task_instruction: str, obs: Dict = {}) -> Tuple[Dict, List[str]]:
+    def predict(self, task_instruction: str, obs: Dict = {}) -> Tuple[List[Dict], List[str]]:
+        """
+        Returns:
+            response_list: A list of dictionaries containing metadata (thought, action string, coords, etc.)
+            action_list: A list of executable PyAutoGUI command strings.
+        """
         
-        # 处理截图 (Resize Logic unchanged)
+        # 处理截图
         base64_screenshot = None
         if obs and "screenshot" in obs:
             screenshot_bytes = obs["screenshot"]
@@ -398,14 +389,10 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
             output_buffer = io.BytesIO()
             resized_image.save(output_buffer, format='PNG')
             resized_obs_bytes = output_buffer.getvalue()
-            # 转为 OpenAI 可用的 base64 字符串
             base64_screenshot = self._encode_image_to_base64(resized_obs_bytes)
 
         # 处理上一轮的 Tool Calls 结果
-        # 逻辑映射：Gemini 将 FunctionResponse + 图片放在同一轮。
-        # OpenAI 的做法：先添加 role: tool 消息（ID对应），然后紧跟一条 role: user 消息放入新图片。
         if self.pending_tool_calls:
-            # Step A: 确认 Tool Execution (Screenshot updated)
             for tool_call in self.pending_tool_calls:
                 self.messages.append({
                     "role": "tool",
@@ -413,8 +400,6 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
                     "content": "Screenshot updated."
                 })
             
-            # Step B: 将新截图作为 User Message 传入，让模型看到动作结果
-            # 这模拟了 Gemini 中 FunctionResponse 包含 inline_data 的行为
             if base64_screenshot:
                 self.messages.append({
                     "role": "user",
@@ -426,8 +411,7 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
             self.pending_tool_calls = []
             self._cleanup_old_screenshots()
 
-        # 处理初始状态 (First Turn)
-        # 如果除了 system prompt 还没有其他消息 (user/assistant)
+        # 处理初始状态
         if len(self.messages) == 1: 
             content_parts = [{"type": "text", "text": f"User Instruction: {task_instruction}"}]
             if base64_screenshot:
@@ -441,79 +425,96 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
         try:
             response = self.get_model_response()
         except Exception as e:
-            return {}, []
+            logger.error(f"Failed to get model response: {e}")
+            return [], []
 
         choice = response.choices[0]
         message = choice.message
 
         # 将模型回复添加到历史
         self.messages.append(message.model_dump(exclude_none=True))
+        logger.info(f'Message dump: {message.model_dump(exclude_none=True)}!!!!!!!!!')
 
         reasoning = message.content or ""
         logger.info(f'Response: {reasoning}')
         tool_calls = message.tool_calls
 
-        # 如果没有内容也没有工具调用，可能是异常
-        if not reasoning and not tool_calls:
-            if choice.finish_reason == "length":
-                 print("Error: Max tokens reached.")
-            return {}, []
-
         if not tool_calls:
-            print(f"Agent Loop Complete: {reasoning}")
-            return {"reasoning": "DONW"}, ["DONE"]
+            # 如果没有工具调用，通常意味着结束
+            return [
+                {
+                    "raw_response": reasoning,
+                    "thought": reasoning,
+                    "action": "done",
+                    "coordinate": None,
+                    "coordinate2": None,
+                    "meta_action": {"type": "done"}
+                }
+            ], ["DONE"]
 
-        function_call_strs = []
+        response_metadata_list = []
         action_strs = []
-        coordinates = []
         
-        # 4. 解析工具调用 -> pyautogui
+        # 解析工具调用
         for tool_call in tool_calls:
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
             
-            # Print logic
-            function_call_str = f"Name: {function_name}"
-            if function_args:
-                function_call_str += f"\nArgs:"
-                for key, value in function_args.items():
-                    function_call_str += f"\n  {key}: {value}"
-            function_call_strs.append(function_call_str)
+            # --- 1. 计算绝对坐标 (用于 metadata 和 visualization) ---
+            # 这里的坐标必须是绝对坐标 (PyAutoGUI 空间)
+            coordinate = None
+            coordinate2 = None
+            
+            if "x" in function_args and "y" in function_args:
+                abs_x = self.denormalize_x(function_args["x"])
+                abs_y = self.denormalize_y(function_args["y"])
+                coordinate = [abs_x, abs_y]
+                
+                if "destination_x" in function_args and "destination_y" in function_args:
+                    dest_x = self.denormalize_x(function_args["destination_x"])
+                    dest_y = self.denormalize_y(function_args["destination_y"])
+                    coordinate2 = [coordinate, [dest_x, dest_y]] # 起点, 终点
+            
+            # --- 2. 生成 Action String (用于 metadata 显示) ---
+            action_display_str = f"{json.dumps({'name': function_name, 'arguments': function_args}, ensure_ascii=False)}"
 
-            # Handle Action
+            # --- 3. 生成 Meta Action (详细结构) ---
+            meta_action = {
+                "type": function_name,
+                "arguments": function_args,
+                "coordinates_absolute": coordinate
+            }
+
+            # --- 4. 生成 PyAutoGUI Action (用于执行) ---
             try:
-                fc_result, fc_coords = self.handle_action(function_name, function_args)
-                if fc_result and 'action' in fc_result:
-                    action_strs.append(fc_result['action'])
-                coordinates.extend(fc_coords)
+                py_action_str = self.handle_action(function_name, function_args)
+                action_strs.append(py_action_str)
             except ValueError as e:
-                print(f"Error handling action: {e}")
-        
-        # 可视化
-        table = Table(expand=True)
-        table.add_column("OpenAI Computer Use Reasoning", header_style="magenta", ratio=1)
-        table.add_column("Function Call(s)", header_style="cyan", ratio=1)
-        table.add_row(reasoning if reasoning else "[No Text]", "\n".join(function_call_strs))
-        if self.verbose:
-            console.print(table)
-            print()
+                logger.error(f"Error handling action {function_name}: {e}")
+                continue # 跳过错误的 action
 
-        # 挂起当前 Tool Calls，等待下一轮提供截图反馈
+            # --- 5. 组装 Metadata ---
+            # raw_response 包含 thought 和 action 的组合
+            raw_response_text = f"{reasoning}\n{action_display_str}"
+            
+            metadata = {
+                "raw_response": raw_response_text,
+                "thought": reasoning,
+                "action": action_display_str,
+                "coordinate": coordinate,
+                "coordinate2": coordinate2,
+                "meta_action": meta_action
+            }
+
+            response_metadata_list.append(metadata)
+
+        # 挂起当前 Tool Calls
         self.pending_tool_calls = tool_calls
         
-        final_response = {
-            "reasoning": reasoning,
-            "coordinates": coordinates
-        }
-        return final_response, action_strs
+        return response_metadata_list, action_strs
 
     def _cleanup_old_screenshots(self):
-        """
-        清理旧截图以节省 Token。
-        逻辑：保留最近 max_image_history_length 轮包含图片的 User 消息。
-        """
         turns_with_screenshots = 0
-        # 从后往前遍历
         for i in range(len(self.messages) - 1, -1, -1):
             msg = self.messages[i]
             if msg.get("role") == "user" and isinstance(msg.get("content"), list):
@@ -525,19 +526,85 @@ class GeminiOpenAIAgent: # 重命名类以反映底层变更，但功能不变
                 
                 if has_image:
                     turns_with_screenshots += 1
-                    # 如果超过了保留数量，移除该图片部分
                     if turns_with_screenshots > self.max_image_history_length:
-                        # 过滤掉 image_url 类型的 part
                         new_content = [
                             p for p in msg["content"] 
                             if not (isinstance(p, dict) and p.get("type") == "image_url")
                         ]
-                        # 如果过滤后只剩空列表或纯文本，更新消息
-                        # (为了保持对话连贯性，通常保留文本提示 "Screenshot updated" 或指令)
                         if not new_content:
-                            # 如果原本只有图片，替换为占位符
                             msg["content"] = "[Old Screenshot Removed]" 
                         else:
                             msg["content"] = new_content
-                        
-                        # print(f"Cleaned up screenshot from message index {i}")
+                            
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """
+        Self-judge function.
+        Returns a dictionary with 'thought' and 'score'.
+        """
+        eval_messages = copy.deepcopy(self.messages)
+        
+        # 替换 System Prompt
+        if eval_messages and eval_messages[0].get("role") == "system":
+            eval_messages[0]["content"] = EVALUATION_SYSTEM_PROMPT
+        else:
+            eval_messages.insert(0, {"role": "system", "content": EVALUATION_SYSTEM_PROMPT})
+
+        # 闭合 Pending Tool Calls
+        if self.pending_tool_calls:
+            for tool_call in self.pending_tool_calls:
+                eval_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": "Action executed. See final screenshot below."
+                })
+
+        # 处理截图
+        base64_screenshot = None
+        if obs and "screenshot" in obs:
+            screenshot_bytes = obs["screenshot"]
+            screenshot_image = Image.open(io.BytesIO(screenshot_bytes)) 
+            new_width, new_height = 1920, 1080
+            resized_image = screenshot_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            output_buffer = io.BytesIO()
+            resized_image.save(output_buffer, format='PNG')
+            resized_obs_bytes = output_buffer.getvalue()
+            base64_screenshot = self._encode_image_to_base64(resized_obs_bytes)
+
+        # 构建 Evaluation Query
+        content_parts = []
+        if base64_screenshot:
+            content_parts.append({"type": "image_url", "image_url": {"url": base64_screenshot}})
+        
+        eval_query = f"The original user instruction was: '{task_instruction}'.\nBased on the conversation history and this final screenshot, provide your evaluation in JSON format."
+        content_parts.append({"type": "text", "text": eval_query})
+
+        eval_messages.append({
+            "role": "user",
+            "content": content_parts
+        })
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=eval_messages,
+                temperature=0.1, 
+                max_tokens=3268,
+                response_format={"type": "json_object"} # 强制 JSON 输出
+            )
+            
+            content = response.choices[0].message.content.strip()
+            logger.info(f"Evaluation Result Raw Output: {content}")
+            
+            result = json.loads(content)
+            
+            # 确保包含必要的键
+            if "score" not in result:
+                result["score"] = 0
+            if "thought" not in result:
+                result["thought"] = "No thought provided."
+                
+            return result
+                
+        except Exception as e:
+            logger.error(f"Evaluation failed: {e}")
+            return {"thought": f"Evaluation failed due to error: {str(e)}", "score": 0}

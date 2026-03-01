@@ -46,7 +46,7 @@ EXTRA_APP_SETUP_DICT = {
     },
     "audacity": {
         "type": ["wav", "mp3"],
-        "commands": [["audacity"]]
+        "commands": [["audacity", "PATH"]]
     },
     "librecad": {
         "type": ["dxf"],
@@ -94,13 +94,9 @@ EXTRA_APP_SETUP_DICT = {
         "commands": [["zoom"]]
     },
     "google-earth-pro": {
-        # 这里的 lat, lon, range 将在代码中动态替换
+        "type": ["kmz"],
         "commands": [
-            [
-                "google-earth-pro",
-                # 使用占位符，方便后续替换
-                "lat=LAT_VAL,lon=LON_VAL,range=RANGE_VAL" 
-            ]
+            ["google-earth-pro", "PATH"]
         ]
     },
     "kicad": {
@@ -150,7 +146,7 @@ OSWORLD_APP_SETUP_DICT = {
                 "libreoffice",
                 "--impress",
                 "--nologo",
-                "--norestore", # 修复：这里原来漏了逗号
+                "--norestore",
                 "PATH"
             ]
         ]
@@ -163,7 +159,7 @@ OSWORLD_APP_SETUP_DICT = {
                 "libreoffice",
                 "--calc",
                 "--nologo",
-                "--norestore", # 修复：这里原来漏了逗号
+                "--norestore",
                 "PATH"
             ]
         ]
@@ -176,7 +172,7 @@ OSWORLD_APP_SETUP_DICT = {
                 "libreoffice",
                 "--writer",
                 "--nologo",
-                "--norestore", # 修复：这里原来漏了逗号
+                "--norestore",
                 "PATH"
             ]
         ]
@@ -184,9 +180,6 @@ OSWORLD_APP_SETUP_DICT = {
     "vscode": {
         "type": ["project_folder", "py"],
         "commands": [["code", "--new-window", "PATH"]]
-    },
-    "terminal": {
-        "window_name": "Terminal"
     },
     "thunderbird": {
         "commands": [["/usr/bin/thunderbird"]]
@@ -273,20 +266,32 @@ class OSCaliberTaskGenerator:
                 if "PATH" in param:
                     if file_abs_lists:
                         selected_file = random.choice(file_abs_lists)
+
+                        # =====================================================================================
+                        # 特判: 当 当前 APP 为 blender/textstudio 且 当前的路径为文件夹, 再深入一层寻找特定文件类型
+                        # =====================================================================================
+                        if app_name in ["blender", "texstudio"] and "." not in selected_file.split('/')[-1]:
+                            try:
+                                # 使用环境控制器获取子文件夹内的文件列表
+                                sub_files = self.env.controller.get_file_lists(selected_file)
+                                
+                                if sub_files and isinstance(sub_files, list):
+                                    for sub_f in sub_files:
+                                        # 找到第一个以 .blend / .tex 结尾的文件
+                                        if sub_f.endswith('.blend') or sub_f.endswith('.tex'):
+                                            # 更新 selected_file 为具体的 .blend 文件绝对路径
+                                            selected_file = os.path.join(selected_file, sub_f)
+                                            break
+
+                            except Exception as e:
+                                print(f"Error searching .blend file in {selected_file}: {e}")
+
                         cmd[i] = param.replace("PATH", selected_file)
                     else:
                         # 如果该软件需要文件但没有找到文件，可以选择移除该参数，或者保留原样让其打开空软件
                         if param == "PATH":
                             cmd[i] = "" 
                         print(f"Warning: No files found for {app_name}, starting without file.")
-
-                # 处理 Google Earth 的随机经纬度
-                if "lat=" in param and "lon=" in param:
-                    lat_val, lon_val, range_val = self._generate_random_coordinates()
-                    new_param = param.replace("LAT_VAL", lat_val)
-                    new_param = new_param.replace("LON_VAL", lon_val)
-                    new_param = new_param.replace("RANGE_VAL", range_val)
-                    cmd[i] = new_param
 
             cleaned_cmd = [c for c in cmd if c != ""]
 

@@ -329,7 +329,7 @@ def run_env_tasks(
             max_tokens=args.max_tokens,
             top_p=args.top_p,
             temperature=args.temperature,
-            history_n=8,
+            history_n=args.max_trajectory_length,
             action_space=args.action_space,
             coordinate_type=args.coord,
             add_thought_prefix=args.add_thought_prefix,

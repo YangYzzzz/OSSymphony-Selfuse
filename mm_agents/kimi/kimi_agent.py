@@ -76,8 +76,9 @@ def parse_response_to_cot_and_action(response, screen_size, coordinate_type, thi
         
             logger.info(f"Extracted thought (non-thinking): {sections['thought']}")
         
+        # FIX: 去除正则前的^
         action_match = re.search(
-            r'^\s*##\s*Action\s*:?\s*[\n\r]+(.*?)(?=^\s*##|\Z)',
+            r'\s*##\s*Action\s*:?\s*[\n\r]+(.*?)(?=^\s*##|\Z)',
             input_string, re.DOTALL | re.MULTILINE
         )
         if action_match:
@@ -408,7 +409,7 @@ class KimiAgent:
                 retry_count += 1
                 if retry_count == max_retry:
                     logger.error("Maximum retries reached. Exiting.")
-                    return str(e), ['FAIL'], other_cot
+                    return str(e), ['FAIL']
 
         pyautogui_actions = [
             self._scale_scroll_for_windows(code) for code in pyautogui_actions

@@ -1,3 +1,5 @@
+import json
+import os
 import re
 import time
 from io import BytesIO
@@ -33,11 +35,18 @@ def create_pyautogui_code(agent, code: str, obs: Dict):
     exec_code = response
     return exec_code
 
-
+from mm_agents.os_symphony.utils.process_context import get_current_result_dir
 def call_llm_safe(
     agent, temperature: float = 0.0, use_thinking: bool = False, **kwargs
 ) -> str:
     # Retry if fails
+    # 通过 .get() 方法安全地获取当前线程的上下文值
+    try:
+        example_result_dir = get_current_result_dir()
+    except Exception as e:
+        print("调用线程上下文发生错误:", e)
+        example_result_dir = "logs/tokens"
+
     max_retries = 3  # Set the maximum number of retries
     attempt = 0
     response = ""
@@ -55,6 +64,20 @@ def call_llm_safe(
             if attempt == max_retries:
                 print("Max retries reached. Handling failure.")
         time.sleep(1.0)
+    
+        # 记录使用Token数
+    if isinstance(response, tuple):
+        response, usage = response
+        agent_name = agent.agent_name
+        with open(os.path.join(example_result_dir, "token.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "agent_name": agent_name,
+                "completion_tokens": usage.completion_tokens,
+                "prompt_tokens": usage.prompt_tokens,
+                "total_tokens": usage.total_tokens
+            }))
+            f.write("\n")
+            
     return response if response is not None else ""
 
 def call_func_safe(

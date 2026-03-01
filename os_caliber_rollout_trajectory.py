@@ -112,9 +112,14 @@ def config() -> argparse.Namespace:
 
     # rollout config
     parser.add_argument("--rollout_mode", type=str, default="online rollout / offline rollout") # online: 一边roll指令一边采集轨迹, offline: 类似OSWorld测评, 起始给定任务文件, 再采集轨迹
+    # Offline
+    parser.add_argument(
+        "--rollout_task_dir", type=str, default=None # 当 mode 为 offline 时生效
+    )
     parser.add_argument(
         "--rollout_test_all_meta_path", type=str, default="evaluation_examples/osworld/test_all.json" # 当 mode 为 offline 时生效
     )
+    # Online
     parser.add_argument(
         "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout" # 保存的任务文件基目录, 当 mode 为 online 时生效
     )
@@ -493,7 +498,8 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             except Exception:
                 break
 
-            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            # task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            task_file_list = task_generator.generate_all(task_nums=args.rollout_task_nums)
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])

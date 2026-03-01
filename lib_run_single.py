@@ -175,7 +175,8 @@ def run_single_example_qwen3vl(agent, env, example, max_steps, instruction, args
         
 def run_single_example_agents3(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)
-
+    set_current_result_dir(example_result_dir)
+    
     agent.reset()
     env.reset(task_config=example)
     time.sleep(60) # Wait for the environment to be ready
@@ -240,79 +241,133 @@ def run_single_example_agents3(agent, env, example, max_steps, instruction, args
     # env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
 
 def run_single_example_os_caliber_omni(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
-    runtime_logger = setup_logger(example, example_result_dir)
+    # Setup logger
     set_current_result_dir(example_result_dir)
 
+    # Reset Environment and Agent
     agent.reset()
     env.reset(task_config=example)
-    time.sleep(60) # Wait for the environment to be ready
-    obs = env._get_obs() # Get the initial observation
+    time.sleep(60)  # Wait for the environment to be ready
+    obs = env._get_obs()  # Get the initial observation
+    
     done = False
     step_idx = 0
-    # env.controller.start_recording()
+    
+    # Generate timestamp for ID and metadata
+    global_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
+    
+    # Initialize the Meta JSON structure
+    meta_json = {
+        "trace_id": f"{example['id']}_{global_timestamp}",
+        "task_id": example["id"],
+        "platform": "Desktop",
+        "subdomain": "Ubuntu 22.04",
+        "environment_details": {
+            "screen_resolution": "1920x1080"
+        },
+        "instruction": instruction,
+        "agent": agent.model if hasattr(agent, "model") else (agent.model_name if hasattr(agent, "model_name") else "undefined model"),
+        "annotation_metadata": {
+            "annotator_id": "yangbowen", # 根据实际情况修改或作为参数传入
+            "annotation_tool_version": "gradio_v0.1",
+            "timestamp": global_timestamp
+        },
+        # To be populated
+        "trajectory": [],
+        "trajectory_length": 0,
+        "model_judge": {
+            "binary_reward": 0,
+            "rationale": ""
+        }
+    }
+
     while not done and step_idx < max_steps:
+        # Agent prediction
         response, actions = agent.predict(
             instruction,
             obs
         )
-        # 理论上每一轮只会产生一个操作
+        
+        # Iterate through actions (usually one per step)
         for i, (action, response_per_action) in enumerate(zip(actions, response)):
-            # Capture the timestamp before executing the action
-            # Save screenshot and trajectory information
+            
+            # Define current screenshot filename (using step_idx to start from 0)
+            current_screenshot_name = f"step_{step_idx}.png"
+            current_screenshot_path = os.path.join(example_result_dir, current_screenshot_name)
+
+            # Save screenshot
             if i == 0:
-                with open(os.path.join(example_result_dir, f"step_{step_idx + 1}.png"),
-                        "wb") as _f:
+                with open(current_screenshot_path, "wb") as _f:
                     _f.write(obs['screenshot'])
 
-            if "coords" in response_per_action and isinstance(response_per_action["coords"], list):
-                coords = [coord * 1920 if i % 2 == 0 else coord * 1080 for i, coord in enumerate(response_per_action["coords"])]
+            # Optional: Draw coordinates for debug visualization
+            if "coordinate" in response_per_action and isinstance(response_per_action["coordinate"], list):
+                coordinates = response_per_action["coordinate"]
+                if "coordinate2" in response_per_action and isinstance(response_per_action["coordinate2"], list):
+                    coordinates += response_per_action["coordinate2"]
                 draw_coordinates(
                     image_bytes=obs['screenshot'], 
-                    coordinates=coords, 
-                    save_path=os.path.join(example_result_dir, f"step_{step_idx + 1}_draw.png")
+                    coordinates=coordinates,
+                    save_path=os.path.join(example_result_dir, f"step_{step_idx}_draw.png")
                 )
 
-            action_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
-            obs, reward, done, info = env.step(action, args.sleep_after_execution)
+            # --- Construct Trajectory Step Data ---
+            # Extract fields directly from response_per_action as requested
+            step_data = {
+                "step_index": step_idx,
+                "screenshot_path": current_screenshot_name, # Relative path
+                "raw_response": response_per_action.get("raw_response", ""), # Full response
+                "thought": response_per_action.get("thought", ""),  # Thought
+                "action": response_per_action.get("action", ""), # Action str, not pyautogui
+                "coordinate": response_per_action.get("coordinate", None), # [x, y] or None
+                "coordinate2": response_per_action.get("coordinate2", None), # [[x1,y1], [x2,y2]] or None
+                "meta_action": response_per_action.get("meta_action", None)
+            }
             
-            with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
-                f.write(json.dumps({
-                    "instruction": instruction,
-                    "step_num": step_idx + 1,
-                    "action_num": i + 1,
-                    "action_timestamp": action_timestamp,
-                    "action": action,
-                    "response": response_per_action,
-                    "reward": reward,
-                    "done": done,
-                    "info": info,
-                    "screenshot_file": f"step_{step_idx + 1}.png"
-                }, ensure_ascii=False))
-                f.write("\n")
+            # Append to trajectory
+            meta_json["trajectory"].append(step_data)
 
-            with open(os.path.join(example_result_dir, f"traj_{step_idx+1}_{i+1}.json"), "w", encoding="utf-8") as f:
-                json.dump({
-                    "step_num": step_idx + 1,
-                    "action_num": i + 1,
-                    "action_timestamp": action_timestamp,
-                    "action": action,
-                    "response": response_per_action,
-                    "done": done,
-                    "info": info,
-                    "screenshot_file": f"step_{step_idx + 1}.png"
-                }, f, indent=4, ensure_ascii=False)
-
+            # Execute Environment Step
+            obs, _, done, _ = env.step(action, args.sleep_after_execution)
+            
             if done:
                 logger.info("The episode is done.")
                 break
         
         step_idx += 1
-    result = agent.evaluate()
-    logger.info("Agent Self-Evaluation Result: %.2f", result)
-    scores.append(result)
-    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
-        f.write(f"{result}\n")
-    # env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
+
+    # Update trajectory length
+    meta_json["trajectory_length"] = step_idx
+
+    # --- Evaluation ---
+    # Check if agent has evaluate method and it is callable
+    if args.enable_self_judge:
+        try:
+            # Passing both instruction and obs as requested
+            result = agent.evaluate(instruction, obs)
+            
+            # Update model_judge in meta_json
+            meta_json["model_judge"]["binary_reward"] = result['score']
+            meta_json["model_judge"]["rationale"] = result['thought']
+            
+        except Exception as e:
+            logger.error(f"Error during agent evaluation: {e}")
+            meta_json["model_judge"]["binary_reward"] = 0
+            meta_json["model_judge"]["rationale"] = f"Evaluation failed: {e}"
+    else:
+        meta_json["model_judge"]["binary_reward"] = 0
+        meta_json["model_judge"]["rationale"] = "Not enable agent's self judge."
+
+    scores.append(1) # No use
+
+    # --- Save Meta JSON ---
+    meta_json_path = os.path.join(example_result_dir, "meta.json")
+    with open(meta_json_path, "w", encoding="utf-8") as f:
+        json.dump(meta_json, f, indent=4, ensure_ascii=False)
+        
+    logger.info(f"Saved meta.json to {meta_json_path}")
+
+
 
 def run_single_example_kimi(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)
@@ -332,14 +387,13 @@ def run_single_example_kimi(agent, env, example, max_steps, instruction, args, e
 
         for action in actions:
             # Capture the timestamp before executing the action
-            action_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
             logger.info("Step %d: %s", step_idx + 1, action)
             
             obs, reward, done, info = env.step(action, args.sleep_after_execution)
 
             logger.info(f"Action {action} executed, reward: {reward}, done: {done}")
             # Save screenshot and trajectory information
-            with open(os.path.join(example_result_dir, f"step_{step_idx + 1}_{action_timestamp}.png"),
+            with open(os.path.join(example_result_dir, f"step_{step_idx + 1}.png"),
                       "wb") as _f:
                 _f.write(obs['screenshot'])
 
@@ -348,14 +402,26 @@ def run_single_example_kimi(agent, env, example, max_steps, instruction, args, e
                     "step_num": step_idx + 1,
                     "action": action,
                     "natural_language_action": response.get("action"),
-                    "action_timestamp": action_timestamp,
                     "response": response,
                     "reward": reward,
                     "done": done,
                     "info": info,
-                    "screenshot_file": f"step_{step_idx + 1}_{action_timestamp}.png"
+                    "screenshot_file": f"step_{step_idx + 1}.png"
                 }, ensure_ascii=False))
                 f.write("\n")
+
+            with open(os.path.join(example_result_dir, f"traj_{step_idx+1}.json"), "w", encoding="utf-8") as f:
+                json.dump({
+                    "step_num": step_idx + 1,
+                    "action": action,
+                    "natural_language_action": response.get("action"),
+                    "response": response,
+                    "reward": reward,
+                    "done": done,
+                    "info": info,
+                    "screenshot_file": f"step_{step_idx + 1}.png"
+                }, f, indent=4, ensure_ascii=False)
+
             if done:
                 logger.info("The episode is done.")
                 break
