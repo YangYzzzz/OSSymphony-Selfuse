@@ -240,6 +240,12 @@ def run_single_example_agents3(agent, env, example, max_steps, instruction, args
         f.write(f"{result}\n")
     # env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
 
+def absolute_to_relative_coordinate(coords: list, height, width):
+    # [abs_x, abs_y] -> [rel_x, rel_y] (0-1000)
+    coords[0] = coords[0] / width * 1000
+    coords[1] = coords[1] / height * 1000
+    return coords
+
 def run_single_example_os_caliber_omni(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     # Setup logger
     set_current_result_dir(example_result_dir)
@@ -252,7 +258,6 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     
     done = False
     step_idx = 0
-    
     # Generate timestamp for ID and metadata
     global_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
     
@@ -289,6 +294,12 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         )
         
         # Iterate through actions (usually one per step)
+        raw_response = ""
+        thought = ""
+        meta_action = []
+        action_list = []
+        coordinate_1 = None
+        coordinate_2 = None
         for i, (action, response_per_action) in enumerate(zip(actions, response)):
             
             # Define current screenshot filename (using step_idx to start from 0)
@@ -311,21 +322,17 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                     save_path=os.path.join(example_result_dir, f"step_{step_idx}_draw.png")
                 )
 
-            # --- Construct Trajectory Step Data ---
-            # Extract fields directly from response_per_action as requested
-            step_data = {
-                "step_index": step_idx,
-                "screenshot_path": current_screenshot_name, # Relative path
-                "raw_response": response_per_action.get("raw_response", ""), # Full response
-                "thought": response_per_action.get("thought", ""),  # Thought
-                "action": response_per_action.get("action", ""), # Action str, not pyautogui
-                "coordinate": response_per_action.get("coordinate", None), # [x, y] or None
-                "coordinate2": response_per_action.get("coordinate2", None), # [[x1,y1], [x2,y2]] or None
-                "meta_action": response_per_action.get("meta_action", None)
-            }
-            
-            # Append to trajectory
-            meta_json["trajectory"].append(step_data)
+            raw_response = response_per_action.get("raw_response", "")
+            thought = response_per_action.get("thought", "")
+            action_list.append(response_per_action.get("action", ""))
+            meta_action.append(response_per_action.get("meta_action", None))
+            if response_per_action.get("coordinate", None):
+                if not coordinate_1:
+                    coordinate_1 = absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width) # First coords
+                elif not coordinate_2:
+                    # Second coords
+                    coordinate_2 = [coordinate_1, absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width)]
+                    coordinate_1 = None
 
             # Execute Environment Step
             obs, _, done, _ = env.step(action, args.sleep_after_execution)
@@ -333,7 +340,25 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             if done:
                 logger.info("The episode is done.")
                 break
+
+        # --- Construct Trajectory Step Data ---
+        step_data = {
+            "step_index": step_idx,
+            "screenshot_path": os.path.relpath(
+                current_screenshot_path, 
+                start=os.path.dirname(example_result_dir)
+            ), # Relative path
+            "raw_response": raw_response, # Full response
+            "thought": thought,  # Thought
+            "action": ";".join(action_list), # Action str, not pyautogui
+            "coordinate": coordinate_1, # [x, y] or None
+            "coordinate2": coordinate_2, # [[x1,y1], [x2,y2]] or None
+            "meta_action": meta_action
+        }
         
+        # Append to trajectory
+        meta_json["trajectory"].append(step_data)
+
         step_idx += 1
 
     # Update trajectory length
@@ -361,7 +386,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     scores.append(1) # No use
 
     # --- Save Meta JSON ---
-    meta_json_path = os.path.join(example_result_dir, "meta.json")
+    meta_json_path = os.path.join(os.path.dirname(example_result_dir), f"meta_{example['id']}.json")
     with open(meta_json_path, "w", encoding="utf-8") as f:
         json.dump(meta_json, f, indent=4, ensure_ascii=False)
         
@@ -379,7 +404,8 @@ def run_single_example_kimi(agent, env, example, max_steps, instruction, args, e
     step_idx = 0
     while not done and step_idx < max_steps:
         response, actions = agent.predict(instruction, obs)
-
+        response = response[0] # Modified by @Yang
+        
         logger.info(f"Got Action: {actions}")
         # Break if no actions
         if not actions or len(actions)==0 or actions[0]=="" or actions[0].lower().startswith("error"): 

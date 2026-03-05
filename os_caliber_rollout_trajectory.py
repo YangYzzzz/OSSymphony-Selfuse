@@ -293,10 +293,10 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 action_space=args.action_space,
                 observation_type=args.observation_type,
                 screen_size=(args.screen_width, args.screen_height),
-                coordinate_type=args.coord,
+                coordinate_type="relative",
                 max_image_history_length=args.max_image_history_length,
                 max_steps=args.max_steps,
-                thinking=args.use_thinking,
+                thinking=True, # Default True
                 password=args.client_password
             )
         elif "glm" in args.model.lower():

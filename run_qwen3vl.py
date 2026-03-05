@@ -110,6 +110,7 @@ def config() -> argparse.Namespace:
     # lm config
     parser.add_argument("--model", type=str, default="qwen3-vl")
     parser.add_argument("--base_url", type=str, default=None)
+    parser.add_argument("--api_key", type=str, default=None)
     parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--max_tokens", type=int, default=32768)
@@ -326,6 +327,7 @@ def run_env_tasks(
         agent = Qwen3VLAgent(
             model=args.model,
             base_url=args.base_url,
+            api_key=args.api_key,
             max_tokens=args.max_tokens,
             top_p=args.top_p,
             temperature=args.temperature,

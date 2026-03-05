@@ -122,9 +122,9 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         for i in range(history_start_idx):
             if i < len(self.actions):
                 previous_actions.append(f"Step {i+1}: {self.actions[i]}")
-        previous_actions_str = (
-            "\n".join(previous_actions) if previous_actions else "None"
-        )
+        # previous_actions_str = (
+        #     "\n".join(previous_actions) if previous_actions else "None"
+        # )
 
         description_prompt_lines = [
             "Use a mouse and keyboard to interact with a computer, and take screenshots.",
@@ -210,10 +210,12 @@ Rules:
 Please generate the next move according to the UI screenshot, instruction and previous actions.
 
 Instruction: {instruction}
-
-Previous actions:
-{previous_actions_str}"""
-
+"""
+        
+        """ FIX: Modified by Yang
+        Previous actions:
+        {previous_actions_str}
+        """
         messages = [
             {
                 "role": "system",
@@ -296,24 +298,24 @@ Previous actions:
             
             # Critic Logic (Simplified for compatibility)
             # 提取用于 Critic 的 action string
-            action_str_list = [item["action"] for item in response_list if "action" in item]
-            cur_action_str = action_str_list[0] if action_str_list else "None"
+            # action_str_list = [item["action"] for item in response_list if "action" in item]
+            # cur_action_str = action_str_list[0] if action_str_list else "None"
             
-            history_action_str = ""
-            for action_idx, action in enumerate(self.critic_actions, start=1):
-                history_action_str += f"Step: {action_idx}: {action}\n"
+            # history_action_str = ""
+            # for action_idx, action in enumerate(self.critic_actions, start=1):
+            #     history_action_str += f"Step: {action_idx}: {action}\n"
 
-            critic_result = self.critic_agent.critic(
-                task=instruction, 
-                screenshot=processed_image, 
-                action=cur_action_str, 
-                history=history_action_str
-            )
+            # critic_result = self.critic_agent.critic(
+            #     task=instruction, 
+            #     screenshot=processed_image, 
+            #     action=cur_action_str, 
+            #     history=history_action_str
+            # )
             
-            if critic_result:
-                break
-            else:
-                continue
+            # if critic_result:
+            #     break
+            # else:
+            #     continue
 
         # Update History
         self.responses.append(response)
@@ -394,7 +396,6 @@ Previous actions:
                     step_data = {
                         "thought": thought,
                         "action": tool_call_str,
-                        "action_type": action_type,
                         "coordinate": None,
                         "coordinate2": None,
                         "raw_response": response,
@@ -439,7 +440,22 @@ Previous actions:
 
                     elif action_type == "type":
                         text = args.get("text", "")
-                        pyautogui_code.append(f"pyautogui.typewrite('{text}')")
+                        # 创建一个临时列表来存放这一步的所有指令
+                        type_code = ""
+
+                        # 1. 判断 clear 参数：全选(Ctrl+A) 并 删除(Backspace)
+                        if args.get("clear", 0) == 1:
+                            type_code += "pyautogui.hotkey('ctrl', 'a'); pyautogui.press('backspace');"
+
+                        # 2. 输入文本
+                        # 使用 repr(text) 可以自动处理文本中的引号转义问题，防止代码出错
+                        type_code += f"pyautogui.write({repr(text)});"
+
+                        # 3. 判断 enter 参数：按回车
+                        if args.get("enter", 0) == 1:
+                            type_code += "pyautogui.press('enter');"
+
+                        pyautogui_code.append(type_code)
 
                     elif action_type == "key":
                         keys = args.get("keys", [])
@@ -611,14 +627,17 @@ Previous actions:
     )
     def call_llm(self, payload, model):
         messages = payload["messages"]
+        custom_headers = {
+            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
+        }
 
-        if "service" not in self.base_url:
-            # Placeholder auth header if needed, otherwise standard
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        if "kubebrain" in  self.base_url:
+            logger.info(f"H Cluster Local VLLM: {self.base_url}")
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers=custom_headers)
         else:
-            logger.info(f"H Service VLLM: {self.base_url}")
+            logger.info(f"H Service VLLM / Boyue: {self.base_url}")
             client = OpenAI(base_url=self.base_url, api_key=self.api_key)
-
+        
         for _ in range(MAX_RETRY_TIMES):
             # logger.info("Generating content with Qwen model: %s", model)
             try:
