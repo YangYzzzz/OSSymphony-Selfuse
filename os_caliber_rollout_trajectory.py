@@ -499,7 +499,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
                 break
 
             # task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
-            task_file_list = task_generator.generate_all(task_nums=args.rollout_task_nums)
+            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums)
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])

@@ -347,6 +347,7 @@ class OSCaliberTaskGenerator:
             task_config = {
                 "id": task_id,
                 "snapshot": app_name,
+                "related_apps": [app_name],
                 "instruction": task["description"],
                 "config": task_setup_config,
                 "complexity": task.get("complexity"), # 使用 get 防止 key 不存在
