@@ -9,6 +9,7 @@ import io
 from typing import List, Union
 from mm_agents.os_symphony.utils.common_utils import draw_coordinates
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
+import copy
 
 logger = logging.getLogger("desktopenv.experiment")
 
@@ -261,6 +262,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     # Generate timestamp for ID and metadata
     global_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
     
+    model_name = agent.model if hasattr(agent, "model") else (agent.model_name if hasattr(agent, "model_name") else "undefined model")
     # Initialize the Meta JSON structure
     meta_json = {
         "trace_id": f"{example['id']}_{global_timestamp}",
@@ -272,7 +274,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             "related_apps": example.get("related_apps") or [example.get("snapshot")] # 向前兼容, 后续仅通过 related_apps 记录
         },
         "instruction": instruction,
-        "agent": agent.model if hasattr(agent, "model") else (agent.model_name if hasattr(agent, "model_name") else "undefined model"),
+        "agent": model_name,
         "annotation_metadata": {
             "annotator_id": "yangbowen", # 根据实际情况修改或作为参数传入
             "annotation_tool_version": "gradio_v0.1",
@@ -291,7 +293,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         # Agent prediction
         response, actions = agent.predict(
             instruction,
-            obs
+            copy.deepcopy(obs)      # agent loop内部会修改obs的size，如果不传深拷贝后面画图就会收到被resize过的图像
         )
         
         # Iterate through actions (usually one per step)
@@ -315,11 +317,11 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             # Optional: Draw coordinates for debug visualization
             if "coordinate" in response_per_action and isinstance(response_per_action["coordinate"], list):
                 coordinates = response_per_action["coordinate"]
-                if "coordinate2" in response_per_action and isinstance(response_per_action["coordinate2"], list):
-                    coordinates += response_per_action["coordinate2"]
+                # if "coordinate2" in response_per_action and isinstance(response_per_action["coordinate2"], list):
+                #     coordinates += response_per_action["coordinate2"]
                 draw_coordinates(
                     image_bytes=obs['screenshot'], 
-                    coordinates=coordinates,
+                    coordinates=coordinates if not isinstance(coordinates[0], list) else coordinates[0] + coordinates[1], # 1 point and 2 point
                     save_path=os.path.join(example_result_dir, f"step_{step_idx}_draw.png")
                 )
 
@@ -328,12 +330,22 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             action_list.append(response_per_action.get("action", ""))
             meta_action.append(response_per_action.get("meta_action", None))
             if response_per_action.get("coordinate", None):
-                if not coordinate_1:
-                    coordinate_1 = absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width) # First coords
-                elif not coordinate_2:
-                    # Second coords
-                    coordinate_2 = [coordinate_1, absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width)]
-                    coordinate_1 = None
+                # 目前不确定claude是否存在单步骤出现超过两个以上坐标
+                if "claude" in model_name:
+                    if not isinstance(response_per_action.get('coordinate')[0], list):
+                        coordinate_1 = absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width) # First coords
+                    else:
+                        coordinate_2 = [
+                            absolute_to_relative_coordinate(response_per_action["coordinate"][0], args.screen_height, args.screen_width),
+                            absolute_to_relative_coordinate(response_per_action["coordinate"][1], args.screen_height, args.screen_width)
+                        ]
+                else:
+                    if not coordinate_1:
+                        coordinate_1 = absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width) # First coords
+                    elif not coordinate_2:
+                        # Second coords
+                        coordinate_2 = [coordinate_1, absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width)]
+                        coordinate_1 = None
 
             # Execute Environment Step
             obs, _, done, _ = env.step(action, args.sleep_after_execution)

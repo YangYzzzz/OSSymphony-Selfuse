@@ -31,6 +31,7 @@ from mm_agents.seed_agent import SeedAgent
 from mm_agents.uitars15_v2 import UITarsAgent
 from mm_agents.gemini.gemini_openai_agent import GeminiOpenAIAgent as GeminiAgent
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
+from mm_agents.openai.gpt54_agent import GPT54Agent
 
 
 # Global variables for signal handling
@@ -279,6 +280,9 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 base_url=args.base_url,
                 api_key=args.api_key,
                 max_tokens=args.max_tokens,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                no_thinking=not args.use_thinking
             )
         elif "kimi" in args.model.lower():
             # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
@@ -332,6 +336,17 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 top_p=args.top_p,
                 temperature=args.temperature,
                 max_image_history_length=args.max_image_history_length
+            )
+        elif "gpt" in args.model.lower():
+            agent = GPT54Agent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                max_trajectory_length=args.max_trajectory_length,
+                
             )
         else:
             raise Exception(f"Do not support {args.model} model!")
@@ -521,7 +536,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
 
 def offline_test(args: argparse.Namespace, test_all_meta: dict) -> None:
     global processes
-    logger.info("Args: %s", args)
+    args.rollout_task_dir = args.rollout_task_dir or os.path.dirname(args.rollout_test_all_meta_path)
     all_tasks = distribute_tasks(test_all_meta)
     logger.info(f"Total tasks: {len(all_tasks)}")
     with Manager() as manager:
@@ -682,6 +697,20 @@ def online_test(args: argparse.Namespace):
         test_all_meta=test_all_meta
     )
 
+# 特别针对 os-caliber 输出格式适配, 检查 domain 文件夹下是否存在 meta_* 文件
+def get_unfinished_tasks(test_file_list: Dict, result_dir):
+    unfinished_test_file_list = {}
+    for domain, task_list in test_file_list.items():
+        logger.info(f"[Origin {domain} task nums]: {len(task_list)}")
+        file_lists = os.listdir(os.path.join(result_dir, domain))
+        for task_id in task_list:
+            if f"meta_{task_id}.json" not in file_lists:
+                if domain not in unfinished_test_file_list.keys():
+                    unfinished_test_file_list[domain] = []
+                unfinished_test_file_list[domain].append(task_id)
+                shutil.rmtree(path=os.path.join(result_dir, domain, task_id), ignore_errors=True)
+        logger.info(f"[Unfinished {domain} task nums]: {len(unfinished_test_file_list[domain]) if domain in unfinished_test_file_list.keys() else 0}")
+    return unfinished_test_file_list
 
 if __name__ == "__main__":
     ####### The complete version of the list of examples #######
@@ -719,6 +748,8 @@ if __name__ == "__main__":
         if args.rollout_mode == "offline":
             with open(args.rollout_test_all_meta_path, "r", encoding="utf-8") as f:
                 test_file_list = json.load(f)
+            # get unfinished
+            test_file_list = get_unfinished_tasks(test_file_list, args.result_dir)
             offline_test(args, test_file_list)
         elif args.rollout_mode == "online":
             online_test(args)

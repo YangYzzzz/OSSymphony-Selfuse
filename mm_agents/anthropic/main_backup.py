@@ -2,8 +2,6 @@ import base64
 import os
 import time
 from typing import Any, cast, Optional, Dict
-from pathlib import Path
-import json
 from PIL import Image
 import io
 
@@ -24,108 +22,6 @@ from .utils import _response_to_params, _inject_prompt_caching, _maybe_filter_to
 
 import logging
 logger = logging.getLogger("desktopenv.agent")
-
-LOG_DIR = Path("logs/claude_api_logs")
-
-
-def _normalize_messages_for_log(messages):
-    """将 messages 中的图片内容替换为占位符，避免日志写入大量 base64 图片。"""
-    if not messages:
-        return messages
-
-    def _normalize_content(content):
-        if isinstance(content, list):
-            normalized = []
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "image":
-                    # 用占位符替代图片内容
-                    placeholder = {
-                        "type": "image_placeholder",
-                        "detail": "[IMAGE_CONTENT_REMOVED_FOR_LOGGING]",
-                    }
-                    normalized.append(placeholder)
-                else:
-                    normalized.append(block)
-            return normalized
-        return content
-
-    normalized_messages = []
-    for m in messages:
-        if not isinstance(m, dict):
-            normalized_messages.append(m)
-            continue
-        new_m = dict(m)
-        if "content" in new_m:
-            new_m["content"] = _normalize_content(new_m["content"])
-        normalized_messages.append(new_m)
-    return normalized_messages
-
-
-def log_claude_api_call(
-    *,
-    model_name: str,
-    provider: APIProvider,
-    request_messages,
-    response,
-    duration_ms: float,
-    success: bool,
-    error: Optional[str] = None,
-):
-    """记录 Claude API 调用日志到 logs/claude_api_logs，图片用占位符。"""
-    try:
-        from datetime import datetime
-
-        # 以月份作为子目录，例如 2026-02, 2026-03
-        now = datetime.utcnow()
-        month_dir = LOG_DIR / now.strftime("%Y-%m")
-        month_dir.mkdir(parents=True, exist_ok=True)
-
-        ts = now.strftime("%Y%m%d_%H%M%S_%f")
-        filename = month_dir / "claude_api_logs.jsonl"
-
-        safe_messages = _normalize_messages_for_log(request_messages)
-
-        usage = None
-        if hasattr(response, "usage") and response.usage:
-            usage = {
-                "input_tokens": getattr(response.usage, "input_tokens", 0),
-                "output_tokens": getattr(response.usage, "output_tokens", 0),
-                "total_tokens": getattr(response.usage, "total_tokens", 0),
-            }
-
-        response_summary = None
-        if response and getattr(response, "content", None):
-            texts = []
-            for block in response.content:
-                if hasattr(block, "text") and block.text:
-                    texts.append(block.text)
-            if texts:
-                merged = "\n".join(texts)
-                response_summary = merged[:2000]
-
-        log_record = {
-            "timestamp_utc": ts,
-            "provider": provider.name if hasattr(provider, "name") else str(provider),
-            "model": model_name,
-            "success": success,
-            "error": error,
-            "duration_ms": duration_ms,
-            "request": {
-                "messages": safe_messages,
-            },
-            "response": {
-                "usage": usage,
-                "summary_text": response_summary,
-            },
-        }
-
-        # 追加写入当月 jsonl 文件
-        with filename.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(log_record, ensure_ascii=False) + "\n")
-
-        logger.info(f"[claude_api_logs] saved log to {filename}")
-    except Exception as e:
-        logger.warning(f"failed to write claude api log: {e}")
 
 # MAX_HISTORY = 10
 API_RETRY_TIMES = 500  
@@ -176,57 +72,9 @@ class AnthropicAgent:
         params = {}
         if self.temperature is not None:
             params['temperature'] = self.temperature
-        # if self.top_p is not None:
-        #     params['top_p'] = self.top_p
+        if self.top_p is not None:
+            params['top_p'] = self.top_p
         return params
-
-    def _call_model_with_logging(
-        self,
-        client,
-        messages,
-        system,
-        tools,
-        betas,
-        extra_body,
-        actual_max_tokens: int,
-    ):
-        """封装一次模型调用，增加耗时统计与日志记录。"""
-        start = time.time()
-        response = None
-        error_msg = None
-        try:
-            with client.beta.messages.stream(
-                max_tokens=actual_max_tokens,
-                messages=messages,
-                model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
-                system=[system],
-                cache_control={"type": "ephemeral"},
-                tools=tools,
-                betas=betas,
-                extra_body=extra_body,
-                **self._get_sampling_params(),
-            ) as stream:
-                response = stream.get_final_message()
-            success = True
-            return response
-        except Exception as e:
-            error_msg = str(e)
-            success = False
-            raise
-        finally:
-            duration_ms = (time.time() - start) * 1000.0
-            try:
-                log_claude_api_call(
-                    model_name=self.model_name,
-                    provider=self.provider,
-                    request_messages=messages,
-                    response=response,
-                    duration_ms=duration_ms,
-                    success=success,
-                    error=error_msg,
-                )
-            except Exception as log_e:
-                logger.warning(f"logging claude api call failed: {log_e}")
     
     def _extract_raw_response_string(self, response) -> str:
         """Extract and concatenate raw response content into a single string."""
@@ -478,7 +326,7 @@ class AnthropicAgent:
             type="text",
             text=f"{SYSTEM_PROMPT_WINDOWS if self.platform == 'Windows' else SYSTEM_PROMPT}{' ' + self.system_prompt_suffix if self.system_prompt_suffix else ''}"
         )
-        logger.info(f'[System Prompt]: {system}')
+        
         # resize screenshot if resize_factor is set
         if obs and "screenshot" in obs:
             # Convert bytes to PIL Image
@@ -505,8 +353,8 @@ class AnthropicAgent:
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "source": {
+                    "type": "image",
+                    "source": {
                             "type": "base64",
                             "media_type": "image/png",
                             "data": init_screenshot_base64,
@@ -631,17 +479,20 @@ class AnthropicAgent:
             
             for attempt in range(API_RETRY_TIMES):
                 try:
-                    response = self._call_model_with_logging(
-                        client=client,
-                        messages=self.messages,
-                        system=system,
-                        tools=tools,
-                        betas=betas,
-                        extra_body=extra_body,
-                        actual_max_tokens=actual_max_tokens,
-                    )
+                    with client.beta.messages.stream(
+                            max_tokens=actual_max_tokens,
+                            messages=self.messages,
+                            model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
+                            system=[system],
+                            cache_control={"type": "ephemeral"},
+                            tools=tools,
+                            betas=betas,
+                            extra_body=extra_body,
+                            **self._get_sampling_params()
+                        ) as stream:
+                            response = stream.get_final_message()
                     logger.info(f"Response: {response}")
-                    break
+                    break  
                 except (APIError, APIStatusError, APIResponseValidationError) as e:
                     error_msg = str(e)
                     logger.warning(f"Anthropic API error (attempt {attempt+1}/{API_RETRY_TIMES}): {error_msg}")
@@ -901,10 +752,6 @@ class AnthropicAgent:
                 "role": "user",
                 "content": [
                     {
-                        "type": "text",
-                        "text": eval_query
-                    },
-                    {
                         "type": "image",
                         "source": {
                             "type": "base64",
@@ -912,6 +759,10 @@ class AnthropicAgent:
                             "data": screenshot_base64,
                         },
                     },
+                    {
+                        "type": "text",
+                        "text": eval_query
+                    }
                 ]
             })
 
