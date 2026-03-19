@@ -1384,7 +1384,8 @@ def get_result(target_dir):
             "Windows System": ["file_explorer", "settings"],
             "Coding": ["vs_code"],
             "Media & Video": ["vlc"],
-            "Windows Utilities": ["microsoft_paint",  "clock", "windows_calc", "notepad"]
+            "Windows Utilities": ["microsoft_paint",  "clock", "windows_calc", "notepad"],
+            "Infeasible": ["infeasible"]
         }
     else:
         father_domain_mapping = {

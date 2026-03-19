@@ -568,8 +568,11 @@ class MacOSEnv:
         """
         if not self.task or not self.task.evaluator:
             logger.warning("No evaluator found in task.")
-            return False
-
+            return 0
+        # No task is infeasible!
+        if self.task.action_history[-1] == "FAIL":
+            return 0
+        
         evaluator = self.task.evaluator
         func_list = evaluator.get("func", [])
         expected_list = evaluator.get("expected", [])
