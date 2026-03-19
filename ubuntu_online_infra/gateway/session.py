@@ -63,7 +63,14 @@ class SessionManager:
             for tok in tokens_to_remove:
                 expired.append(self._sessions.pop(tok))
         return expired
-
+    
+    def cleanup_all(self) -> List[Session]:
+        """Remove and return all sessions."""
+        with self._lock:
+            sessions = list(self._sessions.values())
+            self._sessions.clear()
+        return sessions
+    
     @property
     def count(self) -> int:
         with self._lock:

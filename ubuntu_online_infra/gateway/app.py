@@ -120,6 +120,25 @@ def create_app(
         return {"workers": request.app.state.dispatcher.get_workers()}
 
     # ------------------------------------------------------------------
+    # Debug
+    # ------------------------------------------------------------------
+
+    @app.post("/release_all")
+    async def release_all(request: Request):
+        """For debugging purposes only - releases all tokens from all Workers.
+        DO NOT use this in production training!"""
+        app_state = request.app.state
+        all_sessions = app_state.session_mgr.cleanup_all()
+        for sess in all_sessions:
+            await app_state.http_client.post(
+                f"{sess.worker_url}/worker/release",
+                json={"local_env_id": sess.local_env_id},
+                timeout=10.0,
+            )
+            app_state.dispatcher.notify_release(sess.worker_url)
+        return {"status": "ok"}
+    
+    # ------------------------------------------------------------------
     # Worker registration
     # ------------------------------------------------------------------
 
