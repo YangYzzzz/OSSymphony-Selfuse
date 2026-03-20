@@ -64,6 +64,7 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[(APIProvider, str), str] = {
     (APIProvider.ANTHROPIC, "claude-opus-4-6"): "claude-opus-4-6",
     (APIProvider.BEDROCK, "claude-opus-4-6"): "global.anthropic.claude-opus-4-6-v1",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-6"): "claude-sonnet-4-6",
+    (APIProvider.ANTHROPIC, "claude-sonnet-4-6-aws"): "claude-sonnet-4-6-aws",
 }
 
 

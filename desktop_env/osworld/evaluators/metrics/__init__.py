@@ -156,6 +156,11 @@ from .vscode import (
     check_html_background_image,
     compare_zip_files
 )
+from .oscaliber import (
+    oscaliber_rule_based_metric,
+    oscaliber_vlm_based_metric,
+    oscaliber_hard_fail_metric,
+)
 
 
 def infeasible():

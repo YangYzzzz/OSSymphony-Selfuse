@@ -574,7 +574,7 @@ class AnthropicAgent:
         if enable_prompt_caching:
             # betas.append(PROMPT_CACHING_BETA_FLAG)
             _inject_prompt_caching(self.messages)
-            image_truncation_threshold = 50
+            image_truncation_threshold = 5
             # system["cache_control"] = {"type": "ephemeral"}
 
         if self.only_n_most_recent_images:
@@ -774,7 +774,7 @@ class AnthropicAgent:
                 # If there are tool calls, create a meta_item for each
                 for action in actions:
                     meta_item = {
-                        "raw_response": str(response_params),
+                        "raw_response": raw_response_str,
                         "thought": reasonings,
                         "action": action.get("command", ""),
                         "meta_action": action,
@@ -841,7 +841,7 @@ class AnthropicAgent:
                     response_meta_list = []
                     for action in actions:
                         meta_item = {
-                            "raw_response": str(response_params),
+                            "raw_response": raw_response_str,
                             "thought": f"Failed to parse actions from tool call after {max_parse_retry} attempts: {e}",
                             "action": f"Failed to parse actions from tool call after {max_parse_retry} attempts: {e}",
                             "meta_action": action,
@@ -883,6 +883,32 @@ class AnthropicAgent:
                 text=EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
             )
 
+            # 1.5 Add obs as the tool result **Important**
+            if self.messages:
+                last_message_content = self.messages[-1]["content"]
+                tool_use_blocks = [block for block in last_message_content if block.get("type") == "tool_use"]
+                
+                for i, tool_block in enumerate(tool_use_blocks):
+                    tool_input = tool_block.get("input", {})
+                    action = tool_input.get("action")
+                    is_last_tool = i == len(tool_use_blocks) - 1
+                    
+                    include_screenshot = None
+                    
+                    if obs:
+                        if action == "screenshot":
+                            # Screenshot action always gets regular screenshot
+                            include_screenshot = obs.get("screenshot")
+                        elif is_last_tool:
+                            # Auto-screenshot: last tool gets regular screenshot (unless it's zoom, handled above)
+                            include_screenshot = obs.get("screenshot")
+                    
+                    self.add_tool_result(
+                        tool_block["id"],
+                        f"Success",
+                        screenshot=include_screenshot
+                    )
+
             # 2. Reuse the exact same history construction as predict
             # We copy the existing messages so we don't pollute the agent's history
             eval_messages = list(self.messages)
@@ -890,28 +916,13 @@ class AnthropicAgent:
             # 3. Add Final Observation and Evaluation Query
             eval_query = f"Based on the conversation history above and this final screenshot, did the agent successfully complete the instruction: '{task_instruction}'? Please provide the JSON evaluation."
 
-            # Use base64 encoded screenshot if it's not already
-            screenshot_data = obs["screenshot"]
-            if isinstance(screenshot_data, bytes):
-                screenshot_base64 = base64.b64encode(screenshot_data).decode('utf-8')
-            else:
-                screenshot_base64 = screenshot_data
-
             eval_messages.append({
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
                         "text": eval_query
-                    },
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": screenshot_base64,
-                        },
-                    },
+                    }
                 ]
             })
 
@@ -942,7 +953,7 @@ class AnthropicAgent:
         
             with client.beta.messages.stream(
                 max_tokens=self.max_tokens,
-                messages=self.messages,
+                messages=eval_messages,
                 model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
                 system=[eval_system],
                 extra_body=extra_body,

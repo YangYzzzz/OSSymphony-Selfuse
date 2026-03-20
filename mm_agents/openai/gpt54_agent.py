@@ -121,7 +121,7 @@ class Action:
 def log_gpt_api_call(
     *,
     model_name: str,
-    request_input,
+    request_messages,
     response,
     duration_ms: float,
     success: bool,
@@ -138,7 +138,7 @@ def log_gpt_api_call(
         ts = now.strftime("%Y%m%d_%H%M%S_%f")
         filename = month_dir / "gpt_api_logs.jsonl"
 
-        safe_request = _sanitize_for_log(request_input)
+        safe_request = _sanitize_for_log(request_messages)
 
         usage = None
         if response is not None:
@@ -174,7 +174,7 @@ def log_gpt_api_call(
             "error": error,
             "duration_ms": duration_ms,
             "request": {
-                "input": safe_request,
+                "messages": safe_request,
             },
             "response": {
                 "usage": usage,
@@ -212,7 +212,7 @@ class GPT54Agent:
         sleep_after_execution: float = 0.0,
         reasoning_effort: str = "xhigh",
         base_url: str = "",
-        api_key: str = ""
+        api_key: str = "",
     ):
         if action_space != "pyautogui":
             raise ValueError("GPT54Agent only supports pyautogui action space")
@@ -239,15 +239,20 @@ class GPT54Agent:
 
         self.tools = [{"type": "computer"}]
 
+        # OpenAI Responses 会话状态
         self.previous_response_id: Optional[str] = None
         self.pending_input_items: List[Dict[str, Any]] = []
         self.current_batch_call_id: Optional[str] = None
         self.current_batch_expected_outputs = 0
 
+        # 自己维护的对话历史（用于 evaluate）
+        # 结构与 Responses API input 一致: {"role": ..., "content": [...]} 列表
+        self.messages: List[Dict[str, Any]] = []
+
         self.base_url = base_url
         self.api_key = api_key
 
-    def _create_response(self, request_input: List[Dict[str, Any]], instructions: str):
+    def _create_response(self, messages: List[Dict[str, Any]], instructions: str):
         retry_count = 0
         last_error = None
         start_time = time.time()
@@ -256,15 +261,15 @@ class GPT54Agent:
             try:
                 client = OpenAI(api_key=self.api_key, base_url=self.base_url)
                 logger.info(
-                    "Sending GPT-5.4 request with previous_response_id=%s and %d input item(s)",
+                    "Sending GPT-5.4 request with previous_response_id=%s and %d message(s)",
                     self.previous_response_id,
-                    len(request_input),
+                    len(messages),
                 )
-                logger.debug("Request input items: %s", _sanitize_for_log(request_input))
+                logger.debug("Request messages: %s", _sanitize_for_log(messages))
                 request: Dict[str, Any] = {
                     "model": self.model,
                     "instructions": instructions,
-                    "input": request_input,
+                    "input": messages,
                     "tools": self.tools,
                     "parallel_tool_calls": False,
                     "reasoning": {
@@ -297,7 +302,7 @@ class GPT54Agent:
         duration_ms = (time.time() - start_time) * 1000.0
         log_gpt_api_call(
             model_name=self.model,
-            request_input=request_input,
+            request_messages=messages,
             response=response,
             duration_ms=duration_ms,
             success=response is not None and last_error is None,
@@ -588,56 +593,56 @@ class GPT54Agent:
           - actions: List[str]，pyautogui 代码字符串列表
         """
         home_dir = "C:\\Users\\user" if self.platform.lower().startswith("win") else "/home/user"
-        instructions = OPERATOR_PROMPT.format(
+        system_instructions = OPERATOR_PROMPT.format(
             CLIENT_PASSWORD=self.client_password,
             CURRENT_DATE=datetime.now().strftime("%A, %B %d, %Y"),
             HOME_DIR=home_dir,
             PLATFORM=self.platform,
         )
+
         screenshot_b64 = encode_image(obs["screenshot"])
 
-        if not self.previous_response_id:
-            request_input = [
+        # 初始化对话历史
+        if not self.messages:
+            self.messages.append(
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "input_text",
-                            "text": instruction,
-                        },
                         {
                             "type": "input_image",
                             "image_url": f"data:image/png;base64,{screenshot_b64}",
                             "detail": "original",
                         },
+                        {
+                            "type": "input_text",
+                            "text": instruction,
+                        },
                     ],
                 }
-            ]
+            )
         else:
-            request_input = list(self.pending_input_items)
-            if not request_input:
-                request_input = [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": "Continue from the latest screenshot.",
-                            },
-                            {
-                                "type": "input_image",
-                                "image_url": f"data:image/png;base64,{screenshot_b64}",
-                                "detail": "original",
-                            },
-                        ],
-                    }
-                ]
+            # 新一轮：追加当前截图 + "Continue" 指令
+            self.messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/png;base64,{screenshot_b64}",
+                            "detail": "original",
+                        },
+                        {
+                            "type": "input_text",
+                            "text": "Continue from the latest screenshot.",
+                        },
+                    ],
+                }
+            )
 
         with Timer() as model_timer:
-            response = self._create_response(request_input, instructions)
+            response = self._create_response(self.messages, system_instructions)
 
         self.previous_response_id = _get_field(response, "id")
-        self.pending_input_items = []
 
         raw_output = _get_field(response, "output", []) or []
         actions_meta: List[Dict[str, Any]] = []
@@ -645,14 +650,15 @@ class GPT54Agent:
         unsupported_action = False
         infeasible_message = False
 
-        # 累积整体思考文本，便于 meta 中使用
         all_reasonings: List[str] = []
+        assistant_summary_texts: List[str] = []
 
         for item in raw_output:
             item_type = _get_field(item, "type")
             if item_type == "message":
                 message_text = self._message_text(item)
                 if message_text:
+                    assistant_summary_texts.append(message_text)
                     lower = message_text.lower()
                     if "[infeasible]" in lower or any(
                         token in lower
@@ -707,7 +713,6 @@ class GPT54Agent:
                             "batch_index": index,
                             "batch_size": batch_size,
                             "batch_last": index == batch_size - 1,
-                            # Anthropic 风格必需字段
                             "coordinate": [
                                 action_info["args"].get("x"),
                                 action_info["args"].get("y"),
@@ -722,20 +727,34 @@ class GPT54Agent:
         if unsupported_action:
             pyautogui_actions = []
 
-        # 构造与 AnthropicAgent 兼容的 predict_info list
         thought_text = "\n".join(all_reasonings) if all_reasonings else ""
         raw_response_str = self._extract_raw_response_string(raw_output)
+
+        # 把当前 assistant 的文本摘要写回到历史中，方便 evaluate
+        if assistant_summary_texts:
+            self.messages.append(
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": "\n".join(assistant_summary_texts),
+                        }
+                    ],
+                }
+            )
 
         predict_info_list: List[Dict[str, Any]] = []
         for meta in actions_meta or [{}]:
             predict_info_list.append(
                 {
-                    # 必需字段
                     "thought": thought_text,
                     "action": meta.get("action", ""),
                     "coordinate": meta.get("coordinate"),
                     "raw_response": raw_response_str,
                     "meta_action": meta,
+                    # 可选扩展字段
+                    "state_correct": state_correct,
                 }
             )
 
@@ -747,12 +766,15 @@ class GPT54Agent:
         return predict_info_list, pyautogui_actions
 
     def evaluate(self, task_instruction: str, obs: Dict[str, Any]) -> Dict[str, Any]:
-        """自评当前任务是否完成，返回 {thought: str, score: float}。"""
+        """自评当前任务是否完成，返回 {thought: str, score: float}。
+
+        使用内部维护的 self.messages 作为对话历史，再加最终截图进行评估。
+        """
         import json as _json
 
         EVALUATION_SYSTEM_PROMPT = """
         You are an impartial judge evaluating the performance of a computer agent.
-        Your task is to determine if the agent successfully completed the user's instruction based on the model's internal reasoning, actions, and the final screenshot.
+        Your task is to determine if the agent successfully completed the user's instruction based on the conversation history and the final screenshot.
 
         The user instruction was: "{instruction}"
 
@@ -771,7 +793,10 @@ class GPT54Agent:
         """
 
         try:
-            prompt = EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
+            eval_instructions = EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
+
+            # 复制当前对话历史，避免污染原始 messages
+            eval_messages = list(self.messages)
 
             screenshot_data = obs.get("screenshot")
             if isinstance(screenshot_data, bytes):
@@ -779,27 +804,32 @@ class GPT54Agent:
             else:
                 screenshot_base64 = str(screenshot_data)
 
-            input_blocks = [
+            eval_messages.append(
                 {
-                    "type": "input_text",
-                    "text": prompt,
-                },
-                {
-                    "type": "input_image",
-                    "image_url": f"data:image/png;base64,{screenshot_base64}",
-                    "detail": "original",
-                },
-            ]
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": "Based on the conversation history and this final screenshot, evaluate whether the task was successfully completed.",
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/png;base64,{screenshot_base64}",
+                            "detail": "original",
+                        },
+                    ],
+                }
+            )
 
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
             with Timer() as eval_timer:
                 response = client.responses.create(
                     model=self.model,
-                    instructions="You are a JSON-only evaluation assistant.",
-                    input=[{"role": "user", "content": input_blocks}],
+                    instructions=eval_instructions,
+                    input=eval_messages,
                     max_output_tokens=self.max_tokens or 1024,
-                    reasoning={"effort": "low", "summary": "concise"},
+                    reasoning={"effort": "high", "summary": "concise"},
                 )
 
             logger.info("GPT54Agent evaluation response: %s", _sanitize_for_log(response))
@@ -840,39 +870,8 @@ class GPT54Agent:
         self.pending_input_items = []
         self.current_batch_call_id = None
         self.current_batch_expected_outputs = 0
+        self.messages = []
 
+    # 如果后续需要 step，可以按原实现恢复
     # def step(self, action: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
-    #     try:
-    #         if not action:
-    #             raise StepError("Empty action received")
-
-    #         with Timer() as step_timer:
-    #             step_action = Action(action["action"], self.action_space)
-    #             obs, reward, terminated, info = self.env.step(
-    #                 step_action.get_action(),
-    #                 self.sleep_after_execution,
-    #             )
-
-    #             if action.get("batch_last"):
-    #                 screenshot_base64 = encode_image(obs["screenshot"])
-    #                 output_item = {
-    #                     "type": "computer_call_output",
-    #                     "call_id": action.get("call_id", ""),
-    #                     "output": {
-    #                         "type": "computer_screenshot",
-    #                         "image_url": f"data:image/png;base64,{screenshot_base64}",
-    #                         "detail": "original",
-    #                     },
-    #                 }
-    #                 pending_checks = action.get("pending_checks") or []
-    #                 if pending_checks:
-    #                     output_item["acknowledged_safety_checks"] = pending_checks
-    #                 self.pending_input_items.append(output_item)
-
-    #         return obs, reward, terminated, info, {
-    #             "step_time": step_timer.duration,
-    #             "action": action,
-    #         }
-    #     except Exception as exc:
-    #         logger.exception("GPT54Agent step failed: %s", exc)
-    #         raise StepError(f"Failed to execute step: {exc}")
+    #     ...

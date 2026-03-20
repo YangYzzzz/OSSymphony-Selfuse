@@ -337,7 +337,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 temperature=args.temperature,
                 max_image_history_length=args.max_image_history_length
             )
-        elif "gpt" in args.model.lower():
+        elif "gpt" in args.model.lower(): # 仅支持GPT5.4
             agent = GPT54Agent(
                 model=args.model,
                 base_url=args.base_url,
@@ -345,8 +345,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 max_tokens=args.max_tokens,
                 top_p=args.top_p,
                 temperature=args.temperature,
-                max_trajectory_length=args.max_trajectory_length,
-                
+                max_trajectory_length=args.max_trajectory_length, # 该参数无用
             )
         else:
             raise Exception(f"Do not support {args.model} model!")
@@ -702,14 +701,17 @@ def get_unfinished_tasks(test_file_list: Dict, result_dir):
     unfinished_test_file_list = {}
     for domain, task_list in test_file_list.items():
         logger.info(f"[Origin {domain} task nums]: {len(task_list)}")
-        file_lists = os.listdir(os.path.join(result_dir, domain))
-        for task_id in task_list:
-            if f"meta_{task_id}.json" not in file_lists:
-                if domain not in unfinished_test_file_list.keys():
-                    unfinished_test_file_list[domain] = []
-                unfinished_test_file_list[domain].append(task_id)
-                shutil.rmtree(path=os.path.join(result_dir, domain, task_id), ignore_errors=True)
-        logger.info(f"[Unfinished {domain} task nums]: {len(unfinished_test_file_list[domain]) if domain in unfinished_test_file_list.keys() else 0}")
+        if os.path.exists(os.path.join(result_dir, domain)):
+            file_lists = os.listdir(os.path.join(result_dir, domain))
+            for task_id in task_list:
+                if f"meta_{task_id}.json" not in file_lists:
+                    if domain not in unfinished_test_file_list.keys():
+                        unfinished_test_file_list[domain] = []
+                    unfinished_test_file_list[domain].append(task_id)
+                    shutil.rmtree(path=os.path.join(result_dir, domain, task_id), ignore_errors=True)
+            logger.info(f"[Unfinished {domain} task nums]: {len(unfinished_test_file_list[domain]) if domain in unfinished_test_file_list.keys() else 0}")
+        else:
+            unfinished_test_file_list[domain] = task_list
     return unfinished_test_file_list
 
 if __name__ == "__main__":
