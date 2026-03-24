@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import base64
 import logging
 import os
 import time
@@ -440,6 +440,11 @@ class DesktopEnv(gym.Env):
         elif self.action_space == "pyautogui" or self.action_space == "claude_computer_use":
             if action in ['WAIT', 'FAIL', 'DONE']:
                 self.controller.execute_action(action)
+            elif not action.startswith("pyautogui"):
+                '''
+                在这里添加 E2E 模型执行python代码的逻辑, E2E 模型不开启内循环！
+                '''
+                pass
             else:
                 # the set of all possible python commands insides `pyautogui`
                 if type(action) == str:
