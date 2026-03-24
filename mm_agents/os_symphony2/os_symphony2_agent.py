@@ -75,23 +75,21 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         self.action_space = action_space
         self.observation_type = observation_type
         self.history_n = history_n
+        self.keep_first_image = keep_first_image
         self.add_thought_prefix = add_thought_prefix
         self.coordinate_type = coordinate_type
 
         assert action_space in ["pyautogui"], "Invalid action space"
         assert observation_type in ["screenshot"], "Invalid observation type"
 
-        self.thoughts = []
-        self.actions = []
-        self.critic_actions = []
-        self.observations = []
         self.responses = []
-        self.screenshots = []
-        self.keep_first_image = keep_first_image
 
         # 为了执行code设置的变量
         self.last_code_result = None
         self.code_results_history = []
+
+        # 统一维护对话历史（system + user + assistant）
+        self.messages = []
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """
@@ -104,27 +102,25 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
 
         image = Image.open(BytesIO(screenshot_bytes))
         width, height = image.size
-        # logger.info(f"Original screen resolution: {width}x{height}")
 
         processed_image = process_image(screenshot_bytes)
         processed_img = Image.open(
             BytesIO(base64.b64decode(processed_image))
         )
         processed_width, processed_height = processed_img.size
-        # logger.info(f"Processed image resolution: {processed_width}x{processed_height}")
 
-        self.screenshots.append(processed_image)
-
+        # ================== Prompts ==================
         description_prompt_lines = [
-            "Use a mouse and keyboard to interact with a computer, and take screenshots.",
-            "* This is an interface to a desktop GUI. You do not have access to a terminal or applications menu. You must click on desktop icons to start applications.",
-            "* Some applications may take time to start or process actions, so you may need to wait and take successive screenshots to see the results of your actions.",
+            "You are a hybrid OS agent that can both operate the GUI (mouse and keyboard) and directly execute system-level code.",
+            "* Prefer using `execute_code` (Python or Bash) to handle structured data, batch operations, and any repetitive or file-based tasks.",
+            "* Use GUI actions mainly for navigation and visual interactions: opening applications, navigating menus, or interacting with purely visual UI elements.",
             (
                 f"* The screen's resolution is {processed_width}x{processed_height}."
                 if self.coordinate_type == "absolute"
-                else "* The screen's resolution is 1000x1000."
+                else "* The screen's resolution is represented on a 1000x1000 relative coordinate grid."
             ),
-            "* Whenever you intend to move the cursor to click on an element like an icon, you should consult a screenshot to determine the coordinates of the element before moving the cursor.",
+            "* Whenever you intend to move the cursor to click on an element like an icon or button, consult the latest screenshot (or code execution result if present) to determine the target coordinates before moving the cursor.",
+            "* After running `execute_code`, you may rely on the provided code execution result text to plan the next step, and only request a new screenshot when necessary for visual verification.",
         ]
         description_prompt = "\n".join(description_prompt_lines)
 
@@ -138,80 +134,53 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
 * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
 * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
 * `scroll`: Performs a scroll of the mouse scroll wheel.
-* `execute_code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system. Use this for batch processing, file manipulation, or tasks where GUI clicking is inefficient or repetitive.
+* `execute_code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system. Use this for batch processing, file manipulation, or tasks where GUI clicking is
+inefficient or repetitive.
 * `wait`: Wait specified seconds for the change to happen.
 * `terminate`: Terminate the current task and report its completion status.
 # """
 
         tools_def = {
-            "type": "function", 
+            "type": "function",
             "function": {
-                "name_for_human": "custom_computer_use", 
-                "name": "custom_computer_use", 
+                "name_for_human": "custom_computer_use",
+                "name": "custom_computer_use",
                 "description": description_prompt,
                 "parameters": {
                     "properties": {
                         "action": {
                             "description": action_description_prompt,
                             "enum": [
-                                "key", "type", "mouse_move", "left_click", "left_click_drag", 
-                                "right_click", "middle_click", "double_click", "scroll", 
+                                "key", "type", "mouse_move", "left_click", "left_click_drag",
+                                "right_click", "middle_click", "double_click", "scroll",
                                 "execute_code", "wait", "terminate"
-                            ], 
+                            ],
                             "type": "string"
                         },
-                        "keys": {"description": "Required only by `action=key`.", "type": "array"}, 
-                        "text": {"description": "Required only by `action=type`.", "type": "string"}, 
-                        "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"}, 
-                        "pixels": {"description": "The amount of scrolling.", "type": "number"}, 
-                        "time": {"description": "The seconds to wait.", "type": "number"}, 
-                        # 新增！
+                        "keys": {"description": "Required only by `action=key`.", "type": "array"},
+                        "text": {"description": "Required only by `action=type`.", "type": "string"},
+                        "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"},
+                        "pixels": {"description": "The amount of scrolling.", "type": "number"},
+                        "time": {"description": "The seconds to wait.", "type": "number"},
                         "code": {
-                            "description": "The raw code string to execute. Required only when `action=execute_code`.", 
+                            "description": "The raw code string to execute. Required only when `action=execute_code`.",
                             "type": "string"
                         },
                         "language": {
-                            "description": "The programming language of the code. Required only when `action=execute_code`.", 
+                            "description": "The programming language of the code. Required only when `action=execute_code`.",
                             "type": "string",
                             "enum": ["python", "bash"]
                         }
-                    }, 
-                    "required": ["action"], 
+                    },
+                    "required": ["action"],
                     "type": "object"
-                }, 
+                },
                 "args_format": "Format the arguments as a JSON object."
             }
         }
 
-
-#         system_prompt = """# Tools
-
-# You may call one or more functions to assist with the user query.
-
-# You are provided with function signatures within <tools></tools> XML tags:
-# <tools>
-# """ + json.dumps(tools_def) + """
-# </tools>
-
-# For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
-# <tool_call>
-# {"name": <function-name>, "arguments": <args-json-object>}
-# </tool_call>
-
-# # Response format
-
-# Response format for every step:
-# 1) Action: a short imperative describing what to do in the UI.
-# 2) A single <tool_call>...</tool_call> block containing only the JSON: {"name": <function-name>, "arguments": <args-json-object>}.
-
-# Rules:
-# - Output exactly in the order: Action, <tool_call>.
-# - Be brief: one sentence for Action.
-# - Do not output anything else outside those parts.
-# - If finishing, use action=terminate in the tool call."""
-
         system_prompt = """# Role & Goal
-You are a powerful OS Agent capable of both GUI interaction and direct System-Level programming. 
+You are a powerful OS Agent capable of both GUI interaction and direct System-Level programming.
 Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
 
 # Tools
@@ -231,19 +200,20 @@ You must output in the following EXACT order and structural format. Every compon
 </tool_call>
 
 # Critical Execution Rules
-- **Code-First for Data**: When handling structured data (Excel/Calc, CSV, JSON, Files), STRICTLY AVOID clicking cells one by one. Use `execute_code` to manipulate data using python libraries (e.g., `pandas`, `openpyxl`).
+- **Code-First for Data**: When handling structured data (Excel/Calc, CSV, JSON, Files), STRICTLY AVOID clicking cells one by one. Use `execute_code` to manipulate data using python
+libraries (e.g., `pandas`, `openpyxl`).
 - **Batch Processing**: If a task involves repetitive steps (e.g., renaming 10 files, extracting emails from 50 rows), write a Python script or Bash command to do it in one shot.
 - **GUI-Only for Navigation**: Use GUI actions (click/type) ONLY for visual-only tasks, like opening an app, navigating menus, or browsing the web where no API/CLI is available.
 - **Verification**: After `execute_code`, you may use the next screenshot to verify the result if needed.
 
 # Examples of `execute_code` Usage:
 - **Task**: "Sum column B in sheet.xlsx"
-  **Action**: Use pandas to calculate the sum and save it.
-  **Tool_Call**: {"action": "execute_code", "language": "python", "code": "import pandas as pd; df = pd.read_excel('sheet.xlsx'); print(df.iloc[:, 1].sum())"}
+    **Action**: Use pandas to calculate the sum and save it.
+    **Tool_Call**: {"action": "execute_code", "language": "python", "code": "import pandas as pd; df = pd.read_excel('sheet.xlsx'); print(df.iloc[:, 1].sum())"}
 
 - **Task**: "Find all logs containing 'Error' and move to a folder"
-  **Action**: Execute a bash command to filter and move files.
-  **Tool_Call**: {"action": "execute_code", "language": "bash", "code": "grep -l 'Error' *.log | xargs -I {} mv {} ./errors/"}
+    **Action**: Execute a bash command to filter and move files.
+    **Tool_Call**: {"action": "execute_code", "language": "bash", "code": "grep -l 'Error' *.log | xargs -I {} mv {} ./errors/"}
 """
 
         instruction_prompt = f"""
@@ -251,117 +221,76 @@ Please generate the next move according to the UI screenshot, instruction and pr
 
 Instruction: {instruction}
 """
-        
-        messages = [
-            {
-                "role": "system",
-                "content": [
-                    {"type": "text", "text": system_prompt},
-                ],
-            }
-        ]
 
-        self.code_results_history.append(self.last_code_result)
-        # ================= History Construction =================
-        # 保留全部回答 和 最近 history_n 张图片
-        N = len(self.responses) 
-        keep_image_indices = set()
-        
-        # 1. 计算需要保留图片的索引
-        if self.history_n >= N + 1:
-            keep_image_indices = set(range(N + 1))
-        else:
-            keep_image_indices.add(N) # 始终保留当前最新步
-            
-            if self.keep_first_image and self.history_n > 1:
-                keep_image_indices.add(0)
-                remaining_slots = self.history_n - 2
-                for i in range(N - remaining_slots, N):
-                    if i > 0:
-                        keep_image_indices.add(i)
-            else:
-                remaining_slots = self.history_n - 1
-                for i in range(N - remaining_slots, N):
-                    if i >= 0:
-                        keep_image_indices.add(i)
+        # ================== 构造 self.messages ==================
 
-        # 2. 构建历史轮次 messages
-        for i in range(N):
-            user_content = []
+        # 第一次调用 predict 时，初始化 system + 第一条 user
+        if not self.messages:
+            self.messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": system_prompt},
+                    ],
+                }
+            ]
 
-            # 提取历史第 i 步对应的代码执行结果
-            step_code_result = self.code_results_history[i]
-            if step_code_result is not None:
-                # 命中策略：如果这一步有代码结果，则【不喂截图】，喂入代码执行结果的文本
-                user_content.append({
-                    "type": "text",
-                    "text": f"Code Execution Result:\n```\n{step_code_result}\n```\nPlease continue based on this result."
-                })
-            elif i in keep_image_indices:
-                img_url = f"data:image/png;base64,{self.screenshots[i]}"
-                user_content.append({
-                    "type": "image_url",
-                    "image_url": {"url": img_url},
-                })
-            
-            if i == 0:
-                user_content.append({"type": "text", "text": instruction_prompt})
-                
-            # 只有当 user_content 有内容时（有图或有首轮 prompt），才压入 user 消息
-            if user_content:
-                messages.append({
-                    "role": "user",
-                    "content": user_content,
-                })
+        # 如果上一轮有模型回复，先补上一条 assistant 消息
+        if self.responses:
+            last_response = self.responses[-1]
+            self.messages.append(
+                {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "text", "text": last_response},
+                    ],
+                }
+            )
 
-            # Assistant 的历史回复无条件全部压入（这会导致早期轮次出现连续的 assistant 消息）
-            messages.append({
-                "role": "assistant",
-                "content": [
-                    {"type": "text", "text": f"{self.responses[i]}"},
-                ],
-            })
-
-        # 3. 追加当前步 (Current Step)
+        # 当前轮 user 消息
         curr_user_content = []
-        # 当前步的结果就是刚刚 append 进去的 self.last_code_result
-        curr_code_result = self.last_code_result
-        
-        if curr_code_result is not None:
-            # 当前步跳过截图，直接给代码结果
-            curr_user_content.append({
-                "type": "text",
-                "text": f"Code Execution Result:\n```\n{curr_code_result}\n```\nPlease continue based on this result."
-            })
-        elif N in keep_image_indices:
-            # 当前步正常走截图逻辑
-            curr_img_url = f"data:image/png;base64,{processed_image}" 
-            curr_user_content.append({
-                "type": "image_url",
-                "image_url": {"url": curr_img_url},
-            })
-            
-        if N == 0:
+        if self.last_code_result is not None:
+            # 有代码执行结果则优先喂代码结果，不再附截图
+            curr_user_content.append(
+                {
+                    "type": "text",
+                    "text": f"Code Execution Result:\n```\n{self.last_code_result}\n```\nPlease continue based on this result.",
+                }
+            )
+        else:
+            # 没有代码结果则附当前截图
+            curr_img_url = f"data:image/png;base64,{processed_image}"
+            curr_user_content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": curr_img_url},
+                }
+            )
+
+        # 第一轮附带原始 instruction
+        if not self.responses:
             curr_user_content.append({"type": "text", "text": instruction_prompt})
 
-        # 当前步通常一定会有图或者 prompt，压入最后一条 user 消息触发模型生成
-        if curr_user_content:
-            messages.append({
+        self.messages.append(
+            {
                 "role": "user",
                 "content": curr_user_content,
-            })
+            }
+        )
 
-        # 重置为 None，防止对下一次 predict 产生污染
+        # 用完立刻清掉，避免污染下一轮逻辑
         self.last_code_result = None
-        # ========================================================
 
-        # 用于debug
-        self.debug_print_messages(messages)
+        # ========= 在 messages 上做截图裁剪 =========
+        self._cleanup_old_screenshots()
+
+        # debug
+        # self.debug_print_messages(self.messages)
 
         response = self.call_llm(
             {
                 "model": self.model,
-                "messages": messages,
+                "messages": self.messages,
                 "max_tokens": self.max_tokens,
                 "top_p": self.top_p,
                 "temperature": self.temperature,
@@ -373,7 +302,7 @@ Instruction: {instruction}
 
         # Update History
         self.responses.append(response)
-        
+
         low_level_instruction, pyautogui_code = self.parse_response(
             response,
             width,
@@ -385,9 +314,87 @@ Instruction: {instruction}
         logger.info(f"Low level instruction: {low_level_instruction}")
         logger.info(f"Pyautogui code: {pyautogui_code}")
 
-        self.actions.append(low_level_instruction)
-
         return response, pyautogui_code
+    
+    def _cleanup_old_screenshots(self):
+        """
+        在 self.messages 上清理超出配额的截图。
+
+        规则：
+        - 从后往前遍历 user 消息，统计其中含有 image_url 的“轮次”。
+        - 只保留最近 history_n 轮带图的 user 消息。
+        - 如果 keep_first_image=True，则如果第一个 user 消息带图，强制保留第一轮的截图，
+        不占 history_n 的名额。
+        """
+        # 收集所有带截图的 user 消息索引（按出现顺序）
+        user_indices_with_img = []
+        for idx, msg in enumerate(self.messages):
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            has_image = any(
+                isinstance(part, dict) and part.get("type") == "image_url"
+                for part in content
+            )
+            if has_image:
+                user_indices_with_img.append(idx)
+
+        if not user_indices_with_img:
+            return
+
+        # 需要保留的索引集合
+        keep_indices = set()
+
+        # 1. keep_first_image: 如果启用且第一条 user 有图，则强制保留那一条
+        if self.keep_first_image:
+            # 找到 messages 中第一条 user 消息并检查是否有图
+            first_user_idx = None
+            for idx, msg in enumerate(self.messages):
+                if msg.get("role") == "user":
+                    first_user_idx = idx
+                    break
+            if first_user_idx is not None:
+                content = self.messages[first_user_idx].get("content")
+                if isinstance(content, list):
+                    has_image = any(
+                        isinstance(part, dict) and part.get("type") == "image_url"
+                        for part in content
+                    )
+                    if has_image:
+                        keep_indices.add(first_user_idx)
+
+        # 2. 在剩余带图 user 中，从后往前保留最近 history_n 个
+        remaining = self.history_n
+        for idx in reversed(user_indices_with_img):
+            if idx in keep_indices:
+                # 已经被 keep_first_image 占用，不占 history_n 名额
+                continue
+            if remaining <= 0:
+                break
+            keep_indices.add(idx)
+            remaining -= 1
+
+        # 3. 对不在 keep_indices 里的带图 user，清理其 image_url
+        for idx in user_indices_with_img:
+            if idx in keep_indices:
+                continue
+            msg = self.messages[idx]
+            content = msg.get("content", [])
+            new_content = [
+                part for part in content
+                if not (isinstance(part, dict) and part.get("type") == "image_url")
+            ]
+            if not new_content:
+                msg["content"] = [
+                    {
+                        "type": "text",
+                        "text": "[Old Screenshot Removed]",
+                    }
+                ]
+            else:
+                msg["content"] = new_content
 
     def parse_response(
         self,
@@ -642,12 +649,8 @@ Instruction: {instruction}
             else logging.getLogger("desktopenv.qwen3vl_agent")
         )
 
-        self.thoughts = []
-        self.actions = []
-        self.critic_actions = []
-        self.observations = []
         self.responses = []
-        self.screenshots = []
+        self.messages = []
 
     def debug_print_messages(self, messages: list):
         """
