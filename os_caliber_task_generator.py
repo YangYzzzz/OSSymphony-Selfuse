@@ -7,334 +7,307 @@ import time
 import shutil
 from datetime import datetime
 from typing import List, Dict, Tuple, Any
-
+import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import CoarseInstructionGenerationAgent
 
-# 基础存储路径
-TASK_BASE_DIR = "evaluation_examples/ubuntu_generate"
+# APP 初始化信息
+APP_SETUP_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/app_config.json"
+APP_SETUP_DICT: Dict = json.load(open(APP_SETUP_CONFIG_PATH, "r"))
+# 预制 URL, 适用于 chrome 软件的初始化
+URL_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/url.json"
+URL_LIST: List = json.load(open(URL_CONFIG_PATH, "r"))
 
-# --- 配置字典 ---
-EXTRA_APP_SETUP_DICT = {
-    "pycharm": {
-        "type": ["py", "project_folder"],
-        "commands": [["pycharm-community", "PATH"]]
-    },
-    "blender": {
-        "type": ["blend"],
-        "commands": [["blender", "PATH"]]
-    },
-    "dbeaver": {
-        "type": ["sql"],
-        "commands": [["dbeaver-ce", "PATH"]]
-    },
-    "wireshark": {
-        "type": ["pcapng"],
-        "commands": [["sudo", "wireshark", "PATH"]] # 建议拆开 sudo 和命令
-    },
-    "texstudio": {
-        "type": ["tex"],
-        "commands": [["texstudio", "PATH"]]
-    },
-    "gitkraken": {
-        "type": ["project_folder"],
-        "commands": [["gitkraken", "-p", "PATH"]]
-    },
-    "scilab": {
-        "type": ["sci"],
-        "commands": [["scilab", "-f", "PATH"]]
-    },
-    "audacity": {
-        "type": ["wav", "mp3"],
-        "commands": [["audacity"]]
-    },
-    "librecad": {
-        "type": ["dxf"],
-        "commands": [["librecad", "PATH"]]
-    },
-    "drawio": {
-        "type": ["drawio"],
-        "commands": [["drawio", "PATH"]]
-    },
-    "darktable": {
-        "type": ["png"],
-        "commands": [["darktable", "PATH"]]
-    },
-    "handbrake": {
-        "type": ["mp4"],
-        "commands": [["handbrake", "PATH"]]
-    },
-    "homebank": {
-        "type": ["xhb"],
-        "commands": [["homebank", "PATH"]]
-    },
-    "mixxx": {
-        "type": ["mp3"],
-        "commands": [["mixxx", "-f", "PATH"]]
-    },
-    "inkscape": {
-        "type": ["svg"],
-        "commands": [["inkscape", "PATH"]]
-    },
-    "obs": {
-        "commands": [["obs"]]
-    },
-    "meld": {
-        "type": ["py"],
-        "commands": [["meld", "PATH", "PATH"]]
-    },
-    "musescore": {
-        "type": ["mscz"],
-        "commands": [["musescore", "PATH"]]
-    },
-    "zotero": {
-        "commands": [["zotero-snap"]]
-    },
-    "zoom": {
-        "commands": [["zoom"]]
-    },
-    "google-earth-pro": {
-        # 这里的 lat, lon, range 将在代码中动态替换
-        "commands": [
-            [
-                "google-earth-pro",
-                # 使用占位符，方便后续替换
-                "lat=LAT_VAL,lon=LON_VAL,range=RANGE_VAL" 
-            ]
-        ]
-    },
-    "kicad": {
-        "commands": [["kicad"]]
-    },
-    "spotify": {
-        "commands": [["spotify"]]
-    },
-    "calendar": {
-        "commands": [["gnome-calendar"]]
-    },
-    "shotcut": {
-        "type": ["mp4"],
-        "commands": [["shotcut", "PATH"]]
-    },
-    "krita": {
-        "type": ["kra"],
-        "commands": [["krita", "PATH"]]
-    },
-    "pdfarranger": {
-        "type": ["pdf"],
-        "commands": [["pdfarranger", "PATH"]]
-    },
-    "grass": {
-        "commands": [["grass"]]
-    },
-}
-
-OSWORLD_APP_SETUP_DICT = {
-    "chrome": {
-        "type": ["url"],
-        "window_name": "Google Chrome",
-        "commands": [
-            ["google-chrome", "--remote-debugging-port=1337", "--start-maximized", "https://www.bing.com"],
-            ["socat", "tcp-listen:9222,fork", "tcp:localhost:1337"]
-        ]
-    },
-    "gimp": {
-        "type": ["png"],
-        "commands": [["gimp", "PATH"]]
-    },
-    "libreoffice_impress": {
-        "type": ["pptx"],
-        "window_name": "LibreOffice Impress",
-        "commands": [
-            [
-                "libreoffice",
-                "--impress",
-                "--nologo",
-                "--norestore", # 修复：这里原来漏了逗号
-                "PATH"
-            ]
-        ]
-    },
-    "libreoffice_calc": {
-        "type": ["xlsx"],
-        "window_name": "LibreOffice Calc",
-        "commands": [
-            [
-                "libreoffice",
-                "--calc",
-                "--nologo",
-                "--norestore", # 修复：这里原来漏了逗号
-                "PATH"
-            ]
-        ]
-    },
-    "libreoffice_writer": {
-        "type": ["docx"],
-        "window_name": "LibreOffice Writer",
-        "commands": [
-            [
-                "libreoffice",
-                "--writer",
-                "--nologo",
-                "--norestore", # 修复：这里原来漏了逗号
-                "PATH"
-            ]
-        ]
-    },
-    "vscode": {
-        "type": ["project_folder", "py"],
-        "commands": [["code", "--new-window", "PATH"]]
-    },
-    "terminal": {
-        "window_name": "Terminal"
-    },
-    "thunderbird": {
-        "commands": [["/usr/bin/thunderbird"]]
-    },
-    "vlc": {
-        "type": ["mp4"],
-        "commands": [
-            [
-                "VLC_VERBOSE=-1",
-                "vlc",
-                "--no-audio",
-                "--no-video-title-show",
-                "--play-and-pause",
-                "PATH"
-            ]
-        ]
-    }
-}
-
-APP_SETUP_DICT = OSWORLD_APP_SETUP_DICT | EXTRA_APP_SETUP_DICT
-# 为了测试新的app
-# APP_SETUP_DICT = EXTRA_APP_SETUP_DICT
 ENV_FILE_BASE_DIR = "/home/user/Desktop/test_files"
+APP_TUTORIAL_DIR = "evaluation_examples/ubuntu_online_rollout/app_tutorial"
 
+def extract_function_docstring(code_str, function_name=None):
+    try:
+        mod = ast.parse(code_str)
+        # 遍历所有节点，找到函数定义
+        for node in ast.walk(mod):
+            if isinstance(node, ast.FunctionDef):
+                # 如果指定了函数名，则匹配；否则取第一个函数
+                if function_name is None or node.name == function_name:
+                    return ast.get_docstring(node)
+        return ""
+    except Exception:
+        return ""
+    
 class OSCaliberTaskGenerator:
-    def __init__(self, rollout_task_dir: str, env: DesktopEnv, agent: CoarseInstructionGenerationAgent) -> None:
+    def __init__(
+        self,
+        rollout_task_dir: str,
+        env: DesktopEnv,
+        agent: CoarseInstructionGenerationAgent,
+    ) -> None:
         self.rollout_task_dir = rollout_task_dir
         self.env_file_base_dir = ENV_FILE_BASE_DIR
         self.env = env
         self.agent = agent
+        # Cache for auto-generated evaluator functions from coarse agent.
+        # Maps function_name -> code string.
+        self.generated_evaluators: Dict[str, str] = {}
 
-    def _generate_random_coordinates(self) -> Tuple[str, str, str]:
-        """生成随机的经纬度和高度范围"""
-        # 纬度: -90 到 90
-        lat = round(random.uniform(-90.0, 90.0), 6)
-        # 经度: -180 到 180
-        lon = round(random.uniform(-180.0, 180.0), 6)
-        # 高度范围 (Range): 比如 1000米 到 5000000米 (5000km)
-        # Google Earth 的 range 参数通常指视点距离地面的高度
-        range_val = random.randint(1000, 5000000)
-        
-        return str(lat), str(lon), str(range_val)
+    def _load_app_tutorial_md(self, app_name: str) -> str:
+        """读取对应 app 的 tutorial markdown，如果不存在则返回空字符串。"""
+        md_path = os.path.join(APP_TUTORIAL_DIR, f"{app_name}.md")
+        if not os.path.exists(md_path):
+            return ""
+        try:
+            with open(md_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            return ""
 
-    def _generate_config(self, app_name: str) -> List[Dict[str, Any]]:
-        """根据 APP_SETUP_DICT 生成标准的 config 列表"""
+    def _get_abs_file_lists(self, type_lists):
+        abs_file_lists: List[str] = []
+        for file_type in type_lists:
+            if file_type == "url":
+                abs_file_lists.extend(URL_LIST)
+            else:
+                target_dir = os.path.join(self.env_file_base_dir, file_type)
+                try:
+                    file_lists_for_single_type = self.env.controller.get_file_lists(target_dir)
+                except Exception as e:
+                    print(f"Warning: Could not list files in {target_dir}: {e}")
+                    file_lists_for_single_type = []
+
+                if file_lists_for_single_type and isinstance(file_lists_for_single_type, list):
+                    for f in file_lists_for_single_type:
+                        abs_file_lists.append(str(os.path.join(target_dir, f)))
+        return abs_file_lists
+    
+    def _generate_config(self, app_name: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+        """根据 APP_SETUP_DICT 生成标准的 config 列表，同时返回实际使用的 PATH 列表。
+
+        commands 结构说明：
+        - APP_SETUP_DICT[app_name]["commands"] 是三层列表：
+          List[SetupVariant]
+          SetupVariant = List[Command]
+          Command = List[str]
+        - 这里会先随机选择一个 SetupVariant，再对其中每条 Command 做 PATH 替换。
+        """
         app_info = APP_SETUP_DICT.get(app_name, {})
         if not app_info:
-            return []
+            return [], []
 
-        config_list = []
-        
-        # 1. 准备文件列表
-        type_lists = app_info.get('type', [])
-        file_abs_lists = []
-        
-        for file_type in type_lists:
-            # 跳过 url 类型
-            if file_type == "url":
-                continue
-                
-            # 获取该类型下的所有文件
-            target_dir = os.path.join(self.env_file_base_dir, file_type)
-            # 增加 try-except 或检查路径是否存在是个好习惯
-            try:
-                file_lists_for_single_type = self.env.controller.get_file_lists(target_dir)
-            except Exception as e:
-                print(f"Warning: Could not list files in {target_dir}: {e}")
-                file_lists_for_single_type = []
+        config_list: List[Dict[str, Any]] = []
+        used_paths: List[str] = []
+        abs_file_lists = self._get_abs_file_lists(type_lists=app_info.get("type", []))
 
-            if file_lists_for_single_type and isinstance(file_lists_for_single_type, list):
-                for f in file_lists_for_single_type:
-                    file_abs_lists.append(str(os.path.join(target_dir, f)))
+        # 取出所有 setup 变体（三层结构），随机选一个变体
+        all_setups = app_info.get("commands", []) or []
+        if not all_setups:
+            return [], []
+        # all_setups: List[SetupVariant]，每个 SetupVariant 是 List[Command]
+        chosen_setup = random.choice(all_setups)
 
-        # 2. 生成 Launch 命令
-        # 必须使用 deepcopy，否则会修改全局的 APP_SETUP_DICT，导致下一次循环时 PATH 已经被替换死了
-        raw_commands = copy.deepcopy(app_info.get("commands", []))
-        
+        # 深拷贝，避免修改原配置
+        raw_commands: List[List[str]] = copy.deepcopy(chosen_setup)
+
         for cmd in raw_commands:
-            # 处理每一个参数
             for i in range(len(cmd)):
                 param = cmd[i]
-                
-                # 处理 PATH 替换
                 if "PATH" in param:
-                    if file_abs_lists:
-                        selected_file = random.choice(file_abs_lists)
+                    if abs_file_lists:
+                        selected_file = random.choice(abs_file_lists)
+
+                        # 特殊软件特殊处理, 再往里获取一层
+                        if app_name in ["blender", "texstudio"] and "." not in selected_file.split("/")[-1]:
+                            try:
+                                sub_files = self.env.controller.get_file_lists(selected_file)
+                                if sub_files and isinstance(sub_files, list):
+                                    for sub_f in sub_files:
+                                        if sub_f.endswith(".blend") or sub_f.endswith(".tex"):
+                                            selected_file = os.path.join(selected_file, sub_f)
+                                            break
+                            except Exception as e:
+                                print(f"Error searching inner file in {selected_file}: {e}")
+
                         cmd[i] = param.replace("PATH", selected_file)
+                        used_paths.append(selected_file)
                     else:
-                        # 如果该软件需要文件但没有找到文件，可以选择移除该参数，或者保留原样让其打开空软件
                         if param == "PATH":
-                            cmd[i] = "" 
+                            cmd[i] = ""
                         print(f"Warning: No files found for {app_name}, starting without file.")
 
-                # 处理 Google Earth 的随机经纬度
-                if "lat=" in param and "lon=" in param:
-                    lat_val, lon_val, range_val = self._generate_random_coordinates()
-                    new_param = param.replace("LAT_VAL", lat_val)
-                    new_param = new_param.replace("LON_VAL", lon_val)
-                    new_param = new_param.replace("RANGE_VAL", range_val)
-                    cmd[i] = new_param
-
             cleaned_cmd = [c for c in cmd if c != ""]
+            if not cleaned_cmd:
+                continue
+            config_list.append({"type": "launch", "parameters": {"command": cleaned_cmd}})
 
-            config_list.append({
-                "type": "launch",
-                "parameters": {
-                    "command": cleaned_cmd
+        used_paths = sorted(list(set(used_paths)))
+        return config_list, used_paths
+
+    def _build_evaluator_from_verification(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """根据 coarse agent 产出的 verification 字段，构造最终 evaluator。
+
+        目标输出格式：
+        {
+            "func": str | List[str],
+            "conj": "and",
+            "result": dict | List[dict],
+            "expected": dict | List[dict],
+            "code": str | List[str],
+            "desc": str | List[str],
+            "need_vlm_judge": bool,
+            "vlm_desc": str,
+            "need_rule_judge": bool,
+        }
+        """
+        verification = task.get("verification") or {}
+
+        need_rule = bool(verification.get("need_rule_judge", False))
+        need_vlm = bool(verification.get("need_vlm_judge", False))
+        vlm_desc = verification.get("vlm_desc", "")
+        rule_items = verification.get("rule_items") or []
+        if not isinstance(rule_items, list):
+            rule_items = []
+
+        # 如果 coarse agent 给了 rule_items 但两个 flag 都是 False，则默认需要 rule judge
+        if rule_items and not need_rule and not need_vlm:
+            need_rule = True
+
+        # 如果既不需要 rule 也不需要 vlm，则退化成简单的 vlm 检查
+        if not need_rule and not need_vlm:
+            need_vlm = True
+
+        # 纯 VLM 任务，不需要 rule-based evaluator 细节
+        if not need_rule:
+            return {
+                "func": "",
+                "conj": "and",
+                "result": [],
+                "expected": [],
+                "code": [],
+                "desc": [],
+                "need_vlm_judge": need_vlm,
+                "vlm_desc": vlm_desc,
+                "need_rule_judge": False,
+            }
+
+        # 需要 rule-based 评估的情况
+        funcs: List[str] = []
+        results: List[Dict[str, Any]] = []
+        expecteds: List[Dict[str, Any]] = []
+        codes: List[str] = []
+        descs: List[str] = []
+
+        def _norm_getter(g: Any) -> Dict[str, Any]:
+            if not isinstance(g, dict):
+                return {"type": "empty"}
+            g_type = g.get("type")
+            if g_type == "vm_file":
+                return {
+                    "type": "vm_file",
+                    "path": str(g.get("path", "")),
+                    "dest": str(g.get("dest", "")),
                 }
-            })
-            
-        return config_list
+            if g_type == "vm_command_line":
+                cmd = g.get("command")
+                if isinstance(cmd, list):
+                    cmd_list = [str(c) for c in cmd]
+                elif cmd is None:
+                    cmd_list = []
+                else:
+                    cmd_list = [str(cmd)]
+                return {"type": "vm_command_line", "command": cmd_list}
+            if g_type == "empty":
+                return {"type": "empty"}
+            return {"type": "empty"}
 
-    def generate_all(self, task_nums=1):
-        available_apps = list(APP_SETUP_DICT.keys())
-        test_file_list = {}
-        for available_app in available_apps:
-            test_file_list = test_file_list | self.generate_task(task_nums=task_nums, app_list=[available_app])
-        return test_file_list
+        for idx, item in enumerate(rule_items, start=1):
+            if not isinstance(item, dict):
+                continue
+            fn_name = str(item.get("function_name") or f"call_rule_judge_{idx}").strip()
+            result_getter = _norm_getter(item.get("result_getter"))
+            expected_getter_raw = item.get("expected_getter")
+            if expected_getter_raw is None:
+                expected_getter = {"type": "empty"}
+            else:
+                expected_getter = _norm_getter(expected_getter_raw)
 
-    def generate_task(self, task_nums=10, app_list: List|str = []):
-        """
-        生成任务文件
-        """
+            code_str = item.get("code", "")
+
+            # 解析上述 code_str, 尝试提取其 docstring 作为 check_desc
+            check_desc = extract_function_docstring(code_str=code_str)
+
+            funcs.append(fn_name)
+            results.append(result_getter)
+            expecteds.append(expected_getter)
+            codes.append(str(code_str))
+            descs.append(check_desc)
+
+        # 如果只有一个 rule item，则压缩为标量，保证 func/result/expected/code/desc 一致
+        if len(funcs) == 1:
+            func_val = funcs[0]
+            result_val = results[0]
+            expected_val = expecteds[0]
+            code_val = codes[0]
+            desc_val = descs[0]
+        else:
+            func_val = funcs
+            result_val = results
+            expected_val = expecteds
+            code_val = codes
+            desc_val = descs
+
+        evaluator = {
+            "func": func_val,
+            "conj": "and",  # 目前仅支持 and
+            "result": result_val,
+            "expected": expected_val,
+            "code": code_val,
+            "desc": desc_val,
+            "need_vlm_judge": need_vlm,
+            "vlm_desc": vlm_desc,
+            "need_rule_judge": True,
+        }
+        return evaluator
+
+    def generate_task(self, task_nums: int = 10, app_list: List | str = []):
         if isinstance(app_list, list) and len(app_list) > 0:
             available_apps = app_list
         else:
-            available_apps = list(APP_SETUP_DICT.keys())  
+            available_apps = list(APP_SETUP_DICT.keys())
 
         if not available_apps:
             raise ValueError("No apps available to generate tasks.")
 
-        test_file_list = {}
+        test_file_list: Dict[str, List[str]] = {}
+
+        # 目前仅为单APP初始化
         app_name = random.choice(available_apps)
         domain_dir = os.path.join(self.rollout_task_dir, app_name)
         os.makedirs(domain_dir, exist_ok=True)
 
-        # 生成配置
-        task_setup_config = self._generate_config(app_name)
-        
-        # Reset 环境
+        # 生成配置 + 实际使用的 PATH 列表
+        task_setup_config, launch_paths = self._generate_config(app_name)
+
         print(f"Generating tasks for {app_name}...")
-        self.env.reset(task_config={"config": task_setup_config, "id": "init_id", "instruction": "init_instruction"})
+        self.env.reset(
+            task_config={
+                "config": task_setup_config,
+                "id": "init_id",
+                "instruction": "init_instruction",
+            }
+        )
         self.agent.reset()
 
         obs = self.env._get_obs()
-        
-        # 让 Agent 生成任务描述
-        task_list = self.agent.generate(app_name=app_name, observation=obs, task_nums=task_nums)
+
+        # 注入 app tutorial md
+        app_tutorial_md = self._load_app_tutorial_md(app_name)
+
+        # 让 Agent 生成任务描述（传入 launch_paths 和教程）
+        task_list = self.agent.generate(
+            app_name=app_name,
+            observation=obs,
+            task_nums=task_nums,
+            launch_paths=launch_paths,
+            app_tutorial_md=app_tutorial_md,
+        )
 
         for task in task_list:
             task_id = str(uuid.uuid4())
@@ -342,17 +315,19 @@ class OSCaliberTaskGenerator:
             task_config = {
                 "id": task_id,
                 "snapshot": app_name,
-                "instruction": task["description"],
+                "related_apps": [app_name],
+                "instruction": task.get("description"),
                 "config": task_setup_config,
-                "complexity": task.get("complexity"), # 使用 get 防止 key 不存在
-                "verification": task.get("verification")
+                "complexity": task.get("complexity"),
+                "estimated_steps": task.get("estimated_steps"),
+                "category": task.get("category"),  # file_only / app_only / mixed
+                "evaluator": self._build_evaluator_from_verification(task)
             }
-        
+
             json_path = os.path.join(domain_dir, f"{task_id}.json")
-            
-            with open(json_path, 'w', encoding='utf-8') as f:
+            with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(task_config, f, indent=4, ensure_ascii=False)
-        
+
             if app_name not in test_file_list:
                 test_file_list[app_name] = []
             test_file_list[app_name].append(task_id)

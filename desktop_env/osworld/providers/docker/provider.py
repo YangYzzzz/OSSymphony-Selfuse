@@ -9,6 +9,7 @@ from filelock import FileLock
 from pathlib import Path
 
 from desktop_env.osworld.providers.base import Provider
+from docker.errors import NotFound
 
 logger = logging.getLogger("desktopenv.providers.docker.DockerProvider")
 logger.setLevel(logging.INFO)
@@ -42,15 +43,24 @@ class DockerProvider(Provider):
         system_ports = set(conn.laddr.port for conn in psutil.net_connections())
         
         # Get Docker container ports
-        docker_ports = set()
-        for container in self.client.containers.list():
-            ports = container.attrs['NetworkSettings']['Ports']
-            if ports:
-                for port_mappings in ports.values():
-                    if port_mappings:
-                        docker_ports.update(int(p['HostPort']) for p in port_mappings)
-        
-        return system_ports | docker_ports
+        max_try_times = 5
+        for _ in range(max_try_times):
+            try:
+                docker_ports = set()
+                for container in self.client.containers.list():
+                    ports = container.attrs['NetworkSettings']['Ports']
+                    if ports:
+                        for port_mappings in ports.values():
+                            if port_mappings:
+                                docker_ports.update(int(p['HostPort']) for p in port_mappings)
+                
+                return system_ports | docker_ports
+            except NotFound:
+                print(f"Container {container.id} not found, skipping")
+                continue
+            except Exception as e:
+                print(f"Error processing container {container.id}: {e}")
+                continue
 
     def _get_available_port(self, start_port: int) -> int:
         """Find next available port starting from start_port."""

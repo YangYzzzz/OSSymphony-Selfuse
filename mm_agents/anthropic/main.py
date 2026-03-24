@@ -2,6 +2,8 @@ import base64
 import os
 import time
 from typing import Any, cast, Optional, Dict
+from pathlib import Path
+import json
 from PIL import Image
 import io
 
@@ -17,11 +19,113 @@ from anthropic.types.beta import (
     BetaMessageParam,
     BetaTextBlockParam,
 )
-from .utils import COMPUTER_USE_BETA_FLAG, PROMPT_CACHING_BETA_FLAG,SYSTEM_PROMPT, SYSTEM_PROMPT_WINDOWS, APIProvider, PROVIDER_TO_DEFAULT_MODEL_NAME
+from .utils import get_model_name, COMPUTER_USE_BETA_FLAG, PROMPT_CACHING_BETA_FLAG, SYSTEM_PROMPT, SYSTEM_PROMPT_WINDOWS, APIProvider, PROVIDER_TO_DEFAULT_MODEL_NAME, COMPUTER_USE_TYPE
 from .utils import _response_to_params, _inject_prompt_caching, _maybe_filter_to_n_most_recent_images
 
 import logging
 logger = logging.getLogger("desktopenv.agent")
+
+LOG_DIR = Path("logs/claude_api_logs")
+
+
+def _normalize_messages_for_log(messages):
+    """将 messages 中的图片内容替换为占位符，避免日志写入大量 base64 图片。"""
+    if not messages:
+        return messages
+
+    def _normalize_content(content):
+        if isinstance(content, list):
+            normalized = []
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "image":
+                    # 用占位符替代图片内容
+                    placeholder = {
+                        "type": "image_placeholder",
+                        "detail": "[IMAGE_CONTENT_REMOVED_FOR_LOGGING]",
+                    }
+                    normalized.append(placeholder)
+                else:
+                    normalized.append(block)
+            return normalized
+        return content
+
+    normalized_messages = []
+    for m in messages:
+        if not isinstance(m, dict):
+            normalized_messages.append(m)
+            continue
+        new_m = dict(m)
+        if "content" in new_m:
+            new_m["content"] = _normalize_content(new_m["content"])
+        normalized_messages.append(new_m)
+    return normalized_messages
+
+
+def log_claude_api_call(
+    *,
+    model_name: str,
+    provider: APIProvider,
+    request_messages,
+    response,
+    duration_ms: float,
+    success: bool,
+    error: Optional[str] = None,
+):
+    """记录 Claude API 调用日志到 logs/claude_api_logs，图片用占位符。"""
+    try:
+        from datetime import datetime
+
+        # 以月份作为子目录，例如 2026-02, 2026-03
+        now = datetime.utcnow()
+        month_dir = LOG_DIR / now.strftime("%Y-%m")
+        month_dir.mkdir(parents=True, exist_ok=True)
+
+        ts = now.strftime("%Y%m%d_%H%M%S_%f")
+        filename = month_dir / "claude_api_logs.jsonl"
+
+        safe_messages = _normalize_messages_for_log(request_messages)
+
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = {
+                "input_tokens": getattr(response.usage, "input_tokens", 0),
+                "output_tokens": getattr(response.usage, "output_tokens", 0),
+                "total_tokens": getattr(response.usage, "total_tokens", 0),
+            }
+
+        response_summary = None
+        if response and getattr(response, "content", None):
+            texts = []
+            for block in response.content:
+                if hasattr(block, "text") and block.text:
+                    texts.append(block.text)
+            if texts:
+                merged = "\n".join(texts)
+                response_summary = merged[:2000]
+
+        log_record = {
+            "timestamp_utc": ts,
+            "provider": provider.name if hasattr(provider, "name") else str(provider),
+            "model": model_name,
+            "success": success,
+            "error": error,
+            "duration_ms": duration_ms,
+            "request": {
+                "messages": safe_messages,
+            },
+            "response": {
+                "usage": usage,
+                "summary_text": response_summary,
+            },
+        }
+
+        # 追加写入当月 jsonl 文件
+        with filename.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(log_record, ensure_ascii=False) + "\n")
+
+        logger.info(f"[claude_api_logs] saved log to {filename}")
+    except Exception as e:
+        logger.warning(f"failed to write claude api log: {e}")
 
 # MAX_HISTORY = 10
 API_RETRY_TIMES = 500  
@@ -30,15 +134,19 @@ API_RETRY_INTERVAL = 5
 class AnthropicAgent:
     def __init__(self,
                 platform: str = "Ubuntu",
-                model: str = "claude-3-5-sonnet-20241022",
+                model: str = "claude-sonnet-4-5-20250929",
                 provider: APIProvider = APIProvider.ANTHROPIC,
-                max_tokens: int = 4096,
+                max_tokens: int = 32768,
                 api_key: str = os.environ.get("ANTHROPIC_API_KEY", ""),
                 base_url: str = "",
                 system_prompt_suffix: str = "",
                 only_n_most_recent_images: Optional[int] = 10,
                 action_space: str = "claude_computer_use",
                 screen_size: tuple[int, int] = (1920, 1080),
+                no_thinking: bool = False,
+                use_isp: bool = False,
+                temperature: Optional[float] = None,
+                top_p: Optional[float] = None,
                 *args, **kwargs
             ):
         self.platform = platform
@@ -54,11 +162,87 @@ class AnthropicAgent:
         self.only_n_most_recent_images = only_n_most_recent_images
         self.messages: list[BetaMessageParam] = []
         self.screen_size = screen_size
+        self.no_thinking = no_thinking
+        self.use_isp = use_isp
+        self.temperature = temperature
+        self.top_p = top_p
         self.resize_factor = (
             screen_size[0] / 1280,  # Assuming 1280 is the base width
             screen_size[1] / 720   # Assuming 720 is the base height
         )
 
+    def _get_sampling_params(self):
+        """Get sampling parameters (temperature and/or top_p) - let API validate exclusivity"""
+        params = {}
+        if self.temperature is not None:
+            params['temperature'] = self.temperature
+        # if self.top_p is not None:
+        #     params['top_p'] = self.top_p
+        return params
+
+    def _call_model_with_logging(
+        self,
+        client,
+        messages,
+        system,
+        tools,
+        betas,
+        extra_body,
+        actual_max_tokens: int,
+    ):
+        """封装一次模型调用，增加耗时统计与日志记录。"""
+        start = time.time()
+        response = None
+        error_msg = None
+        try:
+            with client.beta.messages.stream(
+                max_tokens=actual_max_tokens,
+                messages=messages,
+                model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
+                system=[system],
+                cache_control={"type": "ephemeral"},
+                tools=tools,
+                betas=betas,
+                extra_body=extra_body,
+                **self._get_sampling_params(),
+            ) as stream:
+                response = stream.get_final_message()
+            success = True
+            return response
+        except Exception as e:
+            error_msg = str(e)
+            success = False
+            raise
+        finally:
+            duration_ms = (time.time() - start) * 1000.0
+            try:
+                log_claude_api_call(
+                    model_name=self.model_name,
+                    provider=self.provider,
+                    request_messages=messages,
+                    response=response,
+                    duration_ms=duration_ms,
+                    success=success,
+                    error=error_msg,
+                )
+            except Exception as log_e:
+                logger.warning(f"logging claude api call failed: {log_e}")
+    
+    def _extract_raw_response_string(self, response) -> str:
+        """Extract and concatenate raw response content into a single string."""
+        raw_response_str = ""
+        if response.content:
+            for block in response.content:
+                if hasattr(block, 'text') and block.text:
+                    raw_response_str += f"[TEXT] {block.text}\n"
+                elif hasattr(block, 'thinking') and block.thinking:
+                    raw_response_str += f"[THINKING] {block.thinking}\n"
+                elif hasattr(block, 'name') and hasattr(block, 'input'):
+                    raw_response_str += f"[TOOL_USE] {block.name}: {block.input}\n"
+                else:
+                    raw_response_str += f"[OTHER] {str(block)}\n"
+        return raw_response_str.strip()
+    
     def add_tool_result(self, tool_call_id: str, result: str, screenshot: bytes = None):
         """Add tool result to message history"""
         tool_result_content = [
@@ -86,54 +270,60 @@ class AnthropicAgent:
             "content": tool_result_content
         })
     
-    def parse_actions_from_tool_call(self, tool_call: Dict) -> str:
+    def parse_actions_from_tool_call(self, tool_call: Dict) -> tuple[str, Optional[list]]:
         result = ""
         function_args = (
             tool_call["input"]
         )
-        
+
         action = function_args.get("action")
         if not action:
-            action = tool_call.function.name
+            action = tool_call.get("name")
         action_conversion = {
             "left click": "click",
             "right click": "right_click"
         }
         action = action_conversion.get(action, action)
-        
+
         text = function_args.get("text")
         coordinate = function_args.get("coordinate")
         start_coordinate = function_args.get("start_coordinate")
         scroll_direction = function_args.get("scroll_direction")
         scroll_amount = function_args.get("scroll_amount")
         duration = function_args.get("duration")
-        
+
         # resize coordinates if resize_factor is set
         if coordinate and self.resize_factor:
-            coordinate = (
+            coordinate = [
                 int(coordinate[0] * self.resize_factor[0]),
                 int(coordinate[1] * self.resize_factor[1])
-            )
+            ]
+        elif coordinate:
+            coordinate = list(coordinate)
+
         if start_coordinate and self.resize_factor:
-            start_coordinate = (
+            start_coordinate = [
                 int(start_coordinate[0] * self.resize_factor[0]),
                 int(start_coordinate[1] * self.resize_factor[1])
-            )
-        
+            ]
+        elif start_coordinate:
+            start_coordinate = list(start_coordinate)
+
+        return_coord = coordinate
+
         if action == "left_mouse_down":
             result += "pyautogui.mouseDown()\n"
         elif action == "left_mouse_up":
             result += "pyautogui.mouseUp()\n"
-        
+
         elif action == "hold_key":
             if not isinstance(text, str):
                 raise ValueError(f"{text} must be a string")
-            
+
             keys = text.split('+')
             for key in keys:
                 key = key.strip().lower()
                 result += f"pyautogui.keyDown('{key}')\n"
-            expected_outcome = f"Keys {text} held down."
 
         # Handle mouse move and drag actions
         elif action in ("mouse_move", "left_click_drag"):
@@ -145,13 +335,12 @@ class AnthropicAgent:
                 raise ValueError(f"{coordinate} must be a tuple of length 2")
             if not all(isinstance(i, int) for i in coordinate):
                 raise ValueError(f"{coordinate} must be a tuple of ints")
-            
+
             x, y = coordinate[0], coordinate[1]
             if action == "mouse_move":
                 result += (
                     f"pyautogui.moveTo({x}, {y}, duration={duration or 0.5})\n"
                 )
-                expected_outcome = f"Mouse moved to ({x},{y})."
             elif action == "left_click_drag":
                 # If start_coordinate is provided, validate and move to start before dragging
                 if start_coordinate:
@@ -163,10 +352,10 @@ class AnthropicAgent:
                     result += (
                         f"pyautogui.moveTo({start_x}, {start_y}, duration={duration or 0.5})\n"
                     )
+                    return_coord = [start_coordinate, coordinate]
                 result += (
                     f"pyautogui.dragTo({x}, {y}, duration={duration or 0.5})\n"
                 )
-                expected_outcome = f"Cursor dragged to ({x},{y})."
 
         # Handle keyboard actions
         elif action in ("key", "type"):
@@ -194,12 +383,10 @@ class AnthropicAgent:
                     key = key.strip().lower()
                     key = key_conversion.get(key, key)
                     result += (f"pyautogui.keyUp('{key}')\n")
-                expected_outcome = f"Key {key} pressed."
             elif action == "type":
                 result += (
                     f"pyautogui.typewrite(\"\"\"{text}\"\"\", interval=0.01)\n"
                 )
-                expected_outcome = f"Text {text} written."
 
         # Handle scroll actions
         elif action == "scroll":
@@ -223,7 +410,6 @@ class AnthropicAgent:
                     result += (
                         f"pyautogui.hscroll({scroll_amount if scroll_direction == 'right' else -scroll_amount}, {x}, {y})\n"
                     )
-            expected_outcome = "Scroll action finished"
 
         # Handle click actions
         elif action in ("left_click", "right_click", "double_click", "middle_click", "left_press", "triple_click"):
@@ -271,34 +457,28 @@ class AnthropicAgent:
                 for key in reversed(keys):
                     key = key.strip().lower()
                     result += f"pyautogui.keyUp('{key}')\n"
-            expected_outcome = "Click action finished"
-            
+
         elif action == "wait":
             result += "pyautogui.sleep(0.5)\n"
-            expected_outcome = "Wait for 0.5 seconds"
         elif action == "fail":
             result += "FAIL"
-            expected_outcome = "Finished"
         elif action == "done":
             result += "DONE"
-            expected_outcome = "Finished"
         elif action == "call_user":
             result += "CALL_USER"
-            expected_outcome = "Call user"
         elif action == "screenshot":
             result += "pyautogui.sleep(0.1)\n"
-            expected_outcome = "Screenshot taken"   
         else:
             raise ValueError(f"Invalid action: {action}")
-        
-        return result
+
+        return result, return_coord
             
     def predict(self, task_instruction: str, obs: Dict = None, system: Any = None):
         system = BetaTextBlockParam(
             type="text",
             text=f"{SYSTEM_PROMPT_WINDOWS if self.platform == 'Windows' else SYSTEM_PROMPT}{' ' + self.system_prompt_suffix if self.system_prompt_suffix else ''}"
         )
-        
+        logger.info(f'[System Prompt]: {system}')
         # resize screenshot if resize_factor is set
         if obs and "screenshot" in obs:
             # Convert bytes to PIL Image
@@ -325,8 +505,8 @@ class AnthropicAgent:
                 "role": "user",
                 "content": [
                     {
-                    "type": "image",
-                    "source": {
+                        "type": "image",
+                        "source": {
                             "type": "base64",
                             "media_type": "image/png",
                             "data": init_screenshot_base64,
@@ -336,17 +516,39 @@ class AnthropicAgent:
                 ]
             })
             
-        if self.messages and "tool_use" in [content_block["type"] for content_block in self.messages[-1]["content"]]:
-            self.add_tool_result(
-                self.messages[-1]["content"][-1]["id"],
-                f"Success",
-                screenshot=obs.get("screenshot") if obs else None
-            )
+        # Add tool_result for ALL tool_use blocks in the last message
+        if self.messages:
+            last_message_content = self.messages[-1]["content"]
+            tool_use_blocks = [block for block in last_message_content if block.get("type") == "tool_use"]
+            
+            for i, tool_block in enumerate(tool_use_blocks):
+                tool_input = tool_block.get("input", {})
+                action = tool_input.get("action")
+                is_last_tool = i == len(tool_use_blocks) - 1
+                
+                include_screenshot = None
+                
+                if obs:
+                    if action == "screenshot":
+                        # Screenshot action always gets regular screenshot
+                        include_screenshot = obs.get("screenshot")
+                    elif is_last_tool:
+                        # Auto-screenshot: last tool gets regular screenshot (unless it's zoom, handled above)
+                        include_screenshot = obs.get("screenshot")
+                
+                self.add_tool_result(
+                    tool_block["id"],
+                    f"Success",
+                    screenshot=include_screenshot
+                )
             
         enable_prompt_caching = False
-        betas = ["computer-use-2025-01-24"]
-        if self.model_name == "claude-3-5-sonnet-20241022":
-            betas = [COMPUTER_USE_BETA_FLAG]
+        betas = [COMPUTER_USE_BETA_FLAG]
+
+        # Add interleaved thinking beta if ISP is requested
+        if self.use_isp:
+            betas.append("interleaved-thinking-2025-05-14")
+            logger.info(f"Added interleaved thinking beta. Betas: {betas}")
 
         image_truncation_threshold = 10
         if self.provider == APIProvider.ANTHROPIC:
@@ -370,10 +572,10 @@ class AnthropicAgent:
             )
 
         if enable_prompt_caching:
-            betas.append(PROMPT_CACHING_BETA_FLAG)
+            # betas.append(PROMPT_CACHING_BETA_FLAG)
             _inject_prompt_caching(self.messages)
-            image_truncation_threshold = 50
-            system["cache_control"] = {"type": "ephemeral"}
+            image_truncation_threshold = 5
+            # system["cache_control"] = {"type": "ephemeral"}
 
         if self.only_n_most_recent_images:
             _maybe_filter_to_n_most_recent_images(
@@ -382,68 +584,64 @@ class AnthropicAgent:
                 min_removal_threshold=image_truncation_threshold,
             )
 
-        try:
-            if self.model_name == "claude-3-5-sonnet-20241022":
-                tools = [
-                    {'name': 'computer', 'type': 'computer_20241022', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
-                    # {'type': 'bash_20241022', 'name': 'bash'},
-                    # {'name': 'str_replace_editor', 'type': 'text_editor_20241022'}
-                ] if self.platform == 'Ubuntu' else [
-                    {'name': 'computer', 'type': 'computer_20241022', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
-                ]
-            # Claude-4.5
-            elif self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-opus-4-5-20251101", "anthropic/claude-sonnet-4.5"]:
-                tools = [
-                    {'name': 'computer', 'type': 'computer_20250124', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
-                    # {'type': 'bash_20250124', 'name': 'bash'},
-                    # {'name': 'str_replace_editor', 'type': 'text_editor_20250124'}
-                ] if self.platform == 'Ubuntu' else [
-                    {'name': 'computer', 'type': 'computer_20250124', 'display_width_px': 1280, 'display_height_px': 720, 'display_number': 1},
-                ]
+        # Configure tool settings - use modern computer tool for all models
+        tool_config = {
+            'name': 'computer', 
+            'type': COMPUTER_USE_TYPE,
+            'display_width_px': 1280, 
+            'display_height_px': 720, 
+            'display_number': 1
+        }
+        
+        tools = [
+            tool_config,
+        ] if self.platform == 'Ubuntu' else [
+            tool_config,
+        ]
+
+        if self.no_thinking:
+            # Disable thinking mode - omit the thinking parameter
+            extra_body = {}
+            actual_max_tokens = self.max_tokens  # Use default when no thinking
+            logger.info("Thinking mode: DISABLED")
+        else:
+            # Enable thinking mode (regular or interleaved)
+            # Use consistent 2048 budget for both regular and ISP thinking
+            budget_tokens = 2048
+            
+            # For regular thinking: max_tokens > budget_tokens (API requirement)
+            # For ISP: budget_tokens can exceed max_tokens (represents total across all thinking blocks)
+            if self.max_tokens <= budget_tokens:
+                required_max_tokens = budget_tokens + 500  # Give some headroom
+                logger.warning(f"Regular thinking requires max_tokens > budget_tokens. Increasing max_tokens from {self.max_tokens} to {required_max_tokens}")
+                actual_max_tokens = required_max_tokens
+            else:
+                actual_max_tokens = self.max_tokens
+            
             extra_body = {
-                "thinking": {"type": "enabled", "budget_tokens": 1024}
+                "thinking": {"type": "enabled", "budget_tokens": budget_tokens}
             }
+            if self.use_isp:
+                logger.info("Thinking mode: INTERLEAVED SCRATCHPAD (ISP)")
+            else:
+                logger.info("Thinking mode: REGULAR SCRATCHPAD")
+
+        try:
             response = None
             
             for attempt in range(API_RETRY_TIMES):
                 try:
-                    if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-opus-4-5-20251101", "anthropic/claude-sonnet-4.5"]:
-                        # response = client.beta.messages.create(
-                        #     max_tokens=self.max_tokens,
-                        #     messages=self.messages,
-                        #     model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
-                        #     system=[system],
-                        #     tools=tools,
-                        #     betas=betas,
-                        #     extra_body=extra_body
-                        # )
-                        with client.beta.messages.stream(
-                            max_tokens=self.max_tokens,
-                            messages=self.messages,
-                            model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
-                            system=[system],
-                            tools=tools,
-                            betas=betas,
-                            extra_body=extra_body
-                        ) as stream:
-                            response = stream.get_final_message()
-                    elif self.model_name == "claude-3-5-sonnet-20241022":
-                        response = client.beta.messages.create(
-                            max_tokens=self.max_tokens,
-                            messages=self.messages,
-                            model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
-                            system=[system],
-                            tools=tools,
-                            betas=betas,
-                        )
-                    if response and response.content:
-                        for block in response.content:
-                            if block.type == "thinking":
-                                logger.info(f"\nThinking summary: {block.thinking}")
-                            elif block.type == "text":
-                                logger.info(f"\nResponse: {block.text}")
-                        
-                    break  
+                    response = self._call_model_with_logging(
+                        client=client,
+                        messages=self.messages,
+                        system=system,
+                        tools=tools,
+                        betas=betas,
+                        extra_body=extra_body,
+                        actual_max_tokens=actual_max_tokens,
+                    )
+                    logger.info(f"Response: {response}")
+                    break
                 except (APIError, APIStatusError, APIResponseValidationError) as e:
                     error_msg = str(e)
                     logger.warning(f"Anthropic API error (attempt {attempt+1}/{API_RETRY_TIMES}): {error_msg}")
@@ -471,27 +669,24 @@ class AnthropicAgent:
             try:
                 logger.warning("Retrying with backup API key...")
 
-                backup_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY_BACKUP"), max_retries=4)
-                if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514"]:
-                    response = backup_client.beta.messages.create(
-                        max_tokens=self.max_tokens,
+                backup_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY_BACKUP"), max_retries=4).with_options(
+                    default_headers={"anthropic-beta": COMPUTER_USE_BETA_FLAG}
+                )
+                with backup_client.beta.messages.stream(
+                        max_tokens=actual_max_tokens,
                         messages=self.messages,
-                        model=PROVIDER_TO_DEFAULT_MODEL_NAME[APIProvider.ANTHROPIC, self.model_name],
+                        model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
                         system=[system],
+                        cache_control={"type": "ephemeral"},
                         tools=tools,
                         betas=betas,
-                        extra_body=extra_body
-                    )
-                elif self.model_name == "claude-3-5-sonnet-20241022":
-                    response = backup_client.beta.messages.create(
-                        max_tokens=self.max_tokens,
-                        messages=self.messages,
-                        model=PROVIDER_TO_DEFAULT_MODEL_NAME[APIProvider.ANTHROPIC, self.model_name],
-                        system=[system],
-                        tools=tools,
-                        betas=betas,
-                    )
+                        extra_body=extra_body,
+                        **self._get_sampling_params()
+                ) as stream:
+                    response = stream.get_final_message()
+                
                 logger.info("Successfully used backup API key")
+
             except Exception as backup_e:
                 backup_error_msg = str(backup_e)
                 logger.exception(f"Backup API call also failed: {backup_error_msg}")
@@ -518,8 +713,14 @@ class AnthropicAgent:
             logger.exception(f"Error in Anthropic API: {str(e)}")
             return None, None
 
+        if response is None:
+            logger.error("Response is None after API call - this should not happen")
+            return None, None
+        
         response_params = _response_to_params(response)
-        # logger.info(f"Received response params: {response_params}")
+
+        # Convert raw response to concatenated string for trajectory logging
+        raw_response_str = self._extract_raw_response_string(response)
 
         # Store response in message history
         self.messages.append({
@@ -534,24 +735,61 @@ class AnthropicAgent:
             try:
                 for content_block in response_params:
                     if content_block["type"] == "tool_use":
+                        command, return_coord = self.parse_actions_from_tool_call(content_block)
                         actions.append({
                             "name": content_block["name"],
                             "input": cast(dict[str, Any], content_block["input"]),
                             "id": content_block["id"],
                             "action_type": content_block.get("type"),
-                            "command": self.parse_actions_from_tool_call(content_block)
+                            "command": command,
+                            "coordinate": return_coord
                         })
                     elif content_block["type"] == "text":
                         reasonings.append(content_block["text"])
+
                 if isinstance(reasonings, list) and len(reasonings) > 0:
                     reasonings = reasonings[0]
                 else:
                     reasonings = ""
+
                 logger.info(f"Received actions: {actions}")
                 logger.info(f"Received reasonings: {reasonings}")
+
+                # Check if the model indicated the task is infeasible
+                if raw_response_str and "[INFEASIBLE]" in raw_response_str:
+                    logger.info("Detected [INFEASIBLE] pattern in response, triggering FAIL action")
+                    # Override actions with FAIL
+                    actions = [{
+                        "command": "FAIL",
+                        "action_type": "FAIL"
+                    }]
+                
                 if len(actions) == 0:
-                    actions = ["DONE"]
-                return reasonings, actions
+                    actions = [{
+                        "command": "DONE",
+                        "action_type": "DONE"
+                    }]
+
+                response_meta_list = []
+                # If there are tool calls, create a meta_item for each
+                for action in actions:
+                    meta_item = {
+                        "raw_response": raw_response_str,
+                        "thought": reasonings,
+                        "action": action.get("command", ""),
+                        "meta_action": action,
+                        "coordinate": action.get("coordinate")
+                    }
+                    response_meta_list.append(meta_item)
+
+
+                pyautogui_actions = []
+                if isinstance(actions, list) and all(isinstance(a, dict) for a in actions):
+                    pyautogui_actions = [a["command"] for a in actions]
+                else:
+                    pyautogui_actions = actions
+
+                return response_meta_list, pyautogui_actions
             except Exception as e:
                 logger.warning(f"parse_actions_from_tool_call parsing failed (attempt {parse_retry+1}/3), will retry API request: {e}")
                 # Remove the recently appended assistant message to avoid polluting history
@@ -560,25 +798,19 @@ class AnthropicAgent:
                 response = None
                 for attempt in range(API_RETRY_TIMES):
                     try:
-                        if self.model_name in ["claude-3-7-sonnet-20250219", "claude-4-opus-20250514", "claude-4-sonnet-20250514", "claude-sonnet-4-20250514"]:
-                            response = client.beta.messages.create(
-                                max_tokens=self.max_tokens,
+                        with client.beta.messages.stream(
+                                max_tokens=actual_max_tokens,
                                 messages=self.messages,
                                 model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
                                 system=[system],
+                                cache_control={"type": "ephemeral"},
                                 tools=tools,
                                 betas=betas,
-                                extra_body=extra_body
-                            )
-                        elif self.model_name == "claude-3-5-sonnet-20241022":
-                            response = client.beta.messages.create(
-                                max_tokens=self.max_tokens,
-                                messages=self.messages,
-                                model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
-                                system=[system],
-                                tools=tools,
-                                betas=betas,
-                            )
+                                extra_body=extra_body,
+                                **self._get_sampling_params()
+                        ) as stream:
+                            response = stream.get_final_message()
+
                         logger.info(f"Response: {response}")
                         break  # Success, exit retry loop
                     except (APIError, APIStatusError, APIResponseValidationError) as e2:
@@ -588,17 +820,180 @@ class AnthropicAgent:
                             time.sleep(API_RETRY_INTERVAL)
                         else:
                             raise
+
                 response_params = _response_to_params(response)
-                # logger.info(f"Received response params: {response_params}")
+                logger.info(f"Received response params: {response_params}")
+
+                # Update raw response string for retry case (will be used in next loop iteration)
+                raw_response_str = self._extract_raw_response_string(response)
+
                 self.messages.append({
                     "role": "assistant",
                     "content": response_params
                 })
                 if parse_retry == max_parse_retry - 1:
                     logger.error(f"parse_actions_from_tool_call parsing failed 3 times consecutively, terminating: {e}")
-                    actions = ["FAIL"]
-                    return reasonings, actions
+                    actions = [{
+                        "action_type": "FAIL",
+                        "command": "FAIL"
+                    }]
+
+                    response_meta_list = []
+                    for action in actions:
+                        meta_item = {
+                            "raw_response": raw_response_str,
+                            "thought": f"Failed to parse actions from tool call after {max_parse_retry} attempts: {e}",
+                            "action": f"Failed to parse actions from tool call after {max_parse_retry} attempts: {e}",
+                            "meta_action": action,
+                            "coordinate": None
+                        }
+                        response_meta_list.append(meta_item)
+                    if isinstance(actions, list) and all(isinstance(a, dict) for a in actions):
+                        pyautogui_actions = [a["command"] for a in actions]
+                    return response_meta_list, pyautogui_actions
+
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """
+        Self-judge function to evaluate if the task was completed successfully.
+        """
+        EVALUATION_SYSTEM_PROMPT = """
+        You are an impartial judge evaluating the performance of a computer agent.
+        Your task is to determine if the agent successfully completed the user's instruction based on the conversation history and the final screenshot.
+
+        The user instruction was: "{instruction}"
+
+        Analyze the sequence of actions taken by the agent and the final state of the screen.
+
+        Output your evaluation strictly in the following JSON format:
+        ```json
+        {{
+            "thought": "Detailed reasoning about why the task is considered success or failure...",
+            "score": 1.0
+        }}
+        ```
+
+        Set "score" to 1.0 if the task is successfully completed, and 0.0 if it failed.
+        Only return the JSON object, do not add any other text.
+        """
+
+        try:
+            # 1. Start with Evaluation System Prompt
+            eval_system = BetaTextBlockParam(
+                type="text",
+                text=EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
+            )
+
+            # 1.5 Add obs as the tool result **Important**
+            if self.messages:
+                last_message_content = self.messages[-1]["content"]
+                tool_use_blocks = [block for block in last_message_content if block.get("type") == "tool_use"]
                 
+                for i, tool_block in enumerate(tool_use_blocks):
+                    tool_input = tool_block.get("input", {})
+                    action = tool_input.get("action")
+                    is_last_tool = i == len(tool_use_blocks) - 1
+                    
+                    include_screenshot = None
+                    
+                    if obs:
+                        if action == "screenshot":
+                            # Screenshot action always gets regular screenshot
+                            include_screenshot = obs.get("screenshot")
+                        elif is_last_tool:
+                            # Auto-screenshot: last tool gets regular screenshot (unless it's zoom, handled above)
+                            include_screenshot = obs.get("screenshot")
+                    
+                    self.add_tool_result(
+                        tool_block["id"],
+                        f"Success",
+                        screenshot=include_screenshot
+                    )
+
+            # 2. Reuse the exact same history construction as predict
+            # We copy the existing messages so we don't pollute the agent's history
+            eval_messages = list(self.messages)
+
+            # 3. Add Final Observation and Evaluation Query
+            eval_query = f"Based on the conversation history above and this final screenshot, did the agent successfully complete the instruction: '{task_instruction}'? Please provide the JSON evaluation."
+
+            eval_messages.append({
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": eval_query
+                    }
+                ]
+            })
+
+            logger.info(f"Starting evaluation for: {task_instruction}")
+
+            # 4. Call LLM
+            if self.provider == APIProvider.ANTHROPIC:
+                client = Anthropic(
+                    base_url=self.base_url,
+                    api_key=self.api_key,
+                    max_retries=4
+                )
+            elif self.provider == APIProvider.VERTEX:
+                client = AnthropicVertex()
+            elif self.provider == APIProvider.BEDROCK:
+                client = AnthropicBedrock(
+                    aws_access_key=os.getenv('AWS_ACCESS_KEY_ID'),
+                    aws_secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+                    aws_region=os.getenv('AWS_DEFAULT_REGION'),
+                )
+
+            if self.no_thinking:
+                extra_body = {}
+            else:
+                extra_body = {
+                    "thinking": {"type": "enabled", "budget_tokens": 2048}
+                }
+        
+            with client.beta.messages.stream(
+                max_tokens=self.max_tokens,
+                messages=eval_messages,
+                model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
+                system=[eval_system],
+                extra_body=extra_body,
+                **self._get_sampling_params()
+            ) as stream:
+                response = stream.get_final_message()
+
+            raw_response_str = self._extract_raw_response_string(response=response)
+            logger.info(f"Evaluation Raw Output: {raw_response_str}")
+
+            import json
+            # 5. Parse JSON
+            # Handle potential markdown wrappers
+            if "```json" in raw_response_str:
+                json_str = raw_response_str.split("```json")[1].split("```")[0].strip()
+            elif "```" in raw_response_str:
+                json_str = raw_response_str.split("```")[1].strip()
+            else:
+                json_str = raw_response_str.strip()
+
+            result = json.loads(json_str)
+
+            # Ensure required fields exist
+            if "thought" not in result:
+                result["thought"] = raw_response_str
+            if "score" not in result:
+                # Fallback logic if score is missing but status is present
+                result["score"] = 0.0
+
+            return result
+
+        except Exception as e:
+            import traceback
+            logger.error(f"Evaluation failed: {e}")
+            logger.error(traceback.format_exc())
+            return {
+                "thought": f"Evaluation failed due to error: {str(e)}",
+                "score": 0.0
+            }
+
     def reset(self, _logger = None, *args, **kwargs):
         """
         Reset the agent's state.

@@ -31,6 +31,7 @@ from mm_agents.seed_agent import SeedAgent
 from mm_agents.uitars15_v2 import UITarsAgent
 from mm_agents.gemini.gemini_openai_agent import GeminiOpenAIAgent as GeminiAgent
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
+from mm_agents.openai.gpt54_agent import GPT54Agent
 
 
 # Global variables for signal handling
@@ -112,11 +113,16 @@ def config() -> argparse.Namespace:
 
     # rollout config
     parser.add_argument("--rollout_mode", type=str, default="online rollout / offline rollout") # online: 一边roll指令一边采集轨迹, offline: 类似OSWorld测评, 起始给定任务文件, 再采集轨迹
+    # Offline
+    parser.add_argument(
+        "--rollout_task_dir", type=str, default=None # 当 mode 为 offline 时生效
+    )
     parser.add_argument(
         "--rollout_test_all_meta_path", type=str, default="evaluation_examples/osworld/test_all.json" # 当 mode 为 offline 时生效
     )
+    # Online
     parser.add_argument(
-        "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout" # 保存的任务文件基目录, 当 mode 为 online 时生效
+        "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout/synthesis" # 保存的任务文件基目录, 当 mode 为 online 时生效
     )
     parser.add_argument(
         "--rollout_times", type=int, default=10, help="Rollout times" # 也就是随机选择多少次app, 当 mode 为 online 时生效
@@ -274,6 +280,9 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 base_url=args.base_url,
                 api_key=args.api_key,
                 max_tokens=args.max_tokens,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                no_thinking=not args.use_thinking
             )
         elif "kimi" in args.model.lower():
             # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
@@ -288,10 +297,10 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 action_space=args.action_space,
                 observation_type=args.observation_type,
                 screen_size=(args.screen_width, args.screen_height),
-                coordinate_type=args.coord,
+                coordinate_type="relative",
                 max_image_history_length=args.max_image_history_length,
                 max_steps=args.max_steps,
-                thinking=args.use_thinking,
+                thinking=True, # Default True
                 password=args.client_password
             )
         elif "glm" in args.model.lower():
@@ -327,6 +336,16 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 top_p=args.top_p,
                 temperature=args.temperature,
                 max_image_history_length=args.max_image_history_length
+            )
+        elif "gpt" in args.model.lower(): # 仅支持GPT5.4
+            agent = GPT54Agent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                temperature=args.temperature,
+                max_trajectory_length=args.max_trajectory_length, # 该参数无用
             )
         else:
             raise Exception(f"Do not support {args.model} model!")
@@ -493,7 +512,8 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             except Exception:
                 break
 
-            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            # task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums)
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])
@@ -515,7 +535,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
 
 def offline_test(args: argparse.Namespace, test_all_meta: dict) -> None:
     global processes
-    logger.info("Args: %s", args)
+    args.rollout_task_dir = args.rollout_task_dir or os.path.dirname(args.rollout_test_all_meta_path)
     all_tasks = distribute_tasks(test_all_meta)
     logger.info(f"Total tasks: {len(all_tasks)}")
     with Manager() as manager:
@@ -669,13 +689,30 @@ def online_test(args: argparse.Namespace):
 
     # Phase 2: Concurrent task execution
     logger.info(f"\n=== PHASE 2: CONCURRENT TASK EXECUTION ===")
-    
+    logger.info(f"\n=== PHASE 2: SKIP PHASE 2===")
     # Call offline_test with generated tasks
-    offline_test(
-        args=args,
-        test_all_meta=test_all_meta
-    )
+    # offline_test(
+    #     args=args,
+    #     test_all_meta=test_all_meta
+    # )
 
+# 特别针对 os-caliber 输出格式适配, 检查 domain 文件夹下是否存在 meta_* 文件
+def get_unfinished_tasks(test_file_list: Dict, result_dir):
+    unfinished_test_file_list = {}
+    for domain, task_list in test_file_list.items():
+        logger.info(f"[Origin {domain} task nums]: {len(task_list)}")
+        if os.path.exists(os.path.join(result_dir, domain)):
+            file_lists = os.listdir(os.path.join(result_dir, domain))
+            for task_id in task_list:
+                if f"meta_{task_id}.json" not in file_lists:
+                    if domain not in unfinished_test_file_list.keys():
+                        unfinished_test_file_list[domain] = []
+                    unfinished_test_file_list[domain].append(task_id)
+                    shutil.rmtree(path=os.path.join(result_dir, domain, task_id), ignore_errors=True)
+            logger.info(f"[Unfinished {domain} task nums]: {len(unfinished_test_file_list[domain]) if domain in unfinished_test_file_list.keys() else 0}")
+        else:
+            unfinished_test_file_list[domain] = task_list
+    return unfinished_test_file_list
 
 if __name__ == "__main__":
     ####### The complete version of the list of examples #######
@@ -713,6 +750,8 @@ if __name__ == "__main__":
         if args.rollout_mode == "offline":
             with open(args.rollout_test_all_meta_path, "r", encoding="utf-8") as f:
                 test_file_list = json.load(f)
+            # get unfinished
+            test_file_list = get_unfinished_tasks(test_file_list, args.result_dir)
             offline_test(args, test_file_list)
         elif args.rollout_mode == "online":
             online_test(args)

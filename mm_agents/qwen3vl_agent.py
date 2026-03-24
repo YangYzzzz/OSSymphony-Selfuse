@@ -3,14 +3,16 @@ import json
 import logging
 import time
 import os
+import re
 from io import BytesIO
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, Optional
 
 import backoff
 import openai
 from openai import OpenAI
 from PIL import Image
 from requests.exceptions import SSLError
+# 假设这些工具函数在你的环境中可用，保持引用
 from mm_agents.utils.qwen_vl_utils import smart_resize
 from mm_agents.os_symphony.agents.critic_agent import CriticAgent
 from mm_agents.uitars15_v2 import IMAGE_FACTOR
@@ -23,11 +25,9 @@ MAX_RETRY_TIMES = 5
 def encode_image(image_content):
     return base64.b64encode(image_content).decode("utf-8")
 
-
 def process_image(image_bytes):
     """
-    Process an image for Qwen VL models (thinking variant).
-    Uses a tighter resize cap consistent with the thinking DUN agent.
+    Process an image for Qwen VL models.
     """
     image = Image.open(BytesIO(image_bytes))
     width, height = image.size
@@ -64,7 +64,7 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         history_n: int = 8,
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
-        critic_agent: CriticAgent|None = None, # type: ignore
+        critic_agent: CriticAgent|None = None, 
         critic_times = 1,
     ):
         self.platform = platform
@@ -93,26 +93,25 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         self.critic_agent = critic_agent
         self.critic_times = critic_times if critic_agent else 1
 
-    def predict(self, instruction: str, obs: Dict) -> List:     # type: ignore
+    def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """
         Predict the next action(s) based on the current observation.
-        Returns (response, pyautogui_code).
+        Returns:
+            response_list (List[Dict]): Structured metadata for logging.
+            action_list (List[str]): Executable PyAutoGUI code.
         """
         screenshot_bytes = obs["screenshot"]
 
         image = Image.open(BytesIO(screenshot_bytes))
         width, height = image.size
-        print(f"Original screen resolution: {width}x{height}")
+        # logger.info(f"Original screen resolution: {width}x{height}")
 
         processed_image = process_image(screenshot_bytes)
         processed_img = Image.open(
             BytesIO(base64.b64decode(processed_image))
         )
         processed_width, processed_height = processed_img.size
-        print(
-            "Processed image resolution: "
-            f"{processed_width}x{processed_height}"
-        )
+        # logger.info(f"Processed image resolution: {processed_width}x{processed_height}")
 
         self.screenshots.append(processed_image)
 
@@ -123,22 +122,20 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
         for i in range(history_start_idx):
             if i < len(self.actions):
                 previous_actions.append(f"Step {i+1}: {self.actions[i]}")
-        previous_actions_str = (
-            "\n".join(previous_actions) if previous_actions else "None"
-        )
+        # previous_actions_str = (
+        #     "\n".join(previous_actions) if previous_actions else "None"
+        # )
 
         description_prompt_lines = [
             "Use a mouse and keyboard to interact with a computer, and take screenshots.",
             "* This is an interface to a desktop GUI. You do not have access to a terminal or applications menu. You must click on desktop icons to start applications.",
-            "* Some applications may take time to start or process actions, so you may need to wait and take successive screenshots to see the results of your actions. E.g. if you click on Firefox and a window doesn't open, try wait and taking another screenshot.",
+            "* Some applications may take time to start or process actions, so you may need to wait and take successive screenshots to see the results of your actions.",
             (
                 f"* The screen's resolution is {processed_width}x{processed_height}."
                 if self.coordinate_type == "absolute"
                 else "* The screen's resolution is 1000x1000."
             ),
             "* Whenever you intend to move the cursor to click on an element like an icon, you should consult a screenshot to determine the coordinates of the element before moving the cursor.",
-            "* If you tried clicking on a program or link but it failed to load even after waiting, try adjusting yfour cursor position so that the tip of the cursor visually falls on the element that you want to click.",
-            "* Make sure to click any buttons, links, icons, etc with the cursor tip in the center of the element. Don't click boxes on their edges unless asked.",
         ]
         description_prompt = "\n".join(description_prompt_lines)
 
@@ -151,12 +148,9 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
 * `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
 * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
 * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
-* `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).
 * `scroll`: Performs a scroll of the mouse scroll wheel.
-* `hscroll`: Performs a horizontal scroll (mapped to regular scroll).
 * `wait`: Wait specified seconds for the change to happen.
 * `terminate`: Terminate the current task and report its completion status.
-* `answer`: Answer a question.
         """
 
         tools_def = {
@@ -178,11 +172,6 @@ class Qwen3VLAgent(ComputerUseBaseAgent):
                         "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"}, 
                         "pixels": {"description": "The amount of scrolling.", "type": "number"}, 
                         "time": {"description": "The seconds to wait.", "type": "number"}, 
-                        "status": {
-                            "description": "The status of the task.", 
-                            "type": "string", 
-                            "enum": ["success", "failure"]
-                        }
                     }, 
                     "required": ["action"], 
                     "type": "object"
@@ -221,10 +210,12 @@ Rules:
 Please generate the next move according to the UI screenshot, instruction and previous actions.
 
 Instruction: {instruction}
-
-Previous actions:
-{previous_actions_str}"""
-
+"""
+        
+        """ FIX: Modified by Yang
+        Previous actions:
+        {previous_actions_str}
+        """
         messages = [
             {
                 "role": "system",
@@ -234,48 +225,25 @@ Previous actions:
             }
         ]
 
+        # History Construction
         history_len = min(self.history_n, len(self.responses))
         if history_len > 0:
             history_responses = self.responses[-history_len:]
-            history_screenshots = self.screenshots[-history_len - 1:-1]
+            history_screenshots = self.screenshots[- history_len - 1:-1]
 
             for idx in range(history_len):
                 if idx < len(history_screenshots):
                     screenshot_b64 = history_screenshots[idx]
+                    img_url = f"data:image/png;base64,{screenshot_b64}"
+                    content = [{"type": "image_url", "image_url": {"url": img_url}}]
                     if idx == 0:
-                        img_url = f"data:image/png;base64,{screenshot_b64}"
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {"url": img_url},
-                                    },
-                                    {"type": "text", "text": instruction_prompt},
-                                ],
-                            }
-                        )
-                    else:
-                        img_url = f"data:image/png;base64,{screenshot_b64}"
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {"url": img_url},
-                                    }
-                                ],
-                            }
-                        )
+                        content.append({"type": "text", "text": instruction_prompt})
+                    messages.append({"role": "user", "content": content})
 
                 messages.append(
                     {
                         "role": "assistant",
-                        "content": [
-                            {"type": "text", "text": f"{history_responses[idx]}"},
-                        ],
+                        "content": [{"type": "text", "text": f"{history_responses[idx]}"}],
                     }
                 )
 
@@ -283,12 +251,7 @@ Previous actions:
             messages.append(
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": curr_img_url},
-                        }
-                    ],
+                    "content": [{"type": "image_url", "image_url": {"url": curr_img_url}}],
                 }
             )
         else:
@@ -297,31 +260,16 @@ Previous actions:
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": curr_img_url},
-                        },
+                        {"type": "image_url", "image_url": {"url": curr_img_url}},
                         {"type": "text", "text": instruction_prompt},
                     ],
                 }
             )
 
-        # Debug: save messages before sending to model
-        try:
-            draft_dir = "./draft/message_cache"
-            os.makedirs(draft_dir, exist_ok=True)
-            message_file_path = os.path.join(
-                draft_dir, f"messages_step_{current_step}.json"
-            )
-            with open(message_file_path, "w") as f:
-                json.dump(messages, f)
-        except Exception as _e:  # do not fail prediction due to debug IO
-            pass
-        
-        # 添加 critic model 逻辑
-        low_level_instruction = ""
+        # Critic Loop
+        response_list = []
         pyautogui_code = []
-        action_str = []
+        
         for _ in range(self.critic_times):
             response = self.call_llm(
                 {
@@ -336,8 +284,8 @@ Previous actions:
 
             logger.info(f"Qwen3VL Output: {response}")
 
-
-            low_level_instruction, pyautogui_code, action_str = self.parse_response(
+            # 调用新的解析函数
+            response_list, pyautogui_code = self.parse_response(
                 response,
                 width,
                 height,
@@ -345,242 +293,326 @@ Previous actions:
                 processed_height,
             )
 
-            logger.info(f"Low level instruction: {low_level_instruction}")
-            logger.info(f"Pyautogui code: {pyautogui_code}")
-
-            # 不存在 critic model 时, 直接使用第一次结果
             if self.critic_agent is None:
                 break
             
-            # 构建历史信息
-            history_action_str = ""
-            cur_action_str = ""
+            # Critic Logic (Simplified for compatibility)
+            # 提取用于 Critic 的 action string
+            # action_str_list = [item["action"] for item in response_list if "action" in item]
+            # cur_action_str = action_str_list[0] if action_str_list else "None"
+            
+            # history_action_str = ""
+            # for action_idx, action in enumerate(self.critic_actions, start=1):
+            #     history_action_str += f"Step: {action_idx}: {action}\n"
 
-            # 需要对原始action来一个映射才能对齐
-            for action_idx, action in enumerate(self.critic_actions, start=1):
-                history_action_str += f"Step: {action_idx}: {action}\n"
+            # critic_result = self.critic_agent.critic(
+            #     task=instruction, 
+            #     screenshot=processed_image, 
+            #     action=cur_action_str, 
+            #     history=history_action_str
+            # )
+            
+            # if critic_result:
+            #     break
+            # else:
+            #     continue
 
-            # 选择第一个 action 作为当前 action
-            if len(action_str) >= 1:
-                cur_action_str = action_str[0]
-
-            # critic_result = self.critic_agent.critic(task=instruction, screenshot=obs["screenshot"], action=cur_action_str, history=history_action_str)
-            critic_result = self.critic_agent.critic(task=instruction, screenshot=processed_image, action=cur_action_str, history=history_action_str)
-            if critic_result:
-                break
-            else:
-                continue
-
+        # Update History
         self.responses.append(response)
-        self.actions.append(low_level_instruction)
-        self.critic_actions.extend(action_str)
-        return response, pyautogui_code
+        
+        # 记录简短的 action 描述用于 history prompt
+        short_instruction = response_list[0]["thought"] if response_list else "Action"
+        self.actions.append(short_instruction)
+        
+        # 记录用于 critic 的 action string
+        action_str_list = [item["action"] for item in response_list if "action" in item]
+        self.critic_actions.extend(action_str_list)
+
+        return response_list, pyautogui_code
 
     def parse_response(
         self,
         response: str,
-        original_width: int = None,
-        original_height: int = None,
-        processed_width: int = None,
-        processed_height: int = None,
-    ):
+        original_width: int,
+        original_height: int,
+        processed_width: int,
+        processed_height: int,
+    ) -> Tuple[List[Dict], List[str]]:
         """
-        Parse LLM response and convert it to low level action and pyautogui code.
+        Parse LLM response into structured metadata and executable code.
         """
-        low_level_instruction = ""
-        pyautogui_code: List[str] = []
-        action_str = []
+        response_list = []
+        pyautogui_code = []
 
-        if response is None or not response.strip():
-            return low_level_instruction, pyautogui_code, []
+        if not response or not response.strip():
+            return [], []
 
-        def adjust_coordinates(x: float, y: float) -> Tuple[int, int, int, int]:
-            # 不只返回坐标，还返回经smart_resize后的坐标
+        def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
+            """Returns (pyautogui_x, pyautogui_y)"""
             if not (original_width and original_height):
-                return int(x), int(y), 0, 0
+                return int(x), int(y)
+            
             if self.coordinate_type == "absolute":
-                # scale from processed pixels to original
                 if processed_width and processed_height:
                     x_scale = original_width / processed_width
                     y_scale = original_height / processed_height
-                    return int(x * x_scale), int(y * y_scale), 0, 0
-                return int(x), int(y), 0, 0
+                    return int(x * x_scale), int(y * y_scale)
+                return int(x), int(y)
             
-            # qwen3系列是相对的0~1000
-            # relative: scale from 0..999 grid
-            x_scale = original_width / 999
-            y_scale = original_height / 999
-            return int(x * x_scale), int(y * y_scale), int(x * processed_width / 999), int(y * processed_height / 999)
+            # relative (0-1000)
+            return int(x * original_width / 999), int(y * original_height / 999)
 
-        def process_tool_call(json_str: str) -> None:
+        # 1. Extract Thought (Text outside tool calls)
+        # 简单处理：取 <tool_call> 之前的所有文本作为 thought
+        thought_match = re.split(r'<tool_call>', response)
+        thought = thought_match[0].strip()
+        
+        # 2. Extract Tool Calls
+        tool_call_pattern = r'<tool_call>(.*?)</tool_call>'
+        tool_calls = re.findall(tool_call_pattern, response, re.DOTALL)
+
+        if not tool_calls:
+            # No tool call found, treat as message/thought only
+            response_list.append({
+                "thought": thought,
+                "action": "wait", # Default to wait if no action
+                "action_type": "wait",
+                "coordinate": None,
+                "coordinate2": None,
+                "raw_response": response,
+                "meta_action": None
+            })
+            pyautogui_code.append("pyautogui.sleep(1)") 
+            return response_list, pyautogui_code
+
+        for tool_call_str in tool_calls:
             try:
-                tool_call = json.loads(json_str)
-                if tool_call.get("name") == "computer_use":
-                    args = tool_call["arguments"]
-                    action = args["action"]
+                tool_data = json.loads(tool_call_str)
+                if tool_data.get("name") == "computer_use":
+                    args = tool_data["arguments"]
+                    action_type = args["action"]
+                    
+                    # Base structure for step_data
+                    step_data = {
+                        "thought": thought,
+                        "action": tool_call_str,
+                        "coordinate": None,
+                        "coordinate2": None,
+                        "raw_response": response,
+                        "meta_action": tool_data # Store full args as meta
+                    }
 
-                    if action == "left_click":
-                        if "coordinate" in args:
-                            x, y = args["coordinate"]
-                            adj_x, adj_y, sm_x, sm_y = adjust_coordinates(x, y)
-                            pyautogui_code.append(f"pyautogui.click({adj_x}, {adj_y})")
-                            action_str.append(f'left_click({sm_x}, {sm_y})')
+                    # --- Action Parsing & Code Generation ---
+                    
+                    # Coordinates Handling
+                    coord = args.get("coordinate")
+                    if coord:
+                        adj_x, adj_y = adjust_coordinates(coord[0], coord[1])
+                        step_data["coordinate"] = [adj_x, adj_y]
+
+                    # Logic Mapping
+                    if action_type in ["left_click", "right_click", "middle_click", "double_click"]:
+                        py_method = {
+                            "left_click": "click",
+                            "right_click": "rightClick",
+                            "middle_click": "middleClick",
+                            "double_click": "doubleClick"
+                        }[action_type]
+                        
+                        if coord:
+                            pyautogui_code.append(f"pyautogui.{py_method}({adj_x}, {adj_y})")
                         else:
-                            pyautogui_code.append("pyautogui.click()")
-                            action_str.append(f'left_click()')
+                            pyautogui_code.append(f"pyautogui.{py_method}()")
 
-                    elif action == "right_click":
-                        if "coordinate" in args:
-                            x, y = args["coordinate"]
-                            adj_x, adj_y, sm_x, sm_y = adjust_coordinates(x, y)
-                            pyautogui_code.append(
-                                f"pyautogui.rightClick({adj_x}, {adj_y})"
-                            )
-                            action_str.append(f'right_click({sm_x}, {sm_y})')
+                    elif action_type == "mouse_move":
+                        if coord:
+                            pyautogui_code.append(f"pyautogui.moveTo({adj_x}, {adj_y})")
                         else:
-                            pyautogui_code.append("pyautogui.rightClick()")
-                            action_str.append(f'right_click()')
+                            pyautogui_code.append("pyautogui.moveTo(0, 0)")
 
-                    elif action == "middle_click":
-                        if "coordinate" in args:
-                            x, y = args["coordinate"]
-                            adj_x, adj_y, sm_x, sm_y = adjust_coordinates(x, y)
-                            pyautogui_code.append(
-                                f"pyautogui.middleClick({adj_x}, {adj_y})"
-                            )
-                            action_str.append(f'middle_click({sm_x}, {sm_y})')
+                    elif action_type == "left_click_drag":
+                        if coord:
+                            duration = args.get("duration", 0.5)
+                            pyautogui_code.append(f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})")
+                            # Note: drag usually implies a start point, but Qwen3VL tool def often just gives end point
                         else:
-                            pyautogui_code.append("pyautogui.middleClick()")
-                            action_str.append(f'middle_click()')
+                            pyautogui_code.append("pyautogui.dragTo(0, 0)")
 
-                    elif action == "double_click":
-                        if "coordinate" in args:
-                            x, y = args["coordinate"]
-                            adj_x, adj_y, sm_x, sm_y = adjust_coordinates(x, y)
-                            pyautogui_code.append(
-                                f"pyautogui.doubleClick({adj_x}, {adj_y})"
-                            )
-                            action_str.append(f'double_click({sm_x}, {sm_y})')
-                        else:
-                            pyautogui_code.append("pyautogui.doubleClick()")
-                            action_str.append(f'double_click()')
-
-                    elif action == "type":
+                    elif action_type == "type":
                         text = args.get("text", "")
-                        pyautogui_code.append(f"pyautogui.typewrite('{text}')")
-                        action_str.append(f"type('{text}')")
-                    elif action == "key":
+                        # 创建一个临时列表来存放这一步的所有指令
+                        type_code = ""
+
+                        # 1. 判断 clear 参数：全选(Ctrl+A) 并 删除(Backspace)
+                        if args.get("clear", 0) == 1:
+                            type_code += "pyautogui.hotkey('ctrl', 'a'); pyautogui.press('backspace');"
+
+                        # 2. 输入文本
+                        # 使用 repr(text) 可以自动处理文本中的引号转义问题，防止代码出错
+                        type_code += f"pyautogui.write({repr(text)});"
+
+                        # 3. 判断 enter 参数：按回车
+                        if args.get("enter", 0) == 1:
+                            type_code += "pyautogui.press('enter');"
+
+                        pyautogui_code.append(type_code)
+
+                    elif action_type == "key":
                         keys = args.get("keys", [])
+                        # Clean keys logic (kept from original)
                         if isinstance(keys, list):
                             cleaned_keys = []
                             for key in keys:
                                 if isinstance(key, str):
-                                    if key.startswith("keys=["):
-                                        key = key[6:]
-                                    if key.endswith("]"):
-                                        key = key[:-1]
-                                    if key.startswith("['") or key.startswith('["'):
-                                        key = key[2:] if len(key) > 2 else key
-                                    if key.endswith("']") or key.endswith('"]'):
-                                        key = key[:-2] if len(key) > 2 else key
-                                    key = key.strip()
+                                    key = key.replace("keys=[", "").replace("]", "").replace("'", "").replace('"', "").strip()
                                     cleaned_keys.append(key)
                                 else:
                                     cleaned_keys.append(key)
                             keys = cleaned_keys
-
-                        keys_str = ", ".join([f"'{key}'" for key in keys])
+                        
+                        keys_str = ", ".join([f"'{k}'" for k in keys])
                         if len(keys) > 1:
                             pyautogui_code.append(f"pyautogui.hotkey({keys_str})")
                         else:
                             pyautogui_code.append(f"pyautogui.press({keys_str})")
-                        action_str.append(f'key({keys_str})')
 
-                    elif action == "scroll":
+                    elif action_type == "scroll":
                         pixels = args.get("pixels", 0)
                         pyautogui_code.append(f"pyautogui.scroll({pixels})")
-                        action_str.append(f'scroll({pixels})')
 
-                    elif action == "wait":
-                        pyautogui_code.append("WAIT")
-                        action_str.append(f'wait()')
+                    elif action_type == "wait":
+                        pyautogui_code.append("pyautogui.sleep(1)")
 
-                    elif action == "terminate":
+                    elif action_type == "terminate":
                         pyautogui_code.append("DONE")
-                        action_str.append(f'terminate()')
+                        
+                    response_list.append(step_data)
 
-                    elif action == "mouse_move":
-                        if "coordinate" in args:
-                            x, y = args["coordinate"]
-                            adj_x, adj_y, sm_x, sm_y = adjust_coordinates(x, y)
-                            pyautogui_code.append(
-                                f"pyautogui.moveTo({adj_x}, {adj_y})"
-                            )
-                            action_str.append(f'mouse_move({sm_x}, {sm_y})')
-                        else:
-                            pyautogui_code.append("pyautogui.moveTo(0, 0)")
-                            action_str.append(f'mouse_move(0, 0)')
-
-                    elif action == "left_click_drag":
-                        if "coordinate" in args:
-                            x, y = args["coordinate"]
-                            adj_x, adj_y, sm_x, sm_y = adjust_coordinates(x, y)
-                            duration = args.get("duration", 0.5)
-                            pyautogui_code.append(
-                                f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})"
-                            )
-                            action_str.append(f'left_click_drag({sm_x}, {sm_y})')
-                        else:
-                            pyautogui_code.append("pyautogui.dragTo(0, 0)")
-                            action_str.append(f'left_click_drag(0, 0)')
-
-            except (json.JSONDecodeError, KeyError) as e:
-                logger.error(f"Failed to parse tool call: {e}")
-
-        lines = response.split("\n")
-        inside_tool_call = False
-        current_tool_call: List[str] = []
-
-        for line in lines:
-            line = line.strip()
-            if not line:
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse tool call JSON: {tool_call_str}")
                 continue
 
-            if line.lower().startswith(("action:")):
-                if not low_level_instruction:
-                    low_level_instruction = line.split("Action:")[-1].strip()
-                continue
+        return response_list, pyautogui_code
 
-            if line.startswith("<tool_call>"):
-                inside_tool_call = True
-                continue
-            elif line.startswith("</tool_call>"):
-                if current_tool_call:
-                    process_tool_call("\n".join(current_tool_call))
-                    current_tool_call = []
-                inside_tool_call = False
-                continue
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """
+        Self-judge function.
+        Returns a dictionary with 'thought' and 'score'.
+        """
+        # 1. 定义评估专用的 System Prompt
+        try:
+            EVALUATION_SYSTEM_PROMPT = """
+            You are an impartial judge evaluating the performance of a computer agent.
+            Your task is to determine if the agent successfully completed the user's instruction based on the conversation history and the final screenshot.
+            
+            The user instruction was: "{instruction}"
+            
+            Analyze the sequence of actions taken by the agent and the final state of the screen.
+            
+            Output your evaluation strictly in the following JSON format:
+            ```json
+            {{
+                "thought": "Detailed reasoning about why the task is considered success or failure...",
+                "score": 1.0
+            }}
+            ```
+            
+            Set "score" to 1.0 if the task is successfully completed, and 0.0 if it failed.
+            """
+            
+            # 2. 构建评估用的 Messages (类似于 predict 中的构建逻辑，但替换 System Prompt)
+            messages: list[dict[str, Any]] = [
+                {
+                    "role": "system",
+                    "content": EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction),
+                }
+            ]
 
-            if inside_tool_call:
-                current_tool_call.append(line)
-                continue
+            # 3. 回填历史信息 (Context)
+            # Qwen3VL 需要上下文来判断之前的操作是否生效
+            history_len = min(self.history_n, len(self.responses))
+            if history_len > 0:
+                history_responses = self.responses[-history_len:]
+                history_screenshots = self.screenshots[-history_len - 1:-1]
 
-            if line.startswith("{") and line.endswith("}"):
-                try:
-                    json_obj = json.loads(line)
-                    if "name" in json_obj and "arguments" in json_obj:
-                        process_tool_call(line)
-                except json.JSONDecodeError:
-                    pass
+                for idx in range(history_len):
+                    if idx < len(history_screenshots):
+                        screenshot_b64 = history_screenshots[idx]
+                        img_url = f"data:image/png;base64,{screenshot_b64}"
+                        
+                        content = [{"type": "image_url", "image_url": {"url": img_url}}]
+                        
+                        # 第一帧通常包含初始指令，但在 Evaluate 中我们主要关注 Action 的执行流
+                        if idx == 0:
+                            content.append({"type": "text", "text": f"User Instruction: {task_instruction}"})
+                        
+                        messages.append({"role": "user", "content": content})
 
-        if current_tool_call:
-            process_tool_call("\n".join(current_tool_call))
+                    # 添加 Agent 的历史回复 (Action)
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": [{"type": "text", "text": f"{history_responses[idx]}"}],
+                        }
+                    )
 
-        if not low_level_instruction and len(pyautogui_code) > 0:
-            action_type = pyautogui_code[0].split(".", 1)[1].split("(", 1)[0]
-            low_level_instruction = f"Performing {action_type} action"
+            # 4. 处理当前(最终)截图
+            base64_screenshot = None
+            if obs and "screenshot" in obs:
+                # 使用类内部统一的 process_image 逻辑，保持分辨率与 predict 一致
+                base64_screenshot = process_image(obs["screenshot"])
 
-        return low_level_instruction, pyautogui_code, action_str
+            # 5. 构建最终的 Evaluation Query
+            content_parts = []
+            if base64_screenshot:
+                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_screenshot}"}})
+            
+            eval_query = f"Based on the conversation history above and this final screenshot, did the agent successfully complete the instruction: '{task_instruction}'? Please provide the JSON evaluation."
+            content_parts.append({"type": "text", "text": eval_query})
+
+            messages.append({
+                "role": "user",
+                "content": content_parts
+            })
+        except Exception as e:
+            logger.info(f"What error: {e}")
+            
+        try:
+            logger.info("Starting evaluation...")
+            response = self.call_llm(
+                {
+                    "model": self.model,
+                    "messages": messages,
+                    "max_tokens": self.max_tokens,
+                    "top_p": self.top_p,
+                    "temperature": self.temperature,
+                },
+                self.model,
+            )
+            
+            logger.info(f"Evaluation Result Raw Output: {response}")
+            
+            # 7. 解析 JSON
+            # 即使使用了 json_object，模型有时仍会包裹在 ```json ... ``` 中
+            if "```json" in response:
+                response = response.split("```json")[1].split("```")[0].strip()
+            elif "```" in response:
+                response = response.split("```")[1].strip()
+
+            result = json.loads(response)
+            if "thought" not in result:
+                result["thought"] = response # 如果解析不到 thought，将原始内容作为 thought
+            if "score" not in result:
+                result["score"] = 0
+            return result
+                
+        except Exception as e:
+            logger.error(f"Evaluation failed: {e}")
+            # 发生错误时返回默认失败结果
+            return {
+                "thought": f"Evaluation failed due to error: {str(e)}. Raw content: {response}",
+                "score": 0.0
+            }
 
     @backoff.on_exception(
         backoff.constant,
@@ -595,19 +627,19 @@ Previous actions:
     )
     def call_llm(self, payload, model):
         messages = payload["messages"]
+        custom_headers = {
+            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
+        }
 
-        if "service" not in self.base_url:
-            basic_auth_header = f"Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers={"Authorization": basic_auth_header})
+        if "kubebrain" in  self.base_url:
+            logger.info(f"H Cluster Local VLLM: {self.base_url}")
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers=custom_headers)
         else:
-            logger.info(f"H Service VLLM: {self.base_url}")
+            logger.info(f"H Service VLLM / Boyue: {self.base_url}")
             client = OpenAI(base_url=self.base_url, api_key=self.api_key)
-        # base_url = "https://poc-dashscope.aliyuncs.com/compatible-mode/v1"
-        # api_key = "sk-123"
-        # client = openai.OpenAI(base_url=base_url, api_key=api_key)
-
+        
         for _ in range(MAX_RETRY_TIMES):
-            logger.info("Generating content with Qwen model: %s", model)
+            # logger.info("Generating content with Qwen model: %s", model)
             try:
                 response = client.chat.completions.create(
                     model=model,
@@ -622,9 +654,6 @@ Previous actions:
                 time.sleep(5)
                 continue
         return ""
-
-    def evaluate(self) -> float:    # type: ignore
-        return 1
     
     def reset(self, _logger=None):
         global logger
@@ -634,12 +663,8 @@ Previous actions:
         )
 
         self.thoughts = []
-        self.action_descriptions = (
-            [] if hasattr(self, "action_descriptions") else []
-        )
         self.actions = []
+        self.critic_actions = []
         self.observations = []
         self.responses = []
         self.screenshots = []
-
-

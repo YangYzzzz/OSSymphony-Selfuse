@@ -505,24 +505,13 @@ def get_unfinished(
                             else:
                                 score = float(score)
                         
-                        if not incremental_test:
-                            # TODO: 特化一下后面需要修正!!!
-                            if score == 0 and turn != 1:
-                                # empty all files under example_id
-                                shutil.rmtree(path=example_path, ignore_errors=True)
-                            else:
-                                finished[domain].append(example_id)
+                        # TODO: 特化一下后面需要修正!!!
+                        if score == 0 and turn != 1:
+                            # empty all files under example_id
+                            shutil.rmtree(path=example_path, ignore_errors=True)
                         else:
-                            # 增量测试
-                            with open(os.path.join(example_path, "traj.jsonl"), "r", encoding="utf-8") as f:
-                                lines = f.readlines()
-                                non_empty_lines = [line for line in lines if line.strip() != '']
-                                cur_step = json.loads(non_empty_lines[-1].strip())["step_num"]
-                            # 当前写死了, 最小步数为50步
-                            if cur_step == 50 and score == 0:
-                                shutil.rmtree(path=example_path, ignore_errors=True)
-                            else:
-                                finished[domain].append(example_id)
+                            finished[domain].append(example_id)
+                            
     if not finished:
         return total_file_json
 

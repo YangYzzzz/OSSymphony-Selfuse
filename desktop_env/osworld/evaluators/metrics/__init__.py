@@ -157,6 +157,5 @@ from .vscode import (
     compare_zip_files
 )
 
-
 def infeasible():
     pass

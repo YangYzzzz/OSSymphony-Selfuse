@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import os
@@ -9,7 +10,7 @@ import base64
 import backoff
 import traceback
 from loguru import logger
-from typing import Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 def encode_image(image_content):
     return base64.b64encode(image_content).decode("utf-8")
@@ -19,7 +20,7 @@ INSTRUCTION_TEMPLATE = "# Task Instruction:\n{instruction}\n\nPlease generate th
 STEP_TEMPLATE = "# Step {step_num}:\n"
 
 SYSTEM_PROMPT_THINKING = """
-You are a GUI agent. You are given an instruction, a screenshot of the screen and your previous interactions with the computer. You need to perform a series of actions to complete the task. The password of the computer is {password}.
+You are a GUI agent. You are given an instruction, a screenshot of the screen and your previous interactions with the computer. You need to perform a series of actions to complete the task. The password of the computer is {password}. 
 
 For each step, provide your response in this format:
 {thought}
@@ -63,6 +64,7 @@ def parse_response_to_cot_and_action(response, screen_size, coordinate_type, thi
         if thinking:
             thought = response.get('reasoning_content', '').strip()
             sections['thought'] = thought
+            sections['raw_response'] = '<reasoning_content>' + thought + '</reasoning_content>' + input_string
             logger.info(f"Extracted thought (thinking): {sections['thought']}")
             m = re.search(r"^##\s*Action\b", input_string, flags=re.MULTILINE) # remove extra content before ## Action
             if m:
@@ -73,16 +75,8 @@ def parse_response_to_cot_and_action(response, screen_size, coordinate_type, thi
                 sections['thought'] = thought.group(1).strip()
             else:
                 sections['thought'] = ""
-        
+            sections['raw_response'] = input_string
             logger.info(f"Extracted thought (non-thinking): {sections['thought']}")
-        
-        action_match = re.search(
-            r'^\s*##\s*Action\s*:?\s*[\n\r]+(.*?)(?=^\s*##|\Z)',
-            input_string, re.DOTALL | re.MULTILINE
-        )
-        if action_match:
-            action = action_match.group(1).strip()
-            sections['action'] = action.strip()
         
         code_blocks = re.findall(r'```(?:code|python)?\s*(.*?)\s*```', input_string, re.DOTALL | re.IGNORECASE)
         if not code_blocks:
@@ -91,6 +85,16 @@ def parse_response_to_cot_and_action(response, screen_size, coordinate_type, thi
 
         code_block = code_blocks[-1].strip()
         sections['original_code'] = code_block
+
+        # FIX: 去除正则前的^
+        # FIX: 若认为 code_blocks[-1] 是真正执行的 code, 则 action 字段也应取最后一个匹配到的结果
+        action_matches = re.findall(
+            r'\s*##\s*Action\s*:?\s*[\n\r]+(.*?)(?=^\s*##|\Z)',
+            input_string, re.DOTALL | re.MULTILINE
+        )
+        if action_matches:
+            action = action_matches[-1].strip()
+            sections['action'] = action + "\n" + sections['original_code'] # Action + Code
 
         if "computer.wait" in code_block.lower():
             sections["code"] = "WAIT"
@@ -107,9 +111,15 @@ def parse_response_to_cot_and_action(response, screen_size, coordinate_type, thi
                 logger.error("Terminate action found but no specific status provided in code block")
                 return f"<Error>: terminate action found but no specific status provided in code block: {input_string}", ["FAIL"], sections
 
-        corrected_code = code_block
+        corrected_code, extracted_coordinates = project_coordinate_to_absolute_scale(
+            code_block, 
+            screen_width=screen_size[0], 
+            screen_height=screen_size[1], 
+            coordinate_type=coordinate_type
+        )
+        
         sections['code'] = corrected_code
-        sections['code'] = project_coordinate_to_absolute_scale(corrected_code, screen_width=screen_size[0], screen_height=screen_size[1], coordinate_type=coordinate_type)
+        sections['coordinate'] = extracted_coordinates # 将绝对坐标存入 meta_action (sections)
 
         if ('code' not in sections or sections['code'] is None or sections['code'] == "") or ('action' not in sections or sections['action'] is None or sections['action'] == ""):
             logger.error("Missing required action or code section")
@@ -137,6 +147,7 @@ def project_coordinate_to_absolute_scale(pyautogui_code_relative_coordinates, sc
     matches = re.findall(pattern, pyautogui_code_relative_coordinates)
 
     new_code = pyautogui_code_relative_coordinates
+    last_extracted_coordinates = None # 用于存储提取到的绝对坐标
 
     for full_call in matches:
         func_name_pattern = r'(pyautogui\.\w+)\((.*)\)'
@@ -153,7 +164,7 @@ def project_coordinate_to_absolute_scale(pyautogui_code_relative_coordinates, sc
             parsed_keywords = parsed.keywords
 
         except SyntaxError:
-            return pyautogui_code_relative_coordinates
+            return pyautogui_code_relative_coordinates, None
 
         function_parameters = {
             'click': ['x', 'y', 'clicks', 'interval', 'button', 'duration', 'pause'],
@@ -183,7 +194,7 @@ def project_coordinate_to_absolute_scale(pyautogui_code_relative_coordinates, sc
                 args[param_name] = arg_value
         except Exception as e:
             logger.error(f"Error parsing keyword arguments: {e}")
-            return pyautogui_code_relative_coordinates
+            return pyautogui_code_relative_coordinates, None
 
         updated = False
         if 'x' in args and 'y' in args:
@@ -193,6 +204,7 @@ def project_coordinate_to_absolute_scale(pyautogui_code_relative_coordinates, sc
                 x_abs, y_abs = _coordinate_projection(x_rel, y_rel, screen_width, screen_height, coordinate_type)
                 args['x'] = x_abs
                 args['y'] = y_abs
+                last_extracted_coordinates = [x_abs, y_abs]
                 updated = True
             except ValueError:
                 pass
@@ -224,7 +236,7 @@ def project_coordinate_to_absolute_scale(pyautogui_code_relative_coordinates, sc
             new_full_call = f"{func_name}({new_args_str})"
             new_code = new_code.replace(full_call, new_full_call)
 
-    return new_code
+    return new_code, last_extracted_coordinates
 
 def transform_action_to_code_block(action):
     if any(keyword in action for keyword in ["computer.terminate", "computer.wait", "browser.select_option", "browser.clear"]):
@@ -311,7 +323,56 @@ class KimiAgent:
         code = pattern_pos.sub(lambda m: f"{m.group(1)}{int(m.group(2))*factor})", code)
         return code
     
-    def predict(self, instruction: str, obs: Dict, **kwargs) -> Tuple[Dict, List[str]]:
+    def _build_history_messages(self) -> List[Dict]:
+        """
+        Construct the history messages (User/Assistant pairs) based on previous steps.
+        This logic is shared between predict() and evaluate().
+        """
+        messages = []
+        history_step_texts = []
+        
+        for i in range(len(self.actions)):
+            # Determine thought/action content
+            thought = self.cots[i].get('thought', '')
+            action = self.cots[i].get('action', '')
+            
+            # Format the assistant's response part
+            history_content = STEP_TEMPLATE.format(step_num=i+1) + self.history_template.format(
+                thought=thought,
+                action=action
+            )
+
+            # Logic: If the step is within the recent window (max_image_history_length), 
+            # we include the image. Otherwise, we just accumulate the text.
+            if i > len(self.actions) - self.max_image_history_length:
+                # Add User message with Image
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{encode_image(self.observations[i]['screenshot'])}"}
+                        }
+                    ]
+                })
+                # Add Assistant message
+                messages.append({
+                    "role": "assistant",
+                    "content": history_content
+                })
+            else:
+                # Accumulate text for older steps
+                history_step_texts.append(history_content)
+                # If this is the last step before the image window starts, dump all text history
+                if i == len(self.actions) - self.max_image_history_length:
+                    messages.append({
+                        "role": "assistant",
+                        "content": "\n".join(history_step_texts)
+                    })
+        
+        return messages
+        
+    def predict(self, instruction: str, obs: Dict, **kwargs) -> Tuple[List[Dict], List[str]]:
         """
         Predict the next action(s) based on the current observation.
         """
@@ -326,41 +387,10 @@ class KimiAgent:
                 "role": "system",
                 "content": self.system_prompt
             })
+
+        messages.extend(self._build_history_messages())
+
         instruction_prompt = INSTRUCTION_TEMPLATE.format(instruction=instruction)
-
-        history_step_texts = []
-        for i in range(len(self.actions)):
-            if i > len(self.actions) - self.max_image_history_length:
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/png;base64,{encode_image(self.observations[i]['screenshot'])}"}
-                        }
-                    ]
-                })
-
-                history_content = STEP_TEMPLATE.format(step_num=i+1) + self.history_template.format(
-                    thought=self.cots[i].get('thought'),
-                    action=self.cots[i]['action']
-                )
-
-                messages.append({
-                    "role": "assistant",
-                    "content": history_content
-                })
-            else:
-                history_content = STEP_TEMPLATE.format(step_num=i+1) + self.history_template.format(
-                    thought=self.cots[i].get('thought'),
-                    action=self.cots[i].get('action')
-                )
-                history_step_texts.append(history_content)
-                if i == len(self.actions) - self.max_image_history_length:
-                    messages.append({
-                        "role":"assistant",
-                        "content": "\n".join(history_step_texts)
-                    })
 
         messages.append({
             "role": "user",
@@ -408,7 +438,7 @@ class KimiAgent:
                 retry_count += 1
                 if retry_count == max_retry:
                     logger.error("Maximum retries reached. Exiting.")
-                    return str(e), ['FAIL'], other_cot
+                    return str(e), ['FAIL']
 
         pyautogui_actions = [
             self._scale_scroll_for_windows(code) for code in pyautogui_actions
@@ -427,10 +457,118 @@ class KimiAgent:
             pyautogui_actions = ['FAIL']
             other_cot['code'] = 'FAIL'
 
-        response = {"response": response} | other_cot
-        return response, pyautogui_actions
+        # response = {"response": response} | other_cot
+        # 因为 Kimi 每次只生成一步，所以列表长度通常为 1
+        response_meta_list = []
+        for _ in pyautogui_actions:
+            meta_item = {
+                "raw_response": other_cot.get("raw_response", ""),
+                "thought": other_cot.get("thought", ""),
+                "action": other_cot.get("action", ""),
+                "meta_action": other_cot.get("code", {}),
+                "coordinate": other_cot.get("coordinate", None)
+            }
+            response_meta_list.append(meta_item)
+
+
+        return response_meta_list, pyautogui_actions
             
-    
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """
+        Self-judge function to evaluate if the task was completed successfully.
+        """
+        EVALUATION_SYSTEM_PROMPT = """
+        You are an impartial judge evaluating the performance of a computer agent.
+        Your task is to determine if the agent successfully completed the user's instruction based on the conversation history and the final screenshot.
+        
+        The user instruction was: "{instruction}"
+        
+        Analyze the sequence of actions taken by the agent and the final state of the screen.
+        
+        Output your evaluation strictly in the following JSON format:
+        ```json
+        {{
+            "thought": "Detailed reasoning about why the task is considered success or failure...",
+            "score": 1.0
+        }}
+        ```
+        
+        Set "score" to 1.0 if the task is successfully completed, and 0.0 if it failed.
+        Only return the JSON object, do not add any other text.
+        """
+
+        try:
+            # 1. Start with Evaluation System Prompt
+            messages = [{
+                "role": "system",
+                "content": EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
+            }]
+
+            # 2. Reuse the exact same history construction as predict
+            # This ensures the judge sees the same context the agent had
+            messages.extend(self._build_history_messages())
+
+            # 3. Add Final Observation and Evaluation Query
+            # Note: Unlike predict, we don't ask for the next move, we ask for a verdict.
+            eval_query = f"Based on the conversation history above and this final screenshot, did the agent successfully complete the instruction: '{task_instruction}'? Please provide the JSON evaluation."
+            
+            messages.append({
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{encode_image(obs['screenshot'])}"}
+                    },
+                    {
+                        "type": "text",
+                        "text": eval_query
+                    }
+                ] # type: ignore
+            })
+
+            logger.info(f"Starting evaluation for: {task_instruction}")
+            
+            # 4. Call LLM
+            response_msg = self.call_llm({
+                "model": self.model,
+                "messages": messages,
+                "max_tokens": self.max_tokens,
+                "top_p": self.top_p,
+                "temperature": self.temperature, # Usually evaluation can use lower temp, but reusing self.temperature is fine
+                "response_format": {"type": "json_object"} # Kimi supports json_object, helpful if available
+            }, self.model)
+
+            response_content = response_msg['content']
+            logger.info(f"Evaluation Raw Output: {response_content}")
+
+            # 5. Parse JSON
+            # Handle potential markdown wrappers
+            if "```json" in response_content:
+                json_str = response_content.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_content:
+                json_str = response_content.split("```")[1].strip()
+            else:
+                json_str = response_content.strip()
+
+            result = json.loads(json_str)
+            
+            # Ensure required fields exist
+            if "thought" not in result:
+                result["thought"] = response_content
+            if "score" not in result:
+                # Fallback logic if score is missing but status is present (sometimes models do this)
+                result["score"] = 0.0
+            
+            return result
+
+        except Exception as e:
+            logger.error(f"Evaluation failed: {e}")
+            logger.error(traceback.format_exc())
+            return {
+                "thought": f"Evaluation failed due to error: {str(e)}",
+                "score": 0.0
+            }
+
     def call_llm(self, payload, model):
         """Call the LLM API"""
         headers = {

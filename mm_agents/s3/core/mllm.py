@@ -43,7 +43,7 @@ class LMMAgent:
             self.engine = engine
 
         self.messages = []  # Empty messages
-
+        self.agent_name = engine_params.get("agent_name", "others")
         if system_prompt:
             self.add_system_prompt(system_prompt)
         else:

@@ -255,7 +255,7 @@ class PROCEDURAL_MEMORY:
 
     # Core Guidelines:
     - Execute Python/Bash code step-by-step to progress toward the goal
-    - Use sudo with: "echo password | sudo -S [COMMANDS]"
+    - Use sudo with: "echo 'password' | sudo -S [COMMANDS]"
     - Username: "user"
     - Print results and handle errors appropriately
     - Code execution may not show immediately on screen
