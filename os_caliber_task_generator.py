@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Any
 import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
-from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import CoarseInstructionGenerationAgent
+from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import InstructionGenerationAgent
 
 # APP 初始化信息
 APP_SETUP_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/app_config.json"
@@ -39,7 +39,7 @@ class OSCaliberTaskGenerator:
         self,
         rollout_task_dir: str,
         env: DesktopEnv,
-        agent: CoarseInstructionGenerationAgent,
+        agent: InstructionGenerationAgent,
     ) -> None:
         self.rollout_task_dir = rollout_task_dir
         self.env_file_base_dir = ENV_FILE_BASE_DIR
@@ -96,12 +96,17 @@ class OSCaliberTaskGenerator:
         used_paths: List[str] = []
         abs_file_lists = self._get_abs_file_lists(type_lists=app_info.get("type", []))
 
-        # 取出所有 setup 变体（三层结构），随机选一个变体
+        # 取出所有 setup 变体（三层结构），根据 random 字段加权随机选择一个变体
         all_setups = app_info.get("commands", []) or []
         if not all_setups:
             return [], []
-        # all_setups: List[SetupVariant]，每个 SetupVariant 是 List[Command]
-        chosen_setup = random.choice(all_setups)
+
+        weights = app_info.get("random")
+        if isinstance(weights, list) and len(weights) == len(all_setups):
+            chosen_setup = random.choices(all_setups, weights=weights, k=1)[0]
+        else:
+            # 兼容旧配置或 random 配置不匹配时，退回到均匀随机
+            chosen_setup = random.choice(all_setups)
 
         # 深拷贝，避免修改原配置
         raw_commands: List[List[str]] = copy.deepcopy(chosen_setup)
@@ -293,6 +298,7 @@ class OSCaliberTaskGenerator:
                 "instruction": "init_instruction",
             }
         )
+        time.sleep(20) # Wait for the set up already
         self.agent.reset()
 
         obs = self.env._get_obs()
@@ -312,6 +318,10 @@ class OSCaliberTaskGenerator:
         for task in task_list:
             task_id = str(uuid.uuid4())
 
+            json_path = os.path.join(domain_dir, f"{task_id}.json")
+            image_base_dir = os.path.join(domain_dir, "image")
+            os.makedirs(image_base_dir, exist_ok=True)
+
             task_config = {
                 "id": task_id,
                 "snapshot": app_name,
@@ -321,15 +331,24 @@ class OSCaliberTaskGenerator:
                 "complexity": task.get("complexity"),
                 "estimated_steps": task.get("estimated_steps"),
                 "category": task.get("category"),  # file_only / app_only / mixed
-                "evaluator": self._build_evaluator_from_verification(task)
+                "evaluator": self._build_evaluator_from_verification(task),
+                "setup_image": f"image/{task_id}.png" # Rel Path
             }
-
-            json_path = os.path.join(domain_dir, f"{task_id}.json")
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(task_config, f, indent=4, ensure_ascii=False)
 
+            # 记录初始化截图
+            with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
+                _f.write(obs['screenshot'])
+                
             if app_name not in test_file_list:
                 test_file_list[app_name] = []
             test_file_list[app_name].append(task_id)
 
         return test_file_list
+
+
+if __name__=="__main__":
+    """
+        给定 root_dir, 子目录为 domain, 解析其子目录的所有 task 文件的 evaluator(可能是一个字典)
+    """

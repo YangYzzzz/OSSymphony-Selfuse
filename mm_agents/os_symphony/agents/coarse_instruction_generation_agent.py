@@ -51,41 +51,50 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
                 - {{"type": "vm_file", "path": "/path/inside/vm", "dest": "/path/on/host"}} This means: copy the file at "path" from the VM to a host-side temporary location. The Python function will receive the local path as `result`.
                 - {{"type": "vm_command_line", "command": ["arg1", "arg2", ...]}} This means: run the given command list inside the VM shell and pass its textual output as `result`.
             - "expected_getter" (object, optional): how to obtain an optional second value for comparison. Allowed forms are the same as for "result_getter". If you do NOT need a second value, set {{"type": "empty"}} or omit this field.
-            - "function_name" (string, optional): the Python function name to use for this rule. If omitted, the system will name them sequentially as "call_rule_judge_1", "call_rule_judge_2", etc.
             - "code" (string): the FULL Python function definition implementing this rule. See the template below for the exact required structure.
+              - The function name inside the code MUST use the common prefix "call_rule_judge_".
+              - Within each task, you SHOULD conceptually number these functions locally for that task only (e.g. "call_rule_judge_1", "call_rule_judge_2", ...), but you do NOT need to output "function_name" explicitly; the system will extract the function name from the code and construct "function_name" automatically.
     - "estimated_steps" (integer): Approximate number of primitive user actions (mouse clicks, drags, key presses) required to complete the task.
 
     ## Evaluation design
     For each task, you must also design how it will be evaluated.
 
+    - You MUST prioritize rule-based evaluation whenever it is reasonably possible.
+      - If the task's success can be reliably checked using files (vm_file) and/or command outputs (vm_command_line), you SHOULD set "need_rule_judge" = true and "need_vlm_judge" = false.
+      - Only when some essential aspect of success CANNOT be reliably checked via files or commands should you set "need_vlm_judge" = true.
+
     - Use "evaluation.need_rule_judge" and "evaluation.need_vlm_judge" to indicate which mechanisms are required:
         - At least one of them MUST be true.
-        - It is allowed that both are true (hybrid judgement).
+        - It is allowed that both are true (hybrid judgement), but you SHOULD avoid using "need_vlm_judge" when rule-based checks already fully capture the success conditions.
 
-    - When "evaluation.need_rule_judge" is true, you MUST provide one or more "rule_items" as described above. Each rule item will be turned into a Python function and a pair of result/expected getters.
+    - When "evaluation.need_rule_judge" is true, you MUST provide one or more "rule_items" as described above.
+      - Rule-based checks SHOULD be as complete and fine-grained as possible for that task, covering all important properties that you reasonably expect to be verifiable.
+      - When designing rule-based checks, you SHOULD try to cover as many aspects of the task's goal as possible so that the rule-based component can decide success in most normal cases without relying on VLM.
 
-    - When "evaluation.need_vlm_judge" is true, you MUST provide a clear "vlm_desc" string that describes the final GUI appearance or layout so that a VLM can decide success from screenshots.
+    - When "evaluation.need_vlm_judge" is true, you MUST provide a clear "vlm_desc" string that describes the final GUI state and, where helpful, key intermediate GUI states during execution, so that a VLM can reliably judge success from screenshots.
 
     - Rule-based checks MUST follow these principles:
         - Core idea: "everything is a file". For Command-UI-Agent (CUA) style tasks whose goal is to WRITE or transform something, the final result should be reflected in one or more files inside the VM. These files may be:
-            - Common formats such as .txt, .md, .pdf, .xlsx, .mp3, .png, .jpg, .json, etc.
+            - Common formats such as .txt, .md, .pdf, .xlsx, .docx, .pptx, .mp3, .png, .jpg, .json, .mp4, .wav, etc.
+                - You can use any reasonable Python packages to read and analyze these files (e.g., `python-docx`/`python-pptx`/`openpyxl`/`pandas` for Office documents, `PyPDF2`/`pdfplumber` for PDFs, `Pillow` for images, and `pydub`/`librosa`/`ffmpeg-python` for audio/video).
             - Less common formats such as .dxf or application-specific project files.
             - Files that are easy to locate (e.g., under "~/Desktop").
-            - Files that are deeply hidden (e.g., application config files, caches, or internal state files), as long as they can be accessed via a path or an API.
+            - Files that are deeply hidden (e.g., application config files, caches, or internal state files), maybe they can be accessed via a path or an API.
         - For rule-based checks you MUST rely ONLY on:
             - Files inside the VM filesystem that can be copied out (vm_file), OR
             - Command outputs obtained from the VM shell (vm_command_line), typically via application CLIs or helper tools that expose internal state.
         - You MUST NOT use remote/cloud golden files or any resource that cannot be accessed from inside the VM.
         - Prefer using {{"type": "empty"}} for "expected_getter" when the rule can be fully hard-coded inside the function.
 
-    - Detailed distinction between Rule-Base and VLM-Base tasks:
-        - Rule-Base:
+    - Detailed distinction between Rule-based and VLM-based tasks:
+        - Rule-based:
             - Tasks whose success can be checked directly using VM files (vm_file) or VM commands (vm_command_line).
-            - Command outputs are often used to expose complex internal structures (e.g., querying application state or hidden configuration paths).
+            - vm_file outputs are often used by copying common file types directly from the VM to the host and evaluating with Python functions on the host side. For file‑based evaluation, you should prefer this pattern over extracting partial information via VM command‑line tools.
+            - vm_command_line outputs are often used to expose complex internal structures (e.g., querying application state or hidden configuration paths).
             - The final answer should be deterministic or only mildly dynamic; the Python rule function should be able to determine success using deterministic logic given the file contents or command output.
-        - VLM-Base:
+        - VLM-based:
             - Tasks whose success depends on information that is deeply hidden and cannot be reliably accessed via files or APIs.
-            - Tasks involving non-standard or hard-to-parse file formats, where writing a robust parser is impractical.
+            - Tasks involving uncommon file formats, which it is hard to writing a robust parser.
             - Tasks whose answer is inherently dynamic or visual (e.g., GUI layout, theme, transient UI states) and is best judged by looking at the screen.
 
     ### Python rule function template (CRITICAL)
@@ -103,14 +112,16 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         You SHOULD mention:
         - The task's high-level goal.
         - How `result` is obtained (from vm_file or vm_command_line).
-        - Whether `expected` is used (it may be "empty").
+        - How `expected` is obtained (from vm_file or vm_command_line or empty).
         - Why this rule is sufficient to fully or partially verify task success.
         \"\"\"
         try:
-            # TODO: implement the rule-based checking logic here, using `result` and `expected`.
-            # - `result` comes from the corresponding result getter (vm_file/vm_command_line).
-            # - `expected` comes from the expected getter (usually type="empty").
-            # Replace the placeholder below with real verification code.
+            # Example pattern for partial and weighted credit:
+            # - Inspect multiple independent conditions or fields in `result`.
+            # - For each condition, decide a weight (they do not all need to be equal).
+            # - Compute a score as sum of weights for all satisfied conditions, normalized to [0.0, 1.0].
+            # - Return that score as a float between 0.0 and 1.0.
+            # Below is only a placeholder; you MUST replace it with real verification logic.
             _ = result
             _ = expected
             return 0.0
@@ -121,15 +132,17 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     Requirements:
     - The function name MUST match the "function_name" you provide in the rule item (e.g., "call_rule_judge_1").
+    - Within each task, ALL rule-based functions MUST use the common prefix "call_rule_judge_" and be numbered locally for that task only:
+        - Example for one task with three rules: "call_rule_judge_1", "call_rule_judge_2", "call_rule_judge_3".
+        - Function names MUST NOT be numbered globally across tasks. Each task reuses its own local numbering starting from 1.
     - The signature MUST be exactly: def call_rule_judge_1(result, expected, **options) -> float:
     - The function MUST import any modules it uses at the top of the code string.
-    - The function MUST return a float in [0.0, 1.0]. In most cases use 0.0 or 1.0.
+    - The function MUST return a float in [0.0, 1.0].
+      - You SHOULD design the function to support partial credit when appropriate.
+        - Example: if a final file is expected to contain three required fields, you may award ~0.33 for each field that appears correctly, so a partially correct solution gets an intermediate score such as 0.33 or 0.67.
+      - You MAY assign different weights to different conditions when some are more important than others (e.g., critical conditions sum to 0.7, secondary conditions sum to 0.3).
+      - You SHOULD still use 1.0 only when all critical conditions are satisfied, and 0.0 when none of the important conditions are satisfied.
     - The docstring MUST clearly describe what is being checked and why.
-
-    ### Summary
-    - For tasks with rule-based judgement (need_rule_judge = true): you MUST provide one or more rule items, each with a Python function in "code".
-    - For tasks with only VLM judgement (need_vlm_judge = true and need_rule_judge = false): do NOT provide any rule_items.
-    - For hybrid tasks (both true): provide both rule_items and a vlm_desc.
 
     ## Launch paths and file usage
     You may be given `launch_paths`: a list of absolute file or project paths that are already opened in the application.
@@ -163,8 +176,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     ## Diversity requirements (CRITICAL)
     Across the {task_numbers} tasks you generate:
 
-    - Vary the categories: Include a mix of "file_only", "app_only", and "mixed" tasks where appropriate for the application.
-    - Vary the evaluation.type: Include tasks that are purely "rule_based", purely "vlm_based", and "hybrid" when meaningful.
     - Vary the difficulty: Include a spread of "simple", "medium", and "complex" tasks.
     - Vary the functional coverage: Use different features or workflows of the application (editing, formatting, searching, filters, views, settings, exports, imports, etc., depending on {app_name}).
     - Avoid generating multiple tasks that are essentially the same goal with only superficial wording changes.
@@ -173,8 +184,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     For every task:
 
     - Any file that is read, edited, or inspected must be identified with a unique, unambiguous "~"-based path. You may reuse paths from `launch_paths`, or introduce new paths under "~/Desktop" or other sensible subdirectories of the home directory.
-    - If the task modifies a file, you MUST:
-        - Make it explicit in "description" that the user should save the file before finishing.
+    - If the task modifies a file, you MUST make it explicit in "description" that the user should save the file before finishing.
 
     ## Use of application tutorials (if provided)
     If you are given an application-specific markdown tutorial, you may use it to:
@@ -201,7 +211,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     """
 )
 
-class CoarseInstructionGenerationAgent:
+class InstructionGenerationAgent:
     """A dedicated agent for generating coarse instructions from initial screenshots."""
 
     def __init__(self, engine_params: Dict, platform: str = "linux"):
@@ -278,10 +288,39 @@ class CoarseInstructionGenerationAgent:
 
             # Build normalized rule_items structure
             normalized_rule_items = []
+
+            import ast
+
+            def _extract_function_name_from_code(code: str) -> str | None:
+                """Parse the code with AST and extract the first function name starting with 'call_rule_judge_'.
+
+                Returns None when the code is not valid Python or no such function is found.
+                """
+                try:
+                    tree = ast.parse(code)
+                except SyntaxError:
+                    return None
+
+                for node in tree.body:
+                    if isinstance(node, ast.FunctionDef) and node.name.startswith("call_rule_judge_"):
+                        return node.name
+                return None
+
             for idx, ri in enumerate(rule_items_raw, start=1):
                 if not isinstance(ri, dict):
                     continue
-                fn_name = str(ri.get("function_name") or f"call_rule_judge_{idx}").strip()
+
+                code_str = ri.get("code") or ""
+                if not isinstance(code_str, str):
+                    logger.warning("rule_item code is not a string, skipping this rule item")
+                    continue
+
+                fn_name = _extract_function_name_from_code(code_str)
+                if not fn_name:
+                    logger.warning(
+                        "Failed to extract function name from rule_item code via AST; expected a valid Python function starting with 'call_rule_judge_'"
+                    )
+                    continue
 
                 def _norm_getter(g: Any) -> Dict[str, Any]:
                     if not isinstance(g, dict):
@@ -313,14 +352,12 @@ class CoarseInstructionGenerationAgent:
                 else:
                     expected_getter = _norm_getter(expected_getter_raw)
 
-                code_str = ri.get("code")
-
                 normalized_rule_items.append(
                     {
                         "function_name": fn_name,
                         "result_getter": result_getter,
                         "expected_getter": expected_getter,
-                        "code": str(code_str),
+                        "code": code_str,
                     }
                 )
 
@@ -400,19 +437,61 @@ class CoarseInstructionGenerationAgent:
                 f"Using the system instructions, generate exactly {task_nums} structured tasks for this application that can be executed from the current state."
             )
 
-            self.agent.add_message(
-                text_content=user_text,
-                image_content=observation.get("screenshot"),
-                role="user",
-            )
+            # 3.5) Try up to 3 times to obtain structurally valid tasks with syntactically valid rule code
+            max_attempts = 3
+            last_tasks: List[Dict[str, Any]] = []
+            for attempt in range(1, max_attempts + 1):
+                self.agent.reset()
+                self.agent.add_system_prompt(system_prompt=system_prompt)
+                self.agent.add_message(
+                    text_content=user_text,
+                    image_content=observation.get("screenshot"),
+                    role="user",
+                )
 
-            logger.info(f"Generating {task_nums} tasks for {app_name}")
-            response = call_llm_safe(self.agent, temperature=self.temperature)
-            if not response:
-                logger.error("Empty response from LLM")
+                logger.info(f"Generating {task_nums} tasks for {app_name}, attempt {attempt}/{max_attempts}")
+                response = call_llm_safe(self.agent, temperature=self.temperature)
+                pattern = r'^```(?:json)?\s*\n?(.*?)\n?```$'
+                match = re.search(pattern, response, re.DOTALL)
+                if match:
+                    response = match.group(1).strip()
+
+                if not response:
+                    logger.error("Empty response from LLM on attempt %s", attempt)
+                    continue
+
+                tasks = self.parse_instruction(response)
+                last_tasks = tasks
+
+                # Strict validation: if a task has rule_items, all of them must have been parsed successfully
+                all_rule_code_valid = True
+                for t in tasks:
+                    v = t.get("verification") or {}
+                    rule_items = v.get("rule_items") or []
+                    if not isinstance(rule_items, list):
+                        rule_items = []
+                    for ri in rule_items:
+                        fn = (ri or {}).get("function_name")
+                        code_str = (ri or {}).get("code")
+                        if not fn or not code_str:
+                            all_rule_code_valid = False
+                            break
+                    if not all_rule_code_valid:
+                        break
+
+                if all_rule_code_valid:
+                    break
+                else:
+                    logger.warning(
+                        "Rule-based code validation failed on attempt %s; retrying generation (up to %s attempts)",
+                        attempt,
+                        max_attempts,
+                    )
+
+            if not last_tasks:
                 return []
 
-            tasks = self.parse_instruction(response)
+            tasks = last_tasks
             if len(tasks) < task_nums:
                 logger.warning(f"Requested {task_nums} tasks but only generated {len(tasks)}")
 

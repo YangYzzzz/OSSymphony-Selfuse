@@ -32,8 +32,3 @@ def oscaliber_rule_based_metric(result: Any, expected: Any, options: Dict[str, A
     return 0.0
 
 
-def call_vlm_judge(result: Any, options: Dict[str, Any] | None = None) -> float:
-    """
-        需要 vlm judge, 默认返回1, 真正的评估逻辑在外层执行, 不在环境端代码里执行
-    """
-    return 1.0

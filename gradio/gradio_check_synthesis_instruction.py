@@ -165,16 +165,17 @@ def load_task(
     str,  # category
     str,  # evaluator_meta
     str,  # evaluator_items_json
+    str,  # setup_image_path
 ]:
     if not (root_dir and domain and task_file):
-        return ("",) * 9
+        return ("",) * 10
 
     path = Path(root_dir) / domain / task_file
     data = _safe_read_json(path)
 
     if "__error__" in data:
         err = data["__error__"]
-        return err, domain, "", "", "", "", "", "", "[]"
+        return err, domain, "", "", "", "", "", "", "[]", ""
 
     def get_field(name: str) -> Any:
         return data.get(name, "")
@@ -187,7 +188,7 @@ def load_task(
         related_apps_str = str(related_apps or "")
 
     instruction = str(get_field("instruction") or "")
-    complexity = str(get_field("complexity") or "")
+    complexity = str(get_field("complexity") or "" )
     estimated_steps = str(get_field("estimated_steps") or "")
     category = str(get_field("category") or "")
 
@@ -195,6 +196,12 @@ def load_task(
     evaluator_meta = _flatten_evaluator_meta(evaluator)
     evaluator_items = _split_evaluator_items(evaluator)
     evaluator_items_json = json.dumps(evaluator_items, ensure_ascii=False)
+
+    setup_image_rel = str(get_field("setup_image") or "")
+    if setup_image_rel:
+        setup_image_path = str((path.parent / setup_image_rel).resolve())
+    else:
+        setup_image_path = ""
 
     return (
         task_id,
@@ -206,6 +213,7 @@ def load_task(
         category,
         evaluator_meta,
         evaluator_items_json,
+        setup_image_path,
     )
 
 
@@ -226,7 +234,7 @@ def build_ui() -> gr.Blocks:
             with gr.Column(scale=1):
                 root_dir = gr.Textbox(
                     label="root_dir",
-                    placeholder="输入包含各个 domain 子目录的根目录路径",
+                    placeholder="输入包含各个 domain 子目录的根目录路径(e.g. /nvme/yangbowen/yangbowen/OSSymphony/evaluation_examples/ubuntu_online_rollout/synthesis/oscaliber_os-caliber-gemini-3.1-pro-generate-0324-1_20260324_181053)",
                     lines=2,
                 )
                 init_btn = gr.Button("加载 root_dir 并跳到第一个任务")
@@ -259,11 +267,18 @@ def build_ui() -> gr.Blocks:
                 related_apps_box = gr.Textbox(
                     label="related_apps", interactive=False
                 )
-                instruction_box = gr.TextArea(
-                    label="instruction",
-                    interactive=False,
-                    lines=4,
-                )
+
+                with gr.Row():
+                    instruction_box = gr.TextArea(
+                        label="instruction",
+                        interactive=False,
+                        lines=8,
+                    )
+                    setup_image_box = gr.Image(
+                        label="setup_image 任务初始截图",
+                        interactive=False,
+                        type="filepath",
+                    )
 
                 with gr.Row():
                     complexity_box = gr.Textbox(
@@ -280,6 +295,12 @@ def build_ui() -> gr.Blocks:
                     label="evaluator 其他字段 (meta)",
                     interactive=False,
                     lines=6,
+                )
+
+                setup_image_box = gr.Image(
+                    label="setup_image 任务初始截图",
+                    interactive=False,
+                    type="filepath",
                 )
 
                 evaluator_items_state = gr.Textbox(
@@ -337,6 +358,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
             ) = load_task(root_dir_val, domain, task)
 
             try:
@@ -366,6 +388,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 0,
                 gr.Dropdown(choices=choices, value="item 0" if choices else None),
                 desc,
@@ -436,6 +459,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -459,6 +483,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -485,6 +510,7 @@ def build_ui() -> gr.Blocks:
                 category_box,
                 evaluator_meta_box,
                 evaluator_items_state,
+                setup_image_box,
                 evaluator_item_index,
                 evaluator_item_dropdown,
                 evaluator_desc_box,
@@ -511,6 +537,7 @@ def build_ui() -> gr.Blocks:
                     category,
                     evaluator_meta,
                     evaluator_items_json,
+                    setup_image_path,
                     item_index,
                     item_dropdown,
                     desc,
@@ -531,6 +558,7 @@ def build_ui() -> gr.Blocks:
                     category,
                     evaluator_meta,
                     evaluator_items_json,
+                    setup_image_path,
                     item_index,
                     item_dropdown,
                     desc,
@@ -548,6 +576,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                     "[]",
+                    "",
                     0,
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -570,6 +599,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -596,6 +626,7 @@ def build_ui() -> gr.Blocks:
                 category_box,
                 evaluator_meta_box,
                 evaluator_items_state,
+                setup_image_box,
                 evaluator_item_index,
                 evaluator_item_dropdown,
                 evaluator_desc_box,
@@ -622,6 +653,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -643,6 +675,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -667,6 +700,7 @@ def build_ui() -> gr.Blocks:
                 category_box,
                 evaluator_meta_box,
                 evaluator_items_state,
+                setup_image_box,
                 evaluator_item_index,
                 evaluator_item_dropdown,
                 evaluator_desc_box,
@@ -699,6 +733,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                     "[]",
+                    "",
                     0,
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -706,6 +741,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                 )
+
 
             domain_idx = int(domain_idx_val)
             task_idx = int(task_idx_val)
@@ -730,6 +766,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                     "[]",
+                    "",
                     0,
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -737,6 +774,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                 )
+
 
             if direction == "next":
                 task_idx += 1
@@ -768,6 +806,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                     "[]",
+                    "",
                     0,
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -775,6 +814,7 @@ def build_ui() -> gr.Blocks:
                     "",
                     "",
                 )
+
 
             task_val = tasks[task_idx]
             (
@@ -787,6 +827,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -810,6 +851,7 @@ def build_ui() -> gr.Blocks:
                 category,
                 evaluator_meta,
                 evaluator_items_json,
+                setup_image_path,
                 item_index,
                 item_dropdown,
                 desc,
@@ -836,6 +878,7 @@ def build_ui() -> gr.Blocks:
                 category_box,
                 evaluator_meta_box,
                 evaluator_items_state,
+                setup_image_box,
                 evaluator_item_index,
                 evaluator_item_dropdown,
                 evaluator_desc_box,
@@ -863,6 +906,7 @@ def build_ui() -> gr.Blocks:
                 category_box,
                 evaluator_meta_box,
                 evaluator_items_state,
+                setup_image_box,
                 evaluator_item_index,
                 evaluator_item_dropdown,
                 evaluator_desc_box,

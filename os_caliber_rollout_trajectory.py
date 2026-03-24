@@ -23,7 +23,7 @@ from desktop_env.osworld.desktop_env import DesktopEnv
 import os
 from os_caliber_task_generator import OSCaliberTaskGenerator
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
-from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import CoarseInstructionGenerationAgent
+from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import InstructionGenerationAgent
 from mm_agents.anthropic.main import AnthropicAgent
 from mm_agents.kimi.kimi_agent import KimiAgent
 from mm_agents.glm4v.glm4v_agent import GLM4VAgent
@@ -131,7 +131,7 @@ def config() -> argparse.Namespace:
         "--rollout_task_nums", type=int, default=10, help="Task numbers per rollout" # 每次roll多少个任务, 当 mode 为 online 时生效
     )
     parser.add_argument(
-        "--rollout_app_list", type=str, default="all", help="Rollout application list, default all" # roll的应用列表, 当 mode 为 online 时生效
+        "--rollout_app_list", nargs='+', default=[], help="Rollout application list, default all" # roll的应用列表, 当 mode 为 online 时生效
     )
 
     # instrction generation model config ig: instrction generation model
@@ -498,12 +498,12 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
         engine_params = {
             "engine_type": args.ig_provider,
             "model": args.ig_model,
-            "base_url": getattr(args, "ig_url", ""),
+            "base_url": getattr(args, "ig_base_url", ""),
             "api_key": getattr(args, "ig_api_key", ""),
             "temperature": getattr(args, "ig_temperature", None),
             "agent_name": "coarse_instruction_generator"
         }
-        ig_agent = CoarseInstructionGenerationAgent(engine_params=engine_params)
+        ig_agent = InstructionGenerationAgent(engine_params=engine_params)
         task_generator = OSCaliberTaskGenerator(rollout_task_dir=args.rollout_task_dir, env=env, agent=ig_agent)
 
         while True:
@@ -513,7 +513,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
                 break
 
             # task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
-            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums)
+            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])
@@ -607,7 +607,7 @@ def online_test(args: argparse.Namespace):
     # Prepare directories
     args.rollout_task_dir = os.path.join(
         args.rollout_base_dir, 
-        f'oscaliber_{args.exp_name}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        f'oscaliber_{args.exp_name}'
     )
     os.makedirs(args.rollout_task_dir, exist_ok=True)
     
