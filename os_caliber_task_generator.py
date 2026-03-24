@@ -7,212 +7,33 @@ import time
 import shutil
 from datetime import datetime
 from typing import List, Dict, Tuple, Any
-
+import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import CoarseInstructionGenerationAgent
 
-# 基础存储路径
-TASK_BASE_DIR = "evaluation_examples/ubuntu_generate"
+# APP 初始化信息
+APP_SETUP_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/app_config.json"
+APP_SETUP_DICT: Dict = json.load(open(APP_SETUP_CONFIG_PATH, "r"))
+# 预制 URL, 适用于 chrome 软件的初始化
+URL_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/url.json"
+URL_LIST: List = json.load(open(URL_CONFIG_PATH, "r"))
 
-# --- 配置字典 ---
-EXTRA_APP_SETUP_DICT = {
-    "pycharm": {
-        "type": ["py", "project_folder"],
-        "commands": [["pycharm-community", "PATH"]],
-    },
-    "blender": {
-        "type": ["blend"],
-        "commands": [["blender", "PATH"]],
-    },
-    "dbeaver": {
-        "type": ["sql"],
-        "commands": [["dbeaver-ce", "PATH"]],
-    },
-    "wireshark": {
-        "type": ["pcapng"],
-        "commands": [["sudo", "wireshark", "PATH"]],
-    },
-    "texstudio": {
-        "type": ["tex"],
-        "commands": [["texstudio", "PATH"]],
-    },
-    "gitkraken": {
-        "type": ["project_folder"],
-        "commands": [["gitkraken", "-p", "PATH"]],
-    },
-    "scilab": {
-        "type": ["sci"],
-        "commands": [["scilab", "-f", "PATH"]],
-    },
-    "audacity": {
-        "type": ["wav", "mp3"],
-        "commands": [["audacity", "PATH"]],
-    },
-    "librecad": {
-        "type": ["dxf"],
-        "commands": [["librecad", "PATH"]],
-    },
-    "drawio": {
-        "type": ["drawio"],
-        "commands": [["drawio", "PATH"]],
-    },
-    "darktable": {
-        "type": ["png"],
-        "commands": [["darktable", "PATH"]],
-    },
-    "handbrake": {
-        "type": ["mp4"],
-        "commands": [["handbrake", "PATH"]],
-    },
-    "homebank": {
-        "type": ["xhb"],
-        "commands": [["homebank", "PATH"]],
-    },
-    "mixxx": {
-        "type": ["mp3"],
-        "commands": [["mixxx", "-f", "PATH"]],
-    },
-    "inkscape": {
-        "type": ["svg"],
-        "commands": [["inkscape", "PATH"]],
-    },
-    "obs": {
-        "commands": [["obs"]],
-    },
-    "meld": {
-        "type": ["py"],
-        "commands": [["meld", "PATH", "PATH"]],
-    },
-    "musescore": {
-        "type": ["mscz"],
-        "commands": [["musescore", "PATH"]],
-    },
-    "zotero": {
-        "commands": [["zotero-snap"]],
-    },
-    "zoom": {
-        "commands": [["zoom"]],
-    },
-    "google-earth-pro": {
-        "type": ["kmz"],
-        "commands": [["google-earth-pro", "PATH"]],
-    },
-    "kicad": {
-        "commands": [["kicad"]],
-    },
-    "spotify": {
-        "commands": [["spotify"]],
-    },
-    "calendar": {
-        "commands": [["gnome-calendar"]],
-    },
-    "shotcut": {
-        "type": ["mp4"],
-        "commands": [["shotcut", "PATH"]],
-    },
-    "krita": {
-        "type": ["kra"],
-        "commands": [["krita", "PATH"]],
-    },
-    "pdfarranger": {
-        "type": ["pdf"],
-        "commands": [["pdfarranger", "PATH"]],
-    },
-    "grass": {
-        "commands": [["grass"]],
-    },
-    "notion": {
-        "commands": [["notion-desktop"]],
-    },
-    "foliate": {
-        "commands": [["foliate", "PATH"]],
-    },
-}
-
-OSWORLD_APP_SETUP_DICT = {
-    "chrome": {
-        "type": ["url"],
-        "window_name": "Google Chrome",
-        "commands": [
-            [
-                "google-chrome",
-                "--remote-debugging-port=1337",
-                "--start-maximized",
-                "https://www.bing.com",
-            ],
-            ["socat", "tcp-listen:9222,fork", "tcp:localhost:1337"],
-        ],
-    },
-    "gimp": {
-        "type": ["png"],
-        "commands": [["gimp", "PATH"]],
-    },
-    "libreoffice_impress": {
-        "type": ["pptx"],
-        "window_name": "LibreOffice Impress",
-        "commands": [
-            [
-                "libreoffice",
-                "--impress",
-                "--nologo",
-                "--norestore",
-                "PATH",
-            ]
-        ],
-    },
-    "libreoffice_calc": {
-        "type": ["xlsx"],
-        "window_name": "LibreOffice Calc",
-        "commands": [
-            [
-                "libreoffice",
-                "--calc",
-                "--nologo",
-                "--norestore",
-                "PATH",
-            ]
-        ],
-    },
-    "libreoffice_writer": {
-        "type": ["docx"],
-        "window_name": "LibreOffice Writer",
-        "commands": [
-            [
-                "libreoffice",
-                "--writer",
-                "--nologo",
-                "--norestore",
-                "PATH",
-            ]
-        ],
-    },
-    "vscode": {
-        "type": ["project_folder", "py"],
-        "commands": [["code", "--new-window", "PATH"]],
-    },
-    "thunderbird": {
-        "commands": [["/usr/bin/thunderbird"]],
-    },
-    "vlc": {
-        "type": ["mp4"],
-        "commands": [
-            [
-                "VLC_VERBOSE=-1",
-                "vlc",
-                "--no-audio",
-                "--no-video-title-show",
-                "--play-and-pause",
-                "PATH",
-            ]
-        ],
-    },
-}
-
-APP_SETUP_DICT = OSWORLD_APP_SETUP_DICT | EXTRA_APP_SETUP_DICT
 ENV_FILE_BASE_DIR = "/home/user/Desktop/test_files"
 APP_TUTORIAL_DIR = "evaluation_examples/ubuntu_online_rollout/app_tutorial"
 
-
+def extract_function_docstring(code_str, function_name=None):
+    try:
+        mod = ast.parse(code_str)
+        # 遍历所有节点，找到函数定义
+        for node in ast.walk(mod):
+            if isinstance(node, ast.FunctionDef):
+                # 如果指定了函数名，则匹配；否则取第一个函数
+                if function_name is None or node.name == function_name:
+                    return ast.get_docstring(node)
+        return ""
+    except Exception:
+        return ""
+    
 class OSCaliberTaskGenerator:
     def __init__(
         self,
@@ -224,6 +45,9 @@ class OSCaliberTaskGenerator:
         self.env_file_base_dir = ENV_FILE_BASE_DIR
         self.env = env
         self.agent = agent
+        # Cache for auto-generated evaluator functions from coarse agent.
+        # Maps function_name -> code string.
+        self.generated_evaluators: Dict[str, str] = {}
 
     def _load_app_tutorial_md(self, app_name: str) -> str:
         """读取对应 app 的 tutorial markdown，如果不存在则返回空字符串。"""
@@ -236,18 +60,33 @@ class OSCaliberTaskGenerator:
         except Exception:
             return ""
 
-    def _generate_random_coordinates(self) -> Tuple[str, str, str]:
-        lat = round(random.uniform(-90.0, 90.0), 6)
-        lon = round(random.uniform(-180.0, 180.0), 6)
-        range_val = random.randint(1000, 5000000)
-        return str(lat), str(lon), str(range_val)
+    def _get_abs_file_lists(self, type_lists):
+        abs_file_lists: List[str] = []
+        for file_type in type_lists:
+            if file_type == "url":
+                abs_file_lists.extend(URL_LIST)
+            else:
+                target_dir = os.path.join(self.env_file_base_dir, file_type)
+                try:
+                    file_lists_for_single_type = self.env.controller.get_file_lists(target_dir)
+                except Exception as e:
+                    print(f"Warning: Could not list files in {target_dir}: {e}")
+                    file_lists_for_single_type = []
 
+                if file_lists_for_single_type and isinstance(file_lists_for_single_type, list):
+                    for f in file_lists_for_single_type:
+                        abs_file_lists.append(str(os.path.join(target_dir, f)))
+        return abs_file_lists
+    
     def _generate_config(self, app_name: str) -> Tuple[List[Dict[str, Any]], List[str]]:
         """根据 APP_SETUP_DICT 生成标准的 config 列表，同时返回实际使用的 PATH 列表。
 
-        引入 "不带 PATH" 的概率：
-        - 概率 0.6: 完全不替换 PATH（即不打开具体文件），launch_paths 为空。
-        - 概率 0.4: 按原逻辑从 file_lists 中随机选一个文件替换 PATH。
+        commands 结构说明：
+        - APP_SETUP_DICT[app_name]["commands"] 是三层列表：
+          List[SetupVariant]
+          SetupVariant = List[Command]
+          Command = List[str]
+        - 这里会先随机选择一个 SetupVariant，再对其中每条 Command 做 PATH 替换。
         """
         app_info = APP_SETUP_DICT.get(app_name, {})
         if not app_info:
@@ -255,46 +94,26 @@ class OSCaliberTaskGenerator:
 
         config_list: List[Dict[str, Any]] = []
         used_paths: List[str] = []
+        abs_file_lists = self._get_abs_file_lists(type_lists=app_info.get("type", []))
 
-        type_lists = app_info.get("type", [])
-        file_abs_lists: List[str] = []
+        # 取出所有 setup 变体（三层结构），随机选一个变体
+        all_setups = app_info.get("commands", []) or []
+        if not all_setups:
+            return [], []
+        # all_setups: List[SetupVariant]，每个 SetupVariant 是 List[Command]
+        chosen_setup = random.choice(all_setups)
 
-        for file_type in type_lists:
-            if file_type == "url":
-                continue
-            target_dir = os.path.join(self.env_file_base_dir, file_type)
-            try:
-                file_lists_for_single_type = self.env.controller.get_file_lists(target_dir)
-            except Exception as e:
-                print(f"Warning: Could not list files in {target_dir}: {e}")
-                file_lists_for_single_type = []
-
-            if file_lists_for_single_type and isinstance(file_lists_for_single_type, list):
-                for f in file_lists_for_single_type:
-                    file_abs_lists.append(str(os.path.join(target_dir, f)))
-
-        raw_commands = copy.deepcopy(app_info.get("commands", []))
-
-        # 决定本轮是否使用 PATH
-        # 0.6 概率不使用 PATH（launch_paths 为空），0.4 概率使用文件
-        no_path_mode = random.random() < 0.6
+        # 深拷贝，避免修改原配置
+        raw_commands: List[List[str]] = copy.deepcopy(chosen_setup)
 
         for cmd in raw_commands:
-            # 如果完全不使用 PATH，直接删除所有纯 "PATH" 占位符参数
-            if no_path_mode:
-                cleaned_cmd = [c for c in cmd if c != "PATH"]
-                if not cleaned_cmd:
-                    continue
-                config_list.append({"type": "launch", "parameters": {"command": cleaned_cmd}})
-                continue
-
-            # 使用文件模式
             for i in range(len(cmd)):
                 param = cmd[i]
                 if "PATH" in param:
-                    if file_abs_lists:
-                        selected_file = random.choice(file_abs_lists)
+                    if abs_file_lists:
+                        selected_file = random.choice(abs_file_lists)
 
+                        # 特殊软件特殊处理, 再往里获取一层
                         if app_name in ["blender", "texstudio"] and "." not in selected_file.split("/")[-1]:
                             try:
                                 sub_files = self.env.controller.get_file_lists(selected_file)
@@ -322,61 +141,130 @@ class OSCaliberTaskGenerator:
         return config_list, used_paths
 
     def _build_evaluator_from_verification(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """根据 coarse agent 产出的新字段，构造 evaluator skeleton。
+        """根据 coarse agent 产出的 verification 字段，构造最终 evaluator。
 
-        输出结构与 DesktopEnv._set_evaluator_info 所需格式对齐：
-        - func: metric 名或列表
-        - conj: 组合方式（多 metric 时）
-        - result / expected: getter 配置
-        - options: 额外元信息（这里挂 oscaliber_meta）
+        目标输出格式：
+        {
+            "func": str | List[str],
+            "conj": "and",
+            "result": dict | List[dict],
+            "expected": dict | List[dict],
+            "code": str | List[str],
+            "desc": str | List[str],
+            "need_vlm_judge": bool,
+            "vlm_desc": str,
+            "need_rule_judge": bool,
+        }
         """
         verification = task.get("verification") or {}
-        eval_type = (verification.get("evaluation_type") or "rule_based").lower()
 
-        if eval_type == "rule_based":
-            func: Any = "oscaliber_rule_based_metric"
-            result = [{"type": "oscaliber_rule_based_result", "options": {}}]
-            expected = [{"type": "oscaliber_rule_based_expected", "options": {}}]
-        elif eval_type == "vlm_based":
-            func = "oscaliber_vlm_based_metric"
-            result = [{"type": "oscaliber_vlm_based_result", "options": {}}]
-            expected = [{"type": "oscaliber_vlm_based_expected", "options": {}}]
-        else:  # "hybrid" 或其他
-            func = ["oscaliber_rule_based_metric", "oscaliber_vlm_based_metric"]
-            result = [
-                {"type": "oscaliber_rule_based_result", "options": {}},
-                {"type": "oscaliber_vlm_based_result", "options": {}},
-            ]
-            expected = [
-                {"type": "oscaliber_rule_based_expected", "options": {}},
-                {"type": "oscaliber_vlm_based_expected", "options": {}},
-            ]
+        need_rule = bool(verification.get("need_rule_judge", False))
+        need_vlm = bool(verification.get("need_vlm_judge", False))
+        vlm_desc = verification.get("vlm_desc", "")
+        rule_items = verification.get("rule_items") or []
+        if not isinstance(rule_items, list):
+            rule_items = []
+
+        # 如果 coarse agent 给了 rule_items 但两个 flag 都是 False，则默认需要 rule judge
+        if rule_items and not need_rule and not need_vlm:
+            need_rule = True
+
+        # 如果既不需要 rule 也不需要 vlm，则退化成简单的 vlm 检查
+        if not need_rule and not need_vlm:
+            need_vlm = True
+
+        # 纯 VLM 任务，不需要 rule-based evaluator 细节
+        if not need_rule:
+            return {
+                "func": "",
+                "conj": "and",
+                "result": [],
+                "expected": [],
+                "code": [],
+                "desc": [],
+                "need_vlm_judge": need_vlm,
+                "vlm_desc": vlm_desc,
+                "need_rule_judge": False,
+            }
+
+        # 需要 rule-based 评估的情况
+        funcs: List[str] = []
+        results: List[Dict[str, Any]] = []
+        expecteds: List[Dict[str, Any]] = []
+        codes: List[str] = []
+        descs: List[str] = []
+
+        def _norm_getter(g: Any) -> Dict[str, Any]:
+            if not isinstance(g, dict):
+                return {"type": "empty"}
+            g_type = g.get("type")
+            if g_type == "vm_file":
+                return {
+                    "type": "vm_file",
+                    "path": str(g.get("path", "")),
+                    "dest": str(g.get("dest", "")),
+                }
+            if g_type == "vm_command_line":
+                cmd = g.get("command")
+                if isinstance(cmd, list):
+                    cmd_list = [str(c) for c in cmd]
+                elif cmd is None:
+                    cmd_list = []
+                else:
+                    cmd_list = [str(cmd)]
+                return {"type": "vm_command_line", "command": cmd_list}
+            if g_type == "empty":
+                return {"type": "empty"}
+            return {"type": "empty"}
+
+        for idx, item in enumerate(rule_items, start=1):
+            if not isinstance(item, dict):
+                continue
+            fn_name = str(item.get("function_name") or f"call_rule_judge_{idx}").strip()
+            result_getter = _norm_getter(item.get("result_getter"))
+            expected_getter_raw = item.get("expected_getter")
+            if expected_getter_raw is None:
+                expected_getter = {"type": "empty"}
+            else:
+                expected_getter = _norm_getter(expected_getter_raw)
+
+            code_str = item.get("code", "")
+
+            # 解析上述 code_str, 尝试提取其 docstring 作为 check_desc
+            check_desc = extract_function_docstring(code_str=code_str)
+
+            funcs.append(fn_name)
+            results.append(result_getter)
+            expecteds.append(expected_getter)
+            codes.append(str(code_str))
+            descs.append(check_desc)
+
+        # 如果只有一个 rule item，则压缩为标量，保证 func/result/expected/code/desc 一致
+        if len(funcs) == 1:
+            func_val = funcs[0]
+            result_val = results[0]
+            expected_val = expecteds[0]
+            code_val = codes[0]
+            desc_val = descs[0]
+        else:
+            func_val = funcs
+            result_val = results
+            expected_val = expecteds
+            code_val = codes
+            desc_val = descs
 
         evaluator = {
-            "func": func,
-            "conj": "and",
-            "result": result,
-            "expected": expected,
-            "options": {
-                "oscaliber_meta": {
-                    "evaluation_type": eval_type,
-                    "evaluation_desc": verification.get("evaluation_desc", ""),
-                    "condition": verification.get("condition", ""),
-                    "expected_result": verification.get("expected_result", ""),
-                    "complexity": task.get("complexity", "medium"),
-                    "estimated_steps": task.get("estimated_steps", 0),
-                    "category": task.get("category", "mixed"),
-                }
-            },
+            "func": func_val,
+            "conj": "and",  # 目前仅支持 and
+            "result": result_val,
+            "expected": expected_val,
+            "code": code_val,
+            "desc": desc_val,
+            "need_vlm_judge": need_vlm,
+            "vlm_desc": vlm_desc,
+            "need_rule_judge": True,
         }
         return evaluator
-
-    def generate_all(self, task_nums: int = 1):
-        available_apps = list(APP_SETUP_DICT.keys())
-        test_file_list: Dict[str, List[str]] = {}
-        for available_app in available_apps:
-            test_file_list |= self.generate_task(task_nums=task_nums, app_list=[available_app])
-        return test_file_list
 
     def generate_task(self, task_nums: int = 10, app_list: List | str = []):
         if isinstance(app_list, list) and len(app_list) > 0:
@@ -388,6 +276,8 @@ class OSCaliberTaskGenerator:
             raise ValueError("No apps available to generate tasks.")
 
         test_file_list: Dict[str, List[str]] = {}
+
+        # 目前仅为单APP初始化
         app_name = random.choice(available_apps)
         domain_dir = os.path.join(self.rollout_task_dir, app_name)
         os.makedirs(domain_dir, exist_ok=True)
@@ -428,16 +318,11 @@ class OSCaliberTaskGenerator:
                 "related_apps": [app_name],
                 "instruction": task.get("description"),
                 "config": task_setup_config,
-                # 复杂度与估计步数（供后续评估使用）
                 "complexity": task.get("complexity"),
                 "estimated_steps": task.get("estimated_steps"),
-                # 评估信息：rule_based / vlm_based / hybrid + 描述
-                "verification": task.get("verification"),
                 "category": task.get("category"),  # file_only / app_only / mixed
+                "evaluator": self._build_evaluator_from_verification(task)
             }
-
-            # 构造 evaluator skeleton，供 DesktopEnv 使用
-            task_config["evaluator"] = self._build_evaluator_from_verification(task)
 
             json_path = os.path.join(domain_dir, f"{task_id}.json")
             with open(json_path, "w", encoding="utf-8") as f:

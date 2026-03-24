@@ -122,7 +122,7 @@ def config() -> argparse.Namespace:
     )
     # Online
     parser.add_argument(
-        "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout" # 保存的任务文件基目录, 当 mode 为 online 时生效
+        "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout/synthesis" # 保存的任务文件基目录, 当 mode 为 online 时生效
     )
     parser.add_argument(
         "--rollout_times", type=int, default=10, help="Rollout times" # 也就是随机选择多少次app, 当 mode 为 online 时生效
@@ -689,12 +689,12 @@ def online_test(args: argparse.Namespace):
 
     # Phase 2: Concurrent task execution
     logger.info(f"\n=== PHASE 2: CONCURRENT TASK EXECUTION ===")
-    
+    logger.info(f"\n=== PHASE 2: SKIP PHASE 2===")
     # Call offline_test with generated tasks
-    offline_test(
-        args=args,
-        test_all_meta=test_all_meta
-    )
+    # offline_test(
+    #     args=args,
+    #     test_all_meta=test_all_meta
+    # )
 
 # 特别针对 os-caliber 输出格式适配, 检查 domain 文件夹下是否存在 meta_* 文件
 def get_unfinished_tasks(test_file_list: Dict, result_dir):

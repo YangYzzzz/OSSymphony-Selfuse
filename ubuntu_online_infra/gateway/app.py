@@ -172,7 +172,7 @@ def create_app(
         resp = await state.http_client.post(
             f"{sess.worker_url}/worker/reset",
             json={"local_env_id": sess.local_env_id, "task_config": req.task_config},
-            timeout=300.0,
+            timeout=1000.0,
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
@@ -191,7 +191,7 @@ def create_app(
                 "action": req.action,
                 "pause": req.pause,
             },
-            timeout=300.0,
+            timeout=1000.0,
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)

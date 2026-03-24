@@ -330,8 +330,8 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             action_list.append(response_per_action.get("action", ""))
             meta_action.append(response_per_action.get("meta_action", None))
             if response_per_action.get("coordinate", None):
-                # 目前不确定claude是否存在单步骤出现超过两个以上坐标
-                if "claude" in model_name:
+                # 目前不确定claude, gemini是否存在单步骤出现超过两个以上坐标
+                if "claude" in model_name or "gemini" in model_name:
                     if not isinstance(response_per_action.get('coordinate')[0], list):
                         coordinate_1 = absolute_to_relative_coordinate(response_per_action.get("coordinate"), args.screen_height, args.screen_width) # First coords
                     else:

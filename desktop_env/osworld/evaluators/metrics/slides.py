@@ -624,7 +624,7 @@ def compare_pptx_files(file1_path, file2_path, **options):
                                 
                         if run1.font._element.attrib.get('strike', 'noStrike') != run2.font._element.attrib.get(
                                 'strike', 'noStrike') and examine_strike_through:
-                            logger.info(f"[Slide Check]: {r} strike {run1.text} vs {run2.text}; {run1.font._element.attrib.get('strike', 'noStrike')} != {run2.font._element.attrib.get('strike', 'noStrike')}")
+                            logger.info(f"[Slide Check]: {run1.text} vs {run2.text}; {run1.font._element.attrib.get('strike', 'noStrike')} != {run2.font._element.attrib.get('strike', 'noStrike')}")
                             return 0
 
                         def _extract_bullets(xml_data):

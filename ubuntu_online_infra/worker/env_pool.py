@@ -29,7 +29,7 @@ class EnvPool:
     def __init__(
         self,
         num_envs: int,
-        env_factory: Callable[[], Any],
+        env_factory: Callable[[int], Any],
         session_timeout: float = 1800.0,
     ):
         self.num_envs = num_envs
@@ -46,7 +46,7 @@ class EnvPool:
         """Create and start all DesktopEnv instances in parallel."""
 
         def _create(idx: int) -> EnvSlot:
-            env = self._env_factory()
+            env = self._env_factory(idx)
             env.start()
             # Extract VNC port from the provider's ip_address string
             # Format: "127.0.0.1:server_port:chromium_port:vnc_port:vlc_port"

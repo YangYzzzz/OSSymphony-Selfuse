@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -42,8 +43,11 @@ def _make_env_factory(cfg: Dict[str, Any]):
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
-    def _factory():
+    def _factory(worker_idx):
         from desktop_env.osworld.desktop_env import DesktopEnv
+        
+        cache_dir = os.path.join("cache", f"rl_env_{worker_idx}")
+        os.makedirs(cache_dir, exist_ok=True)
 
         return DesktopEnv(
             provider_name=cfg.get("provider_name", "docker"),
@@ -53,6 +57,7 @@ def _make_env_factory(cfg: Dict[str, Any]):
             headless=cfg.get("headless", True),
             require_a11y_tree=cfg.get("require_a11y_tree", True),
             require_terminal=cfg.get("require_terminal", False),
+            cache_dir=cache_dir
         )
 
     return _factory

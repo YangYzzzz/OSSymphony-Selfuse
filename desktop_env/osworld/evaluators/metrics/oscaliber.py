@@ -32,25 +32,8 @@ def oscaliber_rule_based_metric(result: Any, expected: Any, options: Dict[str, A
     return 0.0
 
 
-def oscaliber_vlm_based_metric(result: Any, expected: Any, options: Dict[str, Any] | None = None) -> float:
-    """VLM-based 版本评估 metric 的骨架.
-
-    - result: 通常是当前或最终截图, 来自 VLM getter
-    - expected: 可能是期望界面的说明或参考图
-    - options["oscaliber_meta"]: 评估需要的高层语义信息 (evaluation_desc 等)
-
-    在真正实现时, 一般会把 result/expected/meta 打包送给外部的 VLM 模型进行判定;
-    这里仅保留接口和日志.
+def call_vlm_judge(result: Any, options: Dict[str, Any] | None = None) -> float:
     """
-    options = options or {}
-    meta = options.get("oscaliber_meta", {})
-    logger.debug("[oscaliber_vlm_based_metric] meta=%s, result_type=%s, expected_type=%s", meta, type(result), type(expected))
-
-    # TODO: 在这里接入图像 VLM 评估逻辑
-    return 0.0
-
-
-def oscaliber_hard_fail_metric(result: Any, expected: Any, options: Dict[str, Any] | None = None) -> float:
-    """永远返回 0.0 的占位 metric, 用于标记尚未实现的评估."""
-    logger.warning("[oscaliber_hard_fail_metric] called - not implemented")
-    return 0.0
+        需要 vlm judge, 默认返回1, 真正的评估逻辑在外层执行, 不在环境端代码里执行
+    """
+    return 1.0

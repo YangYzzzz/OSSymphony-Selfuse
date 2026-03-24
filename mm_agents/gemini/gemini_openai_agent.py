@@ -272,7 +272,6 @@ class GeminiOpenAIAgent:
                         }
                     }
                 )
-                logger.info(f'LLM Output: {response}')
                 return response
             except Exception as e:
                 print(e)
@@ -429,16 +428,17 @@ class GeminiOpenAIAgent:
             return [], []
 
         choice = response.choices[0]
+        logger.info(f'Choice[0] dump: {choice}.')
+        
         message = choice.message
-
+        message_dict = message.model_dump(exclude_none=True)
         # 将模型回复添加到历史
-        self.messages.append(message.model_dump(exclude_none=True))
-        logger.info(f'Message dump: {message.model_dump(exclude_none=True)}!!!!!!!!!')
+        self.messages.append(message_dict)
 
-        reasoning = message.content or ""
-        logger.info(f'Response: {reasoning}')
+        reasoning = message_dict['reasoning_content'] if 'reasoning_content' in message_dict.keys() else "No thinking."
+        logger.info(f'Reasoning content: {reasoning}')
+
         tool_calls = message.tool_calls
-
         if not tool_calls:
             # 如果没有工具调用，通常意味着结束
             return [
@@ -463,8 +463,7 @@ class GeminiOpenAIAgent:
             # --- 1. 计算绝对坐标 (用于 metadata 和 visualization) ---
             # 这里的坐标必须是绝对坐标 (PyAutoGUI 空间)
             coordinate = None
-            coordinate2 = None
-            
+
             if "x" in function_args and "y" in function_args:
                 abs_x = self.denormalize_x(function_args["x"])
                 abs_y = self.denormalize_y(function_args["y"])
@@ -473,7 +472,7 @@ class GeminiOpenAIAgent:
                 if "destination_x" in function_args and "destination_y" in function_args:
                     dest_x = self.denormalize_x(function_args["destination_x"])
                     dest_y = self.denormalize_y(function_args["destination_y"])
-                    coordinate2 = [coordinate, [dest_x, dest_y]] # 起点, 终点
+                    coordinate = [coordinate, [dest_x, dest_y]] # 起点, 终点
             
             # --- 2. 生成 Action String (用于 metadata 显示) ---
             action_display_str = f"{json.dumps({'name': function_name, 'arguments': function_args}, ensure_ascii=False)}"
@@ -481,8 +480,7 @@ class GeminiOpenAIAgent:
             # --- 3. 生成 Meta Action (详细结构) ---
             meta_action = {
                 "type": function_name,
-                "arguments": function_args,
-                "coordinates_absolute": coordinate
+                "arguments": function_args
             }
 
             # --- 4. 生成 PyAutoGUI Action (用于执行) ---
@@ -502,7 +500,6 @@ class GeminiOpenAIAgent:
                 "thought": reasoning,
                 "action": action_display_str,
                 "coordinate": coordinate,
-                "coordinate2": coordinate2,
                 "meta_action": meta_action
             }
 
