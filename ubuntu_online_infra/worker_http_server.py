@@ -6,9 +6,8 @@ from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-# 根据你现在的脚本路径自定义
-REMOTE_START_SCRIPT = "/nvme/yangbowen/yangbowen/OSSymphony/scripts/rl_env/run_worker_envs_on_remote.sh"
-REMOTE_STOP_SCRIPT = "/nvme/yangbowen/yangbowen/OSSymphony/scripts/rl_env/remote_stop_worker_envs.sh"
+REMOTE_START_SCRIPT = "/nvme/yangbowen/OSSymphony/scripts/rl_env/run_worker_envs.sh"
+REMOTE_STOP_SCRIPT = "/nvme/yangbowen/OSSymphony/scripts/rl_env/stop_worker_envs.sh"
 
 app = FastAPI(title="Worker Env HTTP Server")
 
@@ -86,5 +85,5 @@ def stop_workers():
 # 方便直接 python 运行调试
 if __name__ == "__main__":
     import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=10001)
 
-    uvicorn.run(app, host="0.0.0.0", port=8090)
