@@ -67,7 +67,13 @@ TOOLS_SCHEMA = [
         "function": {
             "name": "open_web_browser",
             "description": "Opens the web browser.",
-            "parameters": {"type": "object", "properties": {}, "required": []}
+            "parameters": {
+                "type": "object", 
+                "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your step-by-step reasoning for why you are opening the browser BEFORE taking the action."}
+                }, 
+                "required": ["thought"]
+            }
         }
     },
     {
@@ -78,10 +84,11 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your step-by-step reasoning for why you are clicking here BEFORE taking the action."},
                     "x": {"type": "integer", "description": "The x coordinate (0-1000)."},
                     "y": {"type": "integer", "description": "The y coordinate (0-1000)."}
                 },
-                "required": ["x", "y"]
+                "required": ["thought", "x", "y"]
             }
         }
     },
@@ -93,10 +100,11 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for hovering here BEFORE taking the action."},
                     "x": {"type": "integer", "description": "The x coordinate (0-1000)."},
                     "y": {"type": "integer", "description": "The y coordinate (0-1000)."}
                 },
-                "required": ["x", "y"]
+                "required": ["thought", "x", "y"]
             }
         }
     },
@@ -108,13 +116,14 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for typing this text here BEFORE taking the action."},
                     "x": {"type": "integer", "description": "The x coordinate (0-1000)."},
                     "y": {"type": "integer", "description": "The y coordinate (0-1000)."},
                     "text": {"type": "string", "description": "The text to type."},
                     "press_enter": {"type": "boolean", "description": "Whether to press enter after typing."},
                     "clear_before_typing": {"type": "boolean", "description": "Whether to clear the field before typing."}
                 },
-                "required": ["x", "y", "text"]
+                "required": ["thought", "x", "y", "text"]
             }
         }
     },
@@ -126,9 +135,10 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for scrolling the document BEFORE taking the action."},
                     "direction": {"type": "string", "enum": ["up", "down", "left", "right"]}
                 },
-                "required": ["direction"]
+                "required": ["thought", "direction"]
             }
         }
     },
@@ -140,12 +150,13 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for scrolling at this location BEFORE taking the action."},
                     "x": {"type": "integer"},
                     "y": {"type": "integer"},
                     "direction": {"type": "string", "enum": ["up", "down", "left", "right"]},
                     "magnitude": {"type": "integer"}
                 },
-                "required": ["x", "y", "direction"]
+                "required": ["thought", "x", "y", "direction"]
             }
         }
     },
@@ -154,7 +165,13 @@ TOOLS_SCHEMA = [
         "function": {
             "name": "wait_5_seconds",
             "description": "Waits for 5 seconds.",
-            "parameters": {"type": "object", "properties": {}, "required": []}
+            "parameters": {
+                "type": "object", 
+                "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for why you need to wait BEFORE taking the action."}
+                }, 
+                "required": ["thought"]
+            }
         }
     },
     {
@@ -162,7 +179,13 @@ TOOLS_SCHEMA = [
         "function": {
             "name": "search",
             "description": "Performs a Google search (Browser action).",
-            "parameters": {"type": "object", "properties": {}, "required": []}
+            "parameters": {
+                "type": "object", 
+                "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for performing this search BEFORE taking the action."}
+                }, 
+                "required": ["thought"]
+            }
         }
     },
     {
@@ -173,9 +196,10 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for navigating to this URL BEFORE taking the action."},
                     "url": {"type": "string"}
                 },
-                "required": ["url"]
+                "required": ["thought", "url"]
             }
         }
     },
@@ -187,9 +211,10 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for using this key combination BEFORE taking the action."},
                     "keys": {"type": "string", "description": "Keys separated by +, e.g. ctrl+c"}
                 },
-                "required": ["keys"]
+                "required": ["thought", "keys"]
             }
         }
     },
@@ -201,12 +226,13 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for dragging and dropping BEFORE taking the action."},
                     "x": {"type": "integer"},
                     "y": {"type": "integer"},
                     "destination_x": {"type": "integer"},
                     "destination_y": {"type": "integer"}
                 },
-                "required": ["x", "y", "destination_x", "destination_y"]
+                "required": ["thought", "x", "y", "destination_x", "destination_y"]
             }
         }
     }
@@ -459,6 +485,14 @@ class GeminiOpenAIAgent:
         for tool_call in tool_calls:
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
+
+            # 从参数里把 thought 提取出来，当作 reasoning 显示
+            extracted_thought = function_args.pop("thought", "[No Thought Provided]")
+            if not reasoning: 
+                reasoning = extracted_thought
+            else:
+                reasoning += f"\n{extracted_thought}"
+            logger.info(f'Response Reasoning: {reasoning}')
             
             # --- 1. 计算绝对坐标 (用于 metadata 和 visualization) ---
             # 这里的坐标必须是绝对坐标 (PyAutoGUI 空间)
