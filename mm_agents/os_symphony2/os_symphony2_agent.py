@@ -179,6 +179,7 @@ inefficient or repetitive.
             }
         }
 
+        # 有优化空间
         system_prompt = """# Role & Goal
 You are a powerful OS Agent capable of both GUI interaction and direct System-Level programming.
 Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
@@ -249,7 +250,7 @@ Instruction: {instruction}
 
         # 当前轮 user 消息
         curr_user_content = []
-        if self.last_code_result is not None:
+        if self.last_code_result:
             # 有代码执行结果则优先喂代码结果，不再附截图
             curr_user_content.append(
                 {
@@ -257,6 +258,7 @@ Instruction: {instruction}
                     "text": f"Code Execution Result:\n```\n{self.last_code_result}\n```\nPlease continue based on this result.",
                 }
             )
+            self.last_code_result = None
         else:
             # 没有代码结果则附当前截图
             curr_img_url = f"data:image/png;base64,{processed_image}"
@@ -277,9 +279,6 @@ Instruction: {instruction}
                 "content": curr_user_content,
             }
         )
-
-        # 用完立刻清掉，避免污染下一轮逻辑
-        self.last_code_result = None
 
         # ========= 在 messages 上做截图裁剪 =========
         self._cleanup_old_screenshots()
@@ -303,7 +302,7 @@ Instruction: {instruction}
         # Update History
         self.responses.append(response)
 
-        low_level_instruction, pyautogui_code = self.parse_response(
+        meta_data, pyautogui_code = self.parse_response(
             response,
             width,
             height,
@@ -311,10 +310,8 @@ Instruction: {instruction}
             processed_height,
         )
 
-        logger.info(f"Low level instruction: {low_level_instruction}")
         logger.info(f"Pyautogui code: {pyautogui_code}")
-
-        return response, pyautogui_code
+        return meta_data, pyautogui_code
     
     def _cleanup_old_screenshots(self):
         """
@@ -403,30 +400,69 @@ Instruction: {instruction}
         original_height: int = None,
         processed_width: int = None,
         processed_height: int = None,
-    ) -> Tuple[str, List[str]]:
-        """
-        Parse LLM response and convert it to low level action and pyautogui code.
-        """
-        low_level_instruction = ""
+    ) -> Tuple[List[Dict], List[str]]:
+        """Parse LLM response and convert it to metadata and pyautogui code."""
+        import re
+
         pyautogui_code: List[str] = []
+        meta_data: List[Dict] = []
 
         if response is None or not response.strip():
-            return low_level_instruction, pyautogui_code
+            return meta_data, pyautogui_code
+
+        # ---- extract thought (before </think>) ----
+        thought = ""
+        think_match = re.search(r"<think>([\s\S]*?)</think>", response)
+        if think_match:
+            thought = think_match.group(1).strip()
+        think_match_2 = re.search(r"([\s\S]*?)</think>", response)
+        if not thought and think_match_2:
+            thought = think_match_2.group(1).strip()
+
+        # ---- extract Action: line ----
+        action_text = ""
+        action_match = re.search(r"^\s*Action:\s*(.+)$", response, flags=re.MULTILINE | re.IGNORECASE)
+        if action_match:
+            action_text = action_match.group(1).strip()
 
         def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
             if not (original_width and original_height):
                 return int(x), int(y)
             if self.coordinate_type == "absolute":
-                # scale from processed pixels to original
                 if processed_width and processed_height:
                     x_scale = original_width / processed_width
                     y_scale = original_height / processed_height
                     return int(x * x_scale), int(y * y_scale)
                 return int(x), int(y)
-            # relative: scale from 0..999 grid
             x_scale = original_width / 999
             y_scale = original_height / 999
             return int(x * x_scale), int(y * y_scale)
+
+        def make_meta(code: str, coordinate: Optional[List[int]] = None) -> Dict:
+            return {
+                "raw_response": response,
+                "thought": thought,
+                "action": action_text,
+                "code": code,
+                "coordinate": coordinate or [],
+            }
+
+        # ---- extract all tool_call JSON blocks ----
+        # support both wrapped in <tool_call>...</tool_call> and bare JSON lines
+        tool_json_blocks: List[str] = []
+
+        for m in re.finditer(r"<tool_call>([\s\S]*?)</tool_call>", response):
+            block = m.group(1).strip()
+            if block:
+                tool_json_blocks.append(block)
+
+        # de-duplicate while preserving order
+        seen = set()
+        unique_blocks = []
+        for b in tool_json_blocks:
+            if b not in seen:
+                seen.add(b)
+                unique_blocks.append(b)
 
         def process_tool_call(json_str: str) -> None:
             try:
@@ -435,51 +471,65 @@ Instruction: {instruction}
                 action = args["action"]
 
                 if action == "left_click":
+                    coord: List[int] = []
                     if "coordinate" in args:
                         x, y = args["coordinate"]
                         adj_x, adj_y = adjust_coordinates(x, y)
-                        pyautogui_code.append(f"pyautogui.click({adj_x}, {adj_y})")
+                        coord = [adj_x, adj_y]
+                        code_str = f"pyautogui.click({adj_x}, {adj_y})"
                     else:
-                        pyautogui_code.append("pyautogui.click()")
+                        code_str = "pyautogui.click()"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str, coord))
 
                 elif action == "right_click":
+                    coord: List[int] = []
                     if "coordinate" in args:
                         x, y = args["coordinate"]
                         adj_x, adj_y = adjust_coordinates(x, y)
-                        pyautogui_code.append(
-                            f"pyautogui.rightClick({adj_x}, {adj_y})"
-                        )
+                        coord = [adj_x, adj_y]
+                        code_str = f"pyautogui.rightClick({adj_x}, {adj_y})"
                     else:
-                        pyautogui_code.append("pyautogui.rightClick()")
+                        code_str = "pyautogui.rightClick()"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str, coord))
 
                 elif action == "middle_click":
+                    coord: List[int] = []
                     if "coordinate" in args:
                         x, y = args["coordinate"]
                         adj_x, adj_y = adjust_coordinates(x, y)
-                        pyautogui_code.append(
-                            f"pyautogui.middleClick({adj_x}, {adj_y})"
-                        )
+                        coord = [adj_x, adj_y]
+                        code_str = f"pyautogui.middleClick({adj_x}, {adj_y})"
                     else:
-                        pyautogui_code.append("pyautogui.middleClick()")
+                        code_str = "pyautogui.middleClick()"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str, coord))
 
                 elif action == "double_click":
+                    coord: List[int] = []
                     if "coordinate" in args:
                         x, y = args["coordinate"]
                         adj_x, adj_y = adjust_coordinates(x, y)
-                        pyautogui_code.append(
-                            f"pyautogui.doubleClick({adj_x}, {adj_y})"
-                        )
+                        coord = [adj_x, adj_y]
+                        code_str = f"pyautogui.doubleClick({adj_x}, {adj_y})"
                     else:
-                        pyautogui_code.append("pyautogui.doubleClick()")
+                        code_str = "pyautogui.doubleClick()"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str, coord))
 
                 elif action == "type":
                     text = args.get("text", "")
                     lines = text.split("\n")
                     for idx, line in enumerate(lines):
                         if line:
-                            pyautogui_code.append(f"pyautogui.typewrite({repr(line)}, interval=0.03)")
+                            code_str = f"pyautogui.typewrite({repr(line)}, interval=0.03)"
+                            pyautogui_code.append(code_str)
+                            meta_data.append(make_meta(code_str))
                         if idx < len(lines) - 1:
-                            pyautogui_code.append("pyautogui.press('enter')")
+                            code_str = "pyautogui.press('enter')"
+                            pyautogui_code.append(code_str)
+                            meta_data.append(make_meta(code_str))
 
                 elif action == "key":
                     keys = args.get("keys", [])
@@ -503,96 +553,67 @@ Instruction: {instruction}
 
                     keys_str = ", ".join([f"'{key}'" for key in keys])
                     if len(keys) > 1:
-                        pyautogui_code.append(f"pyautogui.hotkey({keys_str})")
+                        code_str = f"pyautogui.hotkey({keys_str})"
                     else:
-                        pyautogui_code.append(f"pyautogui.press({keys_str})")
+                        code_str = f"pyautogui.press({keys_str})"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str))
 
                 elif action == "scroll":
                     pixels = args.get("pixels", 0)
-                    pyautogui_code.append(f"pyautogui.scroll({pixels})")
+                    code_str = f"pyautogui.scroll({pixels})"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str))
 
                 elif action == "wait":
-                    pyautogui_code.append("WAIT")
+                    code_str = "WAIT"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str))
 
                 elif action == "terminate":
-                    pyautogui_code.append("DONE")
+                    code_str = "DONE"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str))
 
                 elif action == "mouse_move":
+                    coord: List[int] = []
                     if "coordinate" in args:
                         x, y = args["coordinate"]
                         adj_x, adj_y = adjust_coordinates(x, y)
-                        pyautogui_code.append(
-                            f"pyautogui.moveTo({adj_x}, {adj_y})"
-                        )
+                        coord = [adj_x, adj_y]
+                        code_str = f"pyautogui.moveTo({adj_x}, {adj_y})"
                     else:
-                        pyautogui_code.append("pyautogui.moveTo(0, 0)")
+                        code_str = "pyautogui.moveTo(0, 0)"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str, coord))
 
                 elif action == "left_click_drag":
+                    coord: List[int] = []
                     if "coordinate" in args:
                         x, y = args["coordinate"]
                         adj_x, adj_y = adjust_coordinates(x, y)
+                        coord = [adj_x, adj_y]
                         duration = args.get("duration", 0.5)
-                        pyautogui_code.append(
-                            f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})"
-                        )
+                        code_str = f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})"
                     else:
-                        pyautogui_code.append("pyautogui.dragTo(0, 0)")
-                # 新增 execute_code 的解析逻辑
+                        code_str = "pyautogui.dragTo(0, 0)"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str, coord))
+
                 elif action == "execute_code":
                     code_content = args.get("code", "")
                     language = args.get("language", "python")
-                    # 使用特殊的分隔符封装，以便下游执行引擎 (Environment) 拦截
-                    # 确保 code_content 里的换行符等被安全转义或传递
-                    # encoded_code = base64.b64encode(code_content.encode('utf-8')).decode('utf-8')
-                    # pyautogui_code.append(f"EXEC_CODE|{language}|{encoded_code}")code_content
-                    pyautogui_code.append(f"EXEC_CODE|{language}|{code_content}")
+                    code_str = f"EXEC_CODE|{language}|{code_content}"
+                    pyautogui_code.append(code_str)
+                    meta_data.append(make_meta(code_str))
+
             except (json.JSONDecodeError, KeyError) as e:
                 logger.error(f"Failed to parse tool call: {e}")
 
-        lines = response.split("\n")
-        inside_tool_call = False
-        current_tool_call: List[str] = []
+        for block in unique_blocks:
+            process_tool_call(block)
 
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            if line.lower().startswith(("action:")):
-                if not low_level_instruction:
-                    low_level_instruction = line.split("Action:")[-1].strip()
-                continue
-
-            if line.startswith("<tool_call>"):
-                inside_tool_call = True
-                continue
-            elif line.startswith("</tool_call>"):
-                if current_tool_call:
-                    process_tool_call("\n".join(current_tool_call))
-                    current_tool_call = []
-                inside_tool_call = False
-                continue
-
-            if inside_tool_call:
-                current_tool_call.append(line)
-                continue
-
-            if line.startswith("{") and line.endswith("}"):
-                try:
-                    json_obj = json.loads(line)
-                    if "name" in json_obj and "arguments" in json_obj:
-                        process_tool_call(line)
-                except json.JSONDecodeError:
-                    pass
-
-        if current_tool_call:
-            process_tool_call("\n".join(current_tool_call))
-
-        if not low_level_instruction and len(pyautogui_code) > 0:
-            action_type = pyautogui_code[0].split(".", 1)[1].split("(", 1)[0]
-            low_level_instruction = f"Performing {action_type} action"
-
-        return low_level_instruction, pyautogui_code
+        return meta_data, pyautogui_code
     
     def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
         """

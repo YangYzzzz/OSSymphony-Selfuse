@@ -188,26 +188,24 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
     # 设置线程级别的全局变量, 以便于 call_llm_safe 统计 token 使用情况
 
     while not done and step_idx < max_steps:
-        response, actions = agent.predict(
+        responses, actions = agent.predict(
             instruction,
             obs
         )
         # 理论上每一轮只会产生一个操作
-        for action in actions:
+        for i, (response, action) in enumerate(zip(responses, actions)):
             # Save screenshot and trajectory information
-            if "reflection" in response and response["reflection"].get("is_milestone"):
-                img_name = f"step_{step_idx + 1}_milestone.png"
-            else:
-                img_name = f"step_{step_idx + 1}.png"
-                
-            with open(os.path.join(example_result_dir, img_name),
-                      "wb") as _f:
-                _f.write(obs['screenshot'])
-            if "coordinates" in response and response["coordinates"]:
+            img_name = f"step_{step_idx + 1}.png"
+            
+            if i == 0:
+                with open(os.path.join(example_result_dir, img_name), "wb") as _f:
+                    _f.write(obs['screenshot'])
+
+            if "coordinate" in response and isinstance(response["coordinate"], list):
                 draw_coordinates(
-                    image_bytes=obs['screenshot'], 
-                    coordinates=response["coordinates"], 
-                    save_path=os.path.join(example_result_dir, img_name[:-4] + "_draw.png")
+                    image_bytes=obs['screenshot'],
+                    coordinates=response["coordinate"],
+                    save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
                 )
             
             if action.startswith("EXEC_CODE"):        # 如果是执行代码，就在这里提前执行好
@@ -230,34 +228,37 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 agent.last_code_result = result_content
 
             obs, reward, done, info = env.step(action, args.sleep_after_execution)
-
-            logger.info("Done: %s", done)
-
-            with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
-                f.write(json.dumps({
-                    "instruction": instruction,
-                    "step_num": step_idx + 1,
-                    "action": action,
-                    "response": response,
-                    "done": done,
-                    "info": info,
-                    "screenshot_file": img_name
-                }))
-                f.write("\n")
-            with open(os.path.join(example_result_dir, f"traj_{step_idx+1}.json"), "w", encoding="utf-8") as f:
-                json.dump({
-                    "step_num": step_idx + 1,
-                    "action": action,
-                    "response": response,
-                    "done": done,
-                    "info": info,
-                    "screenshot_file": img_name
-                }, f, indent=4, ensure_ascii=False)
             if done:
                 logger.info("The episode is done.")
                 time.sleep(60)
                 break
+            logger.info("Done: %s", done)
+
+        # logging
+        with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "instruction": instruction,
+                "step_num": step_idx + 1,
+                "action": actions,
+                "response": responses,
+                "done": done,
+                "info": info,
+                "screenshot_file": img_name
+            }))
+            f.write("\n")
+        with open(os.path.join(example_result_dir, f"traj_{step_idx+1}.json"), "w", encoding="utf-8") as f:
+            json.dump({
+                "instruction": instruction,
+                "step_num": step_idx + 1,
+                "action": actions,
+                "response": responses,
+                "done": done,
+                "info": info,
+                "screenshot_file": img_name
+            }, f, indent=4, ensure_ascii=False)
+
         step_idx += 1
+
     end_time = time.time()
     result = float(env.evaluate())
     logger.info("Result: %.2f", result)
