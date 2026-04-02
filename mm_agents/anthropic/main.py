@@ -478,7 +478,7 @@ class AnthropicAgent:
             type="text",
             text=f"{SYSTEM_PROMPT_WINDOWS if self.platform == 'Windows' else SYSTEM_PROMPT}{' ' + self.system_prompt_suffix if self.system_prompt_suffix else ''}"
         )
-        logger.info(f'[System Prompt]: {system}')
+        # logger.info(f'[System Prompt]: {system}')
         # resize screenshot if resize_factor is set
         if obs and "screenshot" in obs:
             # Convert bytes to PIL Image
@@ -594,8 +594,6 @@ class AnthropicAgent:
         }
         
         tools = [
-            tool_config,
-        ] if self.platform == 'Ubuntu' else [
             tool_config,
         ]
 

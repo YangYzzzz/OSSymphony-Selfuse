@@ -32,6 +32,7 @@ from mm_agents.uitars15_v2 import UITarsAgent
 from mm_agents.gemini.gemini_openai_agent import GeminiOpenAIAgent as GeminiAgent
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 from mm_agents.openai.gpt54_agent import GPT54Agent
+from mm_agents.anthropic.main_with_code import AnthropicAgentWithCode
 
 
 # Global variables for signal handling
@@ -128,6 +129,9 @@ def config() -> argparse.Namespace:
         "--rollout_times", type=int, default=10, help="Rollout times" # 也就是随机选择多少次app, 当 mode 为 online 时生效
     )
     parser.add_argument(
+        "--rollout_max_apps_per_group", type=int, default=2, help="Max app numbers per rollout" # 每次roll最多多少个软件混合生成任务 Beta版本测试
+    )
+    parser.add_argument(
         "--rollout_task_nums", type=int, default=10, help="Task numbers per rollout" # 每次roll多少个任务, 当 mode 为 online 时生效
     )
     parser.add_argument(
@@ -140,10 +144,12 @@ def config() -> argparse.Namespace:
     parser.add_argument("--ig_base_url", type=str, default="https://api.boyuerichdata.opensphereai.com/v1")
     parser.add_argument("--ig_api_key", type=str, default="")
     parser.add_argument("--ig_temperature", type=float, default=0.5)
+    parser.add_argument("--ig_top_p", type=float, default=0.95)
     parser.add_argument("--ig_max_tokens", type=int, default=32768)
 
     # mode
-    parser.add_argument("--enable_self_judge", action="store_true", default=False) # 是否采用 self-judge, TODO: @Yang
+    parser.add_argument("--enable_self_judge", action="store_true", default=False) # 是否采用 self-judge
+    parser.add_argument("--enable_code_tool", action="store_true", default=False)
 
     args = parser.parse_args()
     return args
@@ -156,32 +162,16 @@ logger.setLevel(log_level)
 
 datetime_str: str = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
 
-file_handler = logging.FileHandler(
-    os.path.join("logs", "normal-{:}.log".format(datetime_str)), encoding="utf-8"
-)
-debug_handler = logging.FileHandler(
-    os.path.join("logs", "debug-{:}.log".format(datetime_str)), encoding="utf-8"
-)
 stdout_handler = logging.StreamHandler(sys.stdout)
-
-file_handler.setLevel(logging.INFO)
-debug_handler.setLevel(logging.DEBUG)
 stdout_handler.setLevel(log_level)
-
 formatter = logging.Formatter(
     fmt="\x1b[1;33m[%(asctime)s \x1b[31m%(levelname)s \x1b[32m%(module)s/%(lineno)d-%(processName)s\x1b[1;33m] \x1b[0m%(message)s"
 )
-file_handler.setFormatter(formatter)
-debug_handler.setFormatter(formatter)
 stdout_handler.setFormatter(formatter)
-
 stdout_handler.addFilter(logging.Filter("desktopenv"))
 
-# logger.addHandler(file_handler)
-# logger.addHandler(debug_handler)
-logger.addHandler(stdout_handler)
-#  }}} Logger Configs #
 
+logger.addHandler(stdout_handler)
 logger = logging.getLogger("desktopenv.experiment")
 
 
@@ -275,15 +265,26 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 coordinate_type="relative"
             )
         elif "claude" in args.model.lower():
-            agent = AnthropicAgent(
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                max_tokens=args.max_tokens,
-                temperature=args.temperature,
-                top_p=args.top_p,
-                no_thinking=not args.use_thinking
-            )
+            if not args.enable_code_tool:
+                agent = AnthropicAgent(
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    max_tokens=args.max_tokens,
+                    temperature=args.temperature,
+                    top_p=args.top_p,
+                    no_thinking=not args.use_thinking
+                )
+            else:
+                agent = AnthropicAgentWithCode(
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    max_tokens=args.max_tokens,
+                    temperature=args.temperature,
+                    top_p=args.top_p,
+                    no_thinking=not args.use_thinking
+                )
         elif "kimi" in args.model.lower():
             # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
             agent = KimiAgent(
@@ -501,6 +502,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             "base_url": getattr(args, "ig_base_url", ""),
             "api_key": getattr(args, "ig_api_key", ""),
             "temperature": getattr(args, "ig_temperature", None),
+            # "top_p": getattr(args, "ig_top_p", None),
             "agent_name": "coarse_instruction_generator"
         }
         ig_agent = InstructionGenerationAgent(engine_params=engine_params)
@@ -513,7 +515,7 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
                 break
 
             # task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
-            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
+            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list, max_apps_per_group=args.rollout_max_apps_per_group)
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])

@@ -6,7 +6,7 @@ import time
 from PIL import Image, ImageDraw
 from wrapt_timeout_decorator import *
 import io
-from typing import List, Union
+from typing import Callable, List, Union
 from mm_agents.os_symphony.utils.common_utils import draw_coordinates
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 import copy
@@ -345,7 +345,6 @@ def absolute_to_relative_coordinate(coords: list, height, width):
 def run_single_example_os_caliber_omni(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     # Setup logger
     set_current_result_dir(example_result_dir)
-
     # Reset Environment and Agent
     agent.reset()
     env.reset(task_config=example)
@@ -379,9 +378,13 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         "trajectory": [],
         "trajectory_length": 0,
         "model_judge": {
-            "binary_reward": 0,
+            "binary_reward": -1,
             "rationale": ""
-        }
+        },
+        "rule_judge": {
+            "reward": -1
+        },
+        "score": 0
     }
 
     while not done and step_idx < max_steps:
@@ -410,15 +413,13 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                     _f.write(obs['screenshot'])
 
             # Optional: Draw coordinates for debug visualization
-            if "coordinate" in response_per_action and isinstance(response_per_action["coordinate"], list):
-                coordinates = response_per_action["coordinate"]
-                # if "coordinate2" in response_per_action and isinstance(response_per_action["coordinate2"], list):
-                #     coordinates += response_per_action["coordinate2"]
-                draw_coordinates(
-                    image_bytes=obs['screenshot'], 
-                    coordinates=coordinates if not isinstance(coordinates[0], list) else coordinates[0] + coordinates[1], # 1 point and 2 point
-                    save_path=os.path.join(example_result_dir, f"step_{step_idx}_draw.png")
-                )
+            # if "coordinate" in response_per_action and isinstance(response_per_action["coordinate"], list):
+            #     coordinates = response_per_action["coordinate"]
+            #     draw_coordinates(
+            #         image_bytes=obs['screenshot'], 
+            #         coordinates=coordinates if not isinstance(coordinates[0], list) else coordinates[0] + coordinates[1], # 1 point and 2 point
+            #         save_path=os.path.join(example_result_dir, f"step_{step_idx}_draw.png")
+            #     )
 
             raw_response = response_per_action.get("raw_response", "")
             thought = response_per_action.get("thought", "")
@@ -443,6 +444,26 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                         coordinate_1 = None
 
             # Execute Environment Step
+            if action.startswith("BASH") or action.startswith("PYTHON"):        # 如果是执行代码，就在这里提前执行好
+                lang, code = action.split("|")
+                if lang == "PYTHON":
+                    result = env.controller.run_python_script(code)
+                elif lang == "BASH":
+                    result = env.controller.run_bash_script(code)
+                else:
+                    result = {
+                        'error': f"Not support code type: {lang}."
+                    }
+                action = code
+
+                # 制作code的返回日志
+                result_content = ""
+                result_content += f"Status: {result.get('status', '')}\n"
+                result_content += f"Output: {result.get('output', '')}\n"
+                result_content += f"Error: {result.get('error', '')}\n"
+                result_content += f"Message: {result.get('message', '')}\n"
+                agent.last_code_result = result_content
+
             obs, _, done, _ = env.step(action, args.sleep_after_execution)
             
             if done:
@@ -458,7 +479,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             ), # Relative path
             "raw_response": raw_response, # Full response
             "thought": thought,  # Thought
-            "action": ";".join(action_list), # Action str, not pyautogui
+            "action": ";".join(action_list), # Action str, maybe pyautogui
             "coordinate": coordinate_1, # [x, y] or None
             "coordinate2": coordinate_2, # [[x1,y1], [x2,y2]] or None
             "meta_action": meta_action
@@ -474,24 +495,24 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
 
     # --- Evaluation ---
     # Check if agent has evaluate method and it is callable
-    if args.enable_self_judge:
-        try:
-            # Passing both instruction and obs as requested
-            result = agent.evaluate(instruction, obs)
-            
-            # Update model_judge in meta_json
-            meta_json["model_judge"]["binary_reward"] = result['score']
-            meta_json["model_judge"]["rationale"] = result['thought']
-            
-        except Exception as e:
-            logger.error(f"Error during agent evaluation: {e}")
-            meta_json["model_judge"]["binary_reward"] = 0
-            meta_json["model_judge"]["rationale"] = f"Evaluation failed: {e}"
-    else:
-        meta_json["model_judge"]["binary_reward"] = 0
-        meta_json["model_judge"]["rationale"] = "Not enable agent's self judge."
+    need_vlm_judge = args.enable_self_judge and hasattr(agent, "evaluate") and callable(agent.evaluate) # and example.get("evaluator", {}).get("need_vlm_judge", False)
+    need_rule_judge = example.get("evaluator", {}).get("need_rule_judge", False)
+    if need_vlm_judge:
+        # Passing both instruction and obs as requested
+        hint = example.get("evaluator").get("vlm_desc", "")
+        vlm_evaluate_result = agent.evaluate(instruction, obs) # TODO: 将 check hint 注入 vlm evaluate prompt 内
+        
+        # Update model_judge in meta_json
+        meta_json["model_judge"]["binary_reward"] = float(vlm_evaluate_result['score'])
+        meta_json["model_judge"]["rationale"] = vlm_evaluate_result['thought']
 
-    scores.append(1) # No use
+    if need_rule_judge:
+        meta_json["rule_judge"]["reward"] = float(env.evaluate())
+
+    final_result = (meta_json["model_judge"]["binary_reward"] + meta_json["rule_judge"]["reward"]) / 2.0 if need_vlm_judge and need_rule_judge \
+            else meta_json["model_judge"]["binary_reward"] if need_vlm_judge else meta_json["rule_judge"]["reward"]
+    meta_json["score"] = final_result
+    scores.append(final_result) # No use
 
     # --- Save Meta JSON ---
     meta_json_path = os.path.join(os.path.dirname(example_result_dir), f"meta_{example['id']}.json")

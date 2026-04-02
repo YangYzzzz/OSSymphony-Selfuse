@@ -1,6 +1,7 @@
 """Worker dispatcher – load balancing, health checks, and acquire routing."""
 
 import logging
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -13,7 +14,6 @@ from gateway.models import AcquireResponse, WorkerRegisterRequest
 logger = logging.getLogger(__name__)
 
 MAX_CONSECUTIVE_FAILURES = 3
-
 
 @dataclass
 class WorkerRecord:

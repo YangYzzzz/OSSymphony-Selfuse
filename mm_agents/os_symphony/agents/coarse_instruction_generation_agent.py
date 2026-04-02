@@ -24,9 +24,15 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Unless otherwise specified, any new files you create should be saved under a reasonable subdirectory of "~/Desktop".
 
     ## Applications
-    - You may be given one or more applications in the current environment.
-    - In the current setting, you are given exactly ONE application name: {app_name}. You MUST NOT introduce or use any other applications in your tasks.
-    - All tasks must be achievable using this single application plus the filesystem under "/home/user".
+    - In the current setting, you have one MAIN application: {main_app_name}.
+    - You may also be given a set of additional available applications: {available_app_list}.
+    - The MAIN application {main_app_name} MUST be used in every task.
+    - You MUST treat the additional applications in {available_app_list} as required resources when they are provided:
+        - If {available_app_list} indicates there is only the MAIN application (no additional apps), then each task MUST use **only** {main_app_name}.
+        - When multiple additional apps are available, you SHOULD design tasks that involve **cross-application collaboration** (for example, creating or editing a file in one app and then refining, converting, analyzing, or presenting it in another app) whenever this is logically supported by their roles.
+    - For each task, the `related_apps` field MUST include **all** applications that are actually needed to complete the task, and you SHOULD avoid listing apps that are not genuinely used.
+    - You MUST NOT introduce or use any other applications outside this set.
+    - All tasks must be achievable using these applications plus the filesystem under "/home/user".
 
     ## Task objectives
     You must generate exactly {task_numbers} independent tasks that:
@@ -39,21 +45,25 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - "description" (string): Natural-language description of what the user should achieve.
     - "complexity" (string): One of "simple", "medium", or "complex".
     - "category" (string): One of:
-        - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application.
+        - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application(s).
         - "app_only": The task primarily changes application settings, preferences, themes, layouts, or built-in tools, without relying on pre-existing files.
         - "mixed": The task combines file operations and application configuration changes in one workflow.
+    - "related_apps" (array of strings): The list of application names used in this task.
+        - This array MUST always include the MAIN application "{main_app_name}".
+        - It MAY additionally include any subset of the applications listed in {available_app_list}.
+        - It MUST NOT contain applications outside this set.
     - "evaluation" (object):
         - "need_rule_judge" (bool): whether this task must be judged using rule-based Python functions.
         - "need_vlm_judge" (bool): whether this task must be judged using a visual-language model (VLM) from screenshots. At least one of these MUST be true. It is allowed for both to be true.
         - "vlm_desc" (string, optional): when "need_vlm_judge" is true, a concise description of what the final GUI should look like so a VLM can judge success.
         - "rule_items" (array, optional): when "need_rule_judge" is true, an array of independent rule-based checks. Each element MUST be an object with:
             - "result_getter" (object): how to obtain the actual result value to be checked. Exactly one of:
-                - {{"type": "vm_file", "path": "/path/inside/vm", "dest": "/path/on/host"}} This means: copy the file at "path" from the VM to a host-side temporary location. The Python function will receive the local path as `result`.
+                - {{"type": "vm_file", "path": "/path/inside/vm", "dest": "/path/on/host"}} This means: copy the file from the VM to a host-side temporary location. The "dest" field typically only needs to retain the filename, and the file will be downloaded to the cache directory by default. The Python function will receive the temporary path as `result`.
                 - {{"type": "vm_command_line", "command": ["arg1", "arg2", ...]}} This means: run the given command list inside the VM shell and pass its textual output as `result`.
-            - "expected_getter" (object, optional): how to obtain an optional second value for comparison. Allowed forms are the same as for "result_getter". If you do NOT need a second value, set {{"type": "empty"}} or omit this field.
+            - "expected_getter" (object, optional): how to obtain an optional second value for comparison. Allowed forms are the same as for "result_getter". If you do NOT need a second value, set {{"type": "empty"}}.
             - "code" (string): the FULL Python function definition implementing this rule. See the template below for the exact required structure.
               - The function name inside the code MUST use the common prefix "call_rule_judge_".
-              - Within each task, you SHOULD conceptually number these functions locally for that task only (e.g. "call_rule_judge_1", "call_rule_judge_2", ...), but you do NOT need to output "function_name" explicitly; the system will extract the function name from the code and construct "function_name" automatically.
+              - Within each task, you SHOULD conceptually number these functions locally for that task only (e.g. "call_rule_judge_1", "call_rule_judge_2", ...).
     - "estimated_steps" (integer): Approximate number of primitive user actions (mouse clicks, drags, key presses) required to complete the task.
 
     ## Evaluation design
@@ -74,8 +84,8 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - When "evaluation.need_vlm_judge" is true, you MUST provide a clear "vlm_desc" string that describes the final GUI state and, where helpful, key intermediate GUI states during execution, so that a VLM can reliably judge success from screenshots.
 
     - Rule-based checks MUST follow these principles:
-        - Core idea: "everything is a file". For Command-UI-Agent (CUA) style tasks whose goal is to WRITE or transform something, the final result should be reflected in one or more files inside the VM. These files may be:
-            - Common formats such as .txt, .md, .pdf, .xlsx, .docx, .pptx, .mp3, .png, .jpg, .json, .mp4, .wav, etc.
+        - Core idea: "everything is a file". The final result should be reflected in one or more files inside the VM. These files may be:
+            - Common formats such as .txt, .md, .pdf, .xlsx, .docx, .pptx, .mp3, .png, .jpg, .json, .mp4, .wav, .blend, etc.
                 - You can use any reasonable Python packages to read and analyze these files (e.g., `python-docx`/`python-pptx`/`openpyxl`/`pandas` for Office documents, `PyPDF2`/`pdfplumber` for PDFs, `Pillow` for images, and `pydub`/`librosa`/`ffmpeg-python` for audio/video).
             - Less common formats such as .dxf or application-specific project files.
             - Files that are easy to locate (e.g., under "~/Desktop").
@@ -83,7 +93,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - For rule-based checks you MUST rely ONLY on:
             - Files inside the VM filesystem that can be copied out (vm_file), OR
             - Command outputs obtained from the VM shell (vm_command_line), typically via application CLIs or helper tools that expose internal state.
-        - You MUST NOT use remote/cloud golden files or any resource that cannot be accessed from inside the VM.
+        - When tasks involve cloud-based or remote resources (e.g., web documents or online files), you SHOULD explicitly add a step that downloads or exports the relevant content to a local file under "~/Desktop/..." so that it can be evaluated via vm_file.
         - Prefer using {{"type": "empty"}} for "expected_getter" when the rule can be fully hard-coded inside the function.
 
     - Detailed distinction between Rule-based and VLM-based tasks:
@@ -162,28 +172,28 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     Use these guidelines:
 
     - "simple":
-        - Typically 10–20 user actions.
+        - Typically 10–15 gui actions.
         - Single-file workflows or small configuration changes.
     - "medium":
-        - Typically 20–35 actions.
-        - Multi-step workflows, multiple files or views, or a combination of a small settings change plus file editing.
+        - Typically 15–30 gui actions.
+        - Multi-step workflows, multiple files or views, or a combination of a settings change plus file editing.
     - "complex":
-        - Typically 35–60 actions.
-        - Longer workflows involving settings, multiple documents/projects, or non-trivial navigation across several views.
+        - Typically 30–50 gui actions.
+        - Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation across several views.
 
     Choose "estimated_steps" consistent with the complexity level and the actual operations required.
 
-    ## Diversity requirements (CRITICAL)
+    ## Diversity requirements
     Across the {task_numbers} tasks you generate:
 
     - Vary the difficulty: Include a spread of "simple", "medium", and "complex" tasks.
     - Vary the functional coverage: Use different features or workflows of the application (editing, formatting, searching, filters, views, settings, exports, imports, etc., depending on {app_name}).
     - Avoid generating multiple tasks that are essentially the same goal with only superficial wording changes.
 
-    ## Verifiability and paths (CRITICAL)
+    ## Verifiability and paths
     For every task:
 
-    - Any file that is read, edited, or inspected must be identified with a unique, unambiguous "~"-based path. You may reuse paths from `launch_paths`, or introduce new paths under "~/Desktop" or other sensible subdirectories of the home directory.
+    - Any file that is read, edited, or inspected must be identified with a unique, unambiguous "~"-based path. You may introduce new paths under "~/Desktop" or other sensible subdirectories of the home directory.
     - If the task modifies a file, you MUST make it explicit in "description" that the user should save the file before finishing.
 
     ## Use of application tutorials (if provided)
@@ -282,10 +292,6 @@ class InstructionGenerationAgent:
             if not isinstance(rule_items_raw, list):
                 rule_items_raw = []
 
-            # If both flags are False but there are rule items, default to need_rule = True
-            if not need_rule and not need_vlm and rule_items_raw:
-                need_rule = True
-
             # Build normalized rule_items structure
             normalized_rule_items = []
 
@@ -312,34 +318,35 @@ class InstructionGenerationAgent:
 
                 code_str = ri.get("code") or ""
                 if not isinstance(code_str, str):
-                    logger.warning("rule_item code is not a string, skipping this rule item")
-                    continue
+                    raise Exception("Response must contain code field.")
 
                 fn_name = _extract_function_name_from_code(code_str)
                 if not fn_name:
-                    logger.warning(
-                        "Failed to extract function name from rule_item code via AST; expected a valid Python function starting with 'call_rule_judge_'"
-                    )
-                    continue
+                    raise Exception("Code str must contain function name.")
 
                 def _norm_getter(g: Any) -> Dict[str, Any]:
                     if not isinstance(g, dict):
                         return {"type": "empty"}
                     g_type = g.get("type")
                     if g_type == "vm_file":
+                        path = str(g.get("path", ""))
+                        if not path:
+                            raise Exception("VM File must contain path field.")
+                        dest = str(g.get("dest", path.split("/")[-1]))
                         return {
                             "type": "vm_file",
-                            "path": str(g.get("path", "")),
-                            "dest": str(g.get("dest", "")),
+                            "path": path,
+                            "dest": dest,
                         }
                     if g_type == "vm_command_line":
                         cmd = g.get("command")
+                        if not cmd:
+                            raise Exception("VM Command line must contain command field.")
                         if isinstance(cmd, list):
                             cmd_list = [str(c) for c in cmd]
-                        elif cmd is None:
-                            cmd_list = []
                         else:
                             cmd_list = [str(cmd)]
+
                         return {"type": "vm_command_line", "command": cmd_list}
                     if g_type == "empty":
                         return {"type": "empty"}
@@ -362,8 +369,6 @@ class InstructionGenerationAgent:
                 )
 
             vlm_desc = str(evaluation.get("vlm_desc", "")).strip()
-            if vlm_desc and not need_vlm:
-                need_vlm = True
 
             # Ensure at least one of the flags is True. If both are False and
             # we have neither rule items nor vlm_desc, default to VLM-based.
@@ -377,11 +382,16 @@ class InstructionGenerationAgent:
                     need_vlm = True
                     vlm_desc = f"Check carefully."
 
-            estimated_steps_raw = obj.get("estimated_steps", 15)
-            try:
-                estimated_steps = int(estimated_steps_raw)
-            except Exception:
-                estimated_steps = 15
+            estimated_steps = int(obj.get("estimated_steps", -1))
+
+            # Multi-app support: allow each task to declare which apps it uses.
+            related_apps_field = obj.get("related_apps")
+            if not isinstance(related_apps_field, list):
+                related_apps = []
+            else:
+                related_apps = [str(a).strip() for a in related_apps_field if str(a).strip()]
+
+            # MAIN app will be enforced upstream; here we just carry through the list
 
             return {
                 "description": description,
@@ -394,6 +404,7 @@ class InstructionGenerationAgent:
                 "complexity": complexity,
                 "category": category,
                 "estimated_steps": estimated_steps,
+                "related_apps": related_apps,
             }
         except Exception as e:
             logger.warning(f"Failed to parse JSON task object: {e}")
@@ -406,35 +417,53 @@ class InstructionGenerationAgent:
         task_nums: int = 10,
         launch_paths: List[str] | None = None,
         app_tutorial_md: str | None = None,
+        allowed_apps: List[str] | None = None,
     ) -> List[Dict[str, Any]]:
         """Generate coarse-grained task list.
 
+        app_name: 主应用名称
+        allowed_apps: 包含主应用在内的一组可用应用名, 若为 None 则退化为单 APP 模式
         launch_paths: currently opened file/project paths (may be empty).
         app_tutorial_md: optional markdown tutorial content for the app.
         """
         try:
+            if not allowed_apps:
+                allowed_apps = [app_name]
+
+            main_app_name = app_name
+            # 额外应用列表(不含主 APP, 用于提示词)
+            extra_apps = [a for a in allowed_apps if a != main_app_name]
+            if extra_apps:
+                available_app_list = ", ".join(extra_apps)
+            else:
+                available_app_list = "(no additional applications)"
+
             # 1) Build the base system prompt from template
-            system_prompt = INSTRUCTION_SYSTEM_PROMPT_TEMPLATE.format(task_numbers=str(task_nums), app_name=app_name, platform=self.platform)
+            system_prompt = INSTRUCTION_SYSTEM_PROMPT_TEMPLATE.format(
+                app_name=app_name,
+                task_numbers=str(task_nums),
+                main_app_name=main_app_name,
+                available_app_list=available_app_list,
+                platform=self.platform,
+            )
 
             # 2) Optionally inject app-specific tutorial markdown
             if app_tutorial_md:
                 tutorial_block = (
-                    f"\n\nBelow is markdown documentation for {app_name}. "
+                    f"\n\nBelow is markdown documentation for {main_app_name}. "
                     "Use it only as background knowledge to design realistic tasks, "
                     "but do not copy any sentences verbatim and do not mention this documentation explicitly in tasks.\n\n"
                     f"{app_tutorial_md}\n"
                 )
                 system_prompt = system_prompt + tutorial_block
 
-            self.agent.add_system_prompt(system_prompt=system_prompt)
-
             # 3) User message: screenshot + known launch paths
             launch_paths_text = "" if not launch_paths else "\n".join(launch_paths)
             user_text = (
-                f"This is the current UI screenshot of application '{app_name}'.\n"
+                f"This is the current UI screenshot of the MAIN application '{main_app_name}'.\n"
                 "If there are any currently opened file/project paths (launch_paths), they are listed below, one per line:\n"
                 f"{launch_paths_text if launch_paths_text else '(No explicit launch paths are provided in this round)'}\n\n"
-                f"Using the system instructions, generate exactly {task_nums} structured tasks for this application that can be executed from the current state."
+                f"Using the system instructions, generate exactly {task_nums} structured tasks that can be executed from the current state."
             )
 
             # 3.5) Try up to 3 times to obtain structurally valid tasks with syntactically valid rule code
@@ -449,7 +478,7 @@ class InstructionGenerationAgent:
                     role="user",
                 )
 
-                logger.info(f"Generating {task_nums} tasks for {app_name}, attempt {attempt}/{max_attempts}")
+                logger.info(f"Generating {task_nums} tasks for {main_app_name}, attempt {attempt}/{max_attempts}")
                 response = call_llm_safe(self.agent, temperature=self.temperature)
                 pattern = r'^```(?:json)?\s*\n?(.*?)\n?```$'
                 match = re.search(pattern, response, re.DOTALL)
@@ -461,10 +490,13 @@ class InstructionGenerationAgent:
                     continue
 
                 tasks = self.parse_instruction(response)
+                for t in tasks:
+                    t['allowed_apps'] = allowed_apps
+                    
                 last_tasks = tasks
 
                 # Strict validation: if a task has rule_items, all of them must have been parsed successfully
-                all_rule_code_valid = True
+                all_valid = True if len(tasks) == task_nums else False
                 for t in tasks:
                     v = t.get("verification") or {}
                     rule_items = v.get("rule_items") or []
@@ -474,12 +506,12 @@ class InstructionGenerationAgent:
                         fn = (ri or {}).get("function_name")
                         code_str = (ri or {}).get("code")
                         if not fn or not code_str:
-                            all_rule_code_valid = False
+                            all_valid = False
                             break
-                    if not all_rule_code_valid:
+                    if not all_valid:
                         break
 
-                if all_rule_code_valid:
+                if all_valid:
                     break
                 else:
                     logger.warning(

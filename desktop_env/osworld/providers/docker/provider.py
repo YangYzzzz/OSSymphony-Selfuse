@@ -56,7 +56,7 @@ class DockerProvider(Provider):
                 
                 return system_ports | docker_ports
             except NotFound:
-                print(f"Container {container.id} not found, skipping")
+                print(f"Container not found, skipping")
                 continue
             except Exception as e:
                 print(f"Error processing container {container.id}: {e}")

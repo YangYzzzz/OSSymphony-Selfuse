@@ -2,6 +2,8 @@ import base64
 import os
 import time
 from typing import Any, cast, Optional, Dict
+from pathlib import Path
+import json
 from PIL import Image
 import io
 
@@ -17,17 +19,146 @@ from anthropic.types.beta import (
     BetaMessageParam,
     BetaTextBlockParam,
 )
-from .utils import get_model_name, COMPUTER_USE_BETA_FLAG, PROMPT_CACHING_BETA_FLAG, SYSTEM_PROMPT, SYSTEM_PROMPT_WINDOWS, APIProvider, PROVIDER_TO_DEFAULT_MODEL_NAME, COMPUTER_USE_TYPE
+from .utils import COMPUTER_USE_BETA_FLAG, SYSTEM_PROMPT_WITH_CODE, APIProvider, PROVIDER_TO_DEFAULT_MODEL_NAME, COMPUTER_USE_TYPE
 from .utils import _response_to_params, _inject_prompt_caching, _maybe_filter_to_n_most_recent_images
 
 import logging
 logger = logging.getLogger("desktopenv.agent")
 
+LOG_DIR = Path("logs/claude_api_logs")
+
+
+def _normalize_messages_for_log(messages):
+    """将 messages 中的图片内容替换为占位符，避免日志写入大量 base64 图片。"""
+    if not messages:
+        return messages
+
+    def _normalize_content(content):
+        if isinstance(content, list):
+            normalized = []
+            placeholder = {
+                "type": "image_placeholder",
+                "detail": "[IMAGE_CONTENT_REMOVED_FOR_LOGGING]",
+            }
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "image":
+                    normalized.append(placeholder)
+                elif block.get("type") == "tool_result":
+                    new_block = dict(block)
+                    if "content" in new_block:
+                        new_block['content'] = _normalize_content(new_block["content"])
+                    normalized.append(new_block)
+                else:
+                    normalized.append(block)
+            return normalized
+        return content
+
+    normalized_messages = []
+    for m in messages:
+        """
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call_id,
+                        "content": [{"type": "text", "text": result}]
+                    }
+                ]
+            }
+
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {xxx}
+                    }
+                ]
+            }
+        """
+        if not isinstance(m, dict):
+            normalized_messages.append(m)
+            continue
+        new_m = dict(m)
+        if "content" in new_m:
+            new_m["content"] = _normalize_content(new_m["content"])
+        normalized_messages.append(new_m)
+    return normalized_messages
+
+
+def log_claude_api_call(
+    *,
+    model_name: str,
+    provider: APIProvider,
+    request_messages,
+    response,
+    duration_ms: float,
+    success: bool,
+    error: Optional[str] = None,
+):
+    """记录 Claude API 调用日志到 logs/claude_api_logs，图片用占位符。"""
+    try:
+        from datetime import datetime
+
+        # 以月份作为子目录，例如 2026-02, 2026-03
+        now = datetime.utcnow()
+        month_dir = LOG_DIR / now.strftime("%Y-%m")
+        month_dir.mkdir(parents=True, exist_ok=True)
+
+        ts = now.strftime("%Y%m%d_%H%M%S_%f")
+        filename = month_dir / "claude_api_logs.jsonl"
+
+        safe_messages = _normalize_messages_for_log(request_messages)
+
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = {
+                "input_tokens": getattr(response.usage, "input_tokens", 0),
+                "output_tokens": getattr(response.usage, "output_tokens", 0),
+                "total_tokens": getattr(response.usage, "total_tokens", 0),
+            }
+
+        response_summary = None
+        if response and getattr(response, "content", None):
+            texts = []
+            for block in response.content:
+                if hasattr(block, "text") and block.text:
+                    texts.append(block.text)
+            if texts:
+                merged = "\n".join(texts)
+                response_summary = merged[:2000]
+
+        log_record = {
+            "timestamp_utc": ts,
+            "provider": provider.name if hasattr(provider, "name") else str(provider),
+            "model": model_name,
+            "success": success,
+            "error": error,
+            "duration_ms": duration_ms,
+            "request": {
+                "messages": safe_messages,
+            },
+            "response": {
+                "usage": usage,
+                "summary_text": response_summary,
+            },
+        }
+
+        # 追加写入当月 jsonl 文件
+        with filename.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(log_record, ensure_ascii=False) + "\n")
+
+        logger.info(f"[claude_api_logs] saved log to {filename}")
+    except Exception as e:
+        logger.warning(f"failed to write claude api log: {e}")
+
 # MAX_HISTORY = 10
-API_RETRY_TIMES = 500  
+API_RETRY_TIMES = 500
 API_RETRY_INTERVAL = 5
 
-class AnthropicAgent:
+
+class AnthropicAgentWithCode:
     def __init__(self,
                 platform: str = "Ubuntu",
                 model: str = "claude-sonnet-4-5-20250929",
@@ -67,15 +198,65 @@ class AnthropicAgent:
             screen_size[1] / 720   # Assuming 720 is the base height
         )
 
+        self.last_code_result = None
+
     def _get_sampling_params(self):
         """Get sampling parameters (temperature and/or top_p) - let API validate exclusivity"""
         params = {}
         if self.temperature is not None:
             params['temperature'] = self.temperature
-        if self.top_p is not None:
-            params['top_p'] = self.top_p
+        # if self.top_p is not None:
+        #     params['top_p'] = self.top_p
         return params
-    
+
+    def _call_model_with_logging(
+        self,
+        client,
+        messages,
+        system,
+        tools,
+        betas,
+        extra_body,
+        actual_max_tokens: int,
+    ):
+        """封装一次模型调用，增加耗时统计与日志记录。"""
+        start = time.time()
+        response = None
+        error_msg = None
+        try:
+            with client.beta.messages.stream(
+                max_tokens=actual_max_tokens,
+                messages=messages,
+                model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
+                system=[system],
+                cache_control={"type": "ephemeral"},
+                tools=tools,
+                betas=betas,
+                extra_body=extra_body,
+                **self._get_sampling_params(),
+            ) as stream:
+                response = stream.get_final_message()
+            success = True
+            return response
+        except Exception as e:
+            error_msg = str(e)
+            success = False
+            raise
+        finally:
+            duration_ms = (time.time() - start) * 1000.0
+            try:
+                log_claude_api_call(
+                    model_name=self.model_name,
+                    provider=self.provider,
+                    request_messages=messages,
+                    response=response,
+                    duration_ms=duration_ms,
+                    success=success,
+                    error=error_msg,
+                )
+            except Exception as log_e:
+                logger.warning(f"logging claude api call failed: {log_e}")
+
     def _extract_raw_response_string(self, response) -> str:
         """Extract and concatenate raw response content into a single string."""
         raw_response_str = ""
@@ -90,7 +271,7 @@ class AnthropicAgent:
                 else:
                     raw_response_str += f"[OTHER] {str(block)}\n"
         return raw_response_str.strip()
-    
+
     def add_tool_result(self, tool_call_id: str, result: str, screenshot: bytes = None):
         """Add tool result to message history"""
         tool_result_content = [
@@ -100,7 +281,7 @@ class AnthropicAgent:
                 "content": [{"type": "text", "text": result}]
             }
         ]
-        
+
         # Add screenshot if provided
         if screenshot is not None:
             screenshot_base64 = base64.b64encode(screenshot).decode('utf-8')
@@ -108,16 +289,16 @@ class AnthropicAgent:
                 "type": "image",
                 "source": {
                     "type": "base64",
-                    "media_type": "image/png", 
+                    "media_type": "image/png",
                     "data": screenshot_base64
                 }
             })
-        
+
         self.messages.append({
             "role": "user",
             "content": tool_result_content
         })
-    
+
     def parse_actions_from_tool_call(self, tool_call: Dict) -> tuple[str, Optional[list]]:
         result = ""
         function_args = (
@@ -320,62 +501,61 @@ class AnthropicAgent:
             raise ValueError(f"Invalid action: {action}")
 
         return result, return_coord
-            
+
     def predict(self, task_instruction: str, obs: Dict = None, system: Any = None):
         system = BetaTextBlockParam(
             type="text",
-            text=f"{SYSTEM_PROMPT_WINDOWS if self.platform == 'Windows' else SYSTEM_PROMPT}{' ' + self.system_prompt_suffix if self.system_prompt_suffix else ''}"
+            text=SYSTEM_PROMPT_WITH_CODE
         )
-        
+
         # resize screenshot if resize_factor is set
         if obs and "screenshot" in obs:
             # Convert bytes to PIL Image
             screenshot_bytes = obs["screenshot"]
             screenshot_image = Image.open(io.BytesIO(screenshot_bytes))
-            
+
             # Calculate new size based on resize factor
             new_width, new_height = 1280, 720
-            
+
             # Resize the image
             resized_image = screenshot_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+
             # Convert back to bytes
             output_buffer = io.BytesIO()
             resized_image.save(output_buffer, format='PNG')
             obs["screenshot"] = output_buffer.getvalue()
-            
 
         if not self.messages:
-            
-            init_screenshot = obs
-            init_screenshot_base64 = base64.b64encode(init_screenshot["screenshot"]).decode('utf-8')
+            # init_screenshot = obs
+            # init_screenshot_base64 = base64.b64encode(init_screenshot["screenshot"]).decode('utf-8')
             self.messages.append({
                 "role": "user",
                 "content": [
-                    {
-                    "type": "image",
-                    "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": init_screenshot_base64,
-                        },
-                    },
+                    # {
+                    #     "type": "image",
+                    #     "source": {
+                    #         "type": "base64",
+                    #         "media_type": "image/png",
+                    #         "data": init_screenshot_base64,
+                    #     },
+                    # },
                     {"type": "text", "text": task_instruction},
                 ]
             })
-            
+
         # Add tool_result for ALL tool_use blocks in the last message
         if self.messages:
             last_message_content = self.messages[-1]["content"]
             tool_use_blocks = [block for block in last_message_content if block.get("type") == "tool_use"]
-            
+
             for i, tool_block in enumerate(tool_use_blocks):
+                tool_name = tool_block.get("name", {})
                 tool_input = tool_block.get("input", {})
                 action = tool_input.get("action")
                 is_last_tool = i == len(tool_use_blocks) - 1
-                
+
                 include_screenshot = None
-                
+                result = "Success"
                 if obs:
                     if action == "screenshot":
                         # Screenshot action always gets regular screenshot
@@ -383,13 +563,16 @@ class AnthropicAgent:
                     elif is_last_tool:
                         # Auto-screenshot: last tool gets regular screenshot (unless it's zoom, handled above)
                         include_screenshot = obs.get("screenshot")
-                
+                if tool_name == "code" and self.last_code_result:
+                    result = self.last_code_result
+                    self.last_code_result = None
+
                 self.add_tool_result(
                     tool_block["id"],
-                    f"Success",
+                    result=result,
                     screenshot=include_screenshot
                 )
-            
+
         enable_prompt_caching = False
         betas = [COMPUTER_USE_BETA_FLAG]
 
@@ -401,8 +584,8 @@ class AnthropicAgent:
         image_truncation_threshold = 10
         if self.provider == APIProvider.ANTHROPIC:
             client = Anthropic(
-                base_url=self.base_url, 
-                api_key=self.api_key, 
+                base_url=self.base_url,
+                api_key=self.api_key,
                 max_retries=4
             )
             enable_prompt_caching = True
@@ -422,7 +605,7 @@ class AnthropicAgent:
         if enable_prompt_caching:
             # betas.append(PROMPT_CACHING_BETA_FLAG)
             _inject_prompt_caching(self.messages)
-            image_truncation_threshold = 50
+            image_truncation_threshold = 5
             # system["cache_control"] = {"type": "ephemeral"}
 
         if self.only_n_most_recent_images:
@@ -433,18 +616,48 @@ class AnthropicAgent:
             )
 
         # Configure tool settings - use modern computer tool for all models
-        tool_config = {
-            'name': 'computer', 
+        computer_use_gui_tool_config = {
+            'name': 'computer',
             'type': COMPUTER_USE_TYPE,
-            'display_width_px': 1280, 
-            'display_height_px': 720, 
+            'display_width_px': 1280,
+            'display_height_px': 720,
             'display_number': 1
         }
-        
+
+        computer_use_code_tool_config = {
+            "name": "code",
+            "description": (
+                "Generate higher-level automation code (Python or Bash) to help complete the current task. "
+                "The returned code is not limited to a single line: you should treat it as the full content of a script file, "
+                "which will be written to disk and executed as a standalone program. "
+                "Use code to handle common file-processing tasks (e.g. parsing, transforming, or generating files), "
+                "to create helpful shortcuts or small utilities, and to automate repetitive shell operations. "
+                "You are encouraged to combine GUI interactions (computer tool) with code: for example, use code to prepare data "
+                "or manipulate files, and use GUI actions to open applications, inspect results, or trigger GUI-only flows."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "language": {
+                        "type": "string",
+                        "enum": ["python", "bash"],
+                        "description": "The language of the code snippet (Python script or Bash script)."
+                    },
+                    "execute_code": {
+                        "type": "string",
+                        "description": (
+                            "The complete code to execute as the body of a script file. "
+                            "It may span multiple lines and should be a self-contained program that can be run from the command line (e.g. `python script.py` or `bash script.sh`)."
+                        )
+                    }
+                },
+                "required": ["language", "execute_code"]
+            }
+        }
+
         tools = [
-            tool_config,
-        ] if self.platform == 'Ubuntu' else [
-            tool_config,
+            computer_use_code_tool_config,
+            computer_use_gui_tool_config,
         ]
 
         if self.no_thinking:
@@ -456,7 +669,7 @@ class AnthropicAgent:
             # Enable thinking mode (regular or interleaved)
             # Use consistent 2048 budget for both regular and ISP thinking
             budget_tokens = 2048
-            
+
             # For regular thinking: max_tokens > budget_tokens (API requirement)
             # For ISP: budget_tokens can exceed max_tokens (represents total across all thinking blocks)
             if self.max_tokens <= budget_tokens:
@@ -465,7 +678,7 @@ class AnthropicAgent:
                 actual_max_tokens = required_max_tokens
             else:
                 actual_max_tokens = self.max_tokens
-            
+
             extra_body = {
                 "thinking": {"type": "enabled", "budget_tokens": budget_tokens}
             }
@@ -476,40 +689,37 @@ class AnthropicAgent:
 
         try:
             response = None
-            
+
             for attempt in range(API_RETRY_TIMES):
                 try:
-                    with client.beta.messages.stream(
-                            max_tokens=actual_max_tokens,
-                            messages=self.messages,
-                            model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
-                            system=[system],
-                            cache_control={"type": "ephemeral"},
-                            tools=tools,
-                            betas=betas,
-                            extra_body=extra_body,
-                            **self._get_sampling_params()
-                        ) as stream:
-                            response = stream.get_final_message()
+                    response = self._call_model_with_logging(
+                        client=client,
+                        messages=self.messages,
+                        system=system,
+                        tools=tools,
+                        betas=betas,
+                        extra_body=extra_body,
+                        actual_max_tokens=actual_max_tokens,
+                    )
                     logger.info(f"Response: {response}")
-                    break  
+                    break
                 except (APIError, APIStatusError, APIResponseValidationError) as e:
                     error_msg = str(e)
                     logger.warning(f"Anthropic API error (attempt {attempt+1}/{API_RETRY_TIMES}): {error_msg}")
-                    
+
                     if "25000000" in error_msg or "Member must have length less than or equal to" in error_msg:
                         logger.warning("Detected 25MB limit error, automatically reducing image count")
                         current_image_count = self.only_n_most_recent_images
                         new_image_count = max(1, current_image_count // 2)  # Keep at least 1 image
                         self.only_n_most_recent_images = new_image_count
-                        
+
                         _maybe_filter_to_n_most_recent_images(
                             self.messages,
                             new_image_count,
                             min_removal_threshold=image_truncation_threshold,
                         )
                         logger.info(f"Image count reduced from {current_image_count} to {new_image_count}")
-                    
+
                     if attempt < API_RETRY_TIMES - 1:
                         time.sleep(API_RETRY_INTERVAL)
                     else:
@@ -535,13 +745,13 @@ class AnthropicAgent:
                         **self._get_sampling_params()
                 ) as stream:
                     response = stream.get_final_message()
-                
+
                 logger.info("Successfully used backup API key")
 
             except Exception as backup_e:
                 backup_error_msg = str(backup_e)
                 logger.exception(f"Backup API call also failed: {backup_error_msg}")
-                
+
                 # Check if backup API also has 25MB limit error
                 if "25000000" in backup_error_msg or "Member must have length less than or equal to" in backup_error_msg:
                     logger.warning("Backup API also encountered 25MB limit error, further reducing image count")
@@ -549,7 +759,7 @@ class AnthropicAgent:
                     current_image_count = self.only_n_most_recent_images
                     new_image_count = max(1, current_image_count // 2)  # Keep at least 1 image
                     self.only_n_most_recent_images = new_image_count
-                    
+
                     # Reapply image filtering
                     _maybe_filter_to_n_most_recent_images(
                         self.messages,
@@ -557,7 +767,7 @@ class AnthropicAgent:
                         min_removal_threshold=image_truncation_threshold,
                     )
                     logger.info(f"Backup API image count reduced from {current_image_count} to {new_image_count}")
-                
+
                 return None, None
 
         except Exception as e:
@@ -567,17 +777,21 @@ class AnthropicAgent:
         if response is None:
             logger.error("Response is None after API call - this should not happen")
             return None, None
-        
-        response_params = _response_to_params(response)
 
-        # Convert raw response to concatenated string for trajectory logging
-        raw_response_str = self._extract_raw_response_string(response)
-
+        response_params = _response_to_params(response) # 用于构建训练数据
+        # Bedrock API 与 最新 Anthropic 包兼容
+        for p in response_params:
+            if "caller" in p:
+                del p["caller"]
         # Store response in message history
         self.messages.append({
             "role": "assistant",
             "content": response_params
         })
+
+        
+        # Convert raw response to concatenated string for trajectory logging
+        raw_response_str = self._extract_raw_response_string(response)
 
         max_parse_retry = 3
         for parse_retry in range(max_parse_retry):
@@ -586,20 +800,37 @@ class AnthropicAgent:
             try:
                 for content_block in response_params:
                     if content_block["type"] == "tool_use":
-                        command, return_coord = self.parse_actions_from_tool_call(content_block)
-                        actions.append({
-                            "name": content_block["name"],
-                            "input": cast(dict[str, Any], content_block["input"]),
-                            "id": content_block["id"],
-                            "action_type": content_block.get("type"),
-                            "command": command,
-                            "coordinate": return_coord
-                        })
-                    elif content_block["type"] == "text":
-                        reasonings.append(content_block["text"])
+                        tool_name = content_block.get("name")
+                        tool_input = cast(dict[str, Any], content_block.get("input") or {})
+
+                        if tool_name == "computer":
+                            command, return_coord = self.parse_actions_from_tool_call(content_block)
+                            actions.append({
+                                "name": tool_name,
+                                "input": tool_input,
+                                "id": content_block["id"],
+                                "action_type": content_block.get("type"),
+                                "command": command,
+                                "coordinate": return_coord,
+                                "kind": "gui",
+                            })
+                        elif tool_name == "code":
+                            lang = (tool_input.get("language") or "python").lower()
+                            code = tool_input.get("execute_code") or ""
+                            actions.append({
+                                "name": tool_name,
+                                "input": tool_input,
+                                "id": content_block["id"],
+                                "action_type": content_block.get("type"),
+                                "command": code,   # 保持原始代码，不加前缀
+                                "coordinate": None,
+                                "kind": lang,
+                            })
+                    elif content_block["type"] == "text" or content_block["type"] == "thinking":
+                        reasonings.append(content_block[content_block["type"]])
 
                 if isinstance(reasonings, list) and len(reasonings) > 0:
-                    reasonings = reasonings[0]
+                    reasonings = ''.join(reasonings)
                 else:
                     reasonings = ""
 
@@ -612,20 +843,22 @@ class AnthropicAgent:
                     # Override actions with FAIL
                     actions = [{
                         "command": "FAIL",
-                        "action_type": "FAIL"
+                        "action_type": "FAIL",
+                        "kind": "general",
                     }]
-                
+
                 if len(actions) == 0:
                     actions = [{
                         "command": "DONE",
-                        "action_type": "DONE"
+                        "action_type": "DONE",
+                        "kind": "general",
                     }]
 
                 response_meta_list = []
                 # If there are tool calls, create a meta_item for each
                 for action in actions:
                     meta_item = {
-                        "raw_response": str(response_params),
+                        "raw_response": raw_response_str,
                         "thought": reasonings,
                         "action": action.get("command", ""),
                         "meta_action": action,
@@ -633,12 +866,18 @@ class AnthropicAgent:
                     }
                     response_meta_list.append(meta_item)
 
+                prefixed_actions = []
+                for a in actions:
+                    cmd = a.get("command", "")
+                    kind = a.get("kind", "")
 
-                pyautogui_actions = []
-                if isinstance(actions, list) and all(isinstance(a, dict) for a in actions):
-                    pyautogui_actions = [a["command"] for a in actions]
-                else:
-                    pyautogui_actions = actions
+                    if kind == "bash":
+                        prefixed_actions.append(f"BASH|{cmd}")
+                    elif kind == "python":
+                        prefixed_actions.append(f"PYTHON|{cmd}")
+                    else:
+                        prefixed_actions.append(cmd)
+                pyautogui_actions = prefixed_actions
 
                 return response_meta_list, pyautogui_actions
             except Exception as e:
@@ -686,13 +925,14 @@ class AnthropicAgent:
                     logger.error(f"parse_actions_from_tool_call parsing failed 3 times consecutively, terminating: {e}")
                     actions = [{
                         "action_type": "FAIL",
-                        "command": "FAIL"
+                        "command": "FAIL",
+                        "kind": "general",
                     }]
 
                     response_meta_list = []
                     for action in actions:
                         meta_item = {
-                            "raw_response": str(response_params),
+                            "raw_response": raw_response_str,
                             "thought": f"Failed to parse actions from tool call after {max_parse_retry} attempts: {e}",
                             "action": f"Failed to parse actions from tool call after {max_parse_retry} attempts: {e}",
                             "meta_action": action,
@@ -734,6 +974,32 @@ class AnthropicAgent:
                 text=EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
             )
 
+            # 1.5 Add obs as the tool result **Important**
+            if self.messages:
+                last_message_content = self.messages[-1]["content"]
+                tool_use_blocks = [block for block in last_message_content if block.get("type") == "tool_use"]
+
+                for i, tool_block in enumerate(tool_use_blocks):
+                    tool_input = tool_block.get("input", {})
+                    action = tool_input.get("action")
+                    is_last_tool = i == len(tool_use_blocks) - 1
+
+                    include_screenshot = None
+
+                    if obs:
+                        if action == "screenshot":
+                            # Screenshot action always gets regular screenshot
+                            include_screenshot = obs.get("screenshot")
+                        elif is_last_tool:
+                            # Auto-screenshot: last tool gets regular screenshot (unless it's zoom, handled above)
+                            include_screenshot = obs.get("screenshot")
+
+                    self.add_tool_result(
+                        tool_block["id"],
+                        f"Success",
+                        screenshot=include_screenshot
+                    )
+
             # 2. Reuse the exact same history construction as predict
             # We copy the existing messages so we don't pollute the agent's history
             eval_messages = list(self.messages)
@@ -741,24 +1007,9 @@ class AnthropicAgent:
             # 3. Add Final Observation and Evaluation Query
             eval_query = f"Based on the conversation history above and this final screenshot, did the agent successfully complete the instruction: '{task_instruction}'? Please provide the JSON evaluation."
 
-            # Use base64 encoded screenshot if it's not already
-            screenshot_data = obs["screenshot"]
-            if isinstance(screenshot_data, bytes):
-                screenshot_base64 = base64.b64encode(screenshot_data).decode('utf-8')
-            else:
-                screenshot_base64 = screenshot_data
-
             eval_messages.append({
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": screenshot_base64,
-                        },
-                    },
                     {
                         "type": "text",
                         "text": eval_query
@@ -790,10 +1041,10 @@ class AnthropicAgent:
                 extra_body = {
                     "thinking": {"type": "enabled", "budget_tokens": 2048}
                 }
-        
+
             with client.beta.messages.stream(
                 max_tokens=self.max_tokens,
-                messages=self.messages,
+                messages=eval_messages,
                 model=PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider, self.model_name],
                 system=[eval_system],
                 extra_body=extra_body,
@@ -804,7 +1055,6 @@ class AnthropicAgent:
             raw_response_str = self._extract_raw_response_string(response=response)
             logger.info(f"Evaluation Raw Output: {raw_response_str}")
 
-            import json
             # 5. Parse JSON
             # Handle potential markdown wrappers
             if "```json" in raw_response_str:
@@ -844,5 +1094,5 @@ class AnthropicAgent:
         else:
             logger = logging.getLogger("desktopenv.agent")
         self.messages = []
+        self.last_code_result = None
         logger.info(f"{self.class_name} reset.")
-

@@ -89,23 +89,14 @@ stdout_handler.setFormatter(formatter)
 stdout_handler.addFilter(logging.Filter("desktopenv"))
 logger.addHandler(stdout_handler)
 
-# Set up File Handler
-file_handler = logging.FileHandler(filename="log.txt")
-file_handler.setLevel(logging.ERROR)
-file_handler.setFormatter(formatter)
-file_handler.addFilter(logging.Filter("desktopenv"))
-logger.addHandler(file_handler)
-
 # Logger Configs
 # 在当前文件里使用的logger，logger内以.来分级结构，产生一条信息时，会一直向上冒泡到根logger
 logger = logging.getLogger("desktopenv.experiment")
-
 
 # Global variables for signal handling
 active_environments = []
 processes = []
 is_terminating = False
-
 
 def distribute_tasks(test_all_meta: dict) -> list:
     all_tasks = []
@@ -560,34 +551,8 @@ def get_unfinished(
                         # empty all files under example_id
                         shutil.rmtree(path=example_path, ignore_errors=True)
                     else:
-                        with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
-                            score = f.read().strip()
-                            if score == "False":
-                                score = 0.0
-                            elif score == "True":
-                                score = 1.0
-                            else:
-                                score = float(score)
-                        
-                        if not incremental_test:
-                            # TODO: 特化一下后面需要修正!!!
-                            # if score == 0 and turn != 1:
-                            if score == 0:
-                                # empty all files under example_id
-                                shutil.rmtree(path=example_path, ignore_errors=True)
-                            else:
-                                finished[domain].append(example_id)
-                        else:
-                            # 增量测试
-                            with open(os.path.join(example_path, "traj.jsonl"), "r", encoding="utf-8") as f:
-                                lines = f.readlines()
-                                non_empty_lines = [line for line in lines if line.strip() != '']
-                                cur_step = json.loads(non_empty_lines[-1].strip())["step_num"]
-                            # 当前写死了, 最小步数为50步
-                            if cur_step == 50 and score == 0:
-                                shutil.rmtree(path=example_path, ignore_errors=True)
-                            else:
-                                finished[domain].append(example_id)
+                        finished[domain].append(example_id)
+
     if not finished:
         return total_file_json
 

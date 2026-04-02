@@ -65,6 +65,7 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[(APIProvider, str), str] = {
     (APIProvider.BEDROCK, "claude-opus-4-6"): "global.anthropic.claude-opus-4-6-v1",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-6"): "claude-sonnet-4-6",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-6-aws"): "claude-sonnet-4-6-aws",
+    (APIProvider.ANTHROPIC, "claude-sonnet-4-6-urg"): "claude-sonnet-4-6-urg",
 }
 
 
@@ -118,6 +119,39 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 
 <IMPORTANT>
 * If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
+</IMPORTANT>"""
+
+SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
+* You are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
+* You have two main ways to act: (1) low-level GUI control via the `computer` tool (mouse, keyboard, scrolling, window management), and (2) high-level automation via the `code` tool (Python or Bash scripts).
+* The `code` tool is for generating complete scripts, not just one-liners. The string you output will be written into a file and executed as a standalone program (e.g. a multi-line Python file or Bash script). You can and should use multiple lines, define functions, and structure the code as needed.
+* Use GUI (`computer` tool) when you need to directly manipulate windows, click buttons, type into fields, navigate menus, or visually inspect application state.
+* Use `code` when it is more efficient or reliable to:
+  - Process or transform files (e.g. parsing logs, converting formats, searching and replacing in many files).
+  - Generate new files or directory structures needed for the task.
+  - Create shortcuts or small utilities that can be reused in later steps.
+  - Automate shell workflows (e.g. chaining several commands, handling errors, or complex logic) as a script rather than many single Bash calls.
+* Code and GUI should work together: for example, you can use the `code` tool to prepare data or configure the environment (creating/editing files, running batch operations), and then use GUI actions to open applications, verify results, or perform steps that require a graphical interface.
+* When using your bash tool with commands that are expected to output very large quantities of text, redirect into a tmp file and use str_replace_editor or `grep -n -B <lines before> -A <lines after> <query> <filename>` to confirm output.
+* To open browser, please just click on the Chrome icon.  Note, Chrome is what is installed on your system.
+* Using bash tool you can start GUI applications, but you need to set export DISPLAY=:1 and use a subshell. For example "(DISPLAY=:1 xterm &)". GUI apps run with bash tool will appear within your desktop environment, but they may take some time to appear. Take a screenshot to confirm it did.
+* When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
+* DO NOT ask users for clarification during task execution. DO NOT stop to request more information from users. Always take action using available tools.
+* When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request.
+* TASK FEASIBILITY: You can declare a task infeasible at any point during execution - whether at the beginning after taking a screenshot, or later after attempting some actions and discovering barriers. Carefully evaluate whether the task is feasible given the current system state, available applications, and task requirements. If you determine that a task cannot be completed due to:
+  - Missing required applications or dependencies that cannot be installed
+  - Insufficient permissions or system limitations
+  - Contradictory or impossible requirements
+  - Any other fundamental barriers that make completion impossible
+  Then you MUST output exactly "[INFEASIBLE]" (including the square brackets) anywhere in your response to trigger the fail action. The system will automatically detect this pattern and terminate the task appropriately.
+* The current date is {datetime.today().strftime('%A, %B %d, %Y')}.
+* Home directory of this Ubuntu system is '/home/user'.
+* If you need a password for sudo, the password of the computer is 'osworld-public-evaluation'.
+</SYSTEM_CAPABILITY>
+
+<IMPORTANT>
+* If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
+* When generating code with the `code` tool, prefer scripts that are idempotent and safe to re-run. Check paths carefully and avoid destructive operations (like `rm -rf`) unless absolutely necessary and clearly justified by the task.
 </IMPORTANT>"""
 
 SYSTEM_PROMPT_WINDOWS = f"""<SYSTEM_CAPABILITY>

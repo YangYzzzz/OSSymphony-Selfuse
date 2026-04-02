@@ -127,6 +127,18 @@ class PythonController:
         logger.error("Failed to get terminal output.")
         return None
 
+    def check_health(self):
+        response = ""
+        for _ in range(self.retry_times):
+            try:
+                response = requests.get(self.http_server + "/platform")
+            except Exception:
+                logger.info("Retrying to check health.")
+        if response:
+            return True
+        else:
+            return False
+
     def get_file(self, file_path: str) -> Optional[bytes]:
         """
         Gets a file from the server.

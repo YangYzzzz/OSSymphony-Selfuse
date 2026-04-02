@@ -2,6 +2,7 @@
 """Master Gateway startup script."""
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -15,6 +16,15 @@ import uvicorn
 
 from gateway.app import create_app
 
+LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s - %(message)s"                                                                             
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+                                                                                                                                            
+logging.basicConfig(                                      
+    level=logging.INFO,                                                                                                                       
+    format=LOG_FORMAT,                                    
+    datefmt=DATE_FORMAT,
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 
 def load_config(path: str):
     with open(path) as f:

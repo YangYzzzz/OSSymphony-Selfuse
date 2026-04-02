@@ -2,6 +2,7 @@
 
 import base64
 import logging
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -11,7 +12,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from gateway.models import EnvSlotStatus, EnvState, Observation
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class EnvSlot:
@@ -128,7 +128,16 @@ class EnvPool:
             slot.state = EnvState.busy
             slot.last_activity = time.time()
             try:
+                code_result = None
+                if action.startswith("BASH") or action.startswith("PYTHON"):
+                    lang, code = action.split("|")
+                    if lang == "PYTHON":
+                        code_result = slot.env.controller.run_python_script(code)
+                    elif lang == "BASH":
+                        code_result = slot.env.controller.run_bash_script(code)
+
                 obs_dict, reward, done, info = slot.env.step(action, pause=pause)
+                obs_dict['code_result'] = code_result
                 slot.state = EnvState.acquired
                 return self._obs_to_model(obs_dict), reward, done, info
             except Exception:
@@ -164,6 +173,55 @@ class EnvPool:
             for s in self._slots
         ]
 
+    # ------------------------------------------------------------------
+    # Status helpers
+    # ------------------------------------------------------------------
+
+    def health_check(self) -> str:
+        """Check all envs' underlying docker/VM health.
+
+        Returns a short summary string and logs details.
+        """
+        total = len(self._slots)
+        healthy_ids: List[int] = []
+        unhealthy_ids: List[int] = []
+
+        for slot in self._slots:
+            env = slot.env
+            try:
+                ok = env.check_health()
+            except Exception:
+                logger.exception("health_check: error checking env %d", slot.local_env_id)
+                ok = False
+
+            if ok:
+                healthy_ids.append(slot.local_env_id)
+            else:
+                unhealthy_ids.append(slot.local_env_id)
+
+        if total == 0:
+            summary = "no env slots configured"
+        elif not unhealthy_ids:
+            summary = f"all {total} envs healthy"
+        else:
+            summary = f"{len(unhealthy_ids)}/{total} envs unhealthy: ids={unhealthy_ids}"
+
+        if len(unhealthy_ids) == 0:
+            logger.info(
+                "EnvPool health_check summary: %s (healthy=%s, unhealthy=%s)",
+                summary,
+                healthy_ids,
+                unhealthy_ids,
+            )
+        else:
+            logger.error(
+                "EnvPool health_check summary: %s (healthy=%s, unhealthy=%s)",
+                summary,
+                healthy_ids,
+                unhealthy_ids,
+            )
+        return summary
+        
     def get_free_count(self) -> int:
         return sum(1 for s in self._slots if s.state == EnvState.idle)
 
@@ -222,4 +280,5 @@ class EnvPool:
             accessibility_tree=obs_dict.get("accessibility_tree"),
             terminal=obs_dict.get("terminal"),
             instruction=obs_dict.get("instruction"),
+            code_result=obs_dict.get("code_result")
         )

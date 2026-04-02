@@ -3,6 +3,8 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
+import sys
 from typing import Any, Dict, Optional
 
 import httpx
@@ -20,7 +22,6 @@ from gateway.models import (
 from gateway.session import SessionManager
 
 logger = logging.getLogger(__name__)
-
 
 async def _health_check_loop(app_state, interval: float) -> None:
     while True:
@@ -154,11 +155,20 @@ def create_app(
     @app.post("/acquire")
     async def acquire(request: Request):
         state = request.app.state
+        logger.info("master /acquire: incoming request from %s", request.client.host if request.client else "unknown")
         result = await state.dispatcher.pick_worker_and_acquire(state.http_client)
         if result is None:
+            logger.warning("master /acquire: no available environments")
             raise HTTPException(status_code=503, detail="No available environments")
         worker_url, local_env_id, vnc_port = result
         token = state.session_mgr.create_session(worker_url, local_env_id)
+        logger.info(
+            "master /acquire: assigned worker=%s local_env_id=%s token=%s vnc_port=%s",
+            worker_url,
+            local_env_id,
+            token,
+            vnc_port,
+        )
         return MasterAcquireResponse(
             token=token, vnc_port=vnc_port, worker_url=worker_url
         )
@@ -166,13 +176,41 @@ def create_app(
     @app.post("/reset")
     async def reset(req: MasterResetRequest, request: Request):
         state = request.app.state
+        logger.info("master /reset start: token=%s", req.token)
         sess = state.session_mgr.get_session(req.token)
         if sess is None:
+            logger.warning("master /reset: invalid or expired token=%s", req.token)
             raise HTTPException(status_code=404, detail="Invalid or expired token")
-        resp = await state.http_client.post(
-            f"{sess.worker_url}/worker/reset",
-            json={"local_env_id": sess.local_env_id, "task_config": req.task_config},
-            timeout=1000.0,
+        url = f"{sess.worker_url}/worker/reset"
+        payload = {"local_env_id": sess.local_env_id, "task_config": req.task_config}
+        start = asyncio.get_event_loop().time()
+        try:
+            logger.info(
+                "master /reset -> worker: url=%s local_env_id=%s",
+                url,
+                sess.local_env_id,
+            )
+            resp = await state.http_client.post(
+                url,
+                json=payload,
+                timeout=1000.0,
+            )
+        except httpx.ReadTimeout:
+            duration = asyncio.get_event_loop().time() - start
+            logger.error(
+                "master /reset ReadTimeout: url=%s local_env_id=%s token=%s duration=%.3fs",
+                url,
+                sess.local_env_id,
+                req.token,
+                duration,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=504, detail="Worker reset timeout")
+        duration = asyncio.get_event_loop().time() - start
+        logger.info(
+            "master /reset <- worker: status=%s duration=%.3fs",
+            resp.status_code,
+            duration,
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
@@ -181,17 +219,50 @@ def create_app(
     @app.post("/step")
     async def step(req: MasterStepRequest, request: Request):
         state = request.app.state
+        logger.info(
+            "master /step start: token=%s action=%s pause=%s",
+            req.token,
+            req.action,
+            req.pause,
+        )
         sess = state.session_mgr.get_session(req.token)
         if sess is None:
+            logger.warning("master /step: invalid or expired token=%s", req.token)
             raise HTTPException(status_code=404, detail="Invalid or expired token")
-        resp = await state.http_client.post(
-            f"{sess.worker_url}/worker/step",
-            json={
-                "local_env_id": sess.local_env_id,
-                "action": req.action,
-                "pause": req.pause,
-            },
-            timeout=1000.0,
+        url = f"{sess.worker_url}/worker/step"
+        payload = {
+            "local_env_id": sess.local_env_id,
+            "action": req.action,
+            "pause": req.pause,
+        }
+        start = asyncio.get_event_loop().time()
+        try:
+            logger.info(
+                "master /step -> worker: url=%s local_env_id=%s",
+                url,
+                sess.local_env_id,
+            )
+            resp = await state.http_client.post(
+                url,
+                json=payload,
+                timeout=1000.0,
+            )
+        except httpx.ReadTimeout:
+            duration = asyncio.get_event_loop().time() - start
+            logger.error(
+                "master /step ReadTimeout: url=%s local_env_id=%s token=%s duration=%.3fs",
+                url,
+                sess.local_env_id,
+                req.token,
+                duration,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=504, detail="Worker step timeout")
+        duration = asyncio.get_event_loop().time() - start
+        logger.info(
+            "master /step <- worker: status=%s duration=%.3fs",
+            resp.status_code,
+            duration,
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
@@ -200,13 +271,40 @@ def create_app(
     @app.post("/evaluate")
     async def evaluate(req: MasterEvaluateRequest, request: Request):
         state = request.app.state
+        logger.info("master /evaluate start: token=%s", req.token)
         sess = state.session_mgr.get_session(req.token)
         if sess is None:
+            logger.warning("master /evaluate: invalid or expired token=%s", req.token)
             raise HTTPException(status_code=404, detail="Invalid or expired token")
-        resp = await state.http_client.post(
-            f"{sess.worker_url}/worker/evaluate",
-            json={"local_env_id": sess.local_env_id},
-            timeout=300.0,
+        url = f"{sess.worker_url}/worker/evaluate"
+        start = asyncio.get_event_loop().time()
+        try:
+            logger.info(
+                "master /evaluate -> worker: url=%s local_env_id=%s",
+                url,
+                sess.local_env_id,
+            )
+            resp = await state.http_client.post(
+                url,
+                json={"local_env_id": sess.local_env_id},
+                timeout=300.0,
+            )
+        except httpx.ReadTimeout:
+            duration = asyncio.get_event_loop().time() - start
+            logger.error(
+                "master /evaluate ReadTimeout: url=%s local_env_id=%s token=%s duration=%.3fs",
+                url,
+                sess.local_env_id,
+                req.token,
+                duration,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=504, detail="Worker evaluate timeout")
+        duration = asyncio.get_event_loop().time() - start
+        logger.info(
+            "master /evaluate <- worker: status=%s duration=%.3fs",
+            resp.status_code,
+            duration,
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
@@ -215,13 +313,40 @@ def create_app(
     @app.post("/release")
     async def release(req: MasterReleaseRequest, request: Request):
         state = request.app.state
+        logger.info("master /release start: token=%s", req.token)
         sess = state.session_mgr.remove_session(req.token)
         if sess is None:
+            logger.warning("master /release: invalid or expired token=%s", req.token)
             raise HTTPException(status_code=404, detail="Invalid or expired token")
-        resp = await state.http_client.post(
-            f"{sess.worker_url}/worker/release",
-            json={"local_env_id": sess.local_env_id},
-            timeout=30.0,
+        url = f"{sess.worker_url}/worker/release"
+        start = asyncio.get_event_loop().time()
+        try:
+            logger.info(
+                "master /release -> worker: url=%s local_env_id=%s",
+                url,
+                sess.local_env_id,
+            )
+            resp = await state.http_client.post(
+                url,
+                json={"local_env_id": sess.local_env_id},
+                timeout=30.0,
+            )
+        except httpx.ReadTimeout:
+            duration = asyncio.get_event_loop().time() - start
+            logger.error(
+                "master /release ReadTimeout: url=%s local_env_id=%s token=%s duration=%.3fs",
+                url,
+                sess.local_env_id,
+                req.token,
+                duration,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=504, detail="Worker release timeout")
+        duration = asyncio.get_event_loop().time() - start
+        logger.info(
+            "master /release <- worker: status=%s duration=%.3fs",
+            resp.status_code,
+            duration,
         )
         state.dispatcher.notify_release(sess.worker_url)
         if resp.status_code != 200:

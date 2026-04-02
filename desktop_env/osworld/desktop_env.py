@@ -6,7 +6,7 @@ import time
 import re
 from typing import Callable, Any, Optional, Tuple
 from typing import List, Dict, Union
-
+import ast
 import gymnasium as gym
 
 from desktop_env.osworld.controllers.python import PythonController
@@ -197,6 +197,8 @@ class DesktopEnv(gym.Env):
         self._step_no: int = 0
         self.action_history: List[Dict[str, any]] = []
 
+        self.metric = None
+
     # 将物理上的初始化和逻辑上的初始化解耦，便于传参
     def start(self):
         # Initialize emulator and controller
@@ -339,11 +341,14 @@ class DesktopEnv(gym.Env):
         # can be customized and scaled
         return {
             "screenshot": self.controller.get_screenshot(),
-            "accessibility_tree": self.controller.get_accessibility_tree() if self.require_a11y_tree else None,
-            "terminal": self.controller.get_terminal_output() if self.require_terminal else None,
+            # "accessibility_tree": self.controller.get_accessibility_tree() if self.require_a11y_tree else None,
+            # "terminal": self.controller.get_terminal_output() if self.require_terminal else None,
             "instruction": self.instruction
         }
 
+    def check_health(self):
+        return self.controller.check_health()
+    
     @property
     def vm_platform(self):
         return self.controller.get_vm_platform()
@@ -362,6 +367,48 @@ class DesktopEnv(gym.Env):
         
         self._set_evaluator_info(task_config)
 
+    def _create_tmp_metric_function(self, code: str) -> Metric:
+        """Create a callable metric function from a dynamic code string.
+
+        设计约定：
+        - ``code`` 是一段完整的 Python 源码，包含若干 ``import`` 和至少一个函数定义
+        - "下面的第一个真正的函数"（第一条顶层 ``def``）就是要用的 metric 函数
+        - 一个任务（task）内多个动态 metric 的函数名互不重复，但不同任务之间可以相同
+
+        实现策略：
+        - 不写入临时文件，直接在独立 namespace 中 ``exec(code)``
+        - 使用 ``ast`` 解析源码，找到第一个顶层 ``FunctionDef`` 的名字
+        - 从 namespace 中取出同名可调用对象作为 metric，并缓存到 ``self._dynamic_metric_funcs``
+        - 调用 ``_delete_tmp_metric_function`` 时统一清理缓存引用，让 GC 回收
+        """
+        # 先用 AST 找到第一个函数定义的名字
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            raise ValueError(f"Invalid dynamic metric code, failed to parse: {e}")
+
+        func_name: Optional[str] = None
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                func_name = node.name
+                break
+
+        if not func_name:
+            raise ValueError("No function definition found in dynamic metric code")
+
+        # 在独立 namespace 中执行代码，避免污染当前模块的全局命名空间
+        namespace: Dict[str, Any] = {}
+        try:
+            exec(code, namespace)
+        except Exception as e:
+            raise RuntimeError(f"Failed to execute dynamic metric code: {e}")
+
+        func = namespace.get(func_name)
+        if not callable(func):
+            raise ValueError(f"Dynamic metric function '{func_name}' not found or not callable")
+
+        return func
+
     def _set_evaluator_info(self, task_config: Dict[str, Any]):
         """Set evaluator information from task config"""
         # evaluator dict
@@ -372,13 +419,25 @@ class DesktopEnv(gym.Env):
         # options (optional) -> metric options, or list of metric options
         # if func is a str list, then result, expected (if exists), options (if exists) should also be lists of the same length
         # even if one of the metrics does not need expected or options field, it should be included in the list with None
+        self.metric = None
+
         if "evaluator" not in task_config.keys():
             return
         
         self.evaluator = task_config["evaluator"]
-        self.metric: Metric = [getattr(metrics, func) for func in self.evaluator["func"]] \
-            if isinstance(self.evaluator["func"], list) \
-            else getattr(metrics, self.evaluator["func"])
+
+        if "func" not in self.evaluator or not self.evaluator["func"]:
+            return
+        
+        dynamic: bool = True if "dynamic" in self.evaluator.keys() else False
+        if not dynamic: 
+            self.metric: Metric = [getattr(metrics, func) for func in self.evaluator["func"]] \
+                if isinstance(self.evaluator["func"], list) \
+                else getattr(metrics, self.evaluator["func"])
+        else:
+            code = [code for code in self.evaluator["code"]] if isinstance(self.evaluator["code"], list) else self.evaluator["code"]
+            self.metric: Metric|List[Metric] = [self._create_tmp_metric_function(c) for c in code] if isinstance(code, list) else self._create_tmp_metric_function(code)
+        
         self.metric_conj: str = self.evaluator.get("conj", "and")  # take conjunction of multiple metrics
         if "result" in self.evaluator and len(self.evaluator["result"]) > 0:
             self.result_getter: Getter = [getattr(getters, "get_{:}".format(res["type"])) for res in
@@ -441,9 +500,6 @@ class DesktopEnv(gym.Env):
             if action in ['WAIT', 'FAIL', 'DONE']:
                 self.controller.execute_action(action)
             elif not action.startswith("pyautogui"):
-                '''
-                在这里添加 E2E 模型执行python代码的逻辑, E2E 模型不开启内循环！
-                '''
                 pass
             else:
                 # the set of all possible python commands insides `pyautogui`
@@ -465,7 +521,9 @@ class DesktopEnv(gym.Env):
         """
         Evaluate whether the task is successfully completed.
         """
-
+        if not self.metric:
+            return 0
+        
         postconfig = self.evaluator.get("postconfig", [])
         self.setup_controller.setup(postconfig, self.enable_proxy)
         # Mark environment as used if there were postconfig setup operations
@@ -496,11 +554,18 @@ class DesktopEnv(gym.Env):
                     if self.metric_conj == 'and':
                         return 0
 
+
                 if "expected" in self.evaluator and self.expected_getter and self.evaluator["expected"]:
-                    expected_state = self.expected_getter[idx](self, self.evaluator["expected"][idx])
-                    metric: int = metric(result_state, expected_state, **self.metric_options[idx])
+                    try:
+                        expected_state = self.expected_getter[idx](self, self.evaluator["expected"][idx])
+                        metric: int = metric(result_state, expected_state, **self.metric_options[idx])
+                    except Exception:
+                        metric = 0
                 else:
-                    metric: int = metric(result_state, **self.metric_options[idx])
+                    try:
+                        metric: int = metric(result_state, **self.metric_options[idx])
+                    except Exception:
+                        metric = 0
 
                 if self.metric_conj == 'and' and float(metric) == 0.0:
                     return 0
@@ -519,10 +584,16 @@ class DesktopEnv(gym.Env):
                 return 0
 
             if "expected" in self.evaluator and self.expected_getter and self.evaluator["expected"]:
-                expected_state = self.expected_getter(self, self.evaluator["expected"])
-                metric: float = self.metric(result_state, expected_state, **self.metric_options)
+                try:
+                    expected_state = self.expected_getter(self, self.evaluator["expected"])
+                    metric: float = self.metric(result_state, expected_state, **self.metric_options)
+                except Exception:
+                    metric = 0
             else:
-                metric: float = self.metric(result_state, **self.metric_options)
+                try:
+                    metric: float = self.metric(result_state, **self.metric_options)
+                except Exception:
+                    metric = 0
 
         return metric
 

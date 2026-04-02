@@ -1228,8 +1228,10 @@ def get_result(target_dir):
                             for line in lines:
                                 try:
                                     data = json.loads(line)
-                                    plan_code = data.get("response", {}).get("plan_code") or data.get("plan_code")
-                                    
+                                    plan_code = str(data.get("response", [{}])[0].get("code"))
+                                    if plan_code.startswith("EXEC_CODE"):
+                                        plan_code = plan_code.split("|")[0] + "|" + plan_code.split("|")[1]
+                                    # print(f"plan code: {plan_code}")
                                     # 模拟 action 获取
                                     action = "unknown"
                                     if plan_code: action = plan_code.split('(')[0]

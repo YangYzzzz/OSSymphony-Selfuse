@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 import json
 import uuid
@@ -11,9 +12,48 @@ import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import InstructionGenerationAgent
 
+logger = logging.getLogger("desktopenv.task_generator")
+
 # APP 初始化信息
-APP_SETUP_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/app_config.json"
-APP_SETUP_DICT: Dict = json.load(open(APP_SETUP_CONFIG_PATH, "r"))
+APP_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/app_config.json"
+APP_CONFIG_DICT: Dict = json.load(open(APP_CONFIG_PATH, "r"))
+
+APP_SET_CONFIG_DICT = APP_CONFIG_DICT.get("app", {})
+EXCLUDED_APP_LIST = APP_CONFIG_DICT.get("excluded", [])
+for e in EXCLUDED_APP_LIST:
+    if e in APP_SET_CONFIG_DICT:
+        del APP_SET_CONFIG_DICT[e]
+
+# For backward compatibility keep a semantic alias
+APP_SETUP_DICT = APP_SET_CONFIG_DICT
+
+# Build a directed application graph from config
+APP_GRAPH: Dict[str, List[str]] = {}
+TYPE_TO_APPS: Dict[str, List[str]] = {}
+
+for app_name, cfg in APP_SETUP_DICT.items():
+    # explicit directed edges from related_app
+    rel_apps = cfg.get("related_app", []) or []
+    APP_GRAPH[app_name] = [a for a in rel_apps if a in APP_SETUP_DICT]
+
+    # index related_type for implicit edges
+    rel_types = cfg.get("related_type", []) or []
+    for t in rel_types:
+        TYPE_TO_APPS.setdefault(t, []).append(app_name)
+
+# add implicit directed edges based on shared related_type
+for t, apps in TYPE_TO_APPS.items():
+    if len(apps) <= 1:
+        continue
+    for src in apps:
+        for dst in apps:
+            if src == dst:
+                continue
+            if dst not in APP_GRAPH[src]:
+                APP_GRAPH[src].append(dst)
+                APP_GRAPH[dst].append(src) # 有向图 -> 无向图
+# print(f'APP GRAPH: {APP_GRAPH}')
+
 # 预制 URL, 适用于 chrome 软件的初始化
 URL_CONFIG_PATH = "evaluation_examples/ubuntu_online_rollout/config/url.json"
 URL_LIST: List = json.load(open(URL_CONFIG_PATH, "r"))
@@ -78,6 +118,48 @@ class OSCaliberTaskGenerator:
                         abs_file_lists.append(str(os.path.join(target_dir, f)))
         return abs_file_lists
     
+    def _sample_app_group(self, max_apps: int, available_apps: List[str]) -> Tuple[str, List[str]]:
+        """Sample a main app and a group of related apps up to max_apps using APP_GRAPH.
+
+        Returns (main_app, apps_for_group). The returned list always contains main_app
+        and has length between 1 and max_apps, depending on graph connectivity.
+        """
+        if not available_apps:
+            raise ValueError("No apps available to sample.")
+
+        main_app = random.choice(available_apps)
+
+        if max_apps <= 1:
+            return main_app, [main_app]
+
+        # target_count = random.randint(1, max_apps)
+        target_count = max_apps
+        apps_for_group: List[str] = [main_app]
+        frontier: List[str] = [main_app]
+
+        while len(apps_for_group) < target_count and frontier:
+            candidates: List[str] = []
+            for u in frontier:
+                for v in APP_GRAPH.get(u, []):
+                    if v in available_apps and v not in apps_for_group:
+                        candidates.append(v)
+
+            if not candidates:
+                # 10% 概率全局随机跳边, 增强多样性
+                leftover = [a for a in available_apps if a not in apps_for_group]
+                if leftover and random.random() < 0.1:
+                    v = random.choice(leftover)
+                    apps_for_group.append(v)
+                    frontier.append(v)
+                    continue
+                break
+
+            v = random.choice(candidates)
+            apps_for_group.append(v)
+            frontier.append(v)
+
+        return main_app, apps_for_group
+
     def _generate_config(self, app_name: str) -> Tuple[List[Dict[str, Any]], List[str]]:
         """根据 APP_SETUP_DICT 生成标准的 config 列表，同时返回实际使用的 PATH 列表。
 
@@ -159,6 +241,7 @@ class OSCaliberTaskGenerator:
             "need_vlm_judge": bool,
             "vlm_desc": str,
             "need_rule_judge": bool,
+            "dynamic": true # 即插即用, 评估时动态创建评估函数并执行, 评估结束后立即清理相关评估函数, 全是true就完事了
         }
         """
         verification = task.get("verification") or {}
@@ -190,6 +273,7 @@ class OSCaliberTaskGenerator:
                 "need_vlm_judge": need_vlm,
                 "vlm_desc": vlm_desc,
                 "need_rule_judge": False,
+                "dynamic": True
             }
 
         # 需要 rule-based 评估的情况
@@ -268,10 +352,11 @@ class OSCaliberTaskGenerator:
             "need_vlm_judge": need_vlm,
             "vlm_desc": vlm_desc,
             "need_rule_judge": True,
+            "dynamic": True
         }
         return evaluator
 
-    def generate_task(self, task_nums: int = 10, app_list: List | str = []):
+    def generate_task(self, task_nums: int = 10, app_list: List | str = [], max_apps_per_group: int = 1):
         if isinstance(app_list, list) and len(app_list) > 0:
             available_apps = app_list
         else:
@@ -282,15 +367,16 @@ class OSCaliberTaskGenerator:
 
         test_file_list: Dict[str, List[str]] = {}
 
-        # 目前仅为单APP初始化
-        app_name = random.choice(available_apps)
-        domain_dir = os.path.join(self.rollout_task_dir, app_name)
+        # 采样主 APP 以及与之相关的一组 APP, 目前只初始化主 APP
+        main_app, apps_for_group = self._sample_app_group(max_apps=max_apps_per_group, available_apps=available_apps)
+        logger.info(f"Generating tasks for {main_app} with app group: {apps_for_group}...")
+
+        domain_dir = os.path.join(self.rollout_task_dir, main_app)
         os.makedirs(domain_dir, exist_ok=True)
 
-        # 生成配置 + 实际使用的 PATH 列表
-        task_setup_config, launch_paths = self._generate_config(app_name)
+        # 生成配置 + 实际使用的 PATH 列表 (仅主 APP)
+        task_setup_config, launch_paths = self._generate_config(main_app)
 
-        print(f"Generating tasks for {app_name}...")
         self.env.reset(
             task_config={
                 "config": task_setup_config,
@@ -303,16 +389,17 @@ class OSCaliberTaskGenerator:
 
         obs = self.env._get_obs()
 
-        # 注入 app tutorial md
-        app_tutorial_md = self._load_app_tutorial_md(app_name)
+        # 注入 app tutorial md (目前仅主 APP)
+        app_tutorial_md = self._load_app_tutorial_md(main_app)
 
-        # 让 Agent 生成任务描述（传入 launch_paths 和教程）
+        # 让 Agent 生成任务描述（传入 launch_paths 和教程 + 多 APP 上下文）
         task_list = self.agent.generate(
-            app_name=app_name,
+            app_name=main_app,
             observation=obs,
             task_nums=task_nums,
             launch_paths=launch_paths,
             app_tutorial_md=app_tutorial_md,
+            allowed_apps=apps_for_group,
         )
 
         for task in task_list:
@@ -322,10 +409,13 @@ class OSCaliberTaskGenerator:
             image_base_dir = os.path.join(domain_dir, "image")
             os.makedirs(image_base_dir, exist_ok=True)
 
+            # 每个 task 可以返回自己使用到的 related_apps, 若缺失则默认仅主 APP
+            task_related_apps = task.get("related_apps") or [main_app]
+
             task_config = {
                 "id": task_id,
-                "snapshot": app_name,
-                "related_apps": [app_name],
+                "snapshot": main_app,
+                "related_apps": task_related_apps,
                 "instruction": task.get("description"),
                 "config": task_setup_config,
                 "complexity": task.get("complexity"),
@@ -340,10 +430,10 @@ class OSCaliberTaskGenerator:
             # 记录初始化截图
             with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
                 _f.write(obs['screenshot'])
-                
-            if app_name not in test_file_list:
-                test_file_list[app_name] = []
-            test_file_list[app_name].append(task_id)
+
+            if main_app not in test_file_list:
+                test_file_list[main_app] = []
+            test_file_list[main_app].append(task_id)
 
         return test_file_list
 

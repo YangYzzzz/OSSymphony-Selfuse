@@ -26,6 +26,7 @@ class Observation(BaseModel):
     accessibility_tree: Optional[str] = None
     terminal: Optional[str] = None
     instruction: Optional[str] = None
+    code_result: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

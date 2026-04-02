@@ -461,7 +461,7 @@ class GeminiOpenAIAgent:
         # 将模型回复添加到历史
         self.messages.append(message_dict)
 
-        reasoning = message_dict['reasoning_content'] if 'reasoning_content' in message_dict.keys() else "No thinking."
+        reasoning = message_dict['reasoning_content'] if 'reasoning_content' in message_dict.keys() else ""
         logger.info(f'Reasoning content: {reasoning}')
 
         tool_calls = message.tool_calls
@@ -497,7 +497,13 @@ class GeminiOpenAIAgent:
             # --- 1. 计算绝对坐标 (用于 metadata 和 visualization) ---
             # 这里的坐标必须是绝对坐标 (PyAutoGUI 空间)
             coordinate = None
-
+            if "\"x\"" in function_args:
+                function_args["x"] = function_args["\"x\""]
+                del function_args["\"x\""]
+            if "\"y\"" in function_args:
+                function_args["y"] = function_args["\"y\""]
+                del function_args["\"y\""]
+                
             if "x" in function_args and "y" in function_args:
                 abs_x = self.denormalize_x(function_args["x"])
                 abs_y = self.denormalize_y(function_args["y"])

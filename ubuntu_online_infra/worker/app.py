@@ -31,7 +31,6 @@ from worker.env_pool import EnvPool
 
 logger = logging.getLogger(__name__)
 
-
 def load_config(path: str) -> Dict[str, Any]:
     with open(path) as f:
         return yaml.safe_load(f)
@@ -95,6 +94,15 @@ async def _cleanup_loop(app_state, interval: float = 60.0):
         except Exception:
             logger.warning("Cleanup error", exc_info=True)
 
+async def _env_health_loop(app_state, interval: float = 120.0):
+    """Periodically check underlying env/docker health and log results."""                                                      
+    while True:                                                                                                                 
+        await asyncio.sleep(interval)                                                                                           
+        try:                                                                                                                    
+            summary = await run_in_threadpool(app_state.pool.health_check)
+            logger.info("Periodic env health_check: %s", summary)
+        except Exception:
+            logger.warning("Periodic env health_check failed", exc_info=True)
 
 def create_app(config: Optional[Dict[str, Any]] = None, pool: Optional[EnvPool] = None) -> FastAPI:
     """Create the Worker FastAPI app. Accepts optional injected config/pool for testing."""
@@ -124,6 +132,7 @@ def create_app(config: Optional[Dict[str, Any]] = None, pool: Optional[EnvPool] 
                 tasks.append(asyncio.create_task(_heartbeat_loop(app.state)))
 
             tasks.append(asyncio.create_task(_cleanup_loop(app.state)))
+            tasks.append(asyncio.create_task(_env_health_loop(app.state)))
         else:
             tasks = []
 
@@ -178,12 +187,32 @@ def create_app(config: Optional[Dict[str, Any]] = None, pool: Optional[EnvPool] 
 
     @app.post("/worker/step")
     async def step(req: StepRequest, request: Request):
+        start = asyncio.get_event_loop().time()
+        logger.info(
+            "worker /step start: local_env_id=%s action=%s pause=%s",
+            req.local_env_id,
+            req.action,
+            req.pause,
+        )
         try:
             obs, reward, done, info = await run_in_threadpool(
                 request.app.state.pool.step_env, req.local_env_id, req.action, req.pause
             )
         except ValueError as e:
+            logger.warning(
+                "worker /step ValueError: local_env_id=%s error=%s",
+                req.local_env_id,
+                e,
+            )
             raise HTTPException(status_code=404, detail=str(e))
+        finally:
+            duration = asyncio.get_event_loop().time() - start
+            logger.info(
+                "worker /step end: local_env_id=%s duration=%.3fs done=%s",
+                req.local_env_id,
+                duration,
+                "unknown" if 'done' not in locals() else done,
+            )
         return StepResponse(observation=obs, reward=reward, done=done, info=info)
 
     @app.post("/worker/evaluate")
