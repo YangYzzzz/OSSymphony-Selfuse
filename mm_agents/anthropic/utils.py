@@ -1,8 +1,14 @@
 """
 Utility functions for the Anthropic API.
 """
-from typing import List, Union, cast
+import json
+import os
+from pathlib import Path
+import textwrap
+from typing import List, Optional, Union, cast, Any, Dict
+import base64
 from enum import Enum
+from mm_agents.utils.call_api_log import log_claude_api_call
 from anthropic import (
     Anthropic,
     AnthropicBedrock,
@@ -25,6 +31,475 @@ from anthropic.types.beta import (
 from datetime import datetime
 
 from .tools import ToolResult
+
+
+# ================= Qwen3VL SFT utilities =================
+import hashlib
+from copy import deepcopy
+from mm_agents.utils.qwen_vl_utils import QWEN3VL_COMPUTER_USE_TOOL_SCHEMA, QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN, dedup_and_save_images_for_claude
+
+
+def _scale_single_coord_to_1000(coord: list[int], screen_size: tuple[int, int]) -> list[int]:
+    """将像素坐标缩放到 0~1000 的相对坐标空间。"""
+    if len(coord) != 2:
+        return coord
+    w, h = screen_size
+    if not w or not h:
+        return coord
+    x_rel = max(0, min(1000, round(coord[0] / w * 1000)))
+    y_rel = max(0, min(1000, round(coord[1] / h * 1000)))
+    return [x_rel, y_rel]
+
+
+def scale_coordinate_to_1000(coord: Optional[Any], screen_size: tuple[int, int]) -> Optional[Any]:
+    """支持单点或拖拽两点坐标的缩放到 0~1000 空间。
+
+    - 单点: [x, y]
+    - 拖拽: [[x1, y1], [x2, y2]]
+    """
+    if coord is None:
+        return None
+    # 拖拽路径 [[x1,y1],[x2,y2]]
+    if isinstance(coord, (list, tuple)) and len(coord) == 2 and all(
+        isinstance(c, (list, tuple)) for c in coord
+    ):
+        return [
+            _scale_single_coord_to_1000(list(coord[0]), screen_size),
+            _scale_single_coord_to_1000(list(coord[1]), screen_size),
+        ]
+    # 单点 [x, y]
+    if isinstance(coord, (list, tuple)):
+        return _scale_single_coord_to_1000(list(coord), screen_size)
+    return coord
+
+
+def _iter_image_blocks_from_messages(messages: list[BetaMessageParam]):
+    """遍历 messages 中所有 image block（user 截图 + tool_result image）。"""
+    for m in messages:
+        content = m.get("content") if isinstance(m, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "image":
+                src = block.get("source") or {}
+                if isinstance(src, dict) and src.get("type") == "base64":
+                    data = src.get("data")
+                    media_type = src.get("media_type", "image/png")
+                    if data:
+                        yield data, media_type
+
+
+def truncate_images_for_context(
+    messages: list[BetaMessageParam],
+    max_images: int = 5,
+):
+    """复制一份 messages，并只保留最后 max_images 张图片，其余位置替换成占位文本。
+
+    注意：Claude 的截图都位于 tool_result block 的 content 里，需要深入查找。
+    """
+    messages_copy = deepcopy(messages)
+
+    # 收集所有 image block 的 (msg_idx, tool_result_idx, img_idx)
+    image_positions: list[tuple[int, int, int]] = []
+    for mi, m in enumerate(messages_copy):
+        content = m.get("content") if isinstance(m, dict) else None
+        if not isinstance(content, list):
+            continue
+        for ti, block in enumerate(content):
+            if not (isinstance(block, dict) and block.get("type") == "tool_result"):
+                continue
+            sub_content = block.get("content")
+            if not isinstance(sub_content, list):
+                continue
+            for ci, sub in enumerate(sub_content):
+                if isinstance(sub, dict) and sub.get("type") == "image":
+                    image_positions.append((mi, ti, ci))
+
+    if len(image_positions) <= max_images:
+        return messages_copy
+
+    # 需要移除的都是最早的那些
+    to_remove = image_positions[: len(image_positions) - max_images]
+    for mi, ti, ci in to_remove:
+        m = messages_copy[mi]
+        content = m.get("content")
+        if not isinstance(content, list) or ti >= len(content):
+            continue
+        tool_result_block = content[ti]
+        sub_content = tool_result_block.get("content")
+        if not isinstance(sub_content, list) or ci >= len(sub_content):
+            continue
+        # 用直接删除
+        del sub_content[ci]
+        # sub_content[ci] = {
+        #     "type": "text",
+        #     "text": "[Screenshot has removed]",
+        # }
+
+    return messages_copy
+
+
+def _merge_thinking_and_text(blocks: list[dict]) -> str:
+    """将本轮 assistant 的 thinking + text block 合并为 <think>...</think> 包裹的字符串。"""
+    pieces: list[str] = []
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        b_type = b.get("type")
+        if b_type == "thinking":
+            val = b.get("thinking") or ""
+            pieces.append(str(val))
+        elif b_type == "text":
+            val = b.get("text") or ""
+            pieces.append(str(val))
+    merged = "".join(pieces).strip()
+    if not merged:
+        return ""
+    return f"{merged}" # TODO: 是否添加 <think> tag 有待探究
+
+def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any] | List[Dict[str, Any]]:
+    """
+    将 Claude computer/code 工具的 input 转成 Qwen3VL 的动作参数空间。
+
+    参照 mm_agents/os_symphony2/os_symphony2_agent.py 里的 tools_def：
+    - action: ["key", "type", "mouse_move", "left_click", "left_click_drag",
+                "right_click", "middle_click", "double_click", "scroll",
+                "execute_code", "wait", "terminate"]
+    - keys / text / coordinate / pixels / time / code / language
+    """
+    q_args: Dict[str, Any] | List[Dict[str, Any]] = {"action": "wait"}
+
+    if tool_name == "computer":
+        action = (tool_input.get("action") or "").lower()
+        text = tool_input.get("text")
+        coordinate = tool_input.get("coordinate")
+        start_coordinate = tool_input.get("start_coordinate")
+        scroll_direction = tool_input.get("scroll_direction")
+        scroll_amount = tool_input.get("scroll_amount") or 0
+        duration = tool_input.get("duration") or 0.5
+
+        # 鼠标相关
+        if action in {"left_press", "left_click"}:
+            q_args["action"] = "left_click"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+        elif action in {"right_click"}:
+            q_args["action"] = "right_click"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+        elif action in {"middle_click"}:
+            q_args["action"] = "middle_click"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+        elif action in {"double_click"}:
+            q_args["action"] = "double_click"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+        elif action in {"trible_click"}:
+            q_args["action"] = "trible_click"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+        elif action in {"mouse_move"}:
+            q_args["action"] = "mouse_move"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+        elif action in {"left_click_drag"}:
+            q_args["action"] = "left_click_drag"
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+            if start_coordinate is not None and coordinate is not None:
+                # 特殊处理, 一个 Claude Action 对应两个 Qwen Action
+                q_args = [
+                    {
+                        "action": "mouse_move",
+                        "coordinate": start_coordinate
+                    },
+                    {
+                        "action": "left_click_drag",
+                        "coordinate": coordinate
+                    }
+                ]
+
+        # 键盘
+        elif action in {"key"}:
+            q_args["action"] = "key"
+            keys = []
+            if isinstance(text, str):
+                # Claude 侧一般是 "ctrl+c" 或 "ctrl+shift+esc"
+                for k in text.replace("+", ",").split(","):
+                    k = k.strip()
+                    if k:
+                        keys.append(k)
+            if keys:
+                q_args["keys"] = keys
+
+        elif action in {"type"}:
+            q_args["action"] = "type"
+            if isinstance(text, str):
+                q_args["text"] = text
+
+        # 滚动
+        elif action in {"scroll"}:
+            if scroll_direction in {"down", "up"}:
+                q_args["action"] = "scroll"
+            elif scroll_direction in {"left", "right"}:
+                q_args["action"] = "hscroll"
+
+            if scroll_direction in {"down", "left"}:
+                pixels = -abs(scroll_amount)
+            elif scroll_direction in {"up", "right"}:
+                pixels = abs(scroll_amount)
+            q_args["pixels"] = pixels
+
+            if coordinate is not None:
+                q_args["coordinate"] = coordinate
+
+        # 等待 / 结束
+        elif action in {"wait"}:
+            q_args["action"] = "wait"
+            q_args["time"] = duration
+        elif action in {"done"}:
+            q_args["action"] = "terminate"
+            q_args["status"] = "success"
+        elif action in {"fail"}:
+            q_args["action"] = "terminate"
+            q_args["status"] = "failure"
+        else:
+            # 未知动作兜底成 terminate，避免训练奇怪 action
+            q_args["action"] = "terminate"
+            q_args["status"] = "failure"
+
+    elif tool_name == "code":
+        # code 工具 → execute_code
+        lang = (tool_input.get("language") or "python").lower()
+        code = tool_input.get("execute_code") or ""
+        q_args["action"] = "code"
+        q_args["language"] = lang
+        q_args["execute_code"] = code
+
+    else:
+        q_args["action"] = "terminate"
+        q_args["status"] = "failure"
+    return q_args
+
+def build_qwen_messages_from_claude(
+    step_messages: list[BetaMessageParam],
+    screen_size: tuple[int, int],
+) -> list[dict]:
+    """将 Claude 的 message 历史转成 Qwen3VL SFT messages.
+
+    约定：
+    - user: 文本 + `<image>` 占位；
+    - assistant: 普通回复 role="assistant"；
+    - tool_use: role="tool_call"；
+    - tool_result: role="tool_response"。
+    """
+    qwen_messages: list[dict] = []
+
+    for m in step_messages:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role")
+        content = m.get("content")
+        if not isinstance(content, list):
+            continue
+
+        # user / tool_result 统一走 here，再根据 block type 决定具体 role
+        if role == "user":
+            # 若是 tool_result，则转成 tool_response
+            if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+                # 这里一条 user 里可能只有一个 tool_result
+                for b in content:
+                    if not isinstance(b, dict):
+                        continue
+                    if b.get("type") != "tool_result": # 所有内容都在 tool_result 内
+                        continue
+                    # 生成 tool_response message
+                    has_image = False
+                    payload = {}
+                    # 这部分是人为构造的, 必然是一个 text 和 一个 image 字段 或者 两个 text 字段(图像移除)
+                    for sub in b.get("content", []) or []:
+                        if isinstance(sub, dict) and sub.get("type") == "text":
+                            if sub.get("text") == "Success":
+                                payload["status"] = sub.get("text")
+                            else:
+                                payload["code_result"] = sub.get("text")
+                        if isinstance(sub, dict) and sub.get("type") == "image":
+                            has_image = True
+                    # TODO: Claude -> Qwen3VL 动作空间转化中, 存在1对多tool_call转化, 此时 tool_response 仍为一个, 但应该不影响, 不额外处理
+                    qwen_messages.append(
+                        {
+                            "role": "tool_response",
+                            "content": json.dumps(payload, ensure_ascii=False),
+                        }
+                    )
+                    if has_image:
+                        # payload["images"] = "<image>"
+                        qwen_messages.append(
+                            {
+                                "role": "user",
+                                "content": "Current Screenshot: <image>",
+                            }
+                        )
+            else:
+                # 普通 user：将 image -> <image>，text 保持
+                text_parts: list[str] = []
+                for b in content:
+                    if not isinstance(b, dict):
+                        continue
+                    b_type = b.get("type")
+                    if b_type == "text":
+                        text_parts.append(str(b.get("text") or ""))
+                    elif b_type == "image":
+                        text_parts.append("<image>")
+                if text_parts:
+                    qwen_messages.append(
+                        {
+                            "role": "user",
+                            "content": "".join(text_parts),
+                        }
+                    )
+
+        elif role == "assistant":
+            # 把本条 assistant 拆成：普通回复 + tool_call 序列
+            # 1) thinking+text -> 一个 assistant
+            merged_think = _merge_thinking_and_text(content)
+            if merged_think:
+                qwen_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": merged_think,
+                    }
+                )
+
+            # 2) tool_use -> 多个 tool_call
+            for b in content:
+                if not isinstance(b, dict):
+                    continue
+                if b.get("type") != "tool_use":
+                    continue
+                tool_id = str(b.get("id")) if b.get("id") is not None else None
+                tool_name = b.get("name", "")
+                tool_input = b.get("input") or {}
+
+                if tool_input.get("coordinate"):
+                    tool_input["coordinate"] = scale_coordinate_to_1000(tool_input.get("coordinate"), screen_size)
+                if tool_input.get("start_coordinate"):
+                    tool_input["start_coordinate"] = scale_coordinate_to_1000(tool_input.get("start_coordinate"), screen_size)
+                    
+                converted_args = _convert_claude_action_to_qwen(tool_name, tool_input)
+                if not isinstance(converted_args, list):
+                    converted_args = [converted_args]
+                for arg in converted_args:
+                    payload = {
+                        "name": "custom_computer_use", # qwen3vl 固定为该一个工具, 下包含所有可用操作分支
+                        "arguments": arg,
+                    }
+                    qwen_messages.append(
+                        {
+                            "role": "tool_call",
+                            "content": json.dumps(payload, ensure_ascii=False),
+                        }
+                    )
+
+    return qwen_messages
+
+
+def build_qwen_sft_sample(
+    messages: list[BetaMessageParam],
+    screen_size: tuple[int, int],
+    image_hash_map: dict[str, str],
+    image_root_dir: Path
+) -> tuple[dict, dict[str, str]]:
+    """构造单步 Qwen3VL SFT 训练样本。
+    一个典型的Claude数据(messages)如下所示 (重要重要重要):
+    [
+        {"role": "user", "content": [{"type": "text", "text": instruction}]},
+        {"role": "assistant": "content": [{"type": "thinking", "thinking": thinking}, {"type": "text", "text": text}, {"type": "tool_use", "name": "computer", "input": {"action": "screenshot"}}]},
+        {"role": "user": "content": [{"type": "tool_result", "content": [{"type": "text", "text": "Success"}, {"type": "image_placeholder", "detail": "[IMAGE_CONTENT_REMOVED_FOR_LOGGING]"}]}]}
+        {"role": "assistant": "content": [{"type": "thinking", "thinking": thinking}, {"type": "text", "text": text}, {"type": "tool_use", "name": "computer/code", "input": {"action": "left_click", "coordinate": [590, 33]}}]},
+        xxxxxxx 依次类推
+    ]
+
+    你需要将其组织为
+    {"tools": "[{\"type\": \"function\", \"function\": {\"name\": \"click\", \"description\": \"点击屏幕中的某个位置\", \"parameters\": {\"type\": \"object\", \"properties\": {\"x\": {\"type\": \"integer\", \"description\": \"横坐标，表示屏幕上的水平位置\"}, \"y\": {\"type\": \"integer\", \"description\": \"纵坐标，表示屏幕上的垂直位置\"}}, \"required\": [\"x\", \"y\"]}}}]", "messages": [{"role": "user", "content": "<image>现在几点了？"}, {"role": "assistant", "content": "<think>\n我可以通过打开日历App来获取当前时间。\n</think>\n"}, {"role": "tool_call", "content": "{\"name\": \"click\", \"arguments\": {\"x\": 105, \"y\": 132}}"}, {"role": "tool_response", "content": "{\"images\": \"<image>\", \"status\": \"success\"}"}, {"role": "assistant", "content": "成功打开日历App，现在的时间为中午11点"}], "images": ["desktop.png", "calendar.png"]}
+    - 截断上下文图片为最近 5 张；
+    - 去重存盘图片；
+    - 构造 messages / images 字段；
+    - 生成 loss_config：最后一个 assistant 文本 loss=True，所有 tool_call loss=True。
+    """
+    
+    # 0) 第一步前处理(重要): 去除 messages[1]和messages[2], 并将messages[2]的图像部分直接贴到messages[0]的content内
+    # 注意一定不要修改原messages,创建复制来修改
+    processed_messages = deepcopy(messages)
+    if len(processed_messages) >= 3:
+        first = processed_messages[0]
+        second = processed_messages[1]
+        third = processed_messages[2]
+        # 只有在符合典型结构时才做裁剪，避免误伤
+        if (
+            isinstance(first, dict)
+            and isinstance(second, dict)
+            and isinstance(third, dict)
+            and first.get("role") == "user"
+            and second.get("role") == "assistant"
+            and third.get("role") == "user"
+        ):
+            first_content = first.get("content")
+            third_content = third.get("content")
+            if isinstance(first_content, list) and isinstance(third_content, list):
+                # 从第三条里的 tool_result 里提取 image，加到第一条 user 的 content 末尾
+                for block in third_content:
+                    if not (isinstance(block, dict) and block.get("type") == "tool_result"):
+                        continue
+                    sub_content = block.get("content")
+                    if not isinstance(sub_content, list):
+                        continue
+                    for sub in sub_content:
+                        if isinstance(sub, dict) and sub.get("type") == "image":
+                            first_content.append(sub)
+                # 重新写回
+                first["content"] = first_content
+
+                # 砍掉第 1、2 条（下标 1、2），只保留改造后的首条
+                processed_messages = [first] + processed_messages[3:]
+
+    # 后续逻辑都基于 processed_messages
+
+    # 1) 截断图片上下文, 保留第一张初始状态图片(小巧思)
+    truncated_messages = truncate_images_for_context(processed_messages, max_images=4)
+
+    # 2) 保存图片并拿到文件名列表
+    images, image_hash_map = dedup_and_save_images_for_claude(
+        messages=truncated_messages,
+        image_hash_map=image_hash_map,
+        image_root_dir=image_root_dir
+    )
+
+    # 3) 构造 Qwen 消息
+    qwen_messages = build_qwen_messages_from_claude(
+        step_messages=truncated_messages,
+        screen_size=screen_size,
+    )
+
+    # 4) 添加 System Prompt
+    qwen_messages.insert(0, {
+        "role": "system",
+        "content": {
+            "type": "text",
+            "text": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN
+        }
+    })
+
+    sample = {
+        "tools": QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
+        "messages": qwen_messages,
+        "images": images
+    }
+
+    return sample, image_hash_map
 
 
 COMPUTER_USE_BETA_FLAG = "computer-use-2025-11-24"
@@ -114,7 +589,7 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
   Then you MUST output exactly "[INFEASIBLE]" (including the square brackets) anywhere in your response to trigger the fail action. The system will automatically detect this pattern and terminate the task appropriately.
 * The current date is {datetime.today().strftime('%A, %B %d, %Y')}.
 * Home directory of this Ubuntu system is '/home/user'.
-* If you need a password for sudo, the password of the computer is 'osworld-public-evaluation'. 
+* If you need a password for sudo, the password of the computer is 'password'. 
 </SYSTEM_CAPABILITY>
 
 <IMPORTANT>
@@ -122,7 +597,7 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 </IMPORTANT>"""
 
 SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
-* You are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
+* You are utilising an Ubuntu virtual machine using x86_64 architecture with internet access. The Ubuntu's home path is /home/user, desktop path is /home/user/Desktop.
 * You have two main ways to act: (1) low-level GUI control via the `computer` tool (mouse, keyboard, scrolling, window management), and (2) high-level automation via the `code` tool (Python or Bash scripts).
 * The `code` tool is for generating complete scripts, not just one-liners. The string you output will be written into a file and executed as a standalone program (e.g. a multi-line Python file or Bash script). You can and should use multiple lines, define functions, and structure the code as needed.
 * Use GUI (`computer` tool) when you need to directly manipulate windows, click buttons, type into fields, navigate menus, or visually inspect application state.
@@ -146,7 +621,7 @@ SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
   Then you MUST output exactly "[INFEASIBLE]" (including the square brackets) anywhere in your response to trigger the fail action. The system will automatically detect this pattern and terminate the task appropriately.
 * The current date is {datetime.today().strftime('%A, %B %d, %Y')}.
 * Home directory of this Ubuntu system is '/home/user'.
-* If you need a password for sudo, the password of the computer is 'osworld-public-evaluation'.
+* If you need a password for sudo, the password of the computer is 'password'.
 </SYSTEM_CAPABILITY>
 
 <IMPORTANT>
@@ -443,3 +918,134 @@ def _response_to_params(
         return res
     else:
         return []
+    
+
+def _normalize_messages_for_log(messages):
+    """将 messages 中的图片内容替换为占位符，避免日志写入大量 base64 图片。"""
+    if not messages:
+        return messages
+
+    def _normalize_content(content):
+        if isinstance(content, list):
+            normalized = []
+            placeholder = {
+                "type": "image_placeholder",
+                "detail": "[IMAGE_CONTENT_REMOVED_FOR_LOGGING]",
+            }
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "image":
+                    normalized.append(placeholder)
+                elif block.get("type") == "tool_result":
+                    new_block = dict(block)
+                    if "content" in new_block:
+                        new_block['content'] = _normalize_content(new_block["content"])
+                    normalized.append(new_block)
+                else:
+                    normalized.append(block)
+            return normalized
+        return content
+
+    normalized_messages = []
+    for m in messages:
+        """
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call_id,
+                        "content": [{"type": "text", "text": result}]
+                    }
+                ]
+            }
+
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {xxx}
+                    }
+                ]
+            }
+        """
+        if not isinstance(m, dict):
+            normalized_messages.append(m)
+            continue
+        new_m = dict(m)
+        if "content" in new_m:
+            new_m["content"] = _normalize_content(new_m["content"])
+        normalized_messages.append(new_m)
+    return normalized_messages
+
+def log_claude_api_call(
+    *,
+    model_name: str,
+    provider: APIProvider,
+    request_messages,
+    response,
+    duration_ms: float,
+    success: bool,
+    error: Optional[str] = None,
+):
+    """记录 Claude API 调用日志到 api_logs，图片用占位符。"""
+    try:
+        from datetime import datetime
+
+        # 以月份作为子目录，例如 2026-02, 2026-03
+        now = datetime.utcnow()
+        month_calls_model_jsonl_filename = CALLS_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
+        month_stats_model_jsonl_filename = STAT_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
+        month_calls_model_jsonl_filename.touch(exist_ok=True)
+        month_stats_model_jsonl_filename.touch(exist_ok=True)
+
+        ts = now.strftime("%Y%m%d_%H%M%S_%f")
+    
+
+        safe_messages = _normalize_messages_for_log(request_messages)
+
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = response.usage.model_dump()
+
+        response_summary = None
+        if response and getattr(response, "content", None):
+            texts = []
+            for block in response.content:
+                if hasattr(block, "text") and block.text:
+                    texts.append(block.text)
+            if texts:
+                merged = "\n".join(texts)
+                response_summary = merged[:2000]
+
+        stats_log_record = {
+            "timestamp_utc": ts,
+            "duration_ms": duration_ms,
+            "success": success,
+            "usage": usage
+        }
+
+        calls_log_record = {
+            "timestamp_utc": ts,
+            "provider": provider.name if hasattr(provider, "name") else str(provider),
+            "model": model_name,
+            "success": success,
+            "error": error,
+            "duration_ms": duration_ms,
+            "request": {
+                "messages": safe_messages,
+            },
+            "response": {
+                "usage": usage,
+                "summary_text": response_summary,
+            },
+        }
+
+        # 追加写入当月 jsonl 文件
+        with month_calls_model_jsonl_filename.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(calls_log_record, ensure_ascii=False) + "\n")
+        with month_stats_model_jsonl_filename.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(stats_log_record, ensure_ascii=False) + "\n")
+        
+    except Exception as e:
+        pass

@@ -23,7 +23,7 @@ from desktop_env.osworld.desktop_env import DesktopEnv
 import os
 from os_caliber_task_generator import OSCaliberTaskGenerator
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
-from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import InstructionGenerationAgent
+from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
 from mm_agents.anthropic.main import AnthropicAgent
 from mm_agents.kimi.kimi_agent import KimiAgent
 from mm_agents.glm4v.glm4v_agent import GLM4VAgent
@@ -33,6 +33,7 @@ from mm_agents.gemini.gemini_openai_agent import GeminiOpenAIAgent as GeminiAgen
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 from mm_agents.openai.gpt54_agent import GPT54Agent
 from mm_agents.anthropic.main_with_code import AnthropicAgentWithCode
+from mm_agents.gemini.gemini_openai_agent_with_code import GeminiOpenAIAgentWithCode
 
 
 # Global variables for signal handling
@@ -138,6 +139,13 @@ def config() -> argparse.Namespace:
         "--rollout_app_list", nargs='+', default=[], help="Rollout application list, default all" # roll的应用列表, 当 mode 为 online 时生效
     )
 
+    # Distill model
+    parser.add_argument(
+        "--collect_qwen_sft", action="store_true" # 是否开启数据蒸馏模式，仅支持 Claude 系列
+    )
+    parser.add_argument(
+        "--collect_qwen_sft_image_dir", type=str, default="qwen3vl_sft_dataset/image" # SFT 图像路径，后续需要更改
+    )
     # instrction generation model config ig: instrction generation model
     parser.add_argument("--ig_provider", type=str, default="openai")
     parser.add_argument("--ig_model", type=str, default="gpt-5")
@@ -154,8 +162,7 @@ def config() -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-args = config()  # Get command line arguments first
-
+args = config()
 logger = logging.getLogger()
 log_level = getattr(logging, args.log_level.upper())
 logger.setLevel(log_level)
@@ -183,29 +190,8 @@ def distribute_tasks(test_all_meta: dict) -> List[tuple]:
     return all_tasks
 
 
-def process_signal_handler(signum, frame, env_idx):
-    """Signal handler for child processes to gracefully shut down their environments."""
-    logger.info(f"Process {env_idx + 1} received signal {signum}. Shutting down...")
-    
-    # Get the active_environments from the caller's frame
-    local_vars = frame.f_locals
-    active_environments = local_vars.get('active_environments', [])
-    
-    # Close environment in the current process context
-    for env in active_environments:
-        if env is not None:
-            try:
-                logger.info(f"Process {env_idx + 1} closing environment...")
-                env.close()
-                logger.info(f"Process {env_idx + 1} environment closed successfully")
-            except Exception as e:
-                logger.error(f"Process {env_idx + 1} error closing environment: {e}")
-    
-    logger.info(f"Process {env_idx + 1} shutdown complete. Exiting.")
-    sys.exit(0)
-
 def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: list):
-    active_environments = []
+    global active_environments
     env = None
     try:
         screen_size = (args.screen_width, args.screen_height)
@@ -283,7 +269,9 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     max_tokens=args.max_tokens,
                     temperature=args.temperature,
                     top_p=args.top_p,
-                    no_thinking=not args.use_thinking
+                    no_thinking=not args.use_thinking,
+                    collect_qwen_sft=args.collect_qwen_sft,
+                    collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
         elif "kimi" in args.model.lower():
             # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
@@ -329,15 +317,28 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 use_thinking=args.use_thinking,
             )
         elif "gemini" in args.model.lower():
-            agent = GeminiAgent(
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                max_tokens=args.max_tokens,
-                top_p=args.top_p,
-                temperature=args.temperature,
-                max_image_history_length=args.max_image_history_length
-            )
+            if not args.enable_code_tool:
+                agent = GeminiAgent(
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    max_tokens=args.max_tokens,
+                    top_p=args.top_p,
+                    temperature=args.temperature,
+                    max_image_history_length=args.max_image_history_length
+                )
+            else:
+                agent = GeminiOpenAIAgentWithCode(
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    max_tokens=args.max_tokens,
+                    top_p=args.top_p,
+                    temperature=args.temperature,
+                    max_image_history_length=args.max_image_history_length,
+                    collect_qwen_sft=args.collect_qwen_sft,
+                    collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
+                )
         elif "gpt" in args.model.lower(): # 仅支持GPT5.4
             agent = GPT54Agent(
                 model=args.model,
@@ -444,7 +445,7 @@ def signal_handler(signum, frame):
                 logger.error(f"Error sending termination signal to process: {e}")
     
     # Allow a short time for processes to handle their own cleanup
-    time.sleep(1)
+    time.sleep(2)
     
     # Forcefully terminate any processes that didn't exit
     for p in processes:
@@ -461,7 +462,7 @@ def signal_handler(signum, frame):
 
 
 def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_meta: dict, lock):
-    active_environments = []
+    global active_environments
     env = None
     set_current_result_dir(args.rollout_task_dir)
     try:
@@ -746,6 +747,7 @@ if __name__ == "__main__":
             "args.json"
         )
         os.makedirs(os.path.dirname(path_to_args), exist_ok=True)
+        os.makedirs(os.path.join(args.collect_qwen_sft_image_dir), exist_ok=True)
         with open(path_to_args, "w", encoding="utf-8") as f:
             json.dump(vars(args), f, indent=4)
 

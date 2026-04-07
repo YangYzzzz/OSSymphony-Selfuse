@@ -21,7 +21,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     ## Environment assumptions
     - The user's home directory is "~" (absolute path "/home/user").
-    - Unless otherwise specified, any new files you create should be saved under a reasonable subdirectory of "~/Desktop".
 
     ## Applications
     - In the current setting, you have one MAIN application: {main_app_name}.
@@ -42,7 +41,10 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     Each task must be represented as a JSON object with the following fields:
 
-    - "description" (string): Natural-language description of what the user should achieve.
+    - "description" (string): A natural-language, goal-oriented request mimicking a real-world user prompt. 
+        - **CRITICAL:** It MUST NOT be a step-by-step tutorial. Tell the user WHAT the final goal is, not HOW to achieve it.
+        - Good example: "Query the score of Game 1 of the 2024 Finals on Hupu and record it in a new document."
+        - Bad example: "Click the search bar, type '2024 Finals', click the first link, copy the score, open a document, and paste it."
     - "complexity" (string): One of "simple", "medium", or "complex".
     - "category" (string): One of:
         - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application(s).
@@ -84,12 +86,10 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - When "evaluation.need_vlm_judge" is true, you MUST provide a clear "vlm_desc" string that describes the final GUI state and, where helpful, key intermediate GUI states during execution, so that a VLM can reliably judge success from screenshots.
 
     - Rule-based checks MUST follow these principles:
-        - Core idea: "everything is a file". The final result should be reflected in one or more files inside the VM. These files may be:
-            - Common formats such as .txt, .md, .pdf, .xlsx, .docx, .pptx, .mp3, .png, .jpg, .json, .mp4, .wav, .blend, etc.
-                - You can use any reasonable Python packages to read and analyze these files (e.g., `python-docx`/`python-pptx`/`openpyxl`/`pandas` for Office documents, `PyPDF2`/`pdfplumber` for PDFs, `Pillow` for images, and `pydub`/`librosa`/`ffmpeg-python` for audio/video).
-            - Less common formats such as .dxf or application-specific project files.
-            - Files that are easy to locate (e.g., under "~/Desktop").
-            - Files that are deeply hidden (e.g., application config files, caches, or internal state files), maybe they can be accessed via a path or an API.
+        - Core idea: "everything is a file". The final result should be reflected in one or more files inside the VM. 
+        - **Immutable/Golden Answers ONLY:** The final answer must be deterministic and time-independent. NEVER design tasks whose correct outcome depends on real-time or dynamic data. 
+            - Bad example: "Find the 3 most recent games..." (The answer will change over time, breaking the evaluator).
+            - Good example: "Find the score of Game 1 of the 2024 Finals..." (The answer is a historical fact and serves as a reliable 'golden' answer).
         - For rule-based checks you MUST rely ONLY on:
             - Files inside the VM filesystem that can be copied out (vm_file), OR
             - Command outputs obtained from the VM shell (vm_command_line), typically via application CLIs or helper tools that expose internal state.
@@ -99,9 +99,8 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Detailed distinction between Rule-based and VLM-based tasks:
         - Rule-based:
             - Tasks whose success can be checked directly using VM files (vm_file) or VM commands (vm_command_line).
-            - vm_file outputs are often used by copying common file types directly from the VM to the host and evaluating with Python functions on the host side. For file‑based evaluation, you should prefer this pattern over extracting partial information via VM command‑line tools.
-            - vm_command_line outputs are often used to expose complex internal structures (e.g., querying application state or hidden configuration paths).
-            - The final answer should be deterministic or only mildly dynamic; the Python rule function should be able to determine success using deterministic logic given the file contents or command output.
+            - vm_file outputs are often used by copying common file types directly from the VM to the host and evaluating with Python functions on the host side.
+            - The Python rule function should be able to determine success using deterministic logic given the file contents or command output.
         - VLM-based:
             - Tasks whose success depends on information that is deeply hidden and cannot be reliably accessed via files or APIs.
             - Tasks involving uncommon file formats, which it is hard to writing a robust parser.
@@ -142,16 +141,10 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     Requirements:
     - The function name MUST match the "function_name" you provide in the rule item (e.g., "call_rule_judge_1").
-    - Within each task, ALL rule-based functions MUST use the common prefix "call_rule_judge_" and be numbered locally for that task only:
-        - Example for one task with three rules: "call_rule_judge_1", "call_rule_judge_2", "call_rule_judge_3".
-        - Function names MUST NOT be numbered globally across tasks. Each task reuses its own local numbering starting from 1.
+    - Within each task, ALL rule-based functions MUST use the common prefix "call_rule_judge_" and be numbered locally for that task only.
     - The signature MUST be exactly: def call_rule_judge_1(result, expected, **options) -> float:
     - The function MUST import any modules it uses at the top of the code string.
     - The function MUST return a float in [0.0, 1.0].
-      - You SHOULD design the function to support partial credit when appropriate.
-        - Example: if a final file is expected to contain three required fields, you may award ~0.33 for each field that appears correctly, so a partially correct solution gets an intermediate score such as 0.33 or 0.67.
-      - You MAY assign different weights to different conditions when some are more important than others (e.g., critical conditions sum to 0.7, secondary conditions sum to 0.3).
-      - You SHOULD still use 1.0 only when all critical conditions are satisfied, and 0.0 when none of the important conditions are satisfied.
     - The docstring MUST clearly describe what is being checked and why.
 
     ## Launch paths and file usage
@@ -159,27 +152,26 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     - When `launch_paths` is non-empty:
         - You may and should refer directly to these paths in your tasks.
-        - Do NOT assume the existence of additional unnamed files outside the ones given, unless you explicitly create and save them in your task description.
+        - **IN-PLACE EDITING:** If a task requires modifying an existing file from `launch_paths`, you MUST assume the modifications are saved in-place. DO NOT instruct the user to "Save As" or save the file to a new location. Your generated evaluation logic (`vm_file`) MUST target the original file path to verify the changes.
+        - Do NOT assume the existence of additional unnamed files outside the ones given, unless you explicitly create them in your task description.
 
     - When `launch_paths` is empty:
         - You must NOT assume any pre-existing files beyond the application itself.
-        - You may still create new files as part of a task, but you must:
-            - Explicitly specify their save locations with "~" (e.g., "~/Desktop/project_notes/report.md").
-            - Make sure the description and condition clearly say that the file should be saved and not just edited in memory.
-        - In this case, prefer "app_only" tasks, or tasks that first create new files and then operate on them within the same task.
+        - You may still create new files as part of a task, but you must explicitly specify their save locations with "~" (e.g., "~/Desktop/project_notes/report.md").
+
+    ## Golden paths
+
+    - You may also be given `golden_paths`, each golden path is a backup copy of the path in `launch_paths`, created before any in-place editing.
+    - When designing rule-based evaluation:
+        - You MAY use `vm_file` getters to read both the modified file and its golden counterpart.
+        - You SHOULD clearly describe in the rule function docstring how the golden file is used for comparison, when applicable.
 
     ## Complexity and estimated_steps
     Use these guidelines:
 
-    - "simple":
-        - Typically 10–15 gui actions.
-        - Single-file workflows or small configuration changes.
-    - "medium":
-        - Typically 15–30 gui actions.
-        - Multi-step workflows, multiple files or views, or a combination of a settings change plus file editing.
-    - "complex":
-        - Typically 30–50 gui actions.
-        - Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation across several views.
+    - "simple": Typically 15–30 gui actions. Single-file workflows or small configuration changes.
+    - "medium": Typically 30–50 gui actions. Multi-step workflows, multiple files or views.
+    - "complex": Typically 50–70 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
 
     Choose "estimated_steps" consistent with the complexity level and the actual operations required.
 
@@ -187,14 +179,14 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     Across the {task_numbers} tasks you generate:
 
     - Vary the difficulty: Include a spread of "simple", "medium", and "complex" tasks.
-    - Vary the functional coverage: Use different features or workflows of the application (editing, formatting, searching, filters, views, settings, exports, imports, etc., depending on {app_name}).
+    - Vary the functional coverage: Use different features or workflows of the application.
     - Avoid generating multiple tasks that are essentially the same goal with only superficial wording changes.
 
     ## Verifiability and paths
     For every task:
 
-    - Any file that is read, edited, or inspected must be identified with a unique, unambiguous "~"-based path. You may introduce new paths under "~/Desktop" or other sensible subdirectories of the home directory.
-    - If the task modifies a file, you MUST make it explicit in "description" that the user should save the file before finishing.
+    - Any file that is read, edited, or inspected must be identified with a unique, unambiguous "~"-based path.
+    - As stated above, existing files must be evaluated at their original paths (no "save as" unless explicitly testing a file-conversion feature).
 
     ## Use of application tutorials (if provided)
     If you are given an application-specific markdown tutorial, you may use it to:
@@ -418,6 +410,7 @@ class InstructionGenerationAgent:
         launch_paths: List[str] | None = None,
         app_tutorial_md: str | None = None,
         allowed_apps: List[str] | None = None,
+        golden_paths: List[str] | None = None,
     ) -> List[Dict[str, Any]]:
         """Generate coarse-grained task list.
 
@@ -457,12 +450,15 @@ class InstructionGenerationAgent:
                 )
                 system_prompt = system_prompt + tutorial_block
 
-            # 3) User message: screenshot + known launch paths
+            # 3) User message: screenshot + known launch paths + golden paths
             launch_paths_text = "" if not launch_paths else "\n".join(launch_paths)
+            golden_paths_text = "" if not golden_paths else "\n".join(golden_paths)
             user_text = (
                 f"This is the current UI screenshot of the MAIN application '{main_app_name}'.\n"
                 "If there are any currently opened file/project paths (launch_paths), they are listed below, one per line:\n"
                 f"{launch_paths_text if launch_paths_text else '(No explicit launch paths are provided in this round)'}\n\n"
+                "If there are golden reference files/project paths (golden_paths), they are listed below, one per line:\n"
+                f"{golden_paths_text if golden_paths_text else '(No golden paths are provided in this round)'}\n\n"
                 f"Using the system instructions, generate exactly {task_nums} structured tasks that can be executed from the current state."
             )
 

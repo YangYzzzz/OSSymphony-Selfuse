@@ -394,6 +394,10 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             copy.deepcopy(obs)      # agent loop内部会修改obs的size，如果不传深拷贝后面画图就会收到被resize过的图像
         )
         
+        agent_sft_sample = None
+        if "agent_sft" in response[0]:
+            agent_sft_sample = response[0].pop("agent_sft")
+
         # Iterate through actions (usually one per step)
         raw_response = ""
         thought = ""
@@ -445,15 +449,13 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
 
             # Execute Environment Step
             if action.startswith("BASH") or action.startswith("PYTHON"):        # 如果是执行代码，就在这里提前执行好
-                lang, code = action.split("|")
-                if lang == "PYTHON":
-                    result = env.controller.run_python_script(code)
-                elif lang == "BASH":
+                if action.startswith("BASH"):
+                    code = action[5:]
                     result = env.controller.run_bash_script(code)
                 else:
-                    result = {
-                        'error': f"Not support code type: {lang}."
-                    }
+                    code = action[7:]
+                    result = env.controller.run_python_script(code)
+
                 action = code
 
                 # 制作code的返回日志
@@ -487,6 +489,10 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         
         # Append to trajectory
         meta_json["trajectory"].append(step_data)
+
+        if agent_sft_sample:
+            with open(os.path.join(example_result_dir, "default_qwen_sft.jsonl"), "a", encoding='utf-8') as f:
+                f.write(json.dumps(agent_sft_sample, ensure_ascii=False) + "\n")
 
         step_idx += 1
 

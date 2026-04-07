@@ -109,6 +109,20 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         )
         processed_width, processed_height = processed_img.size
 
+        # ================== Old Prompts ==================
+        old_description_prompt_lines = [
+            "Use a mouse and keyboard to interact with a computer, and take screenshots.",
+            "* This is an interface to a desktop GUI. You do not have access to a terminal or applications menu. You must click on desktop icons to start applications.",
+            "* Some applications may take time to start or process actions, so you may need to wait and take successive screenshots to see the results of your actions. E.g. if you click on Firefox and a window doesn't open, try wait and taking another screenshot.",
+            (
+                f"* The screen's resolution is {processed_width}x{processed_height}."
+                if self.coordinate_type == "absolute"
+                else "* The screen's resolution is 1000x1000."
+            ),
+            "* Whenever you intend to move the cursor to click on an element like an icon, you should consult a screenshot to determine the coordinates of the element before moving the cursor.",
+            "* If you tried clicking on a program or link but it failed to load even after waiting, try adjusting your cursor position so that the tip of the cursor visually falls on the element that you want to click.",
+            "* Make sure to click any buttons, links, icons, etc with the cursor tip in the center of the element. Don't click boxes on their edges unless asked.",
+        ]
         # ================== Prompts ==================
         description_prompt_lines = [
             "You are a hybrid OS agent that can both operate the GUI (mouse and keyboard) and directly execute system-level code.",
@@ -133,12 +147,13 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
 * `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
 * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
 * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+* `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).
 * `scroll`: Performs a scroll of the mouse scroll wheel.
-* `execute_code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system. Use this for batch processing, file manipulation, or tasks where GUI clicking is
-inefficient or repetitive.
+* `hscroll`: Performs a horizontal scroll (mapped to regular scroll).
 * `wait`: Wait specified seconds for the change to happen.
 * `terminate`: Terminate the current task and report its completion status.
-# """
+* `code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system. Use this for batch processing, file manipulation, or tasks where GUI clicking is inefficient or repetitive.
+"""
 
         tools_def = {
             "type": "function",
@@ -152,8 +167,8 @@ inefficient or repetitive.
                             "description": action_description_prompt,
                             "enum": [
                                 "key", "type", "mouse_move", "left_click", "left_click_drag",
-                                "right_click", "middle_click", "double_click", "scroll",
-                                "execute_code", "wait", "terminate"
+                                "right_click", "middle_click", "double_click", "triple_click", "scroll", "hscroll",
+                                "wait", "terminate", "code"
                             ],
                             "type": "string"
                         },
@@ -162,12 +177,17 @@ inefficient or repetitive.
                         "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"},
                         "pixels": {"description": "The amount of scrolling.", "type": "number"},
                         "time": {"description": "The seconds to wait.", "type": "number"},
-                        "code": {
-                            "description": "The raw code string to execute. Required only when `action=execute_code`.",
+                        "status": {
+                            "description": "The status of the task.", 
+                            "type": "string", 
+                            "enum": ["success", "failure"]
+                        },
+                        "execute_code": {
+                            "description": "The raw code string to execute. Required only when `action=code`.",
                             "type": "string"
                         },
                         "language": {
-                            "description": "The programming language of the code. Required only when `action=execute_code`.",
+                            "description": "The programming language of the code. Required only when `action=code`.",
                             "type": "string",
                             "enum": ["python", "bash"]
                         }
@@ -600,7 +620,7 @@ Instruction: {instruction}
                     pyautogui_code.append(code_str)
                     meta_data.append(make_meta(code_str, coord))
 
-                elif action == "execute_code":
+                elif action == "code":
                     code_content = args.get("code", "")
                     language = args.get("language", "python")
                     code_str = f"EXEC_CODE|{language}|{code_content}"

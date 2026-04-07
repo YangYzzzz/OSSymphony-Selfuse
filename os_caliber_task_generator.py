@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Any
 import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
-from mm_agents.os_symphony.agents.coarse_instruction_generation_agent import InstructionGenerationAgent
+from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
 
 logger = logging.getLogger("desktopenv.task_generator")
 
@@ -60,7 +60,68 @@ URL_LIST: List = json.load(open(URL_CONFIG_PATH, "r"))
 
 ENV_FILE_BASE_DIR = "/home/user/Desktop/test_files"
 APP_TUTORIAL_DIR = "evaluation_examples/ubuntu_online_rollout/app_tutorial"
+# 预制后处理保存, 能应对的场景有限, 更寄希望于模型学会保存能力
+POST_CONFIG = [
+    {
+        "type": "execute",
+        "parameters": {
+            "command": [
+                "python",
+                "-c",
+                "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+            ]
+        }
+    },
+    {
+        "type": "sleep",
+        "parameters": {
+            "seconds": 0.5
+        }
+    }
+]
+# 复制黄金文件, 若存在初始化文件, 则将其加入 config[0] 作为第一条初始化config, 并将其提供给 agent, 增加一句提示词, 即1. 鼓励原地修改文件, 2. 备份了一份黄金文件, 如果要对比, 可以使用此黄金文件路径
+GOLD_CP_CONFIG = {
+    "type": "launch",
+    "parameters": {
+        "command": [
+            "cp",
+            "-r",
+            "PATH",
+            "GOLDEN_PATH" # {文件名}_golden.{后缀名}
+        ]
+    }
+}
 
+def is_path_likely_directory(path: str) -> bool:
+    """启发式判断路径字符串是否表示目录（不访问文件系统）"""
+    # 以路径分隔符结尾
+    if path.endswith(os.path.sep) or path.endswith('/'):
+        return True
+    # 获取最后一部分
+    basename = os.path.basename(path)
+    # 如果没有点号，或者点号在开头（隐藏文件），或者点号是最后一个字符，视为文件？实际上隐藏文件有扩展名可能没有点号？简化：没有点号 -> 目录
+    if '.' not in basename:
+        return True
+    # 有扩展名但扩展名为空（以点结尾）-> 目录
+    if basename.endswith('.'):
+        return True
+    return False
+
+def build_golden_path(original_path: str) -> str:
+    """根据原始文件路径生成对应黄金文件路径，不依赖本地文件系统。
+
+    启发式判断：
+    - 如果路径看起来像文件夹（以/结尾、最后部分无点号等），则追加 '_golden'
+    - 如果像文件，则在文件名（不含扩展名）后追加 '_golden'，保留扩展名
+    """
+    if is_path_likely_directory(original_path):
+        return original_path.rstrip(os.path.sep) + "_golden"
+    else:
+        dirname, basename = os.path.split(original_path)
+        root, ext = os.path.splitext(basename)
+        new_basename = f"{root}_golden{ext}"
+        return os.path.join(dirname, new_basename)
+    
 def extract_function_docstring(code_str, function_name=None):
     try:
         mod = ast.parse(code_str)
@@ -160,7 +221,7 @@ class OSCaliberTaskGenerator:
 
         return main_app, apps_for_group
 
-    def _generate_config(self, app_name: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+    def _generate_config(self, app_name: str) -> Tuple[List[Dict[str, Any]], List[str], List[str]]:
         """根据 APP_SETUP_DICT 生成标准的 config 列表，同时返回实际使用的 PATH 列表。
 
         commands 结构说明：
@@ -176,6 +237,7 @@ class OSCaliberTaskGenerator:
 
         config_list: List[Dict[str, Any]] = []
         used_paths: List[str] = []
+        golden_paths: List[str] = []
         abs_file_lists = self._get_abs_file_lists(type_lists=app_info.get("type", []))
 
         # 取出所有 setup 变体（三层结构），根据 random 字段加权随机选择一个变体
@@ -194,6 +256,8 @@ class OSCaliberTaskGenerator:
         raw_commands: List[List[str]] = copy.deepcopy(chosen_setup)
 
         for cmd in raw_commands:
+            has_path = False
+            selected_file_for_cmd = None
             for i in range(len(cmd)):
                 param = cmd[i]
                 if "PATH" in param:
@@ -214,6 +278,8 @@ class OSCaliberTaskGenerator:
 
                         cmd[i] = param.replace("PATH", selected_file)
                         used_paths.append(selected_file)
+                        has_path = True
+                        selected_file_for_cmd = selected_file
                     else:
                         if param == "PATH":
                             cmd[i] = ""
@@ -222,10 +288,26 @@ class OSCaliberTaskGenerator:
             cleaned_cmd = [c for c in cmd if c != ""]
             if not cleaned_cmd:
                 continue
+            # 正常的 launch 配置
             config_list.append({"type": "launch", "parameters": {"command": cleaned_cmd}})
 
+            # 如果该命令使用了 PATH，则为其对应文件追加一条黄金文件拷贝 config
+            if has_path and selected_file_for_cmd:
+                golden_path = build_golden_path(selected_file_for_cmd)
+                golden_paths.append(golden_path)
+                cp_cmd = copy.deepcopy(GOLD_CP_CONFIG)
+                cp_cmd["parameters"]["command"] = [
+                    "cp",
+                    "-r",
+                    selected_file_for_cmd,
+                    golden_path,
+                ]
+                # 确保黄金文件先于后续操作被创建
+                config_list.insert(0, cp_cmd)
+
         used_paths = sorted(list(set(used_paths)))
-        return config_list, used_paths
+        golden_paths = sorted(list(set(golden_paths)))
+        return config_list, used_paths, golden_paths
 
     def _build_evaluator_from_verification(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """根据 coarse agent 产出的 verification 字段，构造最终 evaluator。
@@ -264,6 +346,7 @@ class OSCaliberTaskGenerator:
         # 纯 VLM 任务，不需要 rule-based evaluator 细节
         if not need_rule:
             return {
+                "postconfig": POST_CONFIG,
                 "func": "",
                 "conj": "and",
                 "result": [],
@@ -343,6 +426,7 @@ class OSCaliberTaskGenerator:
             desc_val = descs
 
         evaluator = {
+            "postconfig": POST_CONFIG,
             "func": func_val,
             "conj": "and",  # 目前仅支持 and
             "result": result_val,
@@ -375,7 +459,7 @@ class OSCaliberTaskGenerator:
         os.makedirs(domain_dir, exist_ok=True)
 
         # 生成配置 + 实际使用的 PATH 列表 (仅主 APP)
-        task_setup_config, launch_paths = self._generate_config(main_app)
+        task_setup_config, launch_paths, golden_paths = self._generate_config(main_app)
 
         self.env.reset(
             task_config={
@@ -400,6 +484,7 @@ class OSCaliberTaskGenerator:
             launch_paths=launch_paths,
             app_tutorial_md=app_tutorial_md,
             allowed_apps=apps_for_group,
+            golden_paths=golden_paths,
         )
 
         for task in task_list:
@@ -428,8 +513,8 @@ class OSCaliberTaskGenerator:
                 json.dump(task_config, f, indent=4, ensure_ascii=False)
 
             # 记录初始化截图
-            with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
-                _f.write(obs['screenshot'])
+            # with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
+            #     _f.write(obs['screenshot'])
 
             if main_app not in test_file_list:
                 test_file_list[main_app] = []

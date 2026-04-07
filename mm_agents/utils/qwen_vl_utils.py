@@ -1,4 +1,9 @@
+import base64
+import hashlib
+import json
 import math
+from pathlib import Path
+import textwrap
 
 
 def round_by_factor(number: int, factor: int) -> int:
@@ -231,6 +236,242 @@ __all__ = [
     "convert_point_format",
 ]
 
+def dedup_and_save_images_for_gemini(                     
+    messages: list,                                                                                                                                                                  
+    image_hash_map: dict[str, str],
+    image_root_dir: Path,                                                                                                                                                            
+) -> tuple[list[str], dict[str, str]]:                    
+    """去重保存 Gemini 轨迹中的图像到 Qwen3VL 目录，返回当前样本使用到的文件名列表。
+                                                                                                                                                                                    
+    image_hash_map: base64_sha1 -> filename，用于跨 step 复用相同图像文件。                                                                                                          
+                                                                                                                                                                                    
+    Gemini 的截图结构为：                                                                                                                                                            
+    {"type": "image_url", "image_url": {"url": "data:image/png;base64,<BASE64...>"}}
+                                                                                                                                                                                    
+    注意：                                                
+    - 我们扫描所有 message 的顶层 content；                                                                                                                                          
+    - 只认 type == "image_url" 且 image_url.url 是 data:...;base64,... 形式；                                                                                                        
+    - 每发现一张图，就按 base64 内容去重并写入 image_root_dir。                                                                                                                      
+    """                                                                                                                                                                              
+    used_filenames: list[str] = []                                                                                                                                                   
+                                                                                                                                                                                    
+    def _handle_single_image_block(img_block: dict):      
+        nonlocal image_hash_map, used_filenames
+                                                                                                                                                                                    
+        if not isinstance(img_block, dict):
+            return                                                                                                                                                                   
+        if img_block.get("type") != "image_url":          
+            return
+
+        image_url = img_block.get("image_url") or {}                                                                                                                                 
+        if not isinstance(image_url, dict):
+            return                                                                                                                                                                   
+                                                        
+        url: str = image_url.get("url") or ""                                                                                                                                        
+        if not url:
+            return                                                                                                                                                                   
+                                                        
+        # 只处理 data URL: data:image/png;base64,<BASE64...>                                                                                                                         
+        if not url.startswith("data:"):
+            return                                                                                                                                                                   
+                                                        
+        try:                                                                                                                                                                         
+            header, b64_data = url.split(",", 1)          
+        except ValueError:                                                                                                                                                           
+            return                                                                                                                                                                   
+                                                                                                                                                                                    
+        media_type = "image/png"                                                                                                                                                     
+        if header.startswith("data:") and ";base64" in header:
+            # 例如 data:image/png;base64
+            media_type = header.split(";", 1)[0].removeprefix("data:") or "image/png"                                                                                                
+
+        data = b64_data.strip()                                                                                                                                                      
+        if not data:                                      
+            return
+                                                                                                                                                                                    
+        # 对 base64 字符串做 sha1
+        h = hashlib.sha1(data.encode("utf-8")).hexdigest()                                                                                                                           
+        if h in image_hash_map:                           
+            filename = image_hash_map[h]                                                                                                                                             
+        else:
+            ext = "png" if "png" in media_type else "jpg"                                                                                                                            
+            filename = f"{h}.{ext}"                                                                                                                                                  
+            out_path = image_root_dir / filename
+            if not out_path.exists():                                                                                                                                                
+                try:                                      
+                    raw_bytes = base64.b64decode(data)
+                    out_path.write_bytes(raw_bytes)
+                except Exception:
+                    # 单条图像失败不影响整体样本
+                    return                                                                                                                                                           
+            image_hash_map[h] = filename
+                                                                                                                                                                                    
+        if filename not in used_filenames:                
+            used_filenames.append(filename)
+
+    # 遍历所有 messages 顶层 content，查找 image_url                                                                                                                                 
+    for m in messages:
+        if not isinstance(m, dict):                                                                                                                                                  
+            continue                                      
+        content = m.get("content")
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            _handle_single_image_block(block)
+                                                                                                                                                                                    
+    return used_filenames, image_hash_map
+
+def dedup_and_save_images_for_claude(
+    messages: list,
+    image_hash_map: dict[str, str],
+    image_root_dir: Path
+) -> tuple[list[str], dict[str, str]]:
+    """去重保存多模态图像到 Qwen3VL 目录，返回当前样本使用到的文件名列表。
+
+    image_hash_map: base64_sha1 -> filename，用于跨 step 复用相同图像文件。
+
+    注意：
+    - Claude 的截图主要位于 tool_result block 的 content 里；
+    - 预处理后首屏截图会被放到第一个 user 的顶层 image block 中；
+    因此这里需要同时扫描 user 顶层 image 和 tool_result 内部的 image，保证 images 列表与 <image> 占位一一对应。
+    """
+    used_filenames: list[str] = []
+
+    def _handle_single_image_block(img_block: dict):
+        nonlocal image_hash_map, used_filenames
+        src = img_block.get("source") or {}
+        if not (isinstance(src, dict) and src.get("type") == "base64"):
+            return
+        data = src.get("data")
+        media_type = src.get("media_type", "image/png")
+        if not data:
+            return
+
+        # 直接对 base64 字符串做 sha1，避免重复解码
+        h = hashlib.sha1(data.encode("utf-8")).hexdigest()
+        if h in image_hash_map:
+            filename = image_hash_map[h]
+        else:
+            ext = "png" if "png" in media_type else "jpg"
+            filename = f"{h}.{ext}"
+            out_path = image_root_dir / filename
+            if not out_path.exists():
+                try:
+                    raw_bytes = base64.b64decode(data)
+                    out_path.write_bytes(raw_bytes)
+                except Exception:
+                    # 单条图像失败不影响整体样本
+                    return
+            image_hash_map[h] = filename
+
+        if filename not in used_filenames:
+            used_filenames.append(filename)
+
+    # 遍历 messages：
+    # 1) user 顶层 image（例如首屏截图）
+    # 2) tool_result.content 中的 image（工具返回截图）
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        content = m.get("content")
+        if not isinstance(content, list):
+            continue
+
+        # 1) 顶层 image（多出现在 user 首条）
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "image":
+                _handle_single_image_block(block)
+
+        # 2) tool_result 内部 image
+        for block in content:
+            if not (isinstance(block, dict) and block.get("type") == "tool_result"):
+                continue
+            sub_content = block.get("content")
+            if not isinstance(sub_content, list):
+                continue
+            for sub in sub_content:
+                if isinstance(sub, dict) and sub.get("type") == "image":
+                    _handle_single_image_block(sub)
+
+    return used_filenames, image_hash_map
+
+QWEN3VL_COMPUTER_USE_TOOL_SCHEMA = json.dumps(
+{
+        "type": "function",
+        "function": {
+            "name": "custom_computer_use",
+            "description": (                                            
+                "Control a desktop GUI and execute system-level code."
+                "Use it to move the mouse, click, type, scroll, wait, terminate tasks,"
+                "and run raw Python or Bash code on the operating system."
+            ),
+            "parameters": {
+                "properties": {
+                    "action": {
+                        "description": textwrap.dedent("""
+                        The type of operation to perform: 
+                        * `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.
+                        * `type`: Type a string of text on the keyboard.
+                        * `mouse_move`: Move the cursor to a specified (x, y) pixel coordinate on the screen.
+                        * `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                        * `left_click_drag`: Click and drag the cursor to a specified (x, y) pixel coordinate on the screen.
+                        * `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
+                        * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
+                        * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                        * `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).
+                        * `scroll`: Performs a scroll of the mouse scroll wheel.
+                        * `hscroll`: Performs a horizontal scroll (mapped to regular scroll).
+                        * `wait`: Wait specified seconds for the change to happen.
+                        * `terminate`: Terminate the current task and report its completion status.
+                        * `code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system.
+                        """),
+                        "type": "string",
+                        "enum": [
+                            "key", "type", "mouse_move", "left_click", "left_click_drag",
+                            "right_click", "middle_click", "double_click", "triple_click", "scroll", "hscroll",
+                            "wait", "terminate", "code"
+                        ],
+                    },
+                    "keys": {"description": "Required only by `action=key`.", "type": "array"},
+                    "text": {"description": "Required only by `action=type`.", "type": "string"},
+                    "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"},
+                    "pixels": {"description": "The amount of scrolling.", "type": "number"},
+                    "time": {"description": "The seconds to wait.", "type": "number"},
+                    "status": {
+                        "description": "The status of the task.", 
+                        "type": "string", 
+                        "enum": ["success", "failure"]
+                    },
+                    "execute_code": {
+                        "description": "The raw code string to execute. Required only when `action=code`.",
+                        "type": "string"
+                    },
+                    "language": {
+                        "description": "The programming language of the code. Required only when `action=code`.",
+                        "type": "string",
+                        "enum": ["python", "bash"]
+                    }
+                },
+                "type": "object",
+                "required": ["action"],
+            },
+        },
+    },
+    ensure_ascii=False,
+)
+
+
+QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN = textwrap.dedent("""
+# Role & Goal
+You are a powerful OS Agent capable of both GUI interaction and direct system-level programming and are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
+Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
+
+# Environment & Screen
+- The user's home directory is "/home/user".
+- The user's password is "password".
+- The screen's resolution is represented on a 1000x1000 relative coordinate grid.
+""")
 
 if __name__ == "__main__":
     from PIL import Image

@@ -239,6 +239,12 @@ def build_ui() -> gr.Blocks:
                 )
                 init_btn = gr.Button("加载 root_dir 并跳到第一个任务")
 
+                # 统计信息：每个 domain 的任务数 + 总任务数
+                domain_stats_markdown = gr.Markdown(
+                    "尚未加载统计信息",
+                    label="统计信息",
+                )
+
                 domain_dropdown = gr.Dropdown(
                     label="domain (子文件夹)",
                     choices=[],
@@ -400,11 +406,22 @@ def build_ui() -> gr.Blocks:
 
         def init_from_root(root_dir_val: str):
             domains = list_domains(root_dir_val)
+
+            # 计算每个 domain 的任务数，以及总任务数
+            domain_task_counts = []
+            total_tasks = 0
+            for d in domains:
+                cnt = len(list_tasks(root_dir_val, d))
+                domain_task_counts.append((d, cnt))
+                total_tasks += cnt
+
             if not domains:
                 empty_dd = gr.Dropdown(choices=[], value=None)
+                stats_md = "未找到任何 domain，请检查 root_dir 配置。"
                 return (
                     empty_dd,
                     empty_dd,
+                    stats_md,
                     0,
                     0,
                     "",
@@ -423,6 +440,14 @@ def build_ui() -> gr.Blocks:
                     "",
                 )
 
+            # 统计信息 markdown
+            lines = ["## 指令统计"]
+            for d, c in domain_task_counts:
+                lines.append(f"- {d}: {c} 条指令")
+            lines.append("")
+            lines.append(f"**总计: {total_tasks} 条指令**")
+            stats_md = "\n".join(lines)
+
             domain = domains[0]
             tasks = list_tasks(root_dir_val, domain)
             if not tasks:
@@ -430,6 +455,7 @@ def build_ui() -> gr.Blocks:
                 return (
                     gr.Dropdown(choices=domains, value=domain),
                     task_dd,
+                    stats_md,
                     0,
                     0,
                     "",
@@ -472,6 +498,7 @@ def build_ui() -> gr.Blocks:
             return (
                 gr.Dropdown(choices=domains, value=domain),
                 gr.Dropdown(choices=tasks, value=task),
+                stats_md,
                 0,
                 0,
                 task_id,
@@ -499,6 +526,7 @@ def build_ui() -> gr.Blocks:
             outputs=[
                 domain_dropdown,
                 task_dropdown,
+                domain_stats_markdown,
                 current_domain_index,
                 current_task_index,
                 id_box,
@@ -525,6 +553,21 @@ def build_ui() -> gr.Blocks:
             domains = list_domains(root_dir_val)
             tasks = list_tasks(root_dir_val, domain_val)
             domain_idx = domains.index(domain_val) if domain_val in domains else 0
+
+            # 重新计算统计信息
+            domain_task_counts = []
+            total_tasks = 0
+            for d in domains:
+                cnt = len(list_tasks(root_dir_val, d))
+                domain_task_counts.append((d, cnt))
+                total_tasks += cnt
+            lines = ["## 指令统计"]
+            for d, c in domain_task_counts:
+                lines.append(f"- {d}: {c} 条指令")
+            lines.append("")
+            lines.append(f"**总计: {total_tasks} 条指令**")
+            stats_md = "\n".join(lines)
+
             if tasks:
                 task = tasks[0]
                 (
@@ -588,6 +631,7 @@ def build_ui() -> gr.Blocks:
             return (
                 gr.Dropdown(choices=domains, value=domain_val),
                 gr.Dropdown(choices=tasks, value=task),
+                stats_md,
                 domain_idx,
                 0,
                 task_id,
@@ -615,6 +659,7 @@ def build_ui() -> gr.Blocks:
             outputs=[
                 domain_dropdown,
                 task_dropdown,
+                domain_stats_markdown,
                 current_domain_index,
                 current_task_index,
                 id_box,
@@ -643,6 +688,21 @@ def build_ui() -> gr.Blocks:
             domain_idx = domains.index(domain_val) if domain_val in domains else 0
             task_idx = tasks.index(task_val) if task_val in tasks else 0
 
+            # task 变化不改变统计信息
+            # 但为了保持输出签名一致，需要重新构造 stats_md
+            domain_task_counts = []
+            total_tasks = 0
+            for d in domains:
+                cnt = len(list_tasks(root_dir_val, d))
+                domain_task_counts.append((d, cnt))
+                total_tasks += cnt
+            lines = ["## 指令统计"]
+            for d, c in domain_task_counts:
+                lines.append(f"- {d}: {c} 条指令")
+            lines.append("")
+            lines.append(f"**总计: {total_tasks} 条指令**")
+            stats_md = "\n".join(lines)
+
             (
                 task_id,
                 domain_name,
@@ -664,6 +724,7 @@ def build_ui() -> gr.Blocks:
             ) = _load_and_first_item(root_dir_val, domain_val, task_val)
 
             return (
+                stats_md,
                 domain_idx,
                 task_idx,
                 task_id,
@@ -689,6 +750,7 @@ def build_ui() -> gr.Blocks:
             fn=on_task_change,
             inputs=[root_dir, domain_dropdown, task_dropdown],
             outputs=[
+                domain_stats_markdown,
                 current_domain_index,
                 current_task_index,
                 id_box,
@@ -723,6 +785,7 @@ def build_ui() -> gr.Blocks:
                 return (
                     0,
                     0,
+                    gr.Markdown.update(value="未找到任何 domain，请检查 root_dir 配置。"),
                     gr.Dropdown(choices=[], value=None),
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -752,9 +815,24 @@ def build_ui() -> gr.Blocks:
 
             tasks = list_tasks(root_dir_val, domain_val)
             if not tasks:
+                # 重新计算统计信息
+                domain_task_counts = []
+                total_tasks = 0
+                for d in domains:
+                    cnt = len(list_tasks(root_dir_val, d))
+                    domain_task_counts.append((d, cnt))
+                    total_tasks += cnt
+                lines = ["## 指令统计"]
+                for d, c in domain_task_counts:
+                    lines.append(f"- {d}: {c} 条指令")
+                lines.append("")
+                lines.append(f"**总计: {total_tasks} 条指令**")
+                stats_md = "\n".join(lines)
+
                 return (
                     domain_idx,
                     0,
+                    gr.Markdown.update(value=stats_md),
                     gr.Dropdown(choices=domains, value=domain_val),
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -792,9 +870,24 @@ def build_ui() -> gr.Blocks:
                     task_idx = len(tasks) - 1 if tasks else 0
 
             if not tasks:
+                # 重新计算统计信息
+                domain_task_counts = []
+                total_tasks = 0
+                for d in domains:
+                    cnt = len(list_tasks(root_dir_val, d))
+                    domain_task_counts.append((d, cnt))
+                    total_tasks += cnt
+                lines = ["## 指令统计"]
+                for d, c in domain_task_counts:
+                    lines.append(f"- {d}: {c} 条指令")
+                lines.append("")
+                lines.append(f"**总计: {total_tasks} 条指令**")
+                stats_md = "\n".join(lines)
+
                 return (
                     domain_idx,
                     task_idx,
+                    gr.Markdown.update(value=stats_md),
                     gr.Dropdown(choices=domains, value=domain_val),
                     gr.Dropdown(choices=[], value=None),
                     "",
@@ -837,9 +930,24 @@ def build_ui() -> gr.Blocks:
                 expected,
             ) = _load_and_first_item(root_dir_val, domain_val, task_val)
 
+            # 重新计算统计信息
+            domain_task_counts = []
+            total_tasks = 0
+            for d in domains:
+                cnt = len(list_tasks(root_dir_val, d))
+                domain_task_counts.append((d, cnt))
+                total_tasks += cnt
+            lines = ["## 指令统计"]
+            for d, c in domain_task_counts:
+                lines.append(f"- {d}: {c} 条指令")
+            lines.append("")
+            lines.append(f"**总计: {total_tasks} 条指令**")
+            stats_md = "\n".join(lines)
+
             return (
                 domain_idx,
                 task_idx,
+                gr.Markdown(value=stats_md, visible=True),
                 gr.Dropdown(choices=domains, value=domain_val),
                 gr.Dropdown(choices=tasks, value=task_val),
                 task_id,
@@ -867,6 +975,7 @@ def build_ui() -> gr.Blocks:
             outputs=[
                 current_domain_index,
                 current_task_index,
+                domain_stats_markdown,
                 domain_dropdown,
                 task_dropdown,
                 id_box,
@@ -895,6 +1004,7 @@ def build_ui() -> gr.Blocks:
             outputs=[
                 current_domain_index,
                 current_task_index,
+                domain_stats_markdown,
                 domain_dropdown,
                 task_dropdown,
                 id_box,
@@ -959,4 +1069,4 @@ def build_ui() -> gr.Blocks:
 
 if __name__ == "__main__":
     demo = build_ui()
-    demo.launch(server_name="0.0.0.0", server_port=18888)
+    demo.launch(server_name="0.0.0.0", server_port=10888)
