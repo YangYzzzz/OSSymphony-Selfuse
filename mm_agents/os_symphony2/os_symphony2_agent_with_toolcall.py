@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import textwrap
 import time
 from io import BytesIO
 from typing import Dict, List, Tuple, Any, Optional
@@ -12,6 +13,7 @@ from PIL import Image
 from requests.exceptions import SSLError
 
 from mm_agents.utils.qwen_vl_utils import (
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE,
     smart_resize,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
@@ -67,6 +69,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
         keep_first_image: bool = True,
+        use_thinking: bool = False,
     ):
         self.platform = platform
         self.model = model
@@ -81,7 +84,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.keep_first_image = keep_first_image
         self.add_thought_prefix = add_thought_prefix
         self.coordinate_type = coordinate_type
-
+        self.use_thinking = use_thinking
         assert action_space in ["pyautogui"], "Invalid action space"
         assert observation_type in ["screenshot"], "Invalid observation type"
 
@@ -92,38 +95,12 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         # 统一维护对话历史（system + user + assistant + tool）
         # 直接沿用 OpenAI/vLLM 的 messages 协议结构
+        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE
         self.messages: List[Dict[str, Any]] = []
 
         # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
         self.pending_tool_calls: List[Any] = []
 
-    def _build_system_prompt(self, processed_width: int, processed_height: int) -> str:
-        """在训练版 system prompt 的基础上做推理增强。"""
-        screen_desc = (
-            f"The current screenshot resolution after preprocessing is {processed_width}x{processed_height} pixels."
-            if self.coordinate_type == "absolute"
-            else "The current screenshot is mapped onto a 1000x1000 relative coordinate grid (0-999 on both axes)."
-        )
-
-        extra_rules = """
-# Additional Inference-time Rules
-- Always prefer `code` action for:
-  - structured data processing (CSV/Excel/JSON/logs)
-  - batch file operations (rename/copy/move/delete many files)
-  - text search/replace across files or within large documents
-- Use GUI actions for:
-  - launching and switching applications
-  - navigation in browsers / GUIs when no CLI/API is available
-  - precise clicking/dragging based on visual layout
-- Before clicking, explicitly locate the target region in the screenshot and then choose coordinates.
-- After executing `code`, reason about the textual result first; only ask for another screenshot when visual confirmation is strictly required.
-
-# Output Contract
-You MUST call the `custom_computer_use` tool for every step instead of describing actions in free text.
-- Each step must contain exactly one tool call.
-- Do NOT mix multiple high-level actions into one tool invocation; keep them atomic and sequential.
-"""
-        return QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN + "\n" + screen_desc + "\n" + extra_rules
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
@@ -141,15 +118,13 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
         processed_img = Image.open(BytesIO(base64.b64decode(processed_image)))
         processed_width, processed_height = processed_img.size
 
-        system_prompt = self._build_system_prompt(processed_width, processed_height)
-
         # 第一次调用 predict 时，初始化 system
         if not self.messages:
             self.messages = [
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": system_prompt},
+                        {"type": "text", "text": self.system_prompt},
                     ],
                 }
             ]
@@ -166,7 +141,7 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
                 self.messages.append(
                     {
                         "role": "tool",
-                        # "tool_call_id": tool_call.get("id", "tool_call_0"), 应该不是很重要
+                        "tool_call_id": tool_call.get("id", "tool_call_0"),
                         "content": result_text,
                     }
                 )
@@ -212,29 +187,20 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
         )
 
         logger.info(f"Qwen3VL Output: {response_message}")
-
-        # 将本轮 assistant message（含 tool_calls）写回历史
         self.messages.append(response_message)
 
         # 记录本轮产生的 tool_calls，供下一轮填充 tool 结果
-        tool_calls = getattr(response_message, "tool_calls", None) or response_message.get("tool_calls") or []
+        tool_calls = response_message.get("tool_calls") or []
         self.pending_tool_calls = list(tool_calls)
 
         # 把工具调用转成我们现有的 meta_data / pyautogui_code
-        # 这里仍沿用老的 parse_response 逻辑，只是从 message.content 中提取字符串
-        content = getattr(response_message, "content", None)
-        if isinstance(content, list):
-            # 兼容 messages 协议：content 是多个块
-            text_parts = [
-                part.get("text", "")
-                for part in content
-                if isinstance(part, dict) and part.get("type") == "text"
-            ]
-            response_str = "\n".join(text_parts)
-        else:
-            response_str = str(content or "")
+        # 这里不再依赖字符串匹配，response_str 只作为 thought 文本
+        content = response_message.get("content", "") # 解析除 <tool_call></tool_call> block
+        reasoning_content = response_message.get("reasoning_content", "") # 解析 <think></think> block
+        response_str = (("<think>" + reasoning_content + "</think>") if reasoning_content else "") + content
 
         meta_data, pyautogui_code = self.parse_response(
+            response_message,
             response_str,
             width,
             height,
@@ -243,6 +209,7 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
         )
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
+        self.debug_print_messages()
         return meta_data, pyautogui_code
 
     def _cleanup_old_screenshots(self):
@@ -315,72 +282,27 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
             else:
                 msg["content"] = new_content
 
-    def _parse_tool_calls_from_response(self, response: str) -> List[Dict[str, Any]]:
-        """从模型输出中抽取 tool_call JSON，并解析为 dict 列表。
-
-        兼容两种格式：
-        - 明确包裹在 <tool_call>...</tool_call> 标签中
-        - 直接输出的 JSON 行（降级兜底，可按需扩展）
-        """
-        import re
-
-        if not response or not response.strip():
-            return []
-
-        tool_calls: List[Dict[str, Any]] = []
-
-        # 1. 优先解析 <tool_call> 块
-        for m in re.finditer(r"<tool_call>([\s\S]*?)</tool_call>", response):
-            block = m.group(1).strip()
-            if not block:
-                continue
-            try:
-                tool_calls.append(json.loads(block))
-            except json.JSONDecodeError:
-                logger.error("Failed to decode tool_call block as JSON: %s", block)
-
-        # 2. 如果没解析到任何 tool_call，尝试整段作为单个 JSON（兼容直接返回 JSON 的情况）
-        if not tool_calls:
-            try:
-                obj = json.loads(response)
-                if isinstance(obj, dict) and "arguments" in obj:
-                    tool_calls.append(obj)
-            except json.JSONDecodeError:
-                pass
-
-        return tool_calls
-
     def parse_response(
         self,
-        response: str,
+        response_message: Dict[str, Any],
+        thought: str,
         original_width: int = None,
         original_height: int = None,
         processed_width: int = None,
         processed_height: int = None,
     ) -> Tuple[List[Dict], List[str]]:
-        """Parse LLM response and convert it to metadata and pyautogui code via tool_schema."""
-        import re
+        """Parse LLM response (dict with tool_calls) and convert it to metadata and pyautogui code.
+
+        - thought: 来自 message.content 提取的自然语言思考文本
+        - response_message: 完整的 message dict，包含 tool_calls
+        """
 
         pyautogui_code: List[str] = []
         meta_data: List[Dict] = []
 
-        if response is None or not response.strip():
+        tool_calls = response_message.get("tool_calls") or []
+        if not tool_calls:
             return meta_data, pyautogui_code
-
-        # ---- extract thought (before </think>) ----
-        thought = ""
-        think_match = re.search(r"<think>([\s\S]*?)</think>", response)
-        if think_match:
-            thought = think_match.group(1).strip()
-        think_match_2 = re.search(r"([\s\S]*?)</think>", response)
-        if not thought and think_match_2:
-            thought = think_match_2.group(1).strip()
-
-        # ---- extract Action: line（可选，保留兼容性） ----
-        action_text = ""
-        action_match = re.search(r"^\s*Action:\s*(.+)$", response, flags=re.MULTILINE | re.IGNORECASE)
-        if action_match:
-            action_text = action_match.group(1).strip()
 
         def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
             if not (original_width and original_height):
@@ -395,86 +317,102 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
             y_scale = original_height / 999
             return int(x * x_scale), int(y * y_scale)
 
+        def make_raw_response() -> str:
+            """把 thought + tool_calls 转成原来的 raw_response 兼容格式.
+
+            形如：
+            <think>...</think>
+            <tool>{...}</tool>
+            <tool>{...}</tool>
+            """
+
+            parts: List[str] = []
+            if thought:
+                parts.append(f"<think>{thought}</think>")
+
+            import json as _json
+
+            for tc in tool_calls:
+                # tc 可能是 pydantic 转成的 dict
+                parts.append(f"<tool_call>{_json.dumps(tc, ensure_ascii=False)}</tool_call>")
+
+            return "\n".join(parts)
+
+        raw_response = make_raw_response()
+
         def make_meta(code: str, coordinate: Optional[List[int]] = None) -> Dict:
             return {
-                "raw_response": response,
+                "raw_response": raw_response,
                 "thought": thought,
-                "action": action_text,
+                "action": "",  # 旧字段保留但不再使用
                 "code": code,
                 "coordinate": coordinate or [],
             }
 
-        tool_calls = self._parse_tool_calls_from_response(response)
-
         for tool_call in tool_calls:
             try:
-                args = tool_call["arguments"]
-                action = args["action"]
-            except (KeyError, TypeError) as e:
+                args = tool_call.get("function", {}).get("arguments", "")
+                args = json.loads(args)
+            except Exception as e:
                 logger.error("Invalid tool_call structure: %s", e)
                 continue
+            
+            action = args.get("action")
+            if not action:
+                continue
 
-            # 映射到具体 PyAutoGUI / 控制命令
+            # 每个 tool_call 只生成一条长的 pyautogui 代码，保证与 meta_data 一一对应
+            step_code: str = ""
+            coord: List[int] = []
+
             if action == "left_click":
-                coord: List[int] = []
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
-                    code_str = f"pyautogui.click({adj_x}, {adj_y})"
+                    step_code = f"pyautogui.click({adj_x}, {adj_y})"
                 else:
-                    code_str = "pyautogui.click()"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str, coord))
+                    step_code = "pyautogui.click(0, 0)"
 
             elif action == "right_click":
-                coord = []
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
-                    code_str = f"pyautogui.rightClick({adj_x}, {adj_y})"
+                    step_code = f"pyautogui.rightClick({adj_x}, {adj_y})"
                 else:
-                    code_str = "pyautogui.rightClick()"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str, coord))
+                    step_code = "pyautogui.rightClick(0, 0)"
 
             elif action == "middle_click":
-                coord = []
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
-                    code_str = f"pyautogui.middleClick({adj_x}, {adj_y})"
+                    step_code = f"pyautogui.middleClick({adj_x}, {adj_y})"
                 else:
-                    code_str = "pyautogui.middleClick()"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str, coord))
+                    step_code = "pyautogui.middleClick(0, 0)"
 
             elif action == "double_click":
-                coord = []
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
-                    code_str = f"pyautogui.doubleClick({adj_x}, {adj_y})"
+                    step_code = f"pyautogui.doubleClick({adj_x}, {adj_y})"
                 else:
-                    code_str = "pyautogui.doubleClick()"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str, coord))
+                    step_code = "pyautogui.doubleClick(0, 0)"
+            
+            elif action == "triple_click":
+                if "coordinate" in args:
+                    x, y = args["coordinate"]
+                    adj_x, adj_y = adjust_coordinates(x, y)
+                    coord = [adj_x, adj_y]
+                    step_code = f"pyautogui.click({adj_x}, {adj_y}, clicks=3)"
+                else:
+                    step_code = "pyautogui.click(0, 0, clicks=3)"
 
             elif action == "type":
                 text = args.get("text", "")
-                lines = text.split("\n")
-                for idx, line in enumerate(lines):
-                    if line:
-                        code_str = f"pyautogui.typewrite({repr(line)}, interval=0.03)"
-                        pyautogui_code.append(code_str)
-                        meta_data.append(make_meta(code_str))
-                    if idx < len(lines) - 1:
-                        code_str = "pyautogui.press('enter')"
-                        pyautogui_code.append(code_str)
-                        meta_data.append(make_meta(code_str))
+                step_code = f"pyautogui.write({repr(text)})"
 
             elif action == "key":
                 keys = args.get("keys", [])
@@ -482,66 +420,61 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
                     cleaned_keys = []
                     for key in keys:
                         if isinstance(key, str):
-                            # 简单清洗
                             key = key.strip()
                         cleaned_keys.append(key)
                     keys = cleaned_keys
 
                 keys_str = ", ".join([f"'{key}'" for key in keys])
                 if len(keys) > 1:
-                    code_str = f"pyautogui.hotkey({keys_str})"
-                else:
-                    code_str = f"pyautogui.press({keys_str})"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str))
+                    step_code = f"pyautogui.hotkey({keys_str})"
+                elif len(keys) == 1:
+                    step_code = f"pyautogui.press({keys_str})"
 
             elif action == "scroll":
                 pixels = args.get("pixels", 0)
-                code_str = f"pyautogui.scroll({pixels})"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str))
+                step_code = f"pyautogui.scroll({pixels})"
+
+            elif action == "hscroll":
+                pixels = args.get("pixels", 0)
+                step_code = f"pyautogui.hscroll({pixels})"
 
             elif action == "wait":
-                code_str = "WAIT"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str))
+                time = args.get("time", 5)
+                step_code = f"time.sleep({time})"
 
             elif action == "terminate":
-                code_str = "DONE"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str))
+                status = args.get("status", "success") # success / failure
+                step_code = "DONE" if status == "success" else "FAIL"
 
             elif action == "mouse_move":
-                coord = []
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
-                    code_str = f"pyautogui.moveTo({adj_x}, {adj_y})"
+                    step_code = f"pyautogui.moveTo({adj_x}, {adj_y})"
                 else:
-                    code_str = "pyautogui.moveTo(0, 0)"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str, coord))
+                    step_code = "pyautogui.moveTo(0, 0)"
 
             elif action == "left_click_drag":
-                coord = []
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
-                    duration = args.get("duration", 0.5)
-                    code_str = f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})"
+                    step_code = f"pyautogui.dragTo({adj_x}, {adj_y}, duration=0.5)"
                 else:
-                    code_str = "pyautogui.dragTo(0, 0)"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str, coord))
+                    step_code = "pyautogui.dragTo(0, 0)"
 
             elif action == "code":
-                code_content = args.get("execute_code") or args.get("code", "")
+                code_content = args.get("execute_code", "")
                 language = args.get("language", "python")
-                code_str = f"EXEC_CODE|{language}|{code_content}"
-                pyautogui_code.append(code_str)
-                meta_data.append(make_meta(code_str))
+                step_code = f"{language.upper()}|{code_content}"
+
+            # 汇总本次 tool_call 的全部指令为一条长代码，使用 '; ' 连接
+            if not step_code:
+                continue
+
+            pyautogui_code.append(step_code)
+            meta_data.append(make_meta(step_code, coord))
 
         return meta_data, pyautogui_code
 
@@ -563,7 +496,7 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
         interval=30,
         max_tries=5,
     )
-    def call_llm(self, payload, model):
+    def call_llm(self, payload, model) -> dict:
         messages = payload["messages"]
         custom_headers = {
             "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
@@ -589,24 +522,19 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
                     temperature=self.temperature,
                     top_p=self.top_p,
                     tools=[json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA)],
-                    tool_choice={"type": "function", "function": {"name": "custom_computer_use"}},
+                    tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
+                    extra_body={
+                        "chat_template_kwargs": {"enable_thinking": self.use_thinking}
+                    }
                 )
-                # 这里直接返回原始内容和 tool_calls（如果上层需要的话可以扩展返回结构）
-                message = response.choices[0].message
-                # 将完整 message.content 作为文本（便于调试），同时包含 tool_calls
-                content_str = message.content if isinstance(message.content, str) else str(message.content)
-                if message.tool_calls:
-                    tool_calls_repr = json.dumps(
-                        [tc.model_dump() for tc in message.tool_calls],
-                        ensure_ascii=False,
-                    )
-                    return content_str + "\n<TOOL_CALLS>" + tool_calls_repr
-                return content_str
+
+                message_dict = response.choices[0].message.model_dump(exclude_none=True)
+                return message_dict
             except Exception as e:
                 logger.error(f"Error calling Qwen model: {e}")
                 time.sleep(5)
                 continue
-        return ""
+        return {}
 
     def reset(self, _logger=None):
         global logger
@@ -615,44 +543,51 @@ You MUST call the `custom_computer_use` tool for every step instead of describin
         self.messages = []
         self.pending_tool_calls = []
 
-    def debug_print_messages(self, messages: list):
+    def debug_print_messages(self):
         """优雅地打印 messages 列表，自动截断 Base64 图片以方便检查装填逻辑。"""
         print("\n" + "=" * 50 + " MESSAGES LOGIC DEBUG " + "=" * 50)
 
-        if not messages:
+        if not self.messages:
             print(" [!] Messages list is empty.")
             print("=" * 122 + "\n")
             return
 
-        for i, msg in enumerate(messages):
+        for i, msg in enumerate(self.messages):
             role = msg.get("role", "UNKNOWN").upper()
-            prefix = "👤" if role == "USER" else "🤖" if role == "ASSISTANT" else "⚙️"
+            prefix = "👤" if role == "USER" else "🤖" if role == "ASSISTANT" else "⚙️" if role == "SYSTEM" else "🛠️" if role == "TOOL" else "❓" 
 
             print(f"\n{prefix} [{i}] ROLE: {role}")
             print("-" * 80)
 
-            content = msg.get("content", [])
+            reasoning_content = msg.get("reasoning_content", "")
+            content = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", [])
+
+            if reasoning_content:
+                print(f"  (Think) : {reasoning_content}")
 
             if isinstance(content, str):
                 print(f"  (Text) : {content}")
-                continue
 
-            for j, item in enumerate(content):
-                item_type = item.get("type", "unknown")
+            for _, tool_call in enumerate(tool_calls):
+                print(f"  (Tool Call): {tool_call}")
+            
+            if isinstance(content, list):
+                for _, item in enumerate(content):
+                    item_type = item.get("type", "unknown")
 
-                if item_type == "text":
-                    text_content = item.get("text", "")
-                    if "Code Execution Result:" in text_content:
-                        print(f"  📝 (Text-CodeResult) : {text_content}")
+                    if item_type == "text":
+                        text_content = item.get("text", "")
+                        if "Code Execution Result:" in text_content:
+                            print(f"  📝 (Text-CodeResult) : {text_content}")
+                        else:
+                            if len(text_content) > 2000:
+                                text_content = text_content[:2000] + " ... [TEXT TRUNCATED]"
+                            print(f"  💬 (Text)  : {text_content}")
+
+                    elif item_type == "image_url":
+                        print(f"  🖼️ (Image) : <BASE64_IMAGE_DATA_TRUNCATED>")
                     else:
-                        if len(text_content) > 2000:
-                            text_content = text_content[:2000] + " ... [TEXT TRUNCATED]"
-                        print(f"  💬 (Text)  : {text_content}")
-
-                elif item_type == "image_url":
-                    print(f"  🖼️ (Image) : <BASE64_IMAGE_DATA_TRUNCATED>")
-
-                else:
-                    print(f"  ❓ ({item_type}) : {item}")
+                        print(f"  ❓ ({item_type}) : {item}")
 
         print("\n" + "=" * 122 + "\n")

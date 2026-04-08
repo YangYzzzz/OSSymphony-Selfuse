@@ -473,6 +473,28 @@ Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
 - The screen's resolution is represented on a 1000x1000 relative coordinate grid.
 """)
 
+QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN + "\n" + textwrap.dedent("""
+# Additional Rules
+- Always prefer `code` action for:
+    - structured data processing (CSV/Excel/JSON/logs)
+    - batch file operations (rename/copy/move/delete many files)
+    - text search/replace across files or within large documents
+- Use GUI actions for:
+    - launching and switching applications
+    - navigation in browsers / GUIs when no CLI/API is available
+    - precise clicking/dragging based on visual layout
+- After executing `code`, reason about the textual result first.
+
+# Output Contract
+
+Before tool call, you MUST output a short block in the following format:
+
+**Thought:** <why this action is needed, what you expect to happen>
+**Action:** <one-sentence plain-language description of what the tool call will do>
+
+Do NOT skip this block, and do NOT call the tool without it appearing immediately above.
+""")
+
 if __name__ == "__main__":
     from PIL import Image
 

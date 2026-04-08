@@ -17,6 +17,7 @@ from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
 from dotenv import load_dotenv
+from mm_agents.os_symphony2.os_symphony2_agent_with_toolcall import OSSymphony2AgentWithToolCall
 
 load_dotenv()
 
@@ -189,14 +190,15 @@ def run_env_tasks(
             platform = "macos"
 
 
-        agent = OSSymphony2Agent(
+        agent = OSSymphony2AgentWithToolCall(
             model=args.model,
             base_url=args.base_url,
             api_key=args.api_key,
             max_tokens=args.max_tokens,
             temperature=args.temperature,
             history_n=args.history_n,
-            keep_first_image=args.keep_first_image
+            keep_first_image=args.keep_first_image,
+            use_thinking=args.use_thinking
         )
 
         active_environments.append(env)
@@ -411,6 +413,7 @@ def config() -> argparse.Namespace:
         default=8,
         help="最大图片数量",
     )
+    parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
 
     # 实验名
@@ -420,21 +423,6 @@ def config() -> argparse.Namespace:
         default="",
         help="Experiment Name",
     )
-
-    # 穷逼版 passk 测试
-    parser.add_argument(
-        "--pass_k",
-        type=int,
-        default=1,
-        help="Pass k parameter, if > 1, run multi times(to save dollar, we only rerun the past error case.)",
-    )
-    # 将50步测试扩展到100步测试，仅重测已有达到50步但未做对的任务
-    parser.add_argument(
-        "--step_incremental_test",
-        action="store_true", default=False,
-        help="Max Steps参数中配置当前需要的最大参数, 当前参数开启后动态查找上一步的最大step, 执行 last_max_step->cur_max_step 的增量式补充测试",
-    )
-
     args = parser.parse_args()
 
     return args
@@ -531,7 +519,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
 
 # 把做错的目前也都视为未完成的
 def get_unfinished(
-    target_dir, total_file_json, turn: int, incremental_test: bool
+    target_dir, total_file_json
 ):
 
     if not os.path.exists(target_dir):
@@ -638,28 +626,21 @@ if __name__ == "__main__":
     if args.domain != "all":
         test_all_meta = {args.domain: test_all_meta[args.domain]}
 
-    # 执行 Pass k 测试
-    for t in range(1, args.pass_k + 1):
-        logger.info(f"====================\nPass K: no.{t} turn is started\n====================")
-        test_file_list = get_unfinished(
-            target_dir=args.result_dir,
-            total_file_json=test_all_meta,
-            turn=t,
-            incremental_test=args.step_incremental_test
-        )
-        left_info = ""
-        for domain in test_file_list:
-            left_info += f"{domain}: {len(test_file_list[domain])}\n"
-        logger.info(f"Left tasks:\n{left_info}")
+    test_file_list = get_unfinished(
+        target_dir=args.result_dir,
+        total_file_json=test_all_meta
+    )
+    left_info = ""
+    for domain in test_file_list:
+        left_info += f"{domain}: {len(test_file_list[domain])}\n"
+    logger.info(f"Left tasks:\n{left_info}")
 
-        get_result(
-            target_dir=args.result_dir,
-            total_file_json=test_all_meta
-        )
-        test(
-            args, 
-            test_file_list
-        )
-        logger.info(f"====================\nPass K: no.{t} turn is ended\n====================")
-    
+    get_result(
+        target_dir=args.result_dir,
+        total_file_json=test_all_meta
+    )
+    test(
+        args, 
+        test_file_list
+    )
     logger.info(f"====================\nExperiment {args.exp_name} is totally ended!\n====================")
