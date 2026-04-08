@@ -208,15 +208,15 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                     save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
                 )
             
-            if action.startswith("EXEC_CODE"):        # 如果是执行代码，就在这里提前执行好
-                print("=" * 60)
-                print(" " * 20 + "Executing Code")
-                print("=" * 60)
-                _, lang, code = action.split("|")
-                if lang == "python":
-                    result = env.controller.run_python_script(code)
+            # Execute Environment Step
+            if action.startswith("BASH") or action.startswith("PYTHON"):        # 如果是执行代码，就在这里提前执行好
+                if action.startswith("BASH"):
+                    code = action[5:]
+                    result = env.controller.run_bash_script(code)
                 else:
+                    code = action[7:]
                     result = env.controller.run_python_script(code)
+
                 action = code
 
                 # 制作code的返回日志

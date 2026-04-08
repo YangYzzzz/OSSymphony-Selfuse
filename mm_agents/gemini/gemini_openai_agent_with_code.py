@@ -13,7 +13,7 @@ from datetime import datetime
 import logging
 
 from mm_agents.utils.call_api_log import log_openai_api_call
-from .utils import build_qwen_sft_sample_for_gemini
+from .utils import BROWSER_TO_DESKTOP_SCROLL_RATIO, build_qwen_sft_sample_for_gemini
 
 logger = logging.getLogger("desktopenv.agent")
 PREDEFINED_COMPUTER_USE_FUNCTIONS = [
@@ -107,21 +107,6 @@ TOOLS_SCHEMA = [
                     "clear_before_typing": {"type": "boolean", "description": "Whether to clear the field before typing."}
                 },
                 "required": ["thought", "x", "y", "text"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scroll_document",
-            "description": "Scrolls the entire document/page.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "thought": {"type": "string", "description": "IMPORTANT: Explain your reasoning for scrolling the document BEFORE taking the action."},
-                    "direction": {"type": "string", "enum": ["up", "down", "left", "right"]}
-                },
-                "required": ["thought", "direction"]
             }
         }
     },
@@ -319,6 +304,7 @@ class GeminiOpenAIAgentWithCode:
             x = self.denormalize_x(action_args["x"])
             y = self.denormalize_y(action_args["y"])
             magnitude = action_args.get("magnitude", 800)
+            magnitude = magnitude // BROWSER_TO_DESKTOP_SCROLL_RATIO # Browser -> Desktop
             direction = action_args["direction"]
             
             action_str = f"pyautogui.moveTo({x}, {y}); "
@@ -468,7 +454,6 @@ class GeminiOpenAIAgentWithCode:
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "content": result_text
-
                     }
                 )
 

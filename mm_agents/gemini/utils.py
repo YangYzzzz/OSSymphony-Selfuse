@@ -17,6 +17,7 @@ from mm_agents.utils.qwen_vl_utils import (
     dedup_and_save_images_for_gemini,
 )
 
+BROWSER_TO_DESKTOP_SCROLL_RATIO = 80
 def truncate_images_for_gemini_context(
       messages: List[Dict[str, Any]],
       max_images: int = 4,                                                                                                                                                             
@@ -190,8 +191,14 @@ def build_qwen_messages_from_gemini(
                 elif name == "hover_at":
                     q_actions.append({"action": "mouse_move", "coordinate": [args.get("x", 0), args.get("y", 0)]})
                 elif name == "type_text_at":
+                    press_enter = args.get("press_enter")
+                    clear_before_typing = args.get("clear_before_typing")
+                    if clear_before_typing:
+                        q_actions.append({"action": "keys", "keys": ["ctrl", "a", "backspace"]})
                     q_actions.append({"action": "left_click", "coordinate": [args.get("x", 0), args.get("y", 0)]})
                     q_actions.append({"action": "type", "text": args.get("text", "")})
+                    if press_enter:
+                        q_actions.append({"action": "keys", "keys": ["enter"]})
                 elif name == "scroll_document":
                     direction = args.get("direction") or "down"
                     if direction in ("left", "right"):
@@ -202,11 +209,12 @@ def build_qwen_messages_from_gemini(
                     x = args.get("x", 0)
                     y = args.get("y", 0)
                     direction = args.get("direction") or "down"
+                    magnitude = args.get("magnitude", 800) // BROWSER_TO_DESKTOP_SCROLL_RATIO
                     q_actions.append({"action": "mouse_move", "coordinate": [x, y]})
                     if direction in ("left", "right"):
-                        q_actions.append({"action": "hscroll", "pixels": 2, "direction": direction, "coordinate": [x, y]})
+                        q_actions.append({"action": "hscroll", "pixels": magnitude, "direction": direction, "coordinate": [x, y]})
                     else:
-                        q_actions.append({"action": "scroll", "pixels": 2, "direction": direction, "coordinate": [x, y]})
+                        q_actions.append({"action": "scroll", "pixels": magnitude, "direction": direction, "coordinate": [x, y]})
                 elif name == "wait_5_seconds":
                     q_actions.append({"action": "wait", "time": 5})
                 elif name == "key_combination":
@@ -224,9 +232,9 @@ def build_qwen_messages_from_gemini(
                     lang = (args.get("language") or "python").lower()
                     code_str = args.get("execute_code") or ""
                     q_actions.append({
-                        "action": "execute_code",
+                        "action": "code",
                         "language": "python" if "py" in lang else "bash",
-                        "code": code_str,
+                        "execute_code": code_str,
                     })
                 else:
                     q_actions.append({"action": "terminate", "status": "failure"})

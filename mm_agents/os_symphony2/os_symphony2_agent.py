@@ -621,9 +621,9 @@ Instruction: {instruction}
                     meta_data.append(make_meta(code_str, coord))
 
                 elif action == "code":
-                    code_content = args.get("code", "")
+                    code_content = args.get("execute_code", "")
                     language = args.get("language", "python")
-                    code_str = f"EXEC_CODE|{language}|{code_content}"
+                    code_str = f"{language.upper()}|{code_content}"
                     pyautogui_code.append(code_str)
                     meta_data.append(make_meta(code_str))
 
