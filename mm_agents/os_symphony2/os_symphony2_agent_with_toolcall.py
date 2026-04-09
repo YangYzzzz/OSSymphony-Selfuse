@@ -118,17 +118,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         processed_img = Image.open(BytesIO(base64.b64decode(processed_image)))
         processed_width, processed_height = processed_img.size
 
-        # 第一次调用 predict 时，初始化 system
-        if not self.messages:
-            self.messages = [
-                {
-                    "role": "system",
-                    "content": [
-                        {"type": "text", "text": self.system_prompt},
-                    ],
-                }
-            ]
-
         # feed tool result for previous tool_calls
         if self.pending_tool_calls:
             for tool_call in self.pending_tool_calls:
@@ -151,8 +140,16 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         # 当前轮 user 消息
         curr_user_content = []
 
-        # 第一轮附带原始 instruction
+        # 第一次调用 predict 时，初始化 system 附带原始 instruction
         if not self.messages:
+            self.messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": self.system_prompt},
+                    ],
+                }
+            ]
             instruction_prompt = (
                 "Please generate the next move according to the UI screenshot, instruction and previous actions.\n\n"
                 f"Instruction: {instruction}"
