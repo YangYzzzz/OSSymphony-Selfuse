@@ -128,16 +128,22 @@ class EnvPool:
             slot.state = EnvState.busy
             slot.last_activity = time.time()
             try:
-                code_result = None
+                code_result = ""
                 if action.startswith("BASH") or action.startswith("PYTHON"):
                     lang, code = action.split("|")
                     if lang == "PYTHON":
-                        code_result = slot.env.controller.run_python_script(code)
+                        result = slot.env.controller.run_python_script(code)
                     elif lang == "BASH":
-                        code_result = slot.env.controller.run_bash_script(code)
+                        result = slot.env.controller.run_bash_script(code)
+
+                    code_result += f"Status: {result.get('status', '')}\n"
+                    code_result += f"Output: {result.get('output', '')[:5000]}\n"
+                    code_result += f"Error: {result.get('error', '')[:5000]}\n"
+                    code_result += f"Return Code: {result.get('returncode', 0)}\n"
 
                 obs_dict, reward, done, info = slot.env.step(action, pause=pause)
                 obs_dict['code_result'] = code_result
+                
                 slot.state = EnvState.acquired
                 return self._obs_to_model(obs_dict), reward, done, info
             except Exception:

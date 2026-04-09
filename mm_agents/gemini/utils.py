@@ -117,10 +117,7 @@ def build_qwen_messages_from_gemini(
     qwen_messages.append(
         {
             "role": "system",
-            "content": {
-                "type": "text",
-                "text": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
-            },
+            "content": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
         }
     )
 

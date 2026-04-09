@@ -356,11 +356,13 @@ class GeminiOpenAIAgentWithCode:
                     temperature=self.temperature,
                     top_p=self.top_p,
                     max_tokens=self.max_tokens,
-                    tools=TOOLS_SCHEMA,
+                    tools=TOOLS_SCHEMA, # TODO: Check
+                    tool_choice="auto",
                     extra_body={
                         "thinking_config": {
                             "include_thoughts": True
-                        }
+                        },
+                        # "chat_template_kwargs": {"enable_thinking": True} # 这个flag对gemini不管用
                     },
                 )
                 duration_ms = (time.time() - start) * 1000.0
@@ -494,7 +496,7 @@ class GeminiOpenAIAgentWithCode:
         # logger.info(f'Gemini Message Dict: {message_dict}')
         self.messages.append(message_dict)
 
-        reasoning = message_dict.get("reasoning_content") or message_dict.get("content")
+        reasoning = message_dict.get("reasoning_content", "") + message_dict.get("content", "")
 
         tool_calls = message.tool_calls or []
         response_meta_list: List[Dict[str, Any]] = []

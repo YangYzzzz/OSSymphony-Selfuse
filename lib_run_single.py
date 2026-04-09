@@ -222,9 +222,9 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 # 制作code的返回日志
                 result_content = ""
                 result_content += f"Status: {result.get('status', '')}\n"
-                result_content += f"Output: {result.get('output', '')}\n"
-                result_content += f"Error: {result.get('error', '')}\n"
-                result_content += f"Message: {result.get('message', '')}\n"
+                result_content += f"Output: {result.get('output', '')[:5000]}\n"
+                result_content += f"Error: {result.get('error', '')[:5000]}\n"
+                result_content += f"Return Code: {result.get('returncode', 0)}\n"
                 agent.last_code_result = result_content
 
             obs, reward, done, info = env.step(action, args.sleep_after_execution)

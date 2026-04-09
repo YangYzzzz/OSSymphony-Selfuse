@@ -444,7 +444,7 @@ class AnthropicAgentWithCode:
                         # Auto-screenshot: last tool gets regular screenshot (unless it's zoom, handled above)
                         include_screenshot = obs.get("screenshot")
                 if tool_name == "code" and self.last_code_result:
-                    result = self.last_code_result
+                    result = str(self.last_code_result)
                     self.last_code_result = None
 
                 self.add_tool_result(
@@ -811,6 +811,9 @@ class AnthropicAgentWithCode:
                             raise
 
                 response_params = _response_to_params(response)
+                for p in response_params:
+                    if "caller" in p:
+                        del p["caller"]        # ← Bedrock 兼容处理
                 logger.info(f"Received response params: {response_params}")
 
                 # Update raw response string for retry case (will be used in next loop iteration)

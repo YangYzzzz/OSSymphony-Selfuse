@@ -397,7 +397,7 @@ def dedup_and_save_images_for_claude(
     return used_filenames, image_hash_map
 
 QWEN3VL_COMPUTER_USE_TOOL_SCHEMA = json.dumps(
-{
+[{
         "type": "function",
         "function": {
             "name": "custom_computer_use",
@@ -457,7 +457,7 @@ QWEN3VL_COMPUTER_USE_TOOL_SCHEMA = json.dumps(
                 "required": ["action"],
             },
         },
-    },
+    }],
     ensure_ascii=False,
 )
 
