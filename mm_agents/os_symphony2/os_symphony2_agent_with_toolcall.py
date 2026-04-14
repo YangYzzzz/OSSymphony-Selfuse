@@ -162,7 +162,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 "image_url": {"url": f"data:image/png;base64,{processed_image}"},
             }
         )
-
         self.messages.append(
             {
                 "role": "user",

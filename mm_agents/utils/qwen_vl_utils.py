@@ -306,8 +306,7 @@ def dedup_and_save_images_for_gemini(
                     return                                                                                                                                                           
             image_hash_map[h] = filename
                                                                                                                                                                                     
-        if filename not in used_filenames:                
-            used_filenames.append(filename)
+        used_filenames.append(filename)
 
     # 遍历所有 messages 顶层 content，查找 image_url                                                                                                                                 
     for m in messages:
@@ -365,8 +364,7 @@ def dedup_and_save_images_for_claude(
                     return
             image_hash_map[h] = filename
 
-        if filename not in used_filenames:
-            used_filenames.append(filename)
+        used_filenames.append(filename)
 
     # 遍历 messages：
     # 1) user 顶层 image（例如首屏截图）

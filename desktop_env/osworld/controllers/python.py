@@ -62,7 +62,7 @@ class PythonController:
 
         for attempt_idx in range(self.retry_times):
             try:
-                response = requests.get(self.http_server + "/screenshot", timeout=10)
+                response = requests.get(self.http_server + "/screenshot", timeout=60)
                 if response.status_code == 200:
                     content_type = response.headers.get("Content-Type", "")
                     content = response.content
@@ -173,7 +173,7 @@ class PythonController:
         for _ in range(self.retry_times):
             try:
                 response = requests.post(self.http_server + "/execute", headers={'Content-Type': 'application/json'},
-                                         data=payload, timeout=90)
+                                         data=payload, timeout=900)
                 if response.status_code == 200:
                     logger.info("Command executed successfully: %s", response.text)
                     return response.json()
@@ -199,11 +199,11 @@ class PythonController:
         for _ in range(self.retry_times):
             try:
                 response = requests.post(self.http_server + "/run_python", headers={'Content-Type': 'application/json'},
-                                         data=payload, timeout=90)
+                                         data=payload, timeout=900)
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    return {"status": "error", "message": "Failed to execute command.", "output": None, "error": response.json()["error"]}
+                    return {"status": "error", "message": "Failed to execute command.", "output": '', "error": response.json()["error"]}
             except requests.exceptions.ReadTimeout:
                 break
             except Exception:
@@ -235,7 +235,7 @@ class PythonController:
                     self.http_server + "/run_bash_script", 
                     headers={'Content-Type': 'application/json'},
                     data=payload, 
-                    timeout=timeout + 100  # Add buffer to HTTP timeout
+                    timeout=900  # Add buffer to HTTP timeout
                 )
                 if response.status_code == 200:
                     result = response.json()

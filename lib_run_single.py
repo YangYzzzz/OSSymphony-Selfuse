@@ -463,7 +463,10 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                 result_content += f"Status: {result.get('status', '')}\n"
                 result_content += f"Output: {result.get('output', '')}\n"
                 result_content += f"Error: {result.get('error', '')}\n"
-                result_content += f"Message: {result.get('message', '')}\n"
+                if action.startswith("PYTHON"):
+                    result_content += f"Message: {result.get('message', '')}\n"
+                else:
+                    result_content += f"Return Code: {result.get('returncode', '0')}\n"
                 agent.last_code_result = result_content
 
             obs, _, done, _ = env.step(action, args.sleep_after_execution)
@@ -505,7 +508,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     need_rule_judge = example.get("evaluator", {}).get("need_rule_judge", False)
     if need_vlm_judge:
         # Passing both instruction and obs as requested
-        hint = example.get("evaluator").get("vlm_desc", "")
+        # hint = example.get("evaluator", {}).get("vlm_desc", "")
         vlm_evaluate_result = agent.evaluate(instruction, obs) # TODO: 将 check hint 注入 vlm evaluate prompt 内
         
         # Update model_judge in meta_json

@@ -8,7 +8,7 @@ import textwrap
 from typing import List, Optional, Union, cast, Any, Dict
 import base64
 from enum import Enum
-from mm_agents.utils.call_api_log import log_claude_api_call
+from mm_agents.utils.call_api_log import CALLS_LOG_DIR, STAT_LOG_DIR, log_claude_api_call
 from anthropic import (
     Anthropic,
     AnthropicBedrock,
@@ -487,10 +487,7 @@ def build_qwen_sft_sample(
     # 4) 添加 System Prompt
     qwen_messages.insert(0, {
         "role": "system",
-        "content": {
-            "type": "text",
-            "text": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN
-        }
+        "content": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN
     })
 
     sample = {
@@ -627,6 +624,7 @@ SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
 <IMPORTANT>
 * If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
 * When generating code with the `code` tool, prefer scripts that are idempotent and safe to re-run. Check paths carefully and avoid destructive operations (like `rm -rf`) unless absolutely necessary and clearly justified by the task.
+* The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the root directory or heavy long-running computations).
 </IMPORTANT>"""
 
 SYSTEM_PROMPT_WINDOWS = f"""<SYSTEM_CAPABILITY>

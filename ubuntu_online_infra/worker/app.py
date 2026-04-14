@@ -56,7 +56,8 @@ def _make_env_factory(cfg: Dict[str, Any]):
             headless=cfg.get("headless", True),
             require_a11y_tree=cfg.get("require_a11y_tree", True),
             require_terminal=cfg.get("require_terminal", False),
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            proxy="http://10.1.8.5:23128"
         )
 
     return _factory

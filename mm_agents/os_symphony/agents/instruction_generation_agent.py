@@ -169,9 +169,9 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     ## Complexity and estimated_steps
     Use these guidelines:
 
-    - "simple": Typically 15–30 gui actions. Single-file workflows or small configuration changes.
-    - "medium": Typically 30–50 gui actions. Multi-step workflows, multiple files or views.
-    - "complex": Typically 50–70 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
+    - "simple": Typically 10-15 gui actions. Single-file workflows or small configuration changes.
+    - "medium": Typically 15-30 gui actions. Multi-step workflows, multiple files or views.
+    - "complex": Typically 30-50 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
 
     Choose "estimated_steps" consistent with the complexity level and the actual operations required.
 
