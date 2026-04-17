@@ -130,16 +130,17 @@ class EnvPool:
             try:
                 code_result = ""
                 if action.startswith("BASH") or action.startswith("PYTHON"):
-                    lang, code = action.split("|")
-                    if lang == "PYTHON":
-                        result = slot.env.controller.run_python_script(code)
-                    elif lang == "BASH":
+                    if action.startswith("BASH"):
+                        code = action[5:]
                         result = slot.env.controller.run_bash_script(code)
-
-                    code_result += f"Status: {result.get('status', '')}\n"
-                    code_result += f"Output: {result.get('output', '')[:5000]}\n"
-                    code_result += f"Error: {result.get('error', '')[:5000]}\n"
-                    code_result += f"Return Code: {result.get('returncode', 0)}\n"
+                    else:
+                        code = action[7:]
+                        result = slot.env.controller.run_python_script(code)
+                    if result:
+                        code_result += f"Status: {result.get('status', '')}\n"
+                        code_result += f"Output: {result.get('output', '')[:5000]}\n"
+                        code_result += f"Error: {result.get('error', '')[:5000]}\n"
+                        code_result += f"Return Code: {result.get('returncode', 0)}\n"
 
                 obs_dict, reward, done, info = slot.env.step(action, pause=pause)
                 obs_dict['code_result'] = code_result
