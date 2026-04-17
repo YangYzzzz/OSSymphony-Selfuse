@@ -406,20 +406,20 @@ class AnthropicAgentWithCode:
             obs["screenshot"] = output_buffer.getvalue()
 
         if not self.messages:
-            # init_screenshot = obs
-            # init_screenshot_base64 = base64.b64encode(init_screenshot["screenshot"]).decode('utf-8')
+            init_screenshot = obs
+            init_screenshot_base64 = base64.b64encode(init_screenshot["screenshot"]).decode('utf-8')
             self.messages.append({
                 "role": "user",
                 "content": [
-                    # {
-                    #     "type": "image",
-                    #     "source": {
-                    #         "type": "base64",
-                    #         "media_type": "image/png",
-                    #         "data": init_screenshot_base64,
-                    #     },
-                    # },
                     {"type": "text", "text": 'Task: ' + task_instruction},
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": init_screenshot_base64,
+                        },
+                    },
                 ]
             })
 
@@ -542,7 +542,9 @@ class AnthropicAgentWithCode:
 
         if self.no_thinking:
             # Disable thinking mode - omit the thinking parameter
-            extra_body = {}
+            extra_body = {
+                "thinking": {"type": "disabled"}
+            }
             actual_max_tokens = self.max_tokens  # Use default when no thinking
             logger.info("Thinking mode: DISABLED")
         else:
@@ -663,6 +665,9 @@ class AnthropicAgentWithCode:
         for p in response_params:
             if "caller" in p:
                 del p["caller"]
+            # if "signature" in p:
+            #     del p["signature"]
+
         # Store response in message history
         self.messages.append({
             "role": "assistant",
@@ -800,7 +805,7 @@ class AnthropicAgentWithCode:
                         ) as stream:
                             response = stream.get_final_message()
 
-                        logger.info(f"Response: {response}")
+                        # logger.info(f"Response: {response}")
                         break  # Success, exit retry loop
                     except (APIError, APIStatusError, APIResponseValidationError) as e2:
                         error_msg = str(e2)
@@ -814,7 +819,10 @@ class AnthropicAgentWithCode:
                 for p in response_params:
                     if "caller" in p:
                         del p["caller"]        # ← Bedrock 兼容处理
-                logger.info(f"Received response params: {response_params}")
+                    # if "signature" in p:
+                    #     del p["signature"]
+
+                # logger.info(f"Received response params: {response_params}")
 
                 # Update raw response string for retry case (will be used in next loop iteration)
                 raw_response_str = self._extract_raw_response_string(response)

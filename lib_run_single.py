@@ -193,6 +193,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
             obs
         )
         # 理论上每一轮只会产生一个操作
+        code_result = ""
         for i, (response, action) in enumerate(zip(responses, actions)):
             # Save screenshot and trajectory information
             img_name = f"step_{step_idx + 1}.png"
@@ -220,12 +221,11 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 action = code
 
                 # 制作code的返回日志
-                result_content = ""
-                result_content += f"Status: {result.get('status', '')}\n"
-                result_content += f"Output: {result.get('output', '')[:5000]}\n"
-                result_content += f"Error: {result.get('error', '')[:5000]}\n"
-                result_content += f"Return Code: {result.get('returncode', 0)}\n"
-                agent.last_code_result = result_content
+                code_result += f"Status: {result.get('status', '')}\n"
+                code_result += f"Output: {result.get('output', '')[:5000]}\n"
+                code_result += f"Error: {result.get('error', '')[:5000]}\n"
+                code_result += f"Return Code: {result.get('returncode', 0)}\n"
+                agent.last_code_result = code_result
 
             obs, reward, done, info = env.step(action, args.sleep_after_execution)
             if done:
@@ -241,6 +241,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 "step_num": step_idx + 1,
                 "action": actions,
                 "response": responses,
+                "code_result": code_result,
                 "done": done,
                 "info": info,
                 "screenshot_file": img_name
@@ -252,6 +253,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 "step_num": step_idx + 1,
                 "action": actions,
                 "response": responses,
+                "code_result": code_result,
                 "done": done,
                 "info": info,
                 "screenshot_file": img_name
@@ -405,6 +407,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         action_list = []
         coordinate_1 = None
         coordinate_2 = None
+        code_result = ""
         for i, (action, response_per_action) in enumerate(zip(actions, response)):
             
             # Define current screenshot filename (using step_idx to start from 0)
@@ -459,15 +462,14 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                 action = code
 
                 # 制作code的返回日志
-                result_content = ""
-                result_content += f"Status: {result.get('status', '')}\n"
-                result_content += f"Output: {result.get('output', '')}\n"
-                result_content += f"Error: {result.get('error', '')}\n"
+                code_result += f"Status: {result.get('status', '')}\n"
+                code_result += f"Output: {result.get('output', '')[:5000]}\n"
+                code_result += f"Error: {result.get('error', '')[:5000]}\n"
                 if action.startswith("PYTHON"):
-                    result_content += f"Message: {result.get('message', '')}\n"
+                    code_result += f"Message: {result.get('message', '')}\n"
                 else:
-                    result_content += f"Return Code: {result.get('returncode', '0')}\n"
-                agent.last_code_result = result_content
+                    code_result += f"Return Code: {result.get('returncode', '0')}\n"
+                agent.last_code_result = code_result
 
             obs, _, done, _ = env.step(action, args.sleep_after_execution)
             
@@ -487,7 +489,8 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
             "action": ";".join(action_list), # Action str, maybe pyautogui
             "coordinate": coordinate_1, # [x, y] or None
             "coordinate2": coordinate_2, # [[x1,y1], [x2,y2]] or None
-            "meta_action": meta_action
+            "meta_action": meta_action,
+            "code_result": code_result
         }
         
         # Append to trajectory

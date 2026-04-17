@@ -507,7 +507,8 @@ class OSCaliberTaskGenerator:
                 "estimated_steps": task.get("estimated_steps"),
                 "category": task.get("category"),  # file_only / app_only / mixed
                 "evaluator": self._build_evaluator_from_verification(task),
-                "setup_image": f"image/{task_id}.png" # Rel Path
+                "setup_image": f"image/{task_id}.png", # Rel Path
+                "launch_paths": launch_paths
             }
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(task_config, f, indent=4, ensure_ascii=False)

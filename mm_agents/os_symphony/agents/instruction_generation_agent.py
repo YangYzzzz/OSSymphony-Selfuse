@@ -13,6 +13,10 @@ from mm_agents.os_symphony.core.mllm import LMMAgent
 
 logger = logging.getLogger("desktopenv.coarse_instruction_generation_agent")
 
+"""
+    - Good example: "Query the score of Game 1 of the 2024 Finals on Hupu and record it in a new document."
+    - Bad example: "Click the search bar, type '2024 Finals', click the first link, copy the score, open a document, and paste it."
+"""
 INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     You are an expert GUI task generation assistant on the {platform} platform.
     Your goal is to generate specific, diverse, and verifiable tasks for one or more given applications based on their initial UI screenshot, optional launch paths, and documentation.
@@ -21,17 +25,16 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     ## Environment assumptions
     - The user's home directory is "~" (absolute path "/home/user").
-
+                                                     
     ## Applications
     - In the current setting, you have one MAIN application: {main_app_name}.
     - You may also be given a set of additional available applications: {available_app_list}.
     - The MAIN application {main_app_name} MUST be used in every task.
     - You MUST treat the additional applications in {available_app_list} as required resources when they are provided:
-        - If {available_app_list} indicates there is only the MAIN application (no additional apps), then each task MUST use **only** {main_app_name}.
+        - If {available_app_list} indicates there is only the MAIN application (no additional apps), then each task MUST use only {main_app_name}.
         - When multiple additional apps are available, you SHOULD design tasks that involve **cross-application collaboration** (for example, creating or editing a file in one app and then refining, converting, analyzing, or presenting it in another app) whenever this is logically supported by their roles.
     - For each task, the `related_apps` field MUST include **all** applications that are actually needed to complete the task, and you SHOULD avoid listing apps that are not genuinely used.
     - You MUST NOT introduce or use any other applications outside this set.
-    - All tasks must be achievable using these applications plus the filesystem under "/home/user".
 
     ## Task objectives
     You must generate exactly {task_numbers} independent tasks that:
@@ -43,8 +46,8 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     - "description" (string): A natural-language, goal-oriented request mimicking a real-world user prompt. 
         - **CRITICAL:** It MUST NOT be a step-by-step tutorial. Tell the user WHAT the final goal is, not HOW to achieve it.
-        - Good example: "Query the score of Game 1 of the 2024 Finals on Hupu and record it in a new document."
-        - Bad example: "Click the search bar, type '2024 Finals', click the first link, copy the score, open a document, and paste it."
+        - **CRITICAL PATH REQUIREMENT:** If the task involves opening, reading, editing, or saving any file, you MUST explicitly write the exact absolute path (starting with `~`) directly inside this `description` string. NEVER use vague terms like "the document", "the image", or just the filename.
+        - **CRITICAL IN-PLACE EDITING:** If a task requires modifying an existing file from `launch_paths`, you MUST assume the modifications are saved in-place and do NOT instruct the user to "Save As" or save the file to a new location.
     - "complexity" (string): One of "simple", "medium", or "complex".
     - "category" (string): One of:
         - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application(s).
@@ -152,7 +155,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     - When `launch_paths` is non-empty:
         - You may and should refer directly to these paths in your tasks.
-        - **IN-PLACE EDITING:** If a task requires modifying an existing file from `launch_paths`, you MUST assume the modifications are saved in-place. DO NOT instruct the user to "Save As" or save the file to a new location. Your generated evaluation logic (`vm_file`) MUST target the original file path to verify the changes.
         - Do NOT assume the existence of additional unnamed files outside the ones given, unless you explicitly create them in your task description.
 
     - When `launch_paths` is empty:
@@ -181,12 +183,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Vary the difficulty: Include a spread of "simple", "medium", and "complex" tasks.
     - Vary the functional coverage: Use different features or workflows of the application.
     - Avoid generating multiple tasks that are essentially the same goal with only superficial wording changes.
-
-    ## Verifiability and paths
-    For every task:
-
-    - Any file that is read, edited, or inspected must be identified with a unique, unambiguous "~"-based path.
-    - As stated above, existing files must be evaluated at their original paths (no "save as" unless explicitly testing a file-conversion feature).
 
     ## Use of application tutorials (if provided)
     If you are given an application-specific markdown tutorial, you may use it to:
@@ -488,7 +484,6 @@ class InstructionGenerationAgent:
                 tasks = self.parse_instruction(response)
                 for t in tasks:
                     t['allowed_apps'] = allowed_apps
-                    
                 last_tasks = tasks
 
                 # Strict validation: if a task has rule_items, all of them must have been parsed successfully

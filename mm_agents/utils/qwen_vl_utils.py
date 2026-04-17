@@ -490,7 +490,7 @@ Before tool call, you MUST output a short block in the following format:
 **Thought:** <why this action is needed, what you expect to happen>
 **Action:** <one-sentence plain-language description of what the tool call will do>
 
-Do NOT skip this block, and do NOT call the tool without it appearing immediately above.
+Do NOT skip this reasoning block, and do NOT call the tool without it appearing immediately above.
 """)
 
 if __name__ == "__main__":

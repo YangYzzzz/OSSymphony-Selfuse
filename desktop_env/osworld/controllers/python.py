@@ -190,7 +190,7 @@ class PythonController:
         logger.error("Failed to execute command.")
         return None
     
-    def run_python_script(self, script: str) -> Optional[Dict[str, Any]]:
+    def run_python_script(self, script: str, timeout: int = 30) -> Optional[Dict[str, Any]]:
         """
         Executes a python script on the server.
         """
@@ -199,13 +199,18 @@ class PythonController:
         for _ in range(self.retry_times):
             try:
                 response = requests.post(self.http_server + "/run_python", headers={'Content-Type': 'application/json'},
-                                         data=payload, timeout=900)
+                                         data=payload, timeout=timeout + 10)
                 if response.status_code == 200:
                     return response.json()
                 else:
                     return {"status": "error", "message": "Failed to execute command.", "output": '', "error": response.json()["error"]}
             except requests.exceptions.ReadTimeout:
-                break
+                return {
+                    "status": "error", 
+                    "message": "Note: A timeout does not necessarily indicate a failure. If you executed a blocking process (e.g., opening a GUI window, starting a server), this timeout is expected behavior. Please evaluate accordingly.", 
+                    "output": '', 
+                    "error": "Read Timeout."
+                }
             except Exception:
                 logger.error("An error occurred while trying to execute the command: %s", traceback.format_exc())
                 logger.info("Retrying to execute command.")
@@ -235,7 +240,7 @@ class PythonController:
                     self.http_server + "/run_bash_script", 
                     headers={'Content-Type': 'application/json'},
                     data=payload, 
-                    timeout=900  # Add buffer to HTTP timeout
+                    timeout=timeout + 10  # Add buffer to HTTP timeout
                 )
                 if response.status_code == 200:
                     result = response.json()
@@ -249,7 +254,7 @@ class PythonController:
                 logger.error("Bash script execution timed out")
                 return {
                     "status": "error",
-                    "output": "",
+                    "output": "Note: A timeout does not necessarily indicate a failure. If you executed a blocking process (e.g., opening a GUI window, starting a server, or a command that requires Ctrl+C to stop), this timeout is expected behavior. Please evaluate accordingly.",
                     "error": f"Script execution timed out after {timeout} seconds",
                     "returncode": -1
                 }
