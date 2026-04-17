@@ -162,7 +162,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 "image_url": {"url": f"data:image/png;base64,{processed_image}"},
             }
         )
-
         self.messages.append(
             {
                 "role": "user",
@@ -325,7 +324,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
             parts: List[str] = []
             if thought:
-                parts.append(f"<think>{thought}</think>")
+                parts.append(f"{thought}")
 
             import json as _json
 
@@ -518,7 +517,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     top_p=self.top_p,
-                    tools=[json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA)],
+                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA),
                     tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}

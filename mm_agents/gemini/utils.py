@@ -191,11 +191,11 @@ def build_qwen_messages_from_gemini(
                     press_enter = args.get("press_enter")
                     clear_before_typing = args.get("clear_before_typing")
                     if clear_before_typing:
-                        q_actions.append({"action": "keys", "keys": ["ctrl", "a", "backspace"]})
+                        q_actions.append({"action": "key", "keys": ["ctrl", "a", "backspace"]})
                     q_actions.append({"action": "left_click", "coordinate": [args.get("x", 0), args.get("y", 0)]})
                     q_actions.append({"action": "type", "text": args.get("text", "")})
                     if press_enter:
-                        q_actions.append({"action": "keys", "keys": ["enter"]})
+                        q_actions.append({"action": "key", "keys": ["enter"]})
                 elif name == "scroll_document":
                     direction = args.get("direction") or "down"
                     if direction in ("left", "right"):

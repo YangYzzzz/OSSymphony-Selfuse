@@ -8,7 +8,7 @@ import textwrap
 from typing import List, Optional, Union, cast, Any, Dict
 import base64
 from enum import Enum
-from mm_agents.utils.call_api_log import log_claude_api_call
+from mm_agents.utils.call_api_log import CALLS_LOG_DIR, STAT_LOG_DIR, log_claude_api_call
 from anthropic import (
     Anthropic,
     AnthropicBedrock,
@@ -24,6 +24,7 @@ from anthropic.types.beta import (
     BetaMessage,
     BetaMessageParam,
     BetaTextBlock,
+    BetaThinkingBlock,
     BetaTextBlockParam,
     BetaToolResultBlockParam,
     BetaToolUseBlockParam,
@@ -166,7 +167,7 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
     参照 mm_agents/os_symphony2/os_symphony2_agent.py 里的 tools_def：
     - action: ["key", "type", "mouse_move", "left_click", "left_click_drag",
                 "right_click", "middle_click", "double_click", "scroll",
-                "execute_code", "wait", "terminate"]
+                "code", "wait", "terminate"]
     - keys / text / coordinate / pixels / time / code / language
     """
     q_args: Dict[str, Any] | List[Dict[str, Any]] = {"action": "wait"}
@@ -439,13 +440,18 @@ def build_qwen_sft_sample(
         second = processed_messages[1]
         third = processed_messages[2]
         # 只有在符合典型结构时才做裁剪，避免误伤
+        # 当 second 的动作为 screenshot 时, 再进行更换
+        exchange_flag = False
+        for b in second["content"]:
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") != "tool_use":
+                continue
+            tool_name = b.get("input", {}).get("action", "")
+            if tool_name == "screenshot":
+                exchange_flag = True
         if (
-            isinstance(first, dict)
-            and isinstance(second, dict)
-            and isinstance(third, dict)
-            and first.get("role") == "user"
-            and second.get("role") == "assistant"
-            and third.get("role") == "user"
+            exchange_flag
         ):
             first_content = first.get("content")
             third_content = third.get("content")
@@ -487,10 +493,7 @@ def build_qwen_sft_sample(
     # 4) 添加 System Prompt
     qwen_messages.insert(0, {
         "role": "system",
-        "content": {
-            "type": "text",
-            "text": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN
-        }
+        "content": QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN
     })
 
     sample = {
@@ -596,7 +599,8 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 * If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
 </IMPORTANT>"""
 
-SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
+SYSTEM_PROMPT_WITH_CODE = f"""
+<SYSTEM_CAPABILITY>
 * You are utilising an Ubuntu virtual machine using x86_64 architecture with internet access. The Ubuntu's home path is /home/user, desktop path is /home/user/Desktop.
 * You have two main ways to act: (1) low-level GUI control via the `computer` tool (mouse, keyboard, scrolling, window management), and (2) high-level automation via the `code` tool (Python or Bash scripts).
 * The `code` tool is for generating complete scripts, not just one-liners. The string you output will be written into a file and executed as a standalone program (e.g. a multi-line Python file or Bash script). You can and should use multiple lines, define functions, and structure the code as needed.
@@ -607,12 +611,11 @@ SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
   - Create shortcuts or small utilities that can be reused in later steps.
   - Automate shell workflows (e.g. chaining several commands, handling errors, or complex logic) as a script rather than many single Bash calls.
 * Code and GUI should work together: for example, you can use the `code` tool to prepare data or configure the environment (creating/editing files, running batch operations), and then use GUI actions to open applications, verify results, or perform steps that require a graphical interface.
-* When using your bash tool with commands that are expected to output very large quantities of text, redirect into a tmp file and use str_replace_editor or `grep -n -B <lines before> -A <lines after> <query> <filename>` to confirm output.
-* To open browser, please just click on the Chrome icon.  Note, Chrome is what is installed on your system.
-* Using bash tool you can start GUI applications, but you need to set export DISPLAY=:1 and use a subshell. For example "(DISPLAY=:1 xterm &)". GUI apps run with bash tool will appear within your desktop environment, but they may take some time to appear. Take a screenshot to confirm it did.
+* When using your bash tool with commands that are expected to output very large quantities of text, redirect into a tmp file and use `grep -n -B <lines before> -A <lines after> <query> <filename>` to confirm output.
+* To open browser, please just click on the Chrome icon. Note, Chrome is what is installed on your system.
 * When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
 * DO NOT ask users for clarification during task execution. DO NOT stop to request more information from users. Always take action using available tools.
-* When using your computer function calls, they take a while to run and send back to you.  Where possible/feasible, try to chain multiple of these calls all into one function calls request.
+* When using your computer function calls, they take a while to run and send back to you.
 * TASK FEASIBILITY: You can declare a task infeasible at any point during execution - whether at the beginning after taking a screenshot, or later after attempting some actions and discovering barriers. Carefully evaluate whether the task is feasible given the current system state, available applications, and task requirements. If you determine that a task cannot be completed due to:
   - Missing required applications or dependencies that cannot be installed
   - Insufficient permissions or system limitations
@@ -620,14 +623,16 @@ SYSTEM_PROMPT_WITH_CODE = f"""<SYSTEM_CAPABILITY>
   - Any other fundamental barriers that make completion impossible
   Then you MUST output exactly "[INFEASIBLE]" (including the square brackets) anywhere in your response to trigger the fail action. The system will automatically detect this pattern and terminate the task appropriately.
 * The current date is {datetime.today().strftime('%A, %B %d, %Y')}.
-* Home directory of this Ubuntu system is '/home/user'.
 * If you need a password for sudo, the password of the computer is 'password'.
 </SYSTEM_CAPABILITY>
 
 <IMPORTANT>
-* If the item you are looking at is a pdf, if after taking a single screenshot of the pdf it seems that you want to read the entire document instead of trying to continue to read the pdf from your screenshots + navigation, determine the URL, use curl to download the pdf, install and use pdftotext to convert it to a text file, and then read that text file directly with your StrReplaceEditTool.
 * When generating code with the `code` tool, prefer scripts that are idempotent and safe to re-run. Check paths carefully and avoid destructive operations (like `rm -rf`) unless absolutely necessary and clearly justified by the task.
-</IMPORTANT>"""
+* The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the user home directory or heavy long-running computations).
+* Perform ONLY ONE atomic action per turn. Do not chain multiple coordinate-based actions simultaneously. Because a single click can alter the visual state of the UI, any subsequent coordinates in the same turn will likely be invalid. Always execute one action and wait for the new visual feedback before proceeding.
+* Do NOT use `export DISPLAY=:1` in generated scripts; just run commands directly without modifying DISPLAY.
+</IMPORTANT>
+"""
 
 SYSTEM_PROMPT_WINDOWS = f"""<SYSTEM_CAPABILITY>
 * You are utilising a Windows virtual machine using x86_64 architecture with internet access.
@@ -893,7 +898,8 @@ def validate_model_support(model_name: str, provider: APIProvider = APIProvider.
         print(f"❌ API validation setup failed: {e}")
         return False
 
-
+import logging
+logger = logging.getLogger("desktopenv.agent")
 def _response_to_params(
     response: BetaMessage,
 ) -> list[BetaContentBlockParam]:
@@ -903,15 +909,22 @@ def _response_to_params(
             if isinstance(block, BetaTextBlock):
                 if block.text:
                     res.append(BetaTextBlockParam(type="text", text=block.text))
-                elif getattr(block, "type", None) == "thinking":
-                    # Handle thinking blocks - include signature field
-                    thinking_block = {
-                        "type": "thinking",
-                        "thinking": getattr(block, "thinking", None),
-                    }
-                    if hasattr(block, "signature"):
-                        thinking_block["signature"] = getattr(block, "signature", None)
-                    res.append(cast(BetaContentBlockParam, thinking_block))
+
+            elif isinstance(block, BetaThinkingBlock) and getattr(block, "type", None) == "thinking":
+                logger.warning(f'出现 thinking block: {block}')
+                # Handle thinking blocks - include signature field
+                thinking_block = {
+                    "type": "thinking",
+                    "thinking": getattr(block, "thinking", None),
+                }
+                if hasattr(block, "signature"):
+                    thinking_block["signature"] = getattr(block, "signature", "[placeholder]")
+                
+                cast_thinking_block = cast(BetaThinkingBlock, thinking_block)
+                cast_thinking_block["signature"] = "[placeholder]" # TODO: 可能需要继续check下
+                logger.warning(f'Thinking block 处理后: {cast_thinking_block}')
+                res.append(cast_thinking_block)
+
             else:
                 # Handle tool use blocks normally
                 res.append(cast(BetaToolUseBlockParam, block.model_dump()))
@@ -989,63 +1002,64 @@ def log_claude_api_call(
     error: Optional[str] = None,
 ):
     """记录 Claude API 调用日志到 api_logs，图片用占位符。"""
-    try:
-        from datetime import datetime
+    from datetime import datetime
 
-        # 以月份作为子目录，例如 2026-02, 2026-03
-        now = datetime.utcnow()
-        month_calls_model_jsonl_filename = CALLS_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
-        month_stats_model_jsonl_filename = STAT_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
-        month_calls_model_jsonl_filename.touch(exist_ok=True)
-        month_stats_model_jsonl_filename.touch(exist_ok=True)
+    # 以月份作为子目录，例如 2026-02, 2026-03
+    now = datetime.utcnow()
+    month_calls_model_jsonl_dir = CALLS_LOG_DIR / now.strftime("%Y-%m") / model_name
+    month_stats_model_jsonl_dir = STAT_LOG_DIR / now.strftime("%Y-%m") / model_name
+    month_calls_model_jsonl_filename = CALLS_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
+    month_stats_model_jsonl_filename = STAT_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
 
-        ts = now.strftime("%Y%m%d_%H%M%S_%f")
-    
+    month_calls_model_jsonl_dir.mkdir(exist_ok=True)
+    month_stats_model_jsonl_dir.mkdir(exist_ok=True)
+    month_calls_model_jsonl_filename.touch(exist_ok=True)
+    month_stats_model_jsonl_filename.touch(exist_ok=True)
 
-        safe_messages = _normalize_messages_for_log(request_messages)
+    ts = now.strftime("%Y%m%d_%H%M%S_%f")
 
-        usage = None
-        if hasattr(response, "usage") and response.usage:
-            usage = response.usage.model_dump()
 
-        response_summary = None
-        if response and getattr(response, "content", None):
-            texts = []
-            for block in response.content:
-                if hasattr(block, "text") and block.text:
-                    texts.append(block.text)
-            if texts:
-                merged = "\n".join(texts)
-                response_summary = merged[:2000]
+    safe_messages = _normalize_messages_for_log(request_messages)
 
-        stats_log_record = {
-            "timestamp_utc": ts,
-            "duration_ms": duration_ms,
-            "success": success,
-            "usage": usage
-        }
+    usage = None
+    if hasattr(response, "usage") and response.usage:
+        usage = response.usage.model_dump()
 
-        calls_log_record = {
-            "timestamp_utc": ts,
-            "provider": provider.name if hasattr(provider, "name") else str(provider),
-            "model": model_name,
-            "success": success,
-            "error": error,
-            "duration_ms": duration_ms,
-            "request": {
-                "messages": safe_messages,
-            },
-            "response": {
-                "usage": usage,
-                "summary_text": response_summary,
-            },
-        }
+    response_summary = None
+    if response and getattr(response, "content", None):
+        texts = []
+        for block in response.content:
+            if hasattr(block, "text") and block.text:
+                texts.append(block.text)
+        if texts:
+            merged = "\n".join(texts)
+            response_summary = merged[:2000]
 
-        # 追加写入当月 jsonl 文件
-        with month_calls_model_jsonl_filename.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(calls_log_record, ensure_ascii=False) + "\n")
-        with month_stats_model_jsonl_filename.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(stats_log_record, ensure_ascii=False) + "\n")
-        
-    except Exception as e:
-        pass
+    stats_log_record = {
+        "timestamp_utc": ts,
+        "duration_ms": duration_ms,
+        "success": success,
+        "usage": usage
+    }
+
+    calls_log_record = {
+        "timestamp_utc": ts,
+        "provider": provider.name if hasattr(provider, "name") else str(provider),
+        "model": model_name,
+        "success": success,
+        "error": error,
+        "duration_ms": duration_ms,
+        "request": {
+            "messages": safe_messages,
+        },
+        "response": {
+            "usage": usage,
+            "summary_text": response_summary,
+        },
+    }
+
+    # 追加写入当月 jsonl 文件
+    with month_calls_model_jsonl_filename.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(calls_log_record, ensure_ascii=False) + "\n")
+    with month_stats_model_jsonl_filename.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(stats_log_record, ensure_ascii=False) + "\n")

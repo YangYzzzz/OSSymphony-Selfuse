@@ -140,8 +140,11 @@ class EnvPool:
                         code_result += f"Status: {result.get('status', '')}\n"
                         code_result += f"Output: {result.get('output', '')[:5000]}\n"
                         code_result += f"Error: {result.get('error', '')[:5000]}\n"
-                        code_result += f"Return Code: {result.get('returncode', 0)}\n"
-
+                        if action.startswith("BASH"):
+                            code_result += f"Return Code: {result.get('returncode', 0)}\n"
+                        else:
+                            code_result += f"Message: {result.get('message', 0)}\n"
+                            
                 obs_dict, reward, done, info = slot.env.step(action, pause=pause)
                 obs_dict['code_result'] = code_result
                 
