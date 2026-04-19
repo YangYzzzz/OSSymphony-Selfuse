@@ -687,12 +687,13 @@ def create_gradio_app(root_dir):
             is_milestone = "milestone" in str(img_path)
             new_label = "Milestone!" if is_milestone else "步骤截图"
             new_classes = ["milestone"] if is_milestone else []
-            
+
+            response = response[0]
             updates = {
                 step_counter: gr.update(value=f"步骤 {index + 1} / {len(steps)}"),
                 screenshot_img: gr.update(value=str(img_path) if img_path.exists() else None, label=new_label, elem_classes=new_classes),
-                plan_text: gr.update(value=response.get("plan", "N/A")),
-                plan_code_text: gr.update(value=response.get("plan_code", "N/A")),
+                plan_text: gr.update(value=response.get("plan", response.get("thought", "N/A"))),
+                plan_code_text: gr.update(value=response.get("plan_code", response.get("code", "N/A"))),
                 reflection_text: gr.update(value=response.get("reflection", "N/A")),
                 prev_step_btn: gr.update(interactive=index > 0),
                 next_step_btn: gr.update(interactive=index < len(steps) - 1),

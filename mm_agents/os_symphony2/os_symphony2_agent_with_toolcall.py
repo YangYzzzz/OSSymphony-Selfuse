@@ -206,7 +206,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         )
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
-        self.debug_print_messages()
+        # self.debug_print_messages()
         return meta_data, pyautogui_code
 
     def _cleanup_old_screenshots(self):
@@ -518,7 +518,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     top_p=self.top_p,
-                    tools=[json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA)],
+                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA),
                     tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}
