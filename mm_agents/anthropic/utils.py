@@ -198,8 +198,8 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
             q_args["action"] = "double_click"
             if coordinate is not None:
                 q_args["coordinate"] = coordinate
-        elif action in {"trible_click"}:
-            q_args["action"] = "trible_click"
+        elif action in {"triple_click"}:
+            q_args["action"] = "triple_click"
             if coordinate is not None:
                 q_args["coordinate"] = coordinate
         elif action in {"mouse_move"}:
@@ -438,7 +438,6 @@ def build_qwen_sft_sample(
     if len(processed_messages) >= 3:
         first = processed_messages[0]
         second = processed_messages[1]
-        third = processed_messages[2]
         # 只有在符合典型结构时才做裁剪，避免误伤
         # 当 second 的动作为 screenshot 时, 再进行更换
         exchange_flag = False
@@ -453,24 +452,9 @@ def build_qwen_sft_sample(
         if (
             exchange_flag
         ):
-            first_content = first.get("content")
-            third_content = third.get("content")
-            if isinstance(first_content, list) and isinstance(third_content, list):
-                # 从第三条里的 tool_result 里提取 image，加到第一条 user 的 content 末尾
-                for block in third_content:
-                    if not (isinstance(block, dict) and block.get("type") == "tool_result"):
-                        continue
-                    sub_content = block.get("content")
-                    if not isinstance(sub_content, list):
-                        continue
-                    for sub in sub_content:
-                        if isinstance(sub, dict) and sub.get("type") == "image":
-                            first_content.append(sub)
-                # 重新写回
-                first["content"] = first_content
-
-                # 砍掉第 1、2 条（下标 1、2），只保留改造后的首条
-                processed_messages = [first] + processed_messages[3:]
+            # 砍掉第 1、2 条（下标 1、2），粗暴跳过第一轮tool_call，直接拼接下一轮tool_call
+            # user, assistant(screenshot, cut), user(多个tool_result, cut), assistant(other tool call)
+            processed_messages = [first] + processed_messages[3:]
 
     # 后续逻辑都基于 processed_messages
 

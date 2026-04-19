@@ -199,7 +199,7 @@ class PythonController:
         for _ in range(self.retry_times):
             try:
                 response = requests.post(self.http_server + "/run_python", headers={'Content-Type': 'application/json'},
-                                         data=payload, timeout=timeout + 10)
+                                         data=payload, timeout=timeout) # 注意: 这个 timeout 不能乱改, OSWorld 后端写死了30s, 需要与之完全一致, 否则无法捕捉超时异常
                 if response.status_code == 200:
                     return response.json()
                 else:
@@ -219,7 +219,7 @@ class PythonController:
         logger.error("Failed to execute command.")
         return {"status": "error", "message": "Failed to execute command.", "output": "", "error": "Retry limit reached."}
     
-    def run_bash_script(self, script: str, timeout: int = 30, working_dir: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def run_bash_script(self, script: str, timeout: int = 40, working_dir: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Executes a bash script on the server.
         
@@ -235,17 +235,27 @@ class PythonController:
         })
 
         for _ in range(self.retry_times):
+            # start_time = time.time()
             try:
                 response = requests.post(
                     self.http_server + "/run_bash_script", 
                     headers={'Content-Type': 'application/json'},
                     data=payload, 
-                    timeout=timeout + 10  # Add buffer to HTTP timeout
+                    timeout=timeout
                 )
+                # end_time = time.time()
                 if response.status_code == 200:
                     result = response.json()
                     logger.info("Bash script executed successfully with return code: %d", result.get("returncode", -1))
                     return result
+                # elif end_time - start_time > timeout + 10:
+                #     logger.error("Bash script execution timed out")
+                #     return {
+                #         "status": "error",
+                #         "output": "Note: A timeout does not necessarily indicate a failure. If you executed a blocking process (e.g., opening a GUI window, starting a server, or a command that requires Ctrl+C to stop), this timeout is expected behavior. Please evaluate accordingly.",
+                #         "error": f"Script execution timed out after {timeout} seconds",
+                #         "returncode": -1
+                #     }
                 else:
                     logger.error("Failed to execute bash script. Status code: %d, response: %s", 
                                 response.status_code, response.text)

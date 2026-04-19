@@ -259,7 +259,9 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     max_tokens=args.max_tokens,
                     temperature=args.temperature,
                     top_p=args.top_p,
-                    no_thinking=not args.use_thinking
+                    no_thinking=not args.use_thinking,
+                    collect_qwen_sft=args.collect_qwen_sft,
+                    collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
             else:
                 agent = AnthropicAgentWithCode(

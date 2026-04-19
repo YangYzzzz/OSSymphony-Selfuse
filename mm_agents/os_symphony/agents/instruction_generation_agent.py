@@ -89,10 +89,14 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - When "evaluation.need_vlm_judge" is true, you MUST provide a clear "vlm_desc" string that describes the final GUI state and, where helpful, key intermediate GUI states during execution, so that a VLM can reliably judge success from screenshots.
 
     - Rule-based checks MUST follow these principles:
-        - Core idea: "everything is a file". The final result should be reflected in one or more files inside the VM. 
-        - **Immutable/Golden Answers ONLY:** The final answer must be deterministic and time-independent. NEVER design tasks whose correct outcome depends on real-time or dynamic data. 
+        - Core idea: "everything is a file". The final result should be reflected in one or more files inside the VM.
+        - **Immutable/Golden Answers ONLY:** The final answer must be deterministic and time-independent. NEVER design tasks whose correct outcome depends on real-time or dynamic data.
             - Bad example: "Find the 3 most recent games..." (The answer will change over time, breaking the evaluator).
             - Good example: "Find the score of Game 1 of the 2024 Finals..." (The answer is a historical fact and serves as a reliable 'golden' answer).
+        - **Robust Data Handling:** When writing rule functions, assume parsed data (from JSON, CSV, text, etc.) might be formatted unexpectedly (e.g., as strings instead of numbers, with extra spaces or currency symbols). You MUST include rigorous data cleaning and type casting (e.g., `float()`, `int()`) BEFORE any mathematical operations to prevent the evaluator from crashing. A crashed evaluator returns 0.0, which breaks the reward signal.
+        - **Strictness and Penalties (Anti-cheating):** Agents often cheat by applying an action globally. Your rule-based check SHOULD be strict:
+            - **Positive checks:** Verify the specific target of the task is successfully modified/created.
+            - **Negative checks (Optional but recommended):** Use the golden file (`expected`) to verify that a few *other* related items (e.g., an adjacent element, a different paragraph, or randomly sampled parts) remain UNCHANGED. If an unintended change is detected, penalize the score. You don't need to check everything, just 1-3 highly likely collateral targets.
         - For rule-based checks you MUST rely ONLY on:
             - Files inside the VM filesystem that can be copied out (vm_file), OR
             - Command outputs obtained from the VM shell (vm_command_line), typically via application CLIs or helper tools that expose internal state.
@@ -128,17 +132,34 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - Why this rule is sufficient to fully or partially verify task success.
         \"\"\"
         try:
-            # Example pattern for partial and weighted credit:
-            # - Inspect multiple independent conditions or fields in `result`.
-            # - For each condition, decide a weight (they do not all need to be equal).
-            # - Compute a score as sum of weights for all satisfied conditions, normalized to [0.0, 1.0].
-            # - Return that score as a float between 0.0 and 1.0.
-            # Below is only a placeholder; you MUST replace it with real verification logic.
+            # === CRITICAL: DEFENSIVE PROGRAMMING ===
+            # 1. ALWAYS clean and cast strings from files/commands before math:
+            #    e.g., `val = float(str(raw_val).replace(',', '').replace('$', '').strip())`
+            # 2. Guard against missing keys, out-of-bounds indices, and division by zero.
+
+            score = 0.0
+
+            # (Parse your files or commands here inside the function)
+
+            # === STEP 1: POSITIVE CHECKS (Reward) ===
+            # Inspect multiple independent conditions or fields in `result`.
+            # For each condition, decide a weight (they do not all need to be equal).
+            # Example (inline logic):
+            # if target_condition_1_met: score += 0.5
+            # if target_condition_2_met: score += 0.5
+
+            # === STEP 2: NEGATIVE CHECKS (Penalty) - OPTIONAL ===
+            # Verify that UNINTENDED changes did not occur, using `expected` (golden file) if available.
+            # Only check 1-3 targeted areas that an agent might accidentally modify.
+            # Example (inline logic):
+            # if unintended_element_in_result != unintended_element_in_expected: score -= 0.5
+
+            # Ensure final score is clamped between 0.0 and 1.0
             _ = result
             _ = expected
-            return 0.0
+            return max(0.0, min(1.0, score))
         except Exception:
-            # On ANY error, the function MUST return 0.0 instead of raising.
+            # On ANY error (parsing, type, missing file), the function MUST return 0.0 instead of raising.
             return 0.0
     ```
 
@@ -171,9 +192,9 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     ## Complexity and estimated_steps
     Use these guidelines:
 
-    - "simple": Typically 10-15 gui actions. Single-file workflows or small configuration changes.
-    - "medium": Typically 15-30 gui actions. Multi-step workflows, multiple files or views.
-    - "complex": Typically 30-50 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
+    - "simple": Typically 15-30 gui actions. Single-file workflows or small configuration changes.
+    - "medium": Typically 30-50 gui actions. Multi-step workflows, multiple files or views.
+    - "complex": Typically 50-70 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
 
     Choose "estimated_steps" consistent with the complexity level and the actual operations required.
 
