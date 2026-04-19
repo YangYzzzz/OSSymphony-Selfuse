@@ -205,7 +205,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         )
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
-        self.debug_print_messages()
+        # self.debug_print_messages()
         return meta_data, pyautogui_code
 
     def _cleanup_old_screenshots(self):
