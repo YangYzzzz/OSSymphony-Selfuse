@@ -14,7 +14,8 @@ app = FastAPI(title="Worker Env HTTP Server")
 
 class StartRequest(BaseModel):
     NUM_ENVS: Optional[int] = 1  # 可选，默认 1
-
+    WORKER_URL: Optional[str]
+    WORKER_ID: Optional[str]
 
 class CmdResult(BaseModel):
     cmd: str
@@ -44,10 +45,13 @@ def run_cmd(cmd: List[str]) -> CmdResult:
 @app.post("/start", response_model=CmdResult)
 def start_workers(req: StartRequest):
     num_envs = req.NUM_ENVS or 1
+    worker_url = req.WORKER_URL
+    worker_id = req.WORKER_ID
+
     if num_envs <= 0:
         raise HTTPException(status_code=400, detail="NUM_ENVS must be positive")
 
-    cmd = ["bash", REMOTE_START_SCRIPT, str(num_envs)]
+    cmd = ["bash", REMOTE_START_SCRIPT, str(num_envs), str(worker_id), str(worker_url)]
     result = run_cmd(cmd)
     if result.returncode != 0:
         # 启动失败也返回 500，便于客户端感知

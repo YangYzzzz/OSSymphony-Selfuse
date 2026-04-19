@@ -81,21 +81,17 @@ def log_claude_api_call(
     This is a thin wrapper so existing Anthropic code can import from this
     shared module instead of mm_agents/anthropic/utils.py.
     """
-    try:
-        from mm_agents.anthropic.utils import log_claude_api_call as _impl  # type: ignore
+    from mm_agents.anthropic.utils import log_claude_api_call as _impl  # type: ignore
 
-        return _impl(
-            model_name=model_name,
-            provider=provider,
-            request_messages=request_messages,
-            response=response,
-            duration_ms=duration_ms,
-            success=success,
-            error=error,
-        )
-    except Exception:
-        # Best-effort logging only
-        return None
+    return _impl(
+        model_name=model_name,
+        provider=provider,
+        request_messages=request_messages,
+        response=response,
+        duration_ms=duration_ms,
+        success=success,
+        error=error,
+    )
 
 
 def log_openai_api_call(

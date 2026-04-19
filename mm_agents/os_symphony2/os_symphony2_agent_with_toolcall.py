@@ -162,7 +162,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 "image_url": {"url": f"data:image/png;base64,{processed_image}"},
             }
         )
-
         self.messages.append(
             {
                 "role": "user",
@@ -325,7 +324,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
             parts: List[str] = []
             if thought:
-                parts.append(f"<think>{thought}</think>")
+                parts.append(f"{thought}")
 
             import json as _json
 
