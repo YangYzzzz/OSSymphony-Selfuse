@@ -261,6 +261,10 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
         elif action in {"wait"}:
             q_args["action"] = "wait"
             q_args["time"] = duration
+        # 非第一步的 screenshot 一律作为 wait 处理
+        elif action in {"screenshot"}:
+            q_args["action"] = "wait"
+            q_args["time"] = 2
         elif action in {"done"}:
             q_args["action"] = "terminate"
             q_args["status"] = "success"
