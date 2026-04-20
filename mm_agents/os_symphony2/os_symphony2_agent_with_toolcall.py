@@ -204,6 +204,20 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             processed_height,
         )
 
+        if not pyautogui_code:
+            # print('解析失败!!!!!!!')
+            # print("tool_calls:", tool_calls)
+            # print("原始内容:", response_message)
+            print("tool call 为空!!!")
+            meta_data = [{
+                "raw_response": f"没有输出 tool call\n {response_message}",
+                "thought": "Completed",
+                "action": "",
+                "code": "DONE",
+                "coordinate": [],
+            }]
+            pyautogui_code = ["DONE"]
+
         logger.info(f"Pyautogui code: {pyautogui_code}")
         # self.debug_print_messages()
         return meta_data, pyautogui_code
