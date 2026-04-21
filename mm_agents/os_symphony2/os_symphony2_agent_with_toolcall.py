@@ -125,7 +125,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 try:
                     arguments = json.loads(tool_call["function"]["arguments"])
                     name = arguments["action"]
-                    print(name, "!!!!!!!!")
                 except json.JSONDecodeError as e:
                     print(f"解析 JSON 失败: {e}")
                     name = ""
@@ -133,7 +132,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     result_text = f"Code Execution Result:\n```\n{self.last_code_result}\n```"
                     self.last_code_result = None
                 elif name == "":
-                    result_text = "The output on previous step is NOT a valid JSON object"
+                    result_text = "Fail to parse tool! The output on previous step is NOT a valid JSON object"
                 else:
                     result_text = "Success"
                 self.messages.append(
