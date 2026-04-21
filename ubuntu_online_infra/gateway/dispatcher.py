@@ -20,9 +20,9 @@ class WorkerRecord:
     worker_id: str
     url: str
     total_envs: int = 0
-    free_envs_ids: List = []
+    free_envs_ids: List = field(default_factory=list) 
     free_envs: int = 0
-    health_envs_ids: List = []
+    health_envs_ids: List = field(default_factory=list) 
     health_envs: int = 0
     healthy: bool = True
     consecutive_failures: int = 0
