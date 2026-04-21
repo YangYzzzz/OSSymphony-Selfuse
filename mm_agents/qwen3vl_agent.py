@@ -600,3 +600,10 @@ Previous actions:
         self.observations = []
         self.responses = []
         self.screenshots = []
+
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """Self-judge function.
+
+        Returns a dictionary with 'thought' and 'score'.
+        """
+        pass

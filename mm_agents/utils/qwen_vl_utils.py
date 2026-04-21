@@ -493,7 +493,7 @@ QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE = QWEN3VL_COMPUTER_USE_SYSTEM_P
 ### 3. Environment & Dependencies
 - **Pre-installed Packages:** You have direct access to `ffmpeg`, `ffmpeg-python`, `av`, `python-pptx`, `python-docx`, `openpyxl`, `pillow`, `opencv-python`, `pydub`, `PyMuPDF`, `pdfplumber`.
 - **Dynamic Installation:** You are authorized to install any missing dependencies as needed to accomplish the task.
-                                                                                                                         
+
 # Output Contract
 
 Before tool call, you MUST output a short block in the following format:

@@ -122,10 +122,18 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         result_text = ""
         if self.pending_tool_calls:
             for tool_call in self.pending_tool_calls:
-                name = tool_call["function"]["name"]
+                try:
+                    arguments = json.loads(tool_call["function"]["arguments"])
+                    name = arguments["action"]
+                    print(name, "!!!!!!!!")
+                except json.JSONDecodeError as e:
+                    print(f"解析 JSON 失败: {e}")
+                    name = ""
                 if name == "code" and self.last_code_result is not None:
                     result_text = f"Code Execution Result:\n```\n{self.last_code_result}\n```"
                     self.last_code_result = None
+                elif name == "":
+                    result_text = "The output on previous step is NOT a valid JSON object"
                 else:
                     result_text = "Success"
                 self.messages.append(
@@ -170,6 +178,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             }
         )
         self._cleanup_old_screenshots()
+        
+        self.debug_print_messages()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
         response_message = self.call_llm(

@@ -95,11 +95,15 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         self.last_code_result = None
         self.code_results_history = []
 
+        # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
+        self.pending_tool_calls: List[Any] = []
+
         # 统一维护对话历史（system + user + assistant）
         self.messages = []
 
         self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE
         self.use_thinking = use_thinking
+
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """
@@ -538,13 +542,17 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
     
     def reset(self, _logger=None):
         global logger
-        logger = (
-            _logger if _logger is not None
-            else logging.getLogger("desktopenv.qwen3vl_agent")
-        )
-
-        self.responses = []
+        logger = _logger if _logger is not None else logging.getLogger("desktopenv.qwen3vl_agent")
+        self.last_code_result = None
         self.messages = []
+        self.pending_tool_calls = []
+
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """Self-judge function.
+
+        Returns a dictionary with 'thought' and 'score'.
+        """
+        pass
 
     def debug_print_messages(self, messages: list):
         """
