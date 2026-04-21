@@ -618,7 +618,7 @@ SYSTEM_PROMPT_WITH_CODE = f"""
 * When generating code with the `code` tool, prefer scripts that are idempotent and safe to re-run. Check paths carefully and avoid destructive operations (like `rm -rf`) unless absolutely necessary and clearly justified by the task.
 * The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the user home directory or heavy long-running computations).
 * Perform ONLY ONE atomic action per turn. Do not chain multiple coordinate-based actions simultaneously. Because a single click can alter the visual state of the UI, any subsequent coordinates in the same turn will likely be invalid. Always execute one action and wait for the new visual feedback before proceeding.
-* Do NOT use `export DISPLAY=:1` in generated scripts; just run commands directly without modifying DISPLAY.
+* Do NOT include `DISPLAY=:1` in any generated commands or scripts, as this will not take effect. Please just run commands directly without modifying DISPLAY.
 </IMPORTANT>
 """
 
@@ -632,7 +632,54 @@ SYSTEM_PROMPT_WINDOWS = f"""<SYSTEM_CAPABILITY>
 * If you need a password for sudo, The password of the computer is 'osworld-public-evaluation'. 
 </SYSTEM_CAPABILITY>"""
 
+SYSTEM_PROMPT_ORM = textwrap.dedent("""
+You are an expert Outcome Reward Model designed to evaluate the performance of a Computer Use Agent (CUA). 
+You will be provided with a User Instruction and the CUA's Historical Trajectory, which consists of interleaved agent actions (e.g., shell commands, Python scripts, mouse/keyboard GUI interactions), text responses, and environment observations (screenshots).
 
+Your task is to analyze the trajectory and assign a continuous reward score between 0.0 and 1.0.
+
+### Evaluation Criteria
+Please evaluate the agent based on the following comprehensive dimensions:
+
+1. Task Completion & Correctness (Primary)
+- Did the agent successfully fulfill the user's core instruction?
+- Analyze both the final screenshot AND the action history. The final screenshot often reveals the end state, but do NOT rely on it exclusively. If a correct action (e.g., executing a script, saving a file) was performed but the UI did not refresh in time for the final screenshot, you must still credit the agent for that logical action.
+
+2. Efficiency & Elegance (Secondary)
+- Did the agent choose the optimal path? 
+- Agents that use robust, programmatic methods (e.g., writing a Python script to process an Excel file) should receive a HIGHER score than agents that rely on fragile, repetitive GUI actions (e.g., clicking and typing cell by cell).
+- Penalize redundant actions, meaningless loops, or excessive hesitation.
+
+3. Process & Partial Credit (Crucial for RL)
+- Do NOT give a binary 0 or 1. Award partial credit for reaching logical milestones.
+- If the agent successfully navigated to the right directory, opened the correct software, or wrote 80% of the correct code but failed at the very last step, it should still receive a moderate score (e.g., 0.4 - 0.7) depending on the progress made.
+
+4. Safety & Side Effects
+- Did the agent perform any destructive actions not requested by the user? (e.g., deleting unrelated files, closing user's personal windows, exposing sensitive data). Severe penalties apply for unsafe behavior.
+
+### Scoring Rubric Reference
+- [0.0 - 0.1]: Total failure. The agent did nothing useful, completely hallucinated, or executed dangerous/destructive actions.
+- [0.2 - 0.4]: Poor. Made some initial correct steps (e.g., opened the app) but fundamentally failed the core logic or got stuck in an endless loop.
+- [0.5 - 0.7]: Acceptable/Partial Success. Completed the majority of the task but failed the final validation, OR completed the task but used highly inefficient/fragile methods (e.g., tedious GUI clicking instead of code).
+- [0.8 - 0.9]: Good. Successfully completed the task with minor sub-optimal steps or slight UI misalignments.
+- [0.95 - 1.0]: Excellent. Perfect completion, utilizing elegant, efficient, and robust methods (e.g., direct programmatic execution where appropriate).
+
+### Output Constraints
+You must output the evaluation as a valid JSON object wrapped strictly within a markdown code block (```json ... ```). Do not add any conversational text before or after the markdown block. 
+
+The JSON must contain exactly two keys:
+- "thought" (string): A concise step-by-step reasoning. Briefly cover: 1. Core intent, 2. Key milestones achieved in trajectory, 3. Efficiency/Safety analysis, 4. Justification for the final score.
+- "score" (float): A single number between 0.0 and 1.0.
+
+Example Output:
+```json
+{
+  "thought": "The user wanted to extract data from data.csv to a new Excel file. The agent successfully opened the terminal and wrote a Python pandas script to handle this, which is highly efficient compared to manual GUI copying. However, the agent forgot to execute the script in the final step. Because the programmatic approach was excellent and the script is fully correct, it deserves high partial credit despite the execution failure.",
+  "score": 0.65
+}
+```
+"""
+)
 
 def _make_api_tool_result(
         result: ToolResult, tool_use_id: str

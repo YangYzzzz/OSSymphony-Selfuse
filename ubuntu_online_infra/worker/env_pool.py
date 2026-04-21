@@ -205,8 +205,11 @@ class EnvPool:
                 ok = False
 
             if ok:
+                if slot.state == EnvState.error:
+                    slot.state = EnvState.acquired # Anyway, wait for cleanup expired
                 healthy_ids.append(slot.local_env_id)
-            else:
+            else: # Current Logic：Even state is Error, env still work.
+                slot.state = EnvState.error
                 unhealthy_ids.append(slot.local_env_id)
 
         if total == 0:
@@ -234,6 +237,12 @@ class EnvPool:
         
     def get_free_count(self) -> int:
         return sum(1 for s in self._slots if s.state == EnvState.idle)
+
+    def get_free_ids(self) -> List:
+        return [ids for ids, s in enumerate(self._slots) if s.state == EnvState.idle]
+
+    def get_health_ids(self) -> List:
+        return [ids for ids, s in enumerate(self._slots) if s.state != EnvState.error]
 
     def cleanup_expired(self) -> List[int]:
         """Release slots that have been acquired but inactive beyond timeout.

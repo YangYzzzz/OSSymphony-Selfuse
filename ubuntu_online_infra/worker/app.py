@@ -72,7 +72,8 @@ async def _heartbeat_loop(app_state, interval: float = 30.0):
                     worker_id=app_state.worker_id,
                     worker_url=app_state.worker_url,
                     total_envs=app_state.pool.num_envs,
-                    free_envs=app_state.pool.get_free_count(),
+                    free_envs_ids=app_state.pool.get_free_ids(),
+                    health_envs_ids=app_state.pool.get_health_ids()
                 )
                 await client.post(
                     f"{app_state.master_url}/register",
