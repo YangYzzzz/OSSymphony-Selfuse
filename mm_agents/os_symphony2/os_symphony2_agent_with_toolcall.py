@@ -119,6 +119,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         processed_width, processed_height = processed_img.size
 
         # feed tool result for previous tool_calls
+        result_text = ""
         if self.pending_tool_calls:
             for tool_call in self.pending_tool_calls:
                 name = tool_call["function"]["name"]
@@ -220,6 +221,9 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
         # self.debug_print_messages()
+
+        # 把result_text填到reflection
+        meta_data[0]['reflection'] = result_text
         return meta_data, pyautogui_code
 
     def _cleanup_old_screenshots(self):
