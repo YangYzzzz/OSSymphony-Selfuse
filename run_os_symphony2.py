@@ -129,7 +129,7 @@ def run_env_tasks(
     shared_scores: list,
     worker_id: int,
 ):
-    active_environments = []
+    global active_environments
     env = None
     search_env = None
     try:

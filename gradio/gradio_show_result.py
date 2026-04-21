@@ -689,12 +689,13 @@ def create_gradio_app(root_dir):
             new_classes = ["milestone"] if is_milestone else []
 
             response = response[0]
+            # print(response)
             updates = {
                 step_counter: gr.update(value=f"步骤 {index + 1} / {len(steps)}"),
                 screenshot_img: gr.update(value=str(img_path) if img_path.exists() else None, label=new_label, elem_classes=new_classes),
                 plan_text: gr.update(value=response.get("plan", response.get("thought", "N/A"))),
                 plan_code_text: gr.update(value=response.get("plan_code", response.get("code", "N/A"))),
-                reflection_text: gr.update(value=response.get("reflection", "N/A")),
+                reflection_text: gr.update(value=step_data.get("code_result", "N/A")),
                 prev_step_btn: gr.update(interactive=index > 0),
                 next_step_btn: gr.update(interactive=index < len(steps) - 1),
             }
@@ -1230,12 +1231,15 @@ def get_result(target_dir):
                                 try:
                                     data = json.loads(line)
                                     plan_code = str(data.get("response", [{}])[0].get("code"))
-                                    if plan_code.startswith("EXEC_CODE"):
-                                        plan_code = plan_code.split("|")[0] + "|" + plan_code.split("|")[1]
-                                    # print(f"plan code: {plan_code}")
-                                    # 模拟 action 获取
-                                    action = "unknown"
-                                    if plan_code: action = plan_code.split('(')[0]
+
+                                    if plan_code.startswith("BASH|"):
+                                        action = "bash"
+                                        plan_code = plan_code[5:]
+                                    elif plan_code.startswith("PYTHON|"):
+                                        action = "python"
+                                        plan_code = plan_code[7:]
+                                    else:
+                                        action = plan_code.split('(')[0]
 
                                     if action:
                                         overall_action_counts[action] += 1
@@ -1248,7 +1252,7 @@ def get_result(target_dir):
                                             f.write("1")
 
                                     # --- ErrorType 统计逻辑 (Updated for Heatmap) ---
-                                    reflection_data = data.get("response", {}).get("reflection", {})
+                                    reflection_data = data.get("code_result", {})
                                     error_hint = reflection_data.get("hint", {})
                                     
                                     # 1. 确定 Ground Truth (Hint) - Row
