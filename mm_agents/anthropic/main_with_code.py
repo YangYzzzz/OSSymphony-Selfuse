@@ -20,7 +20,7 @@ from anthropic.types.beta import (
     BetaMessageParam,
     BetaTextBlockParam,
 )
-from .utils import COMPUTER_USE_BETA_FLAG, SYSTEM_PROMPT_WITH_CODE, APIProvider, PROVIDER_TO_DEFAULT_MODEL_NAME, COMPUTER_USE_TYPE
+from .utils import COMPUTER_USE_BETA_FLAG, SYSTEM_PROMPT_ORM, SYSTEM_PROMPT_WITH_CODE, APIProvider, PROVIDER_TO_DEFAULT_MODEL_NAME, COMPUTER_USE_TYPE
 from .utils import _response_to_params, _inject_prompt_caching, _maybe_filter_to_n_most_recent_images, build_qwen_sft_sample
 from mm_agents.utils.call_api_log import log_claude_api_call
 
@@ -858,31 +858,12 @@ class AnthropicAgentWithCode:
         """
         Self-judge function to evaluate if the task was completed successfully.
         """
-        EVALUATION_SYSTEM_PROMPT = """
-        You are an impartial judge evaluating the performance of a computer agent.
-        Your task is to determine if the agent successfully completed the user's instruction based on the conversation history and the final screenshot.
-
-        The user instruction was: "{instruction}"
-
-        Analyze the sequence of actions taken by the agent and the final state of the screen.
-
-        Output your evaluation strictly in the following JSON format:
-        ```json
-        {{
-            "thought": "Detailed reasoning about why the task is considered success or failure...",
-            "score": 1.0
-        }}
-        ```
-
-        Set "score" to 1.0 if the task is successfully completed, and 0.0 if it failed.
-        Only return the JSON object, do not add any other text.
-        """
 
         try:
             # 1. Start with Evaluation System Prompt
             eval_system = BetaTextBlockParam(
                 type="text",
-                text=EVALUATION_SYSTEM_PROMPT.format(instruction=task_instruction)
+                text=SYSTEM_PROMPT_ORM
             )
 
             # 1.5 Add obs as the tool result **Important**

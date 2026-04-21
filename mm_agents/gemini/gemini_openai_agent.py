@@ -16,6 +16,8 @@ import pydantic
 from datetime import datetime
 import logging
 
+from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
+
 logger = logging.getLogger("desktopenv.agent")
 console = Console()
 
@@ -47,18 +49,6 @@ SYSTEM_PROMPT = f"""
 * Use ONE function each time.
 """
 
-# 修改: 评估系统提示词，要求输出 JSON 格式的思考和分数
-EVALUATION_SYSTEM_PROMPT = """
-* You are an expert evaluator for an autonomous computer agent.
-* Your job is to review the conversation history, the actions taken by the agent, and the final screenshot of the screen.
-* You must determine if the user's initial instruction has been successfully completed based on the visual evidence in the final screenshot.
-* Be strict. If the screenshot does not show clear evidence that the task is finished (e.g., the specific webpage is not open, the file is not created, the text is not typed), consider it a failure.
-* You must output your result in valid JSON format with exactly two keys:
-  - "thought": A brief explanation of your reasoning.
-  - "score": The integer 1 if the task is successfully completed, or 0 if failed/incomplete.
-* Example Output: {"thought": "The browser is open and shows the correct website.", "score": 1}
-* Do not output any other text outside the JSON object.
-"""
 
 # OpenAI 需要明确的 Tool Schema 定义
 TOOLS_SCHEMA = [
@@ -612,9 +602,9 @@ class GeminiOpenAIAgent:
         
         # 替换 System Prompt
         if eval_messages and eval_messages[0].get("role") == "system":
-            eval_messages[0]["content"] = EVALUATION_SYSTEM_PROMPT
+            eval_messages[0]["content"] = SYSTEM_PROMPT_ORM
         else:
-            eval_messages.insert(0, {"role": "system", "content": EVALUATION_SYSTEM_PROMPT})
+            eval_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT_ORM})
 
         # 闭合 Pending Tool Calls
         if self.pending_tool_calls:

@@ -13,7 +13,7 @@ from datetime import datetime
 import logging
 
 from mm_agents.utils.call_api_log import log_openai_api_call
-from mm_agents.anthropic.utils import SYSTEM_PROMPT_WITH_CODE as SYSTEM_PROMPT
+from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM, SYSTEM_PROMPT_WITH_CODE as SYSTEM_PROMPT
 from .utils import BROWSER_TO_DESKTOP_SCROLL_RATIO, build_qwen_sft_sample_for_gemini
 
 logger = logging.getLogger("desktopenv.agent")
@@ -597,20 +597,10 @@ class GeminiOpenAIAgentWithCode:
     def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
         eval_messages = copy.deepcopy(self.messages)
 
-        eval_system = (
-            "* You are an expert evaluator for an autonomous computer agent.\n"
-            "* Your job is to review the conversation history, the actions taken by the agent, and the final screenshot of the screen.\n"
-            "* You must determine if the user's initial instruction has been successfully completed based on the visual evidence in the final screenshot.\n"
-            "* Be strict. If the screenshot does not show clear evidence that the task is finished, consider it a failure.\n"
-            "* You must output your result in valid JSON format with exactly two keys: 'thought' and 'score'.\n"
-            "* 'thought': brief reasoning; 'score': 1 for success, 0 for failure.\n"
-            "* Do not output any other text outside the JSON object."
-        )
-
         if eval_messages and eval_messages[0].get("role") == "system":
-            eval_messages[0]["content"] = eval_system
+            eval_messages[0]["content"] = SYSTEM_PROMPT_ORM
         else:
-            eval_messages.insert(0, {"role": "system", "content": eval_system})
+            eval_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT_ORM})
 
         if self.pending_tool_calls:
             for tool_call in self.pending_tool_calls:

@@ -20,7 +20,10 @@ class WorkerRecord:
     worker_id: str
     url: str
     total_envs: int = 0
+    free_envs_ids: List = field(default_factory=list) 
     free_envs: int = 0
+    health_envs_ids: List = field(default_factory=list) 
+    health_envs: int = 0
     healthy: bool = True
     consecutive_failures: int = 0
     last_heartbeat: float = field(default_factory=time.time)
@@ -46,7 +49,10 @@ class WorkerDispatcher:
                 worker_id=w["worker_id"],
                 url=w["url"],
                 total_envs=w.get("total_envs", 0),
-                free_envs=w.get("free_envs", 0),
+                free_envs_ids=w.get("free_envs_ids", []),
+                health_envs_ids=w.get("health_envs_ids", []),
+                free_envs=len(w.get("free_envs_ids", [])),
+                health_envs=len(w.get("health_envs_ids", []))
             )
             self._workers[rec.worker_id] = rec
 
@@ -60,7 +66,10 @@ class WorkerDispatcher:
             if existing:
                 existing.url = req.worker_url
                 existing.total_envs = req.total_envs
-                existing.free_envs = req.free_envs
+                existing.free_envs_ids = req.free_envs_ids
+                existing.health_envs_ids = req.health_envs_ids
+                existing.free_envs = len(req.free_envs_ids)
+                existing.health_envs = len(req.health_envs_ids)
                 existing.last_heartbeat = time.time()
                 existing.healthy = True
                 existing.consecutive_failures = 0
@@ -69,7 +78,10 @@ class WorkerDispatcher:
                     worker_id=req.worker_id,
                     url=req.worker_url,
                     total_envs=req.total_envs,
-                    free_envs=req.free_envs,
+                    free_envs_ids=req.free_envs_ids,
+                    health_envs_ids=req.health_envs_ids,
+                    free_envs=len(req.free_envs_ids),
+                    health_envs=len(req.health_envs_ids)
                 )
 
     # ------------------------------------------------------------------
@@ -169,8 +181,10 @@ class WorkerDispatcher:
                     "worker_id": r.worker_id,
                     "url": r.url,
                     "total_envs": r.total_envs,
-                    "free_envs": r.free_envs,
+                    "free_envs_ids": r.free_envs_ids, # List
+                    "health_envs_ids": r.health_envs_ids, # List
                     "healthy": r.healthy,
+                    "last_heartbeat": r.last_heartbeat
                 }
                 for r in self._workers.values()
             ]

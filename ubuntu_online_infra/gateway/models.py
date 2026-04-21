@@ -15,6 +15,7 @@ class EnvState(str, Enum):
     acquired = "acquired"
     busy = "busy"
     error = "error"
+    
 
 
 # ---------------------------------------------------------------------------
@@ -133,4 +134,5 @@ class WorkerRegisterRequest(BaseModel):
     worker_id: str
     worker_url: str
     total_envs: int
-    free_envs: int
+    free_envs_ids: List
+    health_envs_ids: List
