@@ -15,6 +15,12 @@ from requests.exceptions import SSLError
 from mm_agents.utils.qwen_vl_utils import smart_resize
 from mm_agents.uitars15_v2 import IMAGE_FACTOR
 from mm_agents.base import ComputerUseBaseAgent
+from mm_agents.utils.qwen_vl_utils import (
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE,
+    smart_resize,
+    QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
+)
 
 
 logger = logging.getLogger("desktopenv.agent")
@@ -63,7 +69,8 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         history_n: int = 8,
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
-        keep_first_image: bool = True
+        keep_first_image: bool = True,
+        use_thinking: bool = False,
     ):
         self.platform = platform
         self.model = model
@@ -88,8 +95,15 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         self.last_code_result = None
         self.code_results_history = []
 
+        # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
+        self.pending_tool_calls: List[Any] = []
+
         # 统一维护对话历史（system + user + assistant）
         self.messages = []
+
+        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE
+        self.use_thinking = use_thinking
+
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """
@@ -109,190 +123,51 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         )
         processed_width, processed_height = processed_img.size
 
-        # ================== Old Prompts ==================
-        old_description_prompt_lines = [
-            "Use a mouse and keyboard to interact with a computer, and take screenshots.",
-            "* This is an interface to a desktop GUI. You do not have access to a terminal or applications menu. You must click on desktop icons to start applications.",
-            "* Some applications may take time to start or process actions, so you may need to wait and take successive screenshots to see the results of your actions. E.g. if you click on Firefox and a window doesn't open, try wait and taking another screenshot.",
-            (
-                f"* The screen's resolution is {processed_width}x{processed_height}."
-                if self.coordinate_type == "absolute"
-                else "* The screen's resolution is 1000x1000."
-            ),
-            "* Whenever you intend to move the cursor to click on an element like an icon, you should consult a screenshot to determine the coordinates of the element before moving the cursor.",
-            "* If you tried clicking on a program or link but it failed to load even after waiting, try adjusting your cursor position so that the tip of the cursor visually falls on the element that you want to click.",
-            "* Make sure to click any buttons, links, icons, etc with the cursor tip in the center of the element. Don't click boxes on their edges unless asked.",
-        ]
-        # ================== Prompts ==================
-        description_prompt_lines = [
-            "You are a hybrid OS agent that can both operate the GUI (mouse and keyboard) and directly execute system-level code.",
-            "* Prefer using `execute_code` (Python or Bash) to handle structured data, batch operations, and any repetitive or file-based tasks.",
-            "* Use GUI actions mainly for navigation and visual interactions: opening applications, navigating menus, or interacting with purely visual UI elements.",
-            (
-                f"* The screen's resolution is {processed_width}x{processed_height}."
-                if self.coordinate_type == "absolute"
-                else "* The screen's resolution is represented on a 1000x1000 relative coordinate grid."
-            ),
-            "* Whenever you intend to move the cursor to click on an element like an icon or button, consult the latest screenshot (or code execution result if present) to determine the target coordinates before moving the cursor.",
-            "* After running `execute_code`, you may rely on the provided code execution result text to plan the next step, and only request a new screenshot when necessary for visual verification.",
-        ]
-        description_prompt = "\n".join(description_prompt_lines)
+        # feed tool result for previous tool_calls
+        result_text = ""
+        if self.pending_tool_calls:
+            for tool_call in self.pending_tool_calls:
+                name = tool_call["function"]["name"]
+                if name == "code" and self.last_code_result is not None:
+                    result_text = f"Code Execution Result:\n```\n{self.last_code_result}\n```"
+                    self.last_code_result = None
+                else:
+                    result_text = "Success"
+                self.messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.get("id", "tool_call_0"),
+                        "content": result_text,
+                    }
+                )
+            # 已经把上一轮的 tool 结果补完，本轮重新收集
+            self.pending_tool_calls = []
 
-        action_description_prompt = """
-* `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.
-* `type`: Type a string of text on the keyboard.
-* `mouse_move`: Move the cursor to a specified (x, y) pixel coordinate on the screen.
-* `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen.
-* `left_click_drag`: Click and drag the cursor to a specified (x, y) pixel coordinate on the screen.
-* `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
-* `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
-* `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
-* `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).
-* `scroll`: Performs a scroll of the mouse scroll wheel.
-* `hscroll`: Performs a horizontal scroll (mapped to regular scroll).
-* `wait`: Wait specified seconds for the change to happen.
-* `terminate`: Terminate the current task and report its completion status.
-* `code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system. Use this for batch processing, file manipulation, or tasks where GUI clicking is inefficient or repetitive.
-"""
+        # 当前轮 user 消息
+        curr_user_content = []
 
-        tools_def = {
-            "type": "function",
-            "function": {
-                "name_for_human": "custom_computer_use",
-                "name": "custom_computer_use",
-                "description": description_prompt,
-                "parameters": {
-                    "properties": {
-                        "action": {
-                            "description": action_description_prompt,
-                            "enum": [
-                                "key", "type", "mouse_move", "left_click", "left_click_drag",
-                                "right_click", "middle_click", "double_click", "triple_click", "scroll", "hscroll",
-                                "wait", "terminate", "code"
-                            ],
-                            "type": "string"
-                        },
-                        "keys": {"description": "Required only by `action=key`.", "type": "array"},
-                        "text": {"description": "Required only by `action=type`.", "type": "string"},
-                        "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"},
-                        "pixels": {"description": "The amount of scrolling.", "type": "number"},
-                        "time": {"description": "The seconds to wait.", "type": "number"},
-                        "status": {
-                            "description": "The status of the task.", 
-                            "type": "string", 
-                            "enum": ["success", "failure"]
-                        },
-                        "execute_code": {
-                            "description": "The raw code string to execute. Required only when `action=code`.",
-                            "type": "string"
-                        },
-                        "language": {
-                            "description": "The programming language of the code. Required only when `action=code`.",
-                            "type": "string",
-                            "enum": ["python", "bash"]
-                        }
-                    },
-                    "required": ["action"],
-                    "type": "object"
-                },
-                "args_format": "Format the arguments as a JSON object."
-            }
-        }
-
-        # 有优化空间
-        system_prompt = """# Role & Goal
-You are a powerful OS Agent capable of both GUI interaction and direct System-Level programming.
-Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
-
-# Tools
-You may call the following functions:
-<tools>
-""" + json.dumps(tools_def) + """
-</tools>
-
-For each function call, return a JSON object within <tool_call></tool_call> tags.
-
-# Response Format
-You must output in the following EXACT order and structural format. Every component must be on a NEW LINE:
-
-1) Action: [A single short imperative sentence]
-2) <tool_call>
-{"name": "...", "arguments": {"action": "execute_code", "language": "python", "code": "..."}}
-</tool_call>
-
-# Critical Execution Rules
-- **Code-First for Data**: When handling structured data (Excel/Calc, CSV, JSON, Files), STRICTLY AVOID clicking cells one by one. Use `execute_code` to manipulate data using python
-libraries (e.g., `pandas`, `openpyxl`).
-- **Batch Processing**: If a task involves repetitive steps (e.g., renaming 10 files, extracting emails from 50 rows), write a Python script or Bash command to do it in one shot.
-- **GUI-Only for Navigation**: Use GUI actions (click/type) ONLY for visual-only tasks, like opening an app, navigating menus, or browsing the web where no API/CLI is available.
-- **Verification**: After `execute_code`, you may use the next screenshot to verify the result if needed.
-
-# Examples of `execute_code` Usage:
-- **Task**: "Sum column B in sheet.xlsx"
-    **Action**: Use pandas to calculate the sum and save it.
-    **Tool_Call**: {"action": "execute_code", "language": "python", "code": "import pandas as pd; df = pd.read_excel('sheet.xlsx'); print(df.iloc[:, 1].sum())"}
-
-- **Task**: "Find all logs containing 'Error' and move to a folder"
-    **Action**: Execute a bash command to filter and move files.
-    **Tool_Call**: {"action": "execute_code", "language": "bash", "code": "grep -l 'Error' *.log | xargs -I {} mv {} ./errors/"}
-"""
-
-        instruction_prompt = f"""
-Please generate the next move according to the UI screenshot, instruction and previous actions.
-
-Instruction: {instruction}
-"""
-
-        # ================== 构造 self.messages ==================
-
-        # 第一次调用 predict 时，初始化 system + 第一条 user
+        # 第一次调用 predict 时，初始化 system 附带原始 instruction
         if not self.messages:
             self.messages = [
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": system_prompt},
+                        {"type": "text", "text": self.system_prompt},
                     ],
                 }
             ]
-
-        # 如果上一轮有模型回复，先补上一条 assistant 消息
-        if self.responses:
-            last_response = self.responses[-1]
-            self.messages.append(
-                {
-                    "role": "assistant",
-                    "content": [
-                        {"type": "text", "text": last_response},
-                    ],
-                }
+            instruction_prompt = (
+                "Please generate the next move according to the UI screenshot, instruction and previous actions.\n\n"
+                f"Instruction: {instruction}"
             )
-
-        # 当前轮 user 消息
-        curr_user_content = []
-        if self.last_code_result:
-            # 有代码执行结果则优先喂代码结果，不再附截图
-            curr_user_content.append(
-                {
-                    "type": "text",
-                    "text": f"Code Execution Result:\n```\n{self.last_code_result}\n```\nPlease continue based on this result.",
-                }
-            )
-            self.last_code_result = None
-        else:
-            # 没有代码结果则附当前截图
-            curr_img_url = f"data:image/png;base64,{processed_image}"
-            curr_user_content.append(
-                {
-                    "type": "image_url",
-                    "image_url": {"url": curr_img_url},
-                }
-            )
-
-        # 第一轮附带原始 instruction
-        if not self.responses:
             curr_user_content.append({"type": "text", "text": instruction_prompt})
 
+        curr_user_content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{processed_image}"},
+            }
+        )
         self.messages.append(
             {
                 "role": "user",
@@ -322,7 +197,7 @@ Instruction: {instruction}
         # Update History
         self.responses.append(response)
 
-        meta_data, pyautogui_code = self.parse_response(
+        low_level_instuction, pyautogui_code, coordinates = self.parse_response(
             response,
             width,
             height,
@@ -331,7 +206,7 @@ Instruction: {instruction}
         )
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
-        return meta_data, pyautogui_code
+        return [{"raw_response": response, "coordinates": coordinates, 'reflection': result_text}], pyautogui_code
     
     def _cleanup_old_screenshots(self):
         """
@@ -420,227 +295,204 @@ Instruction: {instruction}
         original_height: int = None,
         processed_width: int = None,
         processed_height: int = None,
-    ) -> Tuple[List[Dict], List[str]]:
-        """Parse LLM response and convert it to metadata and pyautogui code."""
-        import re
-
+    ) -> Tuple[str, List[str], List[int]]:
+        """
+        Parse LLM response and convert it to low level action and pyautogui code.
+        Returns: (low_level_instruction, pyautogui_code, coordinates)
+        """
+        low_level_instruction = ""
         pyautogui_code: List[str] = []
-        meta_data: List[Dict] = []
+        coordinates: List[int] = []
 
         if response is None or not response.strip():
-            return meta_data, pyautogui_code
-
-        # ---- extract thought (before </think>) ----
-        thought = ""
-        think_match = re.search(r"<think>([\s\S]*?)</think>", response)
-        if think_match:
-            thought = think_match.group(1).strip()
-        think_match_2 = re.search(r"([\s\S]*?)</think>", response)
-        if not thought and think_match_2:
-            thought = think_match_2.group(1).strip()
-
-        # ---- extract Action: line ----
-        action_text = ""
-        action_match = re.search(r"^\s*Action:\s*(.+)$", response, flags=re.MULTILINE | re.IGNORECASE)
-        if action_match:
-            action_text = action_match.group(1).strip()
+            return low_level_instruction, pyautogui_code, coordinates
 
         def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
             if not (original_width and original_height):
                 return int(x), int(y)
             if self.coordinate_type == "absolute":
+                # scale from processed pixels to original
                 if processed_width and processed_height:
                     x_scale = original_width / processed_width
                     y_scale = original_height / processed_height
                     return int(x * x_scale), int(y * y_scale)
                 return int(x), int(y)
+            # relative: scale from 0..999 grid
             x_scale = original_width / 999
             y_scale = original_height / 999
             return int(x * x_scale), int(y * y_scale)
 
-        def make_meta(code: str, coordinate: Optional[List[int]] = None) -> Dict:
-            return {
-                "raw_response": response,
-                "thought": thought,
-                "action": action_text,
-                "code": code,
-                "coordinate": coordinate or [],
-            }
-
-        # ---- extract all tool_call JSON blocks ----
-        # support both wrapped in <tool_call>...</tool_call> and bare JSON lines
-        tool_json_blocks: List[str] = []
-
-        for m in re.finditer(r"<tool_call>([\s\S]*?)</tool_call>", response):
-            block = m.group(1).strip()
-            if block:
-                tool_json_blocks.append(block)
-
-        # de-duplicate while preserving order
-        seen = set()
-        unique_blocks = []
-        for b in tool_json_blocks:
-            if b not in seen:
-                seen.add(b)
-                unique_blocks.append(b)
-
         def process_tool_call(json_str: str) -> None:
             try:
                 tool_call = json.loads(json_str)
-                args = tool_call["arguments"]
-                action = args["action"]
+                if tool_call.get("name") == "computer_use":
+                    args = tool_call["arguments"]
+                    action = args["action"]
 
-                if action == "left_click":
-                    coord: List[int] = []
-                    if "coordinate" in args:
-                        x, y = args["coordinate"]
-                        adj_x, adj_y = adjust_coordinates(x, y)
-                        coord = [adj_x, adj_y]
-                        code_str = f"pyautogui.click({adj_x}, {adj_y})"
-                    else:
-                        code_str = "pyautogui.click()"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str, coord))
+                    if action == "left_click":
+                        if "coordinate" in args:
+                            x, y = args["coordinate"]
+                            adj_x, adj_y = adjust_coordinates(x, y)
+                            coordinates.extend([adj_x, adj_y])
+                            pyautogui_code.append(f"pyautogui.click({adj_x}, {adj_y})")
+                        else:
+                            pyautogui_code.append("pyautogui.click()")
 
-                elif action == "right_click":
-                    coord: List[int] = []
-                    if "coordinate" in args:
-                        x, y = args["coordinate"]
-                        adj_x, adj_y = adjust_coordinates(x, y)
-                        coord = [adj_x, adj_y]
-                        code_str = f"pyautogui.rightClick({adj_x}, {adj_y})"
-                    else:
-                        code_str = "pyautogui.rightClick()"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str, coord))
+                    elif action == "right_click":
+                        if "coordinate" in args:
+                            x, y = args["coordinate"]
+                            adj_x, adj_y = adjust_coordinates(x, y)
+                            coordinates.extend([adj_x, adj_y])
+                            pyautogui_code.append(
+                                f"pyautogui.rightClick({adj_x}, {adj_y})"
+                            )
+                        else:
+                            pyautogui_code.append("pyautogui.rightClick()")
 
-                elif action == "middle_click":
-                    coord: List[int] = []
-                    if "coordinate" in args:
-                        x, y = args["coordinate"]
-                        adj_x, adj_y = adjust_coordinates(x, y)
-                        coord = [adj_x, adj_y]
-                        code_str = f"pyautogui.middleClick({adj_x}, {adj_y})"
-                    else:
-                        code_str = "pyautogui.middleClick()"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str, coord))
+                    elif action == "middle_click":
+                        if "coordinate" in args:
+                            x, y = args["coordinate"]
+                            adj_x, adj_y = adjust_coordinates(x, y)
+                            coordinates.extend([adj_x, adj_y])
+                            pyautogui_code.append(
+                                f"pyautogui.middleClick({adj_x}, {adj_y})"
+                            )
+                        else:
+                            pyautogui_code.append("pyautogui.middleClick()")
 
-                elif action == "double_click":
-                    coord: List[int] = []
-                    if "coordinate" in args:
-                        x, y = args["coordinate"]
-                        adj_x, adj_y = adjust_coordinates(x, y)
-                        coord = [adj_x, adj_y]
-                        code_str = f"pyautogui.doubleClick({adj_x}, {adj_y})"
-                    else:
-                        code_str = "pyautogui.doubleClick()"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str, coord))
+                    elif action == "double_click":
+                        if "coordinate" in args:
+                            x, y = args["coordinate"]
+                            adj_x, adj_y = adjust_coordinates(x, y)
+                            coordinates.extend([adj_x, adj_y])
+                            pyautogui_code.append(
+                                f"pyautogui.doubleClick({adj_x}, {adj_y})"
+                            )
+                        else:
+                            pyautogui_code.append("pyautogui.doubleClick()")
 
-                elif action == "type":
-                    text = args.get("text", "")
-                    lines = text.split("\n")
-                    for idx, line in enumerate(lines):
-                        if line:
-                            code_str = f"pyautogui.typewrite({repr(line)}, interval=0.03)"
-                            pyautogui_code.append(code_str)
-                            meta_data.append(make_meta(code_str))
-                        if idx < len(lines) - 1:
-                            code_str = "pyautogui.press('enter')"
-                            pyautogui_code.append(code_str)
-                            meta_data.append(make_meta(code_str))
+                    elif action == "type":
+                        text = args.get("text", "")
+                        lines = text.split("\n")
+                        for idx, line in enumerate(lines):
+                            if line:
+                                pyautogui_code.append(f"pyautogui.typewrite({repr(line)}, interval=0.03)")
+                            if idx < len(lines) - 1:
+                                pyautogui_code.append("pyautogui.press('enter')")
 
-                elif action == "key":
-                    keys = args.get("keys", [])
-                    if isinstance(keys, list):
-                        cleaned_keys = []
-                        for key in keys:
-                            if isinstance(key, str):
-                                if key.startswith("keys=["):
-                                    key = key[6:]
-                                if key.endswith("]"):
-                                    key = key[:-1]
-                                if key.startswith("['") or key.startswith('["'):
-                                    key = key[2:] if len(key) > 2 else key
-                                if key.endswith("']") or key.endswith('"]'):
-                                    key = key[:-2] if len(key) > 2 else key
-                                key = key.strip()
-                                cleaned_keys.append(key)
-                            else:
-                                cleaned_keys.append(key)
-                        keys = cleaned_keys
+                    elif action == "key":
+                        keys = args.get("keys", [])
+                        if isinstance(keys, list):
+                            cleaned_keys = []
+                            for key in keys:
+                                if isinstance(key, str):
+                                    if key.startswith("keys=["):
+                                        key = key[6:]
+                                    if key.endswith("]"):
+                                        key = key[:-1]
+                                    if key.startswith("['") or key.startswith('["'):
+                                        key = key[2:] if len(key) > 2 else key
+                                    if key.endswith("']") or key.endswith('"]'):
+                                        key = key[:-2] if len(key) > 2 else key
+                                    key = key.strip()
+                                    cleaned_keys.append(key)
+                                else:
+                                    cleaned_keys.append(key)
+                            keys = cleaned_keys
 
-                    keys_str = ", ".join([f"'{key}'" for key in keys])
-                    if len(keys) > 1:
-                        code_str = f"pyautogui.hotkey({keys_str})"
-                    else:
-                        code_str = f"pyautogui.press({keys_str})"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str))
+                        keys_str = ", ".join([f"'{key}'" for key in keys])
+                        if len(keys) > 1:
+                            pyautogui_code.append(f"pyautogui.hotkey({keys_str})")
+                        else:
+                            pyautogui_code.append(f"pyautogui.press({keys_str})")
 
-                elif action == "scroll":
-                    pixels = args.get("pixels", 0)
-                    code_str = f"pyautogui.scroll({pixels})"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str))
+                    elif action == "scroll":
+                        pixels = args.get("pixels", 0)
+                        pyautogui_code.append(f"pyautogui.scroll({pixels})")
 
-                elif action == "wait":
-                    code_str = "WAIT"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str))
+                    elif action == "wait":
+                        pyautogui_code.append("WAIT")
 
-                elif action == "terminate":
-                    code_str = "DONE"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str))
+                    elif action == "terminate":
+                        pyautogui_code.append("DONE")
 
-                elif action == "mouse_move":
-                    coord: List[int] = []
-                    if "coordinate" in args:
-                        x, y = args["coordinate"]
-                        adj_x, adj_y = adjust_coordinates(x, y)
-                        coord = [adj_x, adj_y]
-                        code_str = f"pyautogui.moveTo({adj_x}, {adj_y})"
-                    else:
-                        code_str = "pyautogui.moveTo(0, 0)"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str, coord))
+                    elif action == "mouse_move":
+                        if "coordinate" in args:
+                            x, y = args["coordinate"]
+                            adj_x, adj_y = adjust_coordinates(x, y)
+                            coordinates.extend([adj_x, adj_y])
+                            pyautogui_code.append(
+                                f"pyautogui.moveTo({adj_x}, {adj_y})"
+                            )
+                        else:
+                            pyautogui_code.append("pyautogui.moveTo(0, 0)")
 
-                elif action == "left_click_drag":
-                    coord: List[int] = []
-                    if "coordinate" in args:
-                        x, y = args["coordinate"]
-                        adj_x, adj_y = adjust_coordinates(x, y)
-                        coord = [adj_x, adj_y]
-                        duration = args.get("duration", 0.5)
-                        code_str = f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})"
-                    else:
-                        code_str = "pyautogui.dragTo(0, 0)"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str, coord))
+                    elif action == "left_click_drag":
+                        if "coordinate" in args:
+                            x, y = args["coordinate"]
+                            adj_x, adj_y = adjust_coordinates(x, y)
+                            coordinates.extend([adj_x, adj_y])
+                            duration = args.get("duration", 0.5)
+                            pyautogui_code.append(
+                                f"pyautogui.dragTo({adj_x}, {adj_y}, duration={duration})"
+                            )
+                        else:
+                            pyautogui_code.append("pyautogui.dragTo(0, 0)")
 
-                elif action == "code":
-                    code_content = args.get("execute_code", "")
-                    language = args.get("language", "python")
-                    code_str = f"{language.upper()}|{code_content}"
-                    pyautogui_code.append(code_str)
-                    meta_data.append(make_meta(code_str))
+                    elif action == "code":
+                        code_content = args.get("execute_code", "")
+                        language = args.get("language", "python")
+                        code_str = f"{language.upper()}|{code_content}"
+                        pyautogui_code.append(code_str)
 
             except (json.JSONDecodeError, KeyError) as e:
                 logger.error(f"Failed to parse tool call: {e}")
 
-        for block in unique_blocks:
-            process_tool_call(block)
+        lines = response.split("\n")
+        inside_tool_call = False
+        current_tool_call: List[str] = []
 
-        return meta_data, pyautogui_code
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.lower().startswith(("action:")):
+                if not low_level_instruction:
+                    low_level_instruction = line.split("Action:")[-1].strip()
+                continue
+
+            if line.startswith("<tool_call>"):
+                inside_tool_call = True
+                continue
+            elif line.startswith("</tool_call>"):
+                if current_tool_call:
+                    process_tool_call("\n".join(current_tool_call))
+                    current_tool_call = []
+                inside_tool_call = False
+                continue
+
+            if inside_tool_call:
+                current_tool_call.append(line)
+                continue
+
+            if line.startswith("{") and line.endswith("}"):
+                try:
+                    json_obj = json.loads(line)
+                    if "name" in json_obj and "arguments" in json_obj:
+                        process_tool_call(line)
+                except json.JSONDecodeError:
+                    pass
+
+        if current_tool_call:
+            process_tool_call("\n".join(current_tool_call))
+
+        if not low_level_instruction and len(pyautogui_code) > 0:
+            action_type = pyautogui_code[0].split(".", 1)[1].split("(", 1)[0]
+            low_level_instruction = f"Performing {action_type} action"
+
+        return low_level_instruction, pyautogui_code, coordinates
     
-    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
-        """
-        Self-judge function.
-        Returns a dictionary with 'thought' and 'score'.
-        """
-        pass
 
     @backoff.on_exception(
         backoff.constant,
@@ -675,6 +527,11 @@ Instruction: {instruction}
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     top_p=self.top_p,
+                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA),
+                    tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
+                    extra_body={
+                        "chat_template_kwargs": {"enable_thinking": self.use_thinking}
+                    }
                 )
                 return response.choices[0].message.content
             except Exception as e:
@@ -685,13 +542,17 @@ Instruction: {instruction}
     
     def reset(self, _logger=None):
         global logger
-        logger = (
-            _logger if _logger is not None
-            else logging.getLogger("desktopenv.qwen3vl_agent")
-        )
-
-        self.responses = []
+        logger = _logger if _logger is not None else logging.getLogger("desktopenv.qwen3vl_agent")
+        self.last_code_result = None
         self.messages = []
+        self.pending_tool_calls = []
+
+    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+        """Self-judge function.
+
+        Returns a dictionary with 'thought' and 'score'.
+        """
+        pass
 
     def debug_print_messages(self, messages: list):
         """

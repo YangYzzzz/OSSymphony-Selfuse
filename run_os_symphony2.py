@@ -189,17 +189,28 @@ def run_env_tasks(
             )
             platform = "macos"
 
-
-        agent = OSSymphony2AgentWithToolCall(
-            model=args.model,
-            base_url=args.base_url,
-            api_key=args.api_key,
-            max_tokens=args.max_tokens,
-            temperature=args.temperature,
-            history_n=args.history_n,
-            keep_first_image=args.keep_first_image,
-            use_thinking=args.use_thinking
-        )
+        if args.use_tool_call:
+            agent = OSSymphony2AgentWithToolCall(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                temperature=args.temperature,
+                history_n=args.history_n,
+                keep_first_image=args.keep_first_image,
+                use_thinking=args.use_thinking
+            )
+        else:
+            agent = OSSymphony2Agent(
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                max_tokens=args.max_tokens,
+                temperature=args.temperature,
+                history_n=args.history_n,
+                keep_first_image=args.keep_first_image,
+                use_thinking=args.use_thinking
+            )
 
         active_environments.append(env)
         active_environments.append(search_env)
@@ -415,6 +426,7 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
+    parser.add_argument("--use_tool_call", action="store_true", default=False, help="是否使用vllm自带的tool call来调用llm, 默认关闭（qwen3vl官方的parse response逻辑）")
 
     # 实验名
     parser.add_argument(

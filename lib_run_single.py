@@ -206,7 +206,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 draw_coordinates(
                     image_bytes=obs['screenshot'],
                     coordinates=response["coordinate"],
-                    save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
+                    save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw.png")
                 )
             
             # Execute Environment Step
