@@ -178,7 +178,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         )
         self._cleanup_old_screenshots()
         
-        self.debug_print_messages()
+        # self.debug_print_messages()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
         response_message = self.call_llm(
