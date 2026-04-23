@@ -179,7 +179,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
     
     agent.reset()
     env.reset(task_config=example)
-    time.sleep(30) # Wait for the environment to be ready
+    time.sleep(60) # Wait for the environment to be ready
     obs = env._get_obs() # Get the initial observation
     done = False
     step_idx = 0
@@ -206,7 +206,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 draw_coordinates(
                     image_bytes=obs['screenshot'],
                     coordinates=response["coordinate"],
-                    save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw.png")
+                    save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
                 )
             
             # Execute Environment Step
