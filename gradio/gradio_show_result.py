@@ -694,7 +694,7 @@ def create_gradio_app(root_dir):
                 step_counter: gr.update(value=f"步骤 {index + 1} / {len(steps)}"),
                 screenshot_img: gr.update(value=str(img_path) if img_path.exists() else None, label=new_label, elem_classes=new_classes),
                 plan_text: gr.update(value=response.get("plan", response.get("thought", "N/A"))),
-                plan_code_text: gr.update(value=response.get("plan_code", response.get("code", "N/A"))),
+                plan_code_text: gr.update(value="\n".join(step_data.get("action"))),
                 reflection_text: gr.update(value=step_data.get("code_result", "N/A")),
                 prev_step_btn: gr.update(interactive=index > 0),
                 next_step_btn: gr.update(interactive=index < len(steps) - 1),
@@ -1230,7 +1230,8 @@ def get_result(target_dir):
                             for line in lines:
                                 try:
                                     data = json.loads(line)
-                                    plan_code = str(data.get("response", [{}])[0].get("code"))
+                                    plan_code = "\n".join(data.get("action", [])) 
+                                    # or str(data.get("response", [{}])[0].get("code"))
 
                                     if plan_code.startswith("BASH|"):
                                         action = "bash"
