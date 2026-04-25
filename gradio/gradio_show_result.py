@@ -676,7 +676,7 @@ def create_gradio_app(root_dir):
             filename = step_data.get("screenshot_file", "")
             
             img_path = base_path / filename
-            annotated_img_path = base_path / (filename[:-4] + "_draw.png")
+            annotated_img_path = base_path / (filename[:-4] + "_draw_0.png")
             milestone_img_path = base_path / (filename[:-4] + "_milestone.png")
             
             if annotated_img_path.exists():

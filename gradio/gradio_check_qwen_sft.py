@@ -26,35 +26,44 @@ def count_text_tokens(messages):
         return 0
 
     try:
-        # 将消息转换为 transformers 可接受的格式
-        formatted_msgs = []
+        full_text = ""
         for msg in messages:
+            # 兼容不同的键名 (from/value 或 role/content)
             role = msg.get("from", msg.get("role", "unknown"))
-            # 将角色映射为标准角色
+            
+            # 角色映射标准化
             if role in ["human", "user"]:
                 role = "user"
             elif role in ["gpt", "assistant", "tool_response"]:
                 role = "assistant"
             elif role in ["system"]:
                 role = "system"
+            # tool_call 等其他角色保持原样即可，Qwen 的 ChatML 格式可以兼容任意 role 字符串
 
             content = msg.get("value", msg.get("content", ""))
-            formatted_msgs.append({"role": role, "content": content})
+            
+            # 如果 content 是列表（多模态格式），提取其中的文本
+            if isinstance(content, list):
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                    elif isinstance(item, str):
+                        text_parts.append(item)
+                content = "\n".join(text_parts)
+            elif not isinstance(content, str):
+                content = str(content)
 
-        try:
-            # 尝试使用模型的 chat template 计算准确的 token 数（仅文本）
-            tokens = tok.apply_chat_template(
-                formatted_msgs,
-                tokenize=True,
-                add_generation_prompt=False,
-            )
-            return len(tokens)
-        except Exception:
-            # 降级方案：简单的拼接计算（仅文本）
-            full_text = ""
-            for m in formatted_msgs:
-                full_text += f"{m['role']}: {m['content']}\n"
-            return len(tok.encode(full_text))
+            # 手动拼接 Qwen 的 ChatML 格式
+            # 格式: <|im_start|>role\ncontent<|im_end|>\n
+            full_text += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+            
+        # 加上模型生成的起始符
+        full_text += "<|im_start|>assistant\n"
+
+        # 使用 encode 计算，必须加上 allowed_special="all" 否则遇到特殊字符会报错
+        tokens = tok.encode(full_text, allowed_special="all")
+        return len(tokens)
 
     except Exception as e:
         print(f"Token counting error: {e}")
@@ -176,16 +185,16 @@ def format_sample(sample_idx, data):
         content = step.get("value", step.get("content", ""))
 
         # 根据角色应用不同样式
-        if role in ["human", "user"]:
+        if role in ["human", "user", "tool_response"]:
             bg_color = "#e6f7ff"
             border_color = "#91d5ff"
             align = "flex-start"
-            role_display = "User"
-        elif role in ["gpt", "assistant"]:
+            role_display = role
+        elif role in ["gpt", "assistant", "tool_call"]:
             bg_color = "#f6ffed"
             border_color = "#b7eb8f"
             align = "flex-end"
-            role_display = "Assistant"
+            role_display = role
         elif role in ["system"]:
             bg_color = "#fffbe6"
             border_color = "#ffe58f"

@@ -12,6 +12,7 @@ from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 import copy
 
 logger = logging.getLogger("desktopenv.experiment")
+MAX_CODE_RESULT_LENGTH = 2000
 
 def run_single_example(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)
@@ -222,8 +223,8 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
 
                 # 制作code的返回日志
                 code_result += f"Status: {result.get('status', '')}\n"
-                code_result += f"Output: {result.get('output', '')[:5000]}\n"
-                code_result += f"Error: {result.get('error', '')[:5000]}\n"
+                code_result += f"Output: {result.get('output', '')[:MAX_CODE_RESULT_LENGTH]}\n"
+                code_result += f"Error: {result.get('error', '')[:MAX_CODE_RESULT_LENGTH]}\n"
                 code_result += f"Return Code: {result.get('returncode', 0)}\n"
                 agent.last_code_result = code_result
 
@@ -463,8 +464,8 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
 
                 # 制作code的返回日志
                 code_result += f"Status: {result.get('status', '')}\n"
-                code_result += f"Output: {result.get('output', '')[:5000]}\n"
-                code_result += f"Error: {result.get('error', '')[:5000]}\n"
+                code_result += f"Output: {result.get('output', '')[:MAX_CODE_RESULT_LENGTH]}\n"
+                code_result += f"Error: {result.get('error', '')[:MAX_CODE_RESULT_LENGTH]}\n"
                 if action.startswith("PYTHON"):
                     code_result += f"Message: {result.get('message', '')}\n"
                 else:

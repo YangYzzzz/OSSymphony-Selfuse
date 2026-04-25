@@ -137,9 +137,10 @@ class EnvPool:
                         code = action[7:]
                         result = slot.env.controller.run_python_script(code)
                     if result:
+                        from lib_run_single import MAX_CODE_RESULT_LENGTH
                         code_result += f"Status: {result.get('status', '')}\n"
-                        code_result += f"Output: {result.get('output', '')[:5000]}\n"
-                        code_result += f"Error: {result.get('error', '')[:5000]}\n"
+                        code_result += f"Output: {result.get('output', '')[:MAX_CODE_RESULT_LENGTH]}\n"
+                        code_result += f"Error: {result.get('error', '')[:MAX_CODE_RESULT_LENGTH]}\n"
                         if action.startswith("BASH"):
                             code_result += f"Return Code: {result.get('returncode', 0)}\n"
                         else:
