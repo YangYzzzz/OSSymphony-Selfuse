@@ -505,7 +505,7 @@ class AnthropicAgentWithCode:
             'type': COMPUTER_USE_TYPE,
             'display_width_px': self.input_screen_width,
             'display_height_px': self.input_screen_height,
-            'display_number': 1
+            'display_number': 0 # 重要
         }
 
         computer_use_code_tool_config = {
