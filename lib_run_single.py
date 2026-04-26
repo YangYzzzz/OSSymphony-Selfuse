@@ -225,7 +225,8 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 code_result += f"Status: {result.get('status', '')}\n"
                 code_result += f"Output: {result.get('output', '')}\n"
                 code_result += f"Error: {result.get('error', '')}\n"
-                code_result += f"Return Code: {result.get('returncode', 0)}\n"
+                if action.startswith("BASH"):
+                    code_result += f"Return Code: {result.get('returncode', 0)}\n"
                 agent.last_code_result = code_result
 
             obs, reward, done, info = env.step(action, args.sleep_after_execution)
@@ -351,7 +352,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     # Reset Environment and Agent
     agent.reset()
     env.reset(task_config=example)
-    time.sleep(60)  # Wait for the environment to be ready
+    time.sleep(30)  # Wait for the environment to be ready
     obs = env._get_obs()  # Get the initial observation
     
     done = False
@@ -466,9 +467,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                 code_result += f"Status: {result.get('status', '')}\n"
                 code_result += f"Output: {result.get('output', '')}\n"
                 code_result += f"Error: {result.get('error', '')}\n"
-                if action.startswith("PYTHON"):
-                    code_result += f"Message: {result.get('message', '')}\n"
-                else:
+                if action.startswith("BASH"):
                     code_result += f"Return Code: {result.get('returncode', '0')}\n"
                 agent.last_code_result = code_result
 

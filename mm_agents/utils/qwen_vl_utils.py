@@ -417,7 +417,7 @@ QWEN3VL_COMPUTER_USE_TOOL_SCHEMA = json.dumps(
                         * `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
                         * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
                         * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
-                        * `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).
+                        * `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
                         * `scroll`: Performs a scroll of the mouse scroll wheel.
                         * `hscroll`: Performs a horizontal scroll (mapped to regular scroll).
                         * `wait`: Wait specified seconds for the change to happen.

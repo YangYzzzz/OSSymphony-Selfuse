@@ -52,7 +52,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - **CRITICAL PATH REQUIREMENT:** If the task involves opening, reading, editing, or saving any file, you MUST explicitly write the exact absolute path (starting with `~`) directly inside this `description` string. NEVER use vague terms like "the document", "the image", or just the filename.
         - **CRITICAL IN-PLACE EDITING:** If a task requires modifying an existing file from `launch_paths`, you MUST assume the modifications are saved in-place and do NOT instruct the user to "Save As" or save the file to a new location.
         - **CRITICAL MULTI-APP BINDING:** For tasks involving multiple apps or representations, the description MUST explicitly anchor the full relation chain needed for evaluation (for example: which source object, under what qualifier such as latest/first/highest, what derived artifact from it, and where that artifact must end up). Avoid descriptions where key links in this chain are left implicit.
-    - "complexity" (string): One of "simple", "medium", or "complex".
+    - "complexity" (string): One of "simple"(10-30 gui steps, single-file workflows or small configuration changes), "medium"(30-50 gui steps, between simple and complex), or "complex"(>50 gui steps, longer workflows involved multi-apps or multi-files).
     - "category" (string): One of:
         - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application(s).
         - "app_only": The task primarily changes application settings, preferences, themes, layouts, or built-in tools, without relying on pre-existing files.
@@ -73,7 +73,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
             - "code" (string): the FULL Python function definition implementing this rule. See the template below for the exact required structure.
               - The function name inside the code MUST use the common prefix "call_rule_judge_".
               - Within each task, you SHOULD conceptually number these functions locally for that task only (e.g. "call_rule_judge_1", "call_rule_judge_2", ...).
-    - "estimated_steps" (integer): Approximate number of primitive user actions (mouse clicks, drags, key presses) required to complete the task.
+    - "estimated_steps" (integer): Approximate number of primitive gui actions (mouse clicks, drags, key presses) required to complete the task.
 
     ## Evaluation design
     For each task, you must also design how it will be evaluated.
@@ -186,13 +186,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - When designing rule-based evaluation:
         - You MAY use `vm_file` getters to read both the modified file and its golden counterpart.
         - You SHOULD clearly describe in the rule function docstring how the golden file is used for comparison, when applicable.
-
-    ## Complexity and estimated_steps
-    Use these guidelines:
-
-    - "simple": Typically 15-30 gui actions. Single-file workflows or small configuration changes.
-    - "medium": Typically 30-50 gui actions. Multi-step workflows, multiple files or views.
-    - "complex": Typically 50-70 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
 
     ## Diversity requirements
     Across the {task_numbers} tasks you generate:
