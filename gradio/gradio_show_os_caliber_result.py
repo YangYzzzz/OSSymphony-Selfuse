@@ -354,7 +354,12 @@ def create_os_caliber_app(root_dir: str, task_meta_dir: str):
                     meta = load_meta(metas[i])
                     task_id = meta.get("task_id") or meta.get("trace_id")
                     score = float(meta.get("score", 0))
-                    score_text = f"score={score:.2f}" if score is not None else "score=NA"
+                    vlm_score = float(meta.get("model_judge", {}).get("binary_reward", -1))
+                    rule_score = float(meta.get("rule_judge", {}).get("reward", -1))
+                    traj_len = int(meta.get("trajectory_length", len(meta.get("trajectory", []))))
+                    v_str = f"{vlm_score:.2f}" if vlm_score != -1 else "NA"
+                    r_str = f"{rule_score:.2f}" if rule_score != -1 else "NA"
+                    score_text = f"Step: {traj_len} | Score: {score:.2f} (Rule: {r_str}, VLM: {v_str})"
                     updates[task_buttons[i]] = gr.update(value=str(task_id), visible=True)
                     updates[score_labels[i]] = gr.update(value=score_text, visible=True)
                 else:
@@ -518,7 +523,12 @@ def create_os_caliber_app(root_dir: str, task_meta_dir: str):
                     meta = load_meta(metas[i])
                     task_id = meta.get("task_id") or meta.get("trace_id")
                     score = float(meta.get("score", 0))
-                    score_text = f"score={score:.2f}" if score is not None else "score=NA"
+                    vlm_score = float(meta.get("model_judge", {}).get("binary_reward", -1))
+                    rule_score = float(meta.get("rule_judge", {}).get("reward", -1))
+                    traj_len = int(meta.get("trajectory_length", len(meta.get("trajectory", []))))
+                    v_str = f"{vlm_score:.2f}" if vlm_score != -1 else "NA"
+                    r_str = f"{rule_score:.2f}" if rule_score != -1 else "NA"
+                    score_text = f"Step: {traj_len} | Score: {score:.2f} (Rule: {r_str}, VLM: {v_str})"
                     updates[task_buttons[i]] = gr.update(value=str(task_id), visible=True)
                     updates[score_labels[i]] = gr.update(value=score_text, visible=True)
                 else:

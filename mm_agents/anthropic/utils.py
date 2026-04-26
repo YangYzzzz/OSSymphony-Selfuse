@@ -527,11 +527,17 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[(APIProvider, str), str] = {
     (APIProvider.VERTEX, "claude-sonnet-4-5-20250929"): "claude-sonnet-4-v1@20250929",
     (APIProvider.ANTHROPIC, "claude-opus-4-5"): "claude-opus-4-5-20251101",
     (APIProvider.BEDROCK, "claude-opus-4-5"): "us.anthropic.claude-opus-4-5-20251101-v1:0",
+
+    (APIProvider.ANTHROPIC, "claude-opus-4-6-aws"): "claude-opus-4-6-aws",
     (APIProvider.ANTHROPIC, "claude-opus-4-6"): "claude-opus-4-6",
-    (APIProvider.BEDROCK, "claude-opus-4-6"): "global.anthropic.claude-opus-4-6-v1",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-6"): "claude-sonnet-4-6",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-6-aws"): "claude-sonnet-4-6-aws",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-6-urg"): "claude-sonnet-4-6-urg",
+    
+    (APIProvider.ANTHROPIC, "claude-opus-4-7"): "claude-opus-4-7",
+    (APIProvider.ANTHROPIC, "claude-sonnet-4-7"): "claude-sonnet-4-7",
+    (APIProvider.ANTHROPIC, "claude-sonnet-4-7-aws"): "claude-sonnet-4-7-aws",
+    (APIProvider.ANTHROPIC, "claude-sonnet-4-7-urg"): "claude-sonnet-4-7-urg",
 }
 
 
@@ -616,9 +622,9 @@ SYSTEM_PROMPT_WITH_CODE = f"""
 
 <IMPORTANT>
 * When generating code with the `code` tool, prefer scripts that are idempotent and safe to re-run. Check paths carefully and avoid destructive operations (like `rm -rf`) unless absolutely necessary and clearly justified by the task.
-* The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the user home directory or heavy long-running computations).
+* The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the user home directory or heavy long-running computations). If you need to launch GUI applications or persistent background processes, you MUST fully detach them from the parent process's output pipes to prevent blocking. Always use the format `nohup <command> > /dev/null 2>&1 &` to ensure the script returns immediately without hitting the timeout.
 * Perform ONLY ONE atomic action per turn. Do not chain multiple coordinate-based actions simultaneously. Because a single click can alter the visual state of the UI, any subsequent coordinates in the same turn will likely be invalid. Always execute one action and wait for the new visual feedback before proceeding.
-* Do NOT include `DISPLAY=:1` in any generated commands or scripts, as this will not take effect. Please just run commands directly without modifying DISPLAY.
+* Do NOT include `DISPLAY` in any generated commands or scripts, as this will not take effect. Please just run commands directly without modifying DISPLAY.
 </IMPORTANT>
 """
 

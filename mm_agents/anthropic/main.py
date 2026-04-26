@@ -495,7 +495,7 @@ class AnthropicAgent:
             'type': COMPUTER_USE_TYPE,
             'display_width_px': 1280,
             'display_height_px': 720,
-            'display_number': 1
+            'display_number': 0
         }
 
         tools = [

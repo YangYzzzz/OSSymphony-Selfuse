@@ -55,6 +55,9 @@ def draw_coordinates(image_bytes: bytes, coordinates: List[Union[int, float]], s
     # Pillow 的 Image.open() 可以直接处理文件路径，但不能直接处理字节流。
     # 我们使用 io.BytesIO 将内存中的字节数据包装成一个类似文件的对象，
     # 这样 Image.open() 就可以像读取文件一样读取它。
+    if len(coordinates) == 0:
+        return
+    
     try:
         image = Image.open(io.BytesIO(image_bytes))
         # 确保图像是 RGB 模式，这样才能绘制彩色标记。PNG 可能有 RGBA（带透明度）模式。

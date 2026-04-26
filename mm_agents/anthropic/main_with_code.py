@@ -43,6 +43,7 @@ class AnthropicAgentWithCode:
                 only_n_most_recent_images: Optional[int] = 10,
                 action_space: str = "claude_computer_use",
                 screen_size: tuple[int, int] = (1920, 1080),
+                input_screen_size: tuple[int, int] = (1280, 720), # 感觉主要也是为了节省token
                 no_thinking: bool = False,
                 use_isp: bool = False,
                 temperature: Optional[float] = None,
@@ -68,9 +69,12 @@ class AnthropicAgentWithCode:
         self.use_isp = use_isp
         self.temperature = temperature
         self.top_p = top_p
+
+        self.input_screen_width, self.input_screen_height = input_screen_size[0], input_screen_size[1]
+
         self.resize_factor = (
-            screen_size[0] / 1280,  # Assuming 1280 is the base width
-            screen_size[1] / 720   # Assuming 720 is the base height
+            screen_size[0] / self.input_screen_width,  # Assuming 1280 is the base width
+            screen_size[1] / self.input_screen_height   # Assuming 720 is the base height
         )
 
         self.last_code_result = None
@@ -395,7 +399,7 @@ class AnthropicAgentWithCode:
             screenshot_image = Image.open(io.BytesIO(screenshot_bytes))
 
             # Calculate new size based on resize factor
-            new_width, new_height = 1280, 720
+            new_width, new_height = self.input_screen_width, self.input_screen_height
 
             # Resize the image
             resized_image = screenshot_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -499,9 +503,9 @@ class AnthropicAgentWithCode:
         computer_use_gui_tool_config = {
             'name': 'computer',
             'type': COMPUTER_USE_TYPE,
-            'display_width_px': 1280,
-            'display_height_px': 720,
-            'display_number': 1
+            'display_width_px': self.input_screen_width,
+            'display_height_px': self.input_screen_height,
+            'display_number': 0 # 重要
         }
 
         computer_use_code_tool_config = {
@@ -775,7 +779,7 @@ class AnthropicAgentWithCode:
                     try:
                         sample, self.qwen_sft_image_hash_map = build_qwen_sft_sample(
                             messages=self.messages, # 包含所有历史信息与当前步模型的输出, 但不包含 System
-                            screen_size=(1280, 720), # 实际的截图, 但需要注意坐标是基于 1280 x 720 缩放过的
+                            screen_size=(self.input_screen_width, self.input_screen_height), # 需要注意坐标是缩放过的
                             image_hash_map=self.qwen_sft_image_hash_map,
                             image_root_dir=self.collect_qwen_sft_image_dir
                         )

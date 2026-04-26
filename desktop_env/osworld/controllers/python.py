@@ -196,7 +196,7 @@ class PythonController:
         """
         payload = json.dumps({"code": script})
 
-        for _ in range(self.retry_times):
+        for _ in range(3):
             try:
                 response = requests.post(self.http_server + "/run_python", headers={'Content-Type': 'application/json'},
                                          data=payload, timeout=timeout) # 注意: 这个 timeout 不能乱改, OSWorld 后端写死了30s, 需要与之完全一致, 否则无法捕捉超时异常
@@ -217,7 +217,12 @@ class PythonController:
             time.sleep(self.retry_interval)
 
         logger.error("Failed to execute command.")
-        return {"status": "error", "message": "Failed to execute command.", "output": "", "error": "Retry limit reached."}
+        return {
+            "status": "error", 
+            "message": "Failed to execute python script after 3 retries", 
+            "output": "", 
+            "error": "Retry limit reached."
+        }
     
     def run_bash_script(self, script: str, timeout: int = 40, working_dir: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
@@ -234,7 +239,7 @@ class PythonController:
             "working_dir": working_dir
         })
 
-        for _ in range(self.retry_times):
+        for _ in range(3):
             # start_time = time.time()
             try:
                 response = requests.post(
@@ -277,7 +282,7 @@ class PythonController:
         return {
             "status": "error",
             "output": "",
-            "error": f"Failed to execute bash script after {self.retry_times} retries",
+            "error": f"Failed to execute bash script after 3 retries",
             "returncode": -1
         }
 
