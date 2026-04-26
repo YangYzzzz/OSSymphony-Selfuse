@@ -145,7 +145,7 @@ def run_env_tasks(
                 provider_name=args.provider_name,
                 region=region,
                 snapshot_name=snapshot_name,
-                cache_dir=f"cache/{args.exp_name}"
+                cache_dir=f"cache/{args.exp_name}",
                 screen_size=(args.screen_width, args.screen_height),
                 headless=args.headless,
                 os_type="Ubuntu",
