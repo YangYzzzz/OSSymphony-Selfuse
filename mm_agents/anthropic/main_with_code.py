@@ -858,16 +858,21 @@ class AnthropicAgentWithCode:
                         pyautogui_actions = [a["command"] for a in actions]
                     return response_meta_list, pyautogui_actions
 
-    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+    def evaluate(self, task_instruction: str, obs: Dict, **kwargs) -> Dict[str, Any]:
         """
         Self-judge function to evaluate if the task was completed successfully.
         """
 
         try:
+            eval_prompt = SYSTEM_PROMPT_ORM
+            hint = kwargs.get("hint", "")
+            if hint:
+                eval_prompt += f"\n\n[Hint]: The following are review guidelines. Please focus on checking these points: {hint}"
+
             # 1. Start with Evaluation System Prompt
             eval_system = BetaTextBlockParam(
                 type="text",
-                text=SYSTEM_PROMPT_ORM
+                text=eval_prompt
             )
 
             # 1.5 Add obs as the tool result **Important**

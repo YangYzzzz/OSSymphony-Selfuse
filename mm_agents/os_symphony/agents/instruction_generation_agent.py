@@ -25,7 +25,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
 
     ## Environment assumptions
     - The user's home directory is "~" (absolute path "/home/user").
-                                                     
+
     ## Applications
     - In the current setting, you have one MAIN application: {main_app_name}.
     - You may also be given a set of additional available applications: {available_app_list}.
@@ -136,9 +136,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - Why this rule is sufficient to fully or partially verify task success.
         \"\"\"
         try:
-            # ALWAYS clean and cast strings from files/commands before math:
-            #    e.g., `val = float(str(raw_val).replace(',', '').replace('$', '').strip())`
-
             score = 0.0
 
             # (Parse your files or commands here inside the function)
@@ -154,7 +151,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
             # Verify that UNINTENDED changes did not occur, using `expected` (golden file) if available.
             # Only check 1-3 targeted areas that an agent might accidentally modify.
             # Example (inline logic):
-            # if unintended_element_in_result != unintended_element_in_expected: score -= 0.5
+            # if unintended_element_in_result != unintended_element_in_expected: score -= 0.2
 
             # Ensure final score is clamped between 0.0 and 1.0
             _ = result

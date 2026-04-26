@@ -594,13 +594,18 @@ class GeminiOpenAIAgentWithCode:
 
         return response_meta_list, action_strs
 
-    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+    def evaluate(self, task_instruction: str, obs: Dict, **kwargs) -> Dict[str, Any]:
         eval_messages = copy.deepcopy(self.messages)
 
+        eval_prompt = SYSTEM_PROMPT_ORM
+        hint = kwargs.get("hint", "")
+        if hint:
+            eval_prompt += f"\n\n[Hint]: The following are review guidelines. Please focus on checking these points: {hint}"
+
         if eval_messages and eval_messages[0].get("role") == "system":
-            eval_messages[0]["content"] = SYSTEM_PROMPT_ORM
+            eval_messages[0]["content"] = eval_prompt
         else:
-            eval_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT_ORM})
+            eval_messages.insert(0, {"role": "system", "content": eval_prompt})
 
         if self.pending_tool_calls:
             for tool_call in self.pending_tool_calls:

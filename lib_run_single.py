@@ -223,8 +223,8 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
 
                 # 制作code的返回日志
                 code_result += f"Status: {result.get('status', '')}\n"
-                code_result += f"Output: {result.get('output', '')[:MAX_CODE_RESULT_LENGTH]}\n"
-                code_result += f"Error: {result.get('error', '')[:MAX_CODE_RESULT_LENGTH]}\n"
+                code_result += f"Output: {result.get('output', '')}\n"
+                code_result += f"Error: {result.get('error', '')}\n"
                 code_result += f"Return Code: {result.get('returncode', 0)}\n"
                 agent.last_code_result = code_result
 
@@ -464,8 +464,8 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
 
                 # 制作code的返回日志
                 code_result += f"Status: {result.get('status', '')}\n"
-                code_result += f"Output: {result.get('output', '')[:MAX_CODE_RESULT_LENGTH]}\n"
-                code_result += f"Error: {result.get('error', '')[:MAX_CODE_RESULT_LENGTH]}\n"
+                code_result += f"Output: {result.get('output', '')}\n"
+                code_result += f"Error: {result.get('error', '')}\n"
                 if action.startswith("PYTHON"):
                     code_result += f"Message: {result.get('message', '')}\n"
                 else:
@@ -510,10 +510,12 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     # Check if agent has evaluate method and it is callable
     need_vlm_judge = args.enable_self_judge and hasattr(agent, "evaluate") and callable(agent.evaluate) # and example.get("evaluator", {}).get("need_vlm_judge", False)
     need_rule_judge = example.get("evaluator", {}).get("need_rule_judge", False)
+
+    need_vlm_judge = True # 默认为 True
     if need_vlm_judge:
         # Passing both instruction and obs as requested
-        # hint = example.get("evaluator", {}).get("vlm_desc", "")
-        vlm_evaluate_result = agent.evaluate(instruction, obs) # TODO: 将 check hint 注入 vlm evaluate prompt 内
+        hint = example.get("evaluator", {}).get("vlm_desc", "")
+        vlm_evaluate_result = agent.evaluate(instruction, obs, hint=hint)
         
         # Update model_judge in meta_json
         meta_json["model_judge"]["binary_reward"] = float(vlm_evaluate_result['score'])
@@ -531,7 +533,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     meta_json_path = os.path.join(os.path.dirname(example_result_dir), f"meta_{example['id']}.json")
     with open(meta_json_path, "w", encoding="utf-8") as f:
         json.dump(meta_json, f, indent=4, ensure_ascii=False)
-        
+
     logger.info(f"Saved meta.json to {meta_json_path}")
 
 
