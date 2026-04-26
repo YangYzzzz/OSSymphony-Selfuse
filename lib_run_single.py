@@ -12,7 +12,7 @@ from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 import copy
 
 logger = logging.getLogger("desktopenv.experiment")
-MAX_CODE_RESULT_LENGTH = 2000
+MAX_CODE_RESULT_LENGTH = 1000
 
 def run_single_example(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)

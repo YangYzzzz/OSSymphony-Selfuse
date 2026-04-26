@@ -32,7 +32,8 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - The MAIN application {main_app_name} MUST be used in every task.
     - You MUST treat the additional applications in {available_app_list} as required resources when they are provided:
         - If {available_app_list} indicates there is only the MAIN application (no additional apps), then each task MUST use only {main_app_name}.
-        - When multiple additional apps are available, you SHOULD design tasks that involve **cross-application collaboration** (for example, creating or editing a file in one app and then refining, converting, analyzing, or presenting it in another app) whenever this is logically supported by their roles.
+        - When multiple additional apps are available, you SHOULD design tasks that involve **cross-application collaboration** whenever this is logically supported by their roles.
+        - For cross-application tasks, you SHOULD prefer tasks whose source object and destination artifact can be bound by a unique, explicit relation chain, so the evaluator can determine exactly what should be transferred, transformed, opened, or presented.
     - For each task, the `related_apps` field MUST include **all** applications that are actually needed to complete the task, and you SHOULD avoid listing apps that are not genuinely used.
     - You MUST NOT introduce or use any other applications outside this set.
 
@@ -41,13 +42,16 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Are executable starting from the current UI state shown in the screenshot.
     - Are fully specified and unambiguous (no hidden assumptions about files or settings).
     - Are automatically verifiable by another program based on rules or VLMs.
+    - Must explicitly write all evaluator-critical constraints directly into the task description, including any target object identity, ordering relation, destination, date/time, quantity, formatting, or scope constraints that determine success or failure.
 
     Each task must be represented as a JSON object with the following fields:
 
-    - "description" (string): A natural-language, goal-oriented request mimicking a real-world user prompt. 
+    - "description" (string): A natural-language, goal-oriented request mimicking a real-world user prompt.
         - **CRITICAL:** It MUST NOT be a step-by-step tutorial. Tell the user WHAT the final goal is, not HOW to achieve it.
+        - **CRITICAL:** The description itself MUST contain all evaluator-critical constraints explicitly. Never leave the decisive success condition implicit if it can be stated directly.
         - **CRITICAL PATH REQUIREMENT:** If the task involves opening, reading, editing, or saving any file, you MUST explicitly write the exact absolute path (starting with `~`) directly inside this `description` string. NEVER use vague terms like "the document", "the image", or just the filename.
         - **CRITICAL IN-PLACE EDITING:** If a task requires modifying an existing file from `launch_paths`, you MUST assume the modifications are saved in-place and do NOT instruct the user to "Save As" or save the file to a new location.
+        - **CRITICAL MULTI-APP BINDING:** For tasks involving multiple apps or representations, the description MUST explicitly anchor the full relation chain needed for evaluation (for example: which source object, under what qualifier such as latest/first/highest, what derived artifact from it, and where that artifact must end up). Avoid descriptions where key links in this chain are left implicit.
     - "complexity" (string): One of "simple", "medium", or "complex".
     - "category" (string): One of:
         - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application(s).
@@ -132,10 +136,8 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - Why this rule is sufficient to fully or partially verify task success.
         \"\"\"
         try:
-            # === CRITICAL: DEFENSIVE PROGRAMMING ===
-            # 1. ALWAYS clean and cast strings from files/commands before math:
+            # ALWAYS clean and cast strings from files/commands before math:
             #    e.g., `val = float(str(raw_val).replace(',', '').replace('$', '').strip())`
-            # 2. Guard against missing keys, out-of-bounds indices, and division by zero.
 
             score = 0.0
 
@@ -183,7 +185,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - You may still create new files as part of a task, but you must explicitly specify their save locations with "~" (e.g., "~/Desktop/project_notes/report.md").
 
     ## Golden paths
-
     - You may also be given `golden_paths`, each golden path is a backup copy of the path in `launch_paths`, created before any in-place editing.
     - When designing rule-based evaluation:
         - You MAY use `vm_file` getters to read both the modified file and its golden counterpart.
@@ -195,8 +196,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - "simple": Typically 15-30 gui actions. Single-file workflows or small configuration changes.
     - "medium": Typically 30-50 gui actions. Multi-step workflows, multiple files or views.
     - "complex": Typically 50-70 gui actions. Longer workflows involving settings, multiple documents/projects/softwares, or non-trivial navigation.
-
-    Choose "estimated_steps" consistent with the complexity level and the actual operations required.
 
     ## Diversity requirements
     Across the {task_numbers} tasks you generate:
@@ -493,6 +492,7 @@ class InstructionGenerationAgent:
 
                 logger.info(f"Generating {task_nums} tasks for {main_app_name}, attempt {attempt}/{max_attempts}")
                 response = call_llm_safe(self.agent, temperature=self.temperature)
+                logger.info(f'Response: {response}')
                 pattern = r'^```(?:json)?\s*\n?(.*?)\n?```$'
                 match = re.search(pattern, response, re.DOTALL)
                 if match:
