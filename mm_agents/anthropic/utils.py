@@ -625,6 +625,14 @@ SYSTEM_PROMPT_WITH_CODE = f"""
 * The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the user home directory or heavy long-running computations). If you need to launch GUI applications or persistent background processes, you MUST fully detach them from the parent process's output pipes to prevent blocking. Always use the format `nohup <command> > /dev/null 2>&1 &` to ensure the script returns immediately without hitting the timeout.
 * Perform ONLY ONE atomic action per turn. Do not chain multiple coordinate-based actions simultaneously. Because a single click can alter the visual state of the UI, any subsequent coordinates in the same turn will likely be invalid. Always execute one action and wait for the new visual feedback before proceeding.
 * Do NOT include `DISPLAY` in any generated commands or scripts, as this will not take effect. Please just run commands directly without modifying DISPLAY.
+
+* Choose GUI actions, code actions, or a mixture of both according to what most reliably achieves and verifies the exact task semantics. Do not unconditionally prefer either code-first or gui-first behavior.
+* Treat both GUI and code as tools for both execution and verification. Use whichever combination best maintains the correct target object, state, and constraints for the task.
+* Do not silently rewrite the task into an easier nearby task. Preserve the exact object, target, scope, and modality requested by the user. If the instruction is underspecified, ground the target from the current environment before acting, rather than inventing a convenient substitute.
+* Treat task completion as requiring explicit verification of the user-requested end state, not just a plausible intermediate state. Before calling DONE, verify the critical constraint fields that define success for this task.
+* Judge success by the final app-visible / evaluator-visible result when relevant, not merely by the existence of an artifact, a partially correct intermediate state, or progress in only one modality.
+* If new evidence conflicts with your earlier belief that the task is completed, do not call DONE. Use the conflicting evidence to continue, repair, or re-check the task.
+* When using code to create or modify artifacts, verify not only that the artifact exists, but that its semantics match the instruction: the correct target object was changed, required formatting or values are correct, no obvious side effects were introduced, and the result is visible or effective in the target application when relevant.
 </IMPORTANT>
 """
 
@@ -652,9 +660,9 @@ Please evaluate the agent based on the following comprehensive dimensions:
 - Analyze both the final screenshot AND the action history. The final screenshot often reveals the end state, but do NOT rely on it exclusively. If a correct action (e.g., executing a script, saving a file) was performed but the UI did not refresh in time for the final screenshot, you must still credit the agent for that logical action.
 
 2. Efficiency & Elegance (Secondary)
-- Did the agent choose the optimal path? 
-- Agents that use robust, programmatic methods (e.g., writing a Python script to process an Excel file) should receive a HIGHER score than agents that rely on fragile, repetitive GUI actions (e.g., clicking and typing cell by cell).
-- Penalize redundant actions, meaningless loops, or excessive hesitation.
+- Did the agent choose an effective and reliable path?
+- Do not reward one modality unconditionally. Prefer the method or mixture of methods that best fits the task and most reliably achieves and verifies the exact task semantics. Both GUI and programmatic methods can be good choices when they support a correct, stable, app-visible / evaluator-visible result; penalize method choices that drift from task semantics or leave the final state insufficiently verified.
+- Penalize redundant actions, meaningless loops, excessive hesitation, or method choices that make the result less trustworthy for the actual task.
 
 3. Process & Partial Credit (Crucial for RL)
 - Do NOT give a binary 0 or 1. Award partial credit for reaching logical milestones.
@@ -668,7 +676,7 @@ Please evaluate the agent based on the following comprehensive dimensions:
 - [0.2 - 0.4]: Poor. Made some initial correct steps (e.g., opened the app) but fundamentally failed the core logic or got stuck in an endless loop.
 - [0.5 - 0.7]: Acceptable/Partial Success. Completed the majority of the task but failed the final validation, OR completed the task but used highly inefficient/fragile methods (e.g., tedious GUI clicking instead of code).
 - [0.8 - 0.9]: Good. Successfully completed the task with minor sub-optimal steps or slight UI misalignments.
-- [0.95 - 1.0]: Excellent. Perfect completion, utilizing elegant, efficient, and robust methods (e.g., direct programmatic execution where appropriate).
+- [0.95 - 1.0]: Excellent. Perfect completion, utilizing elegant, efficient, and robust methods.
 
 ### Output Constraints
 You must output the evaluation as a valid JSON object wrapped strictly within a markdown code block (```json ... ```). Do not add any conversational text before or after the markdown block. 
