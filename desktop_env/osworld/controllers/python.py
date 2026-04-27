@@ -12,7 +12,7 @@ from desktop_env.osworld.actions import KEYBOARD_KEYS
 
 logger = logging.getLogger("desktopenv.pycontroller")
 
-
+MAX_CODE_RESULT_LENGTH = 1000
 class PythonController:
     def __init__(self, vm_ip: str,
                  server_port: int,
@@ -201,7 +201,12 @@ class PythonController:
                 response = requests.post(self.http_server + "/run_python", headers={'Content-Type': 'application/json'},
                                          data=payload, timeout=timeout) # 注意: 这个 timeout 不能乱改, OSWorld 后端写死了30s, 需要与之完全一致, 否则无法捕捉超时异常
                 if response.status_code == 200:
-                    return response.json()
+                    result = response.json()
+                    if len(result.get("output", "")) > MAX_CODE_RESULT_LENGTH:
+                        result["output"] = result["output"][:MAX_CODE_RESULT_LENGTH] + "[Truncated: Exceed max length]"
+                    if len(result.get("error", "")) > MAX_CODE_RESULT_LENGTH:
+                        result["error"] = result["error"][:MAX_CODE_RESULT_LENGTH] + "[Truncated: Exceed max length]"
+                    return result
                 else:
                     return {"status": "error", "message": "Failed to execute command.", "output": '', "error": response.json()["error"]}
             except requests.exceptions.ReadTimeout:
@@ -252,6 +257,10 @@ class PythonController:
                 if response.status_code == 200:
                     result = response.json()
                     logger.info("Bash script executed successfully with return code: %d", result.get("returncode", -1))
+                    if len(result.get("output", "")) > MAX_CODE_RESULT_LENGTH:
+                        result["output"] = result["output"][:MAX_CODE_RESULT_LENGTH] + "[Truncated: Exceed max length]"
+                    if len(result.get("error", "")) > MAX_CODE_RESULT_LENGTH:
+                        result["error"] = result["error"][:MAX_CODE_RESULT_LENGTH] + "[Truncated: Exceed max length]"
                     return result
                 # elif end_time - start_time > timeout + 10:
                 #     logger.error("Bash script execution timed out")

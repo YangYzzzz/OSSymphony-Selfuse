@@ -31,7 +31,7 @@ logger = logging.getLogger("desktopenv.agent")
 API_RETRY_TIMES = 500
 API_RETRY_INTERVAL = 5
 
-class AnthropicAgentWithCode:
+class AnthropicAgentWithSelfDefinedTools:
     def __init__(self,
                 platform: str = "Ubuntu",
                 model: str = "claude-sonnet-4-5-20250929",
@@ -280,6 +280,7 @@ class AnthropicAgentWithCode:
                 raise ValueError(f"{text} must be a string")
 
             if action == "key":
+                # TODO: SFT 采集时 key 的转化没有处理
                 key_conversion = {
                     "page_down": "pagedown",
                     "page_up": "pageup",
@@ -327,6 +328,7 @@ class AnthropicAgentWithCode:
         # Handle click actions
         elif action in ("left_click", "right_click", "double_click", "middle_click", "left_press", "triple_click"):
             # Handle modifier keys during click if specified
+            # TODO: SFT 时这部分数据没有处理
             if text:
                 keys = text.split('+')
                 for key in keys:
@@ -501,11 +503,79 @@ class AnthropicAgentWithCode:
 
         # Configure tool settings - use modern computer tool for all models
         computer_use_gui_tool_config = {
-            'name': 'computer',
-            'type': COMPUTER_USE_TYPE,
-            'display_width_px': self.input_screen_width,
-            'display_height_px': self.input_screen_height,
-            'display_number': 0 # 重要
+            "name": "computer",
+            "description": (
+                "Use this tool to perform GUI actions on the current screen. "
+                f"The screenshot resolution for all coordinates is width={self.input_screen_width}px and height={self.input_screen_height}px. "
+                "Return exactly one action per tool call using the schema below. "
+                "Supported actions are: mouse_move, left_click_drag, key, type, scroll, left_click, right_click, double_click, middle_click, left_press, triple_click, wait, fail, done."
+                "Action requirements: "
+                "mouse_move requires coordinate as [x, y] and may optionally include duration. "
+                "left_click_drag requires coordinate as the drag target [x, y], may include optional start_coordinate as [x, y], and may include optional duration. "
+                "key requires text as a '+'-joined key combination to press and release. "
+                "type requires text as the string to type. "
+                "scroll requires scroll_direction in one of up, down, left, right, requires scroll_amount as an integer, and may optionally include coordinate as [x, y]. "
+                "left_click, right_click, double_click, middle_click, left_press, and triple_click may optionally include coordinate as [x, y] and may optionally include text as modifier keys like 'ctrl' or 'shift'. "
+                "wait takes no arguments. "
+                "fail takes no arguments and means the task cannot be completed. "
+                "done takes no arguments and means the task is complete. "
+                "Coordinates must always be integers within the provided screenshot resolution."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "mouse_move",
+                            "left_click_drag",
+                            "key",
+                            "type",
+                            "scroll",
+                            "left_click",
+                            "right_click",
+                            "double_click",
+                            "middle_click",
+                            "left_press",
+                            "triple_click",
+                            "wait",
+                            "fail",
+                            "done"
+                        ]
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Text to type, or '+'-joined keys/modifiers such as 'ctrl+c' or 'shift'."
+                    },
+                    "coordinate": {
+                        "type": "array",
+                        "description": "Target coordinate as [x, y] in screenshot pixels.",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2
+                    },
+                    "start_coordinate": {
+                        "type": "array",
+                        "description": "Optional drag start coordinate as [x, y] in screenshot pixels.",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2
+                    },
+                    "scroll_direction": {
+                        "type": "string",
+                        "enum": ["up", "down", "left", "right"]
+                    },
+                    "scroll_amount": {
+                        "type": "integer",
+                        "description": "Scroll amount as an integer."
+                    },
+                    "duration": {
+                        "type": "number",
+                        "description": "Optional movement or drag duration in seconds."
+                    }
+                },
+                "required": ["action"]
+            }
         }
 
         computer_use_code_tool_config = {
@@ -678,7 +748,7 @@ class AnthropicAgentWithCode:
             "content": response_params
         })
 
-        
+
         # Convert raw response to concatenated string for trajectory logging
         raw_response_str = self._extract_raw_response_string(response)
 

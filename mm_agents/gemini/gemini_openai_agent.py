@@ -593,7 +593,7 @@ class GeminiOpenAIAgent:
                         else:
                             msg["content"] = new_content
                             
-    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+    def evaluate(self, task_instruction: str, obs: Dict, **kwargs) -> Dict[str, Any]:
         """
         Self-judge function.
         Returns a dictionary with 'thought' and 'score'.

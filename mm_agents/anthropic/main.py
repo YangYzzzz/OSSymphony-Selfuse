@@ -801,7 +801,7 @@ class AnthropicAgent:
                         pyautogui_actions = [a["command"] for a in actions]
                     return response_meta_list, pyautogui_actions
 
-    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+    def evaluate(self, task_instruction: str, obs: Dict, **kwargs) -> Dict[str, Any]:
         """
         Self-judge function to evaluate if the task was completed successfully.
         """
