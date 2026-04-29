@@ -574,7 +574,7 @@ class DesktopEnv(gym.Env):
                 else:
                     results.append(metric)
 
-            return sum(results) / len(results) if self.metric_conj == 'and' else max(results)
+            return sum(results) / len(results) if self.metric_conj == 'and' or self.metric_conj == 'avg' else max(results)
         else:
             # Single metric to evaluate whether the task is successfully completed
             try:

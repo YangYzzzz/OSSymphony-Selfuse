@@ -348,7 +348,7 @@ def run_env_tasks(
             domain, example_id = item
             try:
                 config_file = os.path.join(
-                    args.test_config_base_dir, f"{args.benchmark}/examples/{domain}/{example_id}.json"
+                    args.test_config_base_dir, f"{domain}/{example_id}.json"
                 )
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
