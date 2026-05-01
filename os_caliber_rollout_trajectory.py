@@ -35,6 +35,7 @@ from mm_agents.openai.gpt54_agent import GPT54Agent
 from mm_agents.anthropic.main_with_code import AnthropicAgentWithCode
 from mm_agents.gemini.gemini_openai_agent_with_code import GeminiOpenAIAgentWithCode
 from mm_agents.anthropic.main_with_self_defined_tools import AnthropicAgentWithSelfDefinedTools
+from mm_agents.os_symphony2.os_symphony2_agent_with_toolcall import OSSymphony2AgentWithToolCall
 
 
 # Global variables for signal handling
@@ -241,16 +242,18 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 use_thinking=args.use_thinking,
                 language=args.language
             )
-        elif "qwen3" in args.model.lower():
-            agent = Qwen3VLAgent(
+        elif "qwen3" in args.model.lower() or "symphony" in args.model.lower():
+            agent = OSSymphony2AgentWithToolCall(
                 model=args.model,
                 base_url=args.base_url,
+                api_key=args.api_key,
                 max_tokens=args.max_tokens,
                 top_p=args.top_p,
                 temperature=args.temperature,
                 history_n=args.max_trajectory_length,
                 action_space=args.action_space,
-                coordinate_type="relative"
+                coordinate_type="relative",
+                enable_code_tool=args.enable_code_tool
             )
         elif "claude" in args.model.lower():
             if not args.enable_code_tool:

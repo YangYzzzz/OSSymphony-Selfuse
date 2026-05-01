@@ -348,7 +348,7 @@ class OSCaliberTaskGenerator:
             return {
                 "postconfig": POST_CONFIG,
                 "func": "",
-                "conj": "and",
+                "conj": "avg",
                 "result": [],
                 "expected": [],
                 "code": [],
@@ -428,7 +428,7 @@ class OSCaliberTaskGenerator:
         evaluator = {
             "postconfig": POST_CONFIG,
             "func": func_val,
-            "conj": "and",  # 目前仅支持 and
+            "conj": "avg",  # 平均分
             "result": result_val,
             "expected": expected_val,
             "code": code_val,
@@ -477,13 +477,16 @@ class OSCaliberTaskGenerator:
         app_tutorial_md = self._load_app_tutorial_md(main_app)
 
         # 让 Agent 生成任务描述（传入 launch_paths 和教程 + 多 APP 上下文）
+        # 注入APP版本信息 0428
+        app_name = APP_SET_CONFIG_DICT[main_app].get("version", main_app)
+        allowed_apps = [APP_SET_CONFIG_DICT[a].get("version", a) for a in apps_for_group]
         task_list = self.agent.generate(
-            app_name=main_app,
+            app_name=app_name,
             observation=obs,
             task_nums=task_nums,
             launch_paths=launch_paths,
             app_tutorial_md=app_tutorial_md,
-            allowed_apps=apps_for_group,
+            allowed_apps=allowed_apps,
             golden_paths=golden_paths,
         )
 
@@ -496,11 +499,12 @@ class OSCaliberTaskGenerator:
 
             # 每个 task 可以返回自己使用到的 related_apps, 若缺失则默认仅主 APP
             task_related_apps = task.get("related_apps") or [main_app]
-
+            task_related_apps_version = [APP_SET_CONFIG_DICT[a].get("version", a) for a in task_related_apps]
             task_config = {
                 "id": task_id,
                 "snapshot": main_app,
                 "related_apps": task_related_apps,
+                "related_apps_version": task_related_apps_version,
                 "instruction": task.get("description"),
                 "config": task_setup_config,
                 "complexity": task.get("complexity"),

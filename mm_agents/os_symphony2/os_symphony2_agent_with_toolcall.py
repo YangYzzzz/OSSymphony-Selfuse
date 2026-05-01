@@ -16,6 +16,7 @@ from mm_agents.utils.qwen_vl_utils import (
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE,
     smart_resize,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
+    QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
 )
 from mm_agents.uitars15_v2 import IMAGE_FACTOR
@@ -70,6 +71,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         coordinate_type: str = "relative",
         keep_first_image: bool = True,
         use_thinking: bool = False,
+        enable_code_tool: bool = True
     ):
         self.platform = platform
         self.model = model
@@ -101,6 +103,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
         self.pending_tool_calls: List[Any] = []
 
+        self.enable_code_tool = enable_code_tool
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
@@ -544,7 +547,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     top_p=self.top_p,
-                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA),
+                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA) if self.enable_code_tool else QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
                     tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}
@@ -614,3 +617,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                         print(f"  ❓ ({item_type}) : {item}")
 
         print("\n" + "=" * 122 + "\n")
+    
+    def evaluate(self):
+        pass

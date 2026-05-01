@@ -227,12 +227,23 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
         elif action in {"key"}:
             q_args["action"] = "key"
             keys = []
+
+            key_conversion = {
+                "page_down": "pagedown",
+                "page_up": "pageup",
+                "super_l": "win",
+                "super": "command",
+                "escape": "esc"
+            }
+
             if isinstance(text, str):
                 # Claude 侧一般是 "ctrl+c" 或 "ctrl+shift+esc"
                 for k in text.replace("+", ",").split(","):
-                    k = k.strip()
+                    k = k.strip().lower()         # ① 统一小写，与官方 key.strip().lower() 对齐
+                    k = key_conversion.get(k, k)  # ② 应用键名映射，与官方 key_conversion.get(key, key) 对齐
                     if k:
                         keys.append(k)
+
             if keys:
                 q_args["keys"] = keys
 
@@ -615,7 +626,7 @@ SYSTEM_PROMPT_WITH_CODE = f"""
   - Insufficient permissions or system limitations
   - Contradictory or impossible requirements
   - Any other fundamental barriers that make completion impossible
-  Then you MUST output exactly "[INFEASIBLE]" (including the square brackets) anywhere in your response to trigger the fail action. The system will automatically detect this pattern and terminate the task appropriately.
+  Then you MUST output exactly "[INFEASIBLE]" anywhere in your response to trigger the fail action. The system will automatically detect this pattern and terminate the task appropriately.
 * The current date is {datetime.today().strftime('%A, %B %d, %Y')}.
 * If you need a password for sudo, the password of the computer is 'password'.
 </SYSTEM_CAPABILITY>
@@ -623,16 +634,17 @@ SYSTEM_PROMPT_WITH_CODE = f"""
 <IMPORTANT>
 * When generating code with the `code` tool, prefer scripts that are idempotent and safe to re-run. Check paths carefully and avoid destructive operations (like `rm -rf`) unless absolutely necessary and clearly justified by the task.
 * The execution time limit for any single `code` tool run is 30 seconds. Avoid commands that may run for too long (such as traversing the user home directory or heavy long-running computations). If you need to launch GUI applications or persistent background processes, you MUST fully detach them from the parent process's output pipes to prevent blocking. Always use the format `nohup <command> > /dev/null 2>&1 &` to ensure the script returns immediately without hitting the timeout.
-* Perform ONLY ONE atomic action per turn. Do not chain multiple coordinate-based actions simultaneously. Because a single click can alter the visual state of the UI, any subsequent coordinates in the same turn will likely be invalid. Always execute one action and wait for the new visual feedback before proceeding.
+* Do not chain multiple coordinate-based actions simultaneously. Because a single click can alter the visual state of the UI, any subsequent coordinates in the same turn will likely be invalid.
 * Do NOT include `DISPLAY` in any generated commands or scripts, as this will not take effect. Please just run commands directly without modifying DISPLAY.
+* Always output your reasoning before tool call. Do not output a tool call alone.
 
 * Choose GUI actions, code actions, or a mixture of both according to what most reliably achieves and verifies the exact task semantics. Do not unconditionally prefer either code-first or gui-first behavior.
 * Treat both GUI and code as tools for both execution and verification. Use whichever combination best maintains the correct target object, state, and constraints for the task.
 * Do not silently rewrite the task into an easier nearby task. Preserve the exact object, target, scope, and modality requested by the user. If the instruction is underspecified, ground the target from the current environment before acting, rather than inventing a convenient substitute.
 * Treat task completion as requiring explicit verification of the user-requested end state, not just a plausible intermediate state. Before calling DONE, verify the critical constraint fields that define success for this task.
-* Judge success by the final app-visible / evaluator-visible result when relevant, not merely by the existence of an artifact, a partially correct intermediate state, or progress in only one modality.
 * If new evidence conflicts with your earlier belief that the task is completed, do not call DONE. Use the conflicting evidence to continue, repair, or re-check the task.
 * When using code to create or modify artifacts, verify not only that the artifact exists, but that its semantics match the instruction: the correct target object was changed, required formatting or values are correct, no obvious side effects were introduced, and the result is visible or effective in the target application when relevant.
+* DO NOT take any screenshot action, and DO NOT produce any reasoning or thought that attempts to obtain, request, or infer the current screen state. A screenshot is already provided to you at every single step — treat the provided image as the definitive and complete view of the current state. Any action or chain-of-thought that implies "let me take a screenshot to check..." or "I need to see the current state first..." is strictly forbidden.
 </IMPORTANT>
 """
 
