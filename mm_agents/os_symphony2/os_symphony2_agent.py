@@ -6,7 +6,7 @@ import time
 import copy
 from io import BytesIO
 from typing import Dict, List, Tuple, Any, Optional
-
+import httpx
 import backoff
 import openai
 from openai import OpenAI
@@ -636,12 +636,13 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
             "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
         }
 
+        custom_timeout = httpx.Timeout(600.0, read=600.0, connect=60.0)
         if "kubebrain" in  self.base_url:
             logger.info(f"H Cluster Local VLLM: {self.base_url}")
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers=custom_headers)
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers=custom_headers, timeout=custom_timeout)
         else:
             logger.info(f"H Service VLLM / Boyue: {self.base_url}")
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=custom_timeout)
         
         for _ in range(MAX_RETRY_TIMES):
             # logger.info("Generating content with Qwen model: %s", model)
