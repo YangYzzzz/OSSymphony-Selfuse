@@ -19,13 +19,13 @@ from mm_agents.utils.qwen_vl_utils import (
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
 )
-from mm_agents.uitars15_v2 import IMAGE_FACTOR
 from mm_agents.base import ComputerUseBaseAgent
+from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
 
 
 logger = logging.getLogger("desktopenv.agent")
 
-MAX_RETRY_TIMES = 5
+MAX_RETRY_TIMES = 50
 
 
 def encode_image(image_content):
@@ -66,7 +66,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         temperature: float = 0.0,
         action_space: str = "pyautogui",
         observation_type: str = "screenshot",
-        history_n: int = 8,
+        max_trajectory_length: int = 8,
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
         keep_first_image: bool = True,
@@ -82,7 +82,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.temperature = temperature
         self.action_space = action_space
         self.observation_type = observation_type
-        self.history_n = history_n
+        self.max_trajectory_length = max_trajectory_length
         self.keep_first_image = keep_first_image
         self.add_thought_prefix = add_thought_prefix
         self.coordinate_type = coordinate_type
@@ -126,9 +126,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         if self.pending_tool_calls:
             for tool_call in self.pending_tool_calls:
                 try:
-                    arguments = json.loads(tool_call["function"]["arguments"])
+                    arguments = json.loads(tool_call["function"]["arguments"]) # vllm
                     name = arguments["action"]
-                    print(name, "!!!!!!!!")
                 except json.JSONDecodeError as e:
                     print(f"解析 JSON 失败: {e}")
                     name = ""
@@ -181,8 +180,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             }
         )
         self._cleanup_old_screenshots()
-        
-        self.debug_print_messages()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
         response_message = self.call_llm(
@@ -223,20 +220,23 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             # print("tool_calls:", tool_calls)
             # print("原始内容:", response_message)
             print("tool call 为空!!!")
+            fail_action = {
+                "name": "done",
+                "command": "DONE",
+                "action_type": "DONE",
+            }
             meta_data = [{
-                "raw_response": f"没有输出 tool call\n {response_message}",
+                "raw_response": f"No tool call\n {response_message}",
                 "thought": "Completed",
-                "action": "",
-                "code": "DONE",
-                "coordinate": [],
+                "action": "DONE",
+                "meta_action": fail_action,
+                "coordinate": None,
             }]
             pyautogui_code = ["DONE"]
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
         # self.debug_print_messages()
 
-        # 把result_text填到reflection
-        meta_data[0]['reflection'] = result_text
         return meta_data, pyautogui_code
 
     def _cleanup_old_screenshots(self):
@@ -278,7 +278,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                         keep_indices.add(first_user_idx)
 
         # 从后往前保留最近 history_n 条带图 user
-        remaining = self.history_n
+        remaining = self.max_trajectory_length
         for idx in reversed(user_indices_with_img):
             if idx in keep_indices:
                 continue
@@ -367,13 +367,13 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         raw_response = make_raw_response()
 
-        def make_meta(code: str, coordinate: Optional[List[int]] = None) -> Dict:
+        def make_meta(action_dict: Dict[str, Any], coordinate: Optional[List[Any]] = None) -> Dict:
             return {
                 "raw_response": raw_response,
                 "thought": thought,
-                "action": "",  # 旧字段保留但不再使用
-                "code": code,
-                "coordinate": coordinate or [],
+                "action": action_dict.get("command", ""),
+                "meta_action": action_dict,
+                "coordinate": coordinate,
             }
 
         for tool_call in tool_calls:
@@ -390,7 +390,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
             # 每个 tool_call 只生成一条长的 pyautogui 代码，保证与 meta_data 一一对应
             step_code: str = ""
-            coord: List[int] = []
+            coord: Optional[List[Any]] = None
 
             if action == "left_click":
                 if "coordinate" in args:
@@ -500,17 +500,127 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             if not step_code:
                 continue
 
+            meta_action = {
+                "name": action,
+                "input": args,
+                "id": tool_call.get("id", ""),
+                "action_type": tool_call.get("type", "tool_call"),
+                "command": step_code,
+                "coordinate": coord
+            }
+
             pyautogui_code.append(step_code)
-            meta_data.append(make_meta(step_code, coord))
+            meta_data.append(make_meta(meta_action, coord))
 
         return meta_data, pyautogui_code
 
-    def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
+    def evaluate(self, task_instruction: str, obs: Dict, **kwargs) -> Dict[str, Any]:
         """Self-judge function.
 
         Returns a dictionary with 'thought' and 'score'.
         """
-        pass
+        try:
+            eval_prompt = SYSTEM_PROMPT_ORM
+            hint = kwargs.get("hint", "")
+            if hint:
+                eval_prompt += f"\n\n[Hint]: The following are review guidelines. Please focus on checking these points: {hint}"
+
+            eval_messages = self.messages
+
+            if eval_messages and eval_messages[0].get("role") == "system":
+                eval_messages[0]["content"] = [
+                    {"type": "text", "text": eval_prompt}
+                ]
+            else:
+                eval_messages.insert(0, {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": eval_prompt}
+                    ],
+                })
+
+            if self.pending_tool_calls:
+                for i, tool_call in enumerate(self.pending_tool_calls):
+                    result_text = "Success"
+                    try:
+                        arguments = json.loads(tool_call["function"]["arguments"])
+                        action = arguments.get("action")
+                    except Exception:
+                        action = None
+
+                    if action == "code" and self.last_code_result is not None:
+                        result_text = f"Code Execution Result:\n```\n{self.last_code_result}\n```"
+                    elif i == len(self.pending_tool_calls) - 1:
+                        result_text = "Action executed. See the final screenshot below."
+
+                    eval_messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.get("id", "tool_call_0"),
+                            "content": result_text,
+                        }
+                    )
+
+            content_parts = []
+            if obs and obs.get("screenshot"):
+                processed_image = process_image(obs["screenshot"])
+                content_parts.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{processed_image}"},
+                    }
+                )
+
+            eval_query = (
+                f"Based on the conversation history above and this final screenshot, did the agent successfully complete the instruction: '{task_instruction}'? Please provide the JSON evaluation."
+            )
+            content_parts.append({"type": "text", "text": eval_query})
+
+            eval_messages.append({
+                "role": "user",
+                "content": content_parts,
+            })
+
+            logger.info(f"Starting evaluation for: {task_instruction}")
+
+            response_message = self.call_llm(
+                {
+                    "model": self.model,
+                    "messages": eval_messages,
+                    "max_tokens": self.max_tokens,
+                    "top_p": self.top_p,
+                    "temperature": self.temperature,
+                },
+                self.model,
+            )
+
+            reasoning_content = response_message.get("reasoning_content", "")
+            content = response_message.get("content", "")
+            raw_response_str = (("<think>" + reasoning_content + "</think>\n") if reasoning_content else "") + content
+            raw_response_str = raw_response_str.strip()
+            logger.info(f"Evaluation Raw Output: {raw_response_str}")
+
+            if "```json" in raw_response_str:
+                json_str = raw_response_str.split("```json", 1)[1].split("```", 1)[0].strip()
+            elif "```" in raw_response_str:
+                json_str = raw_response_str.split("```", 1)[1].split("```", 1)[0].strip()
+            else:
+                json_str = raw_response_str.strip()
+
+            result = json.loads(json_str)
+
+            if "thought" not in result:
+                result["thought"] = raw_response_str
+            if "score" not in result:
+                result["score"] = 0.0
+
+            return result
+        except Exception as e:
+            logger.error(f"Evaluation failed: {e}")
+            return {
+                "thought": f"Evaluation failed due to error: {str(e)}",
+                "score": 0.0
+            }
 
     @backoff.on_exception(
         backoff.constant,
@@ -548,7 +658,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
                     top_p=self.top_p,
-                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA) if self.enable_code_tool else QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
+                    tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA) if self.enable_code_tool else json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE),
                     tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}
@@ -619,5 +729,3 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         print("\n" + "=" * 122 + "\n")
     
-    def evaluate(self):
-        pass

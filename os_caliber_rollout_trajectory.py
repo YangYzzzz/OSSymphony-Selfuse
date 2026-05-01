@@ -250,7 +250,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 max_tokens=args.max_tokens,
                 top_p=args.top_p,
                 temperature=args.temperature,
-                history_n=args.max_trajectory_length,
+                max_trajectory_length=args.max_trajectory_length,
                 action_space=args.action_space,
                 coordinate_type="relative",
                 enable_code_tool=args.enable_code_tool
@@ -719,18 +719,25 @@ def online_test(args: argparse.Namespace):
     # )
 
 # 特别针对 os-caliber 输出格式适配, 检查 domain 文件夹下是否存在 meta_* 文件
-def get_unfinished_tasks(test_file_list: Dict, result_dir):
+def get_unfinished_tasks(test_file_list: Dict, result_dir, collect_qwen_sft: bool):
     unfinished_test_file_list = {}
     for domain, task_list in test_file_list.items():
         logger.info(f"[Origin {domain} task nums]: {len(task_list)}")
         if os.path.exists(os.path.join(result_dir, domain)):
             file_lists = os.listdir(os.path.join(result_dir, domain))
             for task_id in task_list:
-                if f"meta_{task_id}.json" not in file_lists:
-                    if domain not in unfinished_test_file_list.keys():
+                task_dir = os.path.join(result_dir, domain, task_id)
+                # 更改逻辑, 修改为同时有 sft.json + meta.json, 则认为该任务采集成功, 反之采集失败, 重新采集
+                if f"meta_{task_id}.json" not in file_lists or (collect_qwen_sft and "default_qwen_sft.jsonl" not in os.listdir(task_dir)):
+                    if domain not in unfinished_test_file_list.keys(): 
                         unfinished_test_file_list[domain] = []
                     unfinished_test_file_list[domain].append(task_id)
-                    shutil.rmtree(path=os.path.join(result_dir, domain, task_id), ignore_errors=True)
+                    
+                    shutil.rmtree(path=task_dir, ignore_errors=True)
+                    meta_json_path = os.path.join(result_dir, domain, f"meta_{task_id}.json")
+                    if os.path.exists(meta_json_path):
+                        os.remove(path=meta_json_path)
+
             logger.info(f"[Unfinished {domain} task nums]: {len(unfinished_test_file_list[domain]) if domain in unfinished_test_file_list.keys() else 0}")
         else:
             unfinished_test_file_list[domain] = task_list
@@ -774,7 +781,7 @@ if __name__ == "__main__":
             with open(args.rollout_test_all_meta_path, "r", encoding="utf-8") as f:
                 test_file_list = json.load(f)
             # get unfinished
-            test_file_list = get_unfinished_tasks(test_file_list, args.result_dir)
+            test_file_list = get_unfinished_tasks(test_file_list, args.result_dir, args.collect_qwen_sft)
             offline_test(args, test_file_list)
         elif args.rollout_mode == "online":
             online_test(args)

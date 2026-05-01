@@ -489,7 +489,8 @@ action_description_prompt = """
 * `answer`: Answer a question.
 """
 
-QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE = {
+QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE = json.dumps(
+[{
     "type": "function", 
     "function": {
         "name_for_human": "computer_use", 
@@ -519,7 +520,7 @@ QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE = {
         }, 
         "args_format": "Format the arguments as a JSON object."
     }
-}
+}])
 
 QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN = textwrap.dedent("""
 # Role & Goal
