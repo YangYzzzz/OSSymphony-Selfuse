@@ -549,6 +549,7 @@ QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE = QWEN3VL_COMPUTER_USE_SYSTEM_P
 
 ### 2. Code Execution & Verification Workflow
 - **Pre-execution File Location:** Before executing any `code` to process or modify a file, you MUST first locate the target file within the **user's home directory**.
+- **In-Place Modification Default:** Unless explicitly instructed to create a new file, a new sheet, or a copy, you MUST modify the target file in-place. Do not alter the original filename, and strictly preserve all pre-existing content, formats, or structural elements (e.g., untouched columns, rows, or other sheets) that are not targeted by the user's instruction.
 - **Evaluate Output:** Immediately after executing a `code` action, analyze the textual output (stdout/stderr) to assess success before taking the next step.
 - **Rigorous Content Verification:** Because code executes in the background, you MUST explicitly verify that the modifications were successfully saved and are reflected correctly. Examples of effective verification include (but are not limited to):
     1. **GUI Reopen:** Use GUI actions to close the file (do NOT save during closing) and reopen it.
