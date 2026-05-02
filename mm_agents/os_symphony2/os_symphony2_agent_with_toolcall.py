@@ -458,11 +458,24 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     step_code = f"pyautogui.press({keys_str})"
 
             elif action == "scroll":
-                pixels = args.get("pixels", 0)
-                step_code = f"pyautogui.scroll({pixels})"
+                # Modify: Fix Coordinate
+                pixels = args.get("pixels", 5) # 默认 5
+                step_code = ""
+                if "coordinate" in args:
+                    x, y = args["coordinate"]
+                    adj_x, adj_y = adjust_coordinates(x, y)
+                    coord = [adj_x, adj_y]
+                    step_code += f"pyautogui.moveTo({adj_x}, {adj_y});"
+                step_code += f"pyautogui.scroll({pixels})"
 
             elif action == "hscroll":
-                pixels = args.get("pixels", 0)
+                pixels = args.get("pixels", 5) # 默认 5
+                step_code = ""
+                if "coordinate" in args:
+                    x, y = args["coordinate"]
+                    adj_x, adj_y = adjust_coordinates(x, y)
+                    coord = [adj_x, adj_y]
+                    step_code += f"pyautogui.moveTo({adj_x}, {adj_y});"
                 step_code = f"pyautogui.hscroll({pixels})"
 
             elif action == "wait":
@@ -583,7 +596,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
             logger.info(f"Starting evaluation for: {task_instruction}")
 
-            response_message = self.call_llm(
+            response_message = self.call_llm_for_evaluate(
                 {
                     "model": self.model,
                     "messages": eval_messages,
@@ -621,6 +634,55 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 "thought": f"Evaluation failed due to error: {str(e)}",
                 "score": 0.0
             }
+
+    @backoff.on_exception(
+        backoff.constant,
+        (
+            SSLError,
+            openai.RateLimitError,
+            openai.BadRequestError,
+            openai.InternalServerError,
+        ),
+        interval=30,
+        max_tries=5,
+    )
+    def call_llm_for_evaluate(self, payload, model) -> dict:
+        messages = payload["messages"]
+        custom_headers = {
+            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
+        }
+
+        if "kubebrain" in self.base_url:
+            logger.info(f"H Cluster Local VLLM: {self.base_url}")
+            client = OpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                default_headers=custom_headers,
+            )
+        else:
+            logger.info(f"H Service VLLM / Boyue: {self.base_url}")
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+
+        for _ in range(MAX_RETRY_TIMES):
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_tokens=payload.get("max_tokens", self.max_tokens),
+                    temperature=payload.get("temperature", self.temperature),
+                    top_p=payload.get("top_p", self.top_p),
+                    extra_body={
+                        "chat_template_kwargs": {"enable_thinking": self.use_thinking}
+                    }
+                )
+
+                message_dict = response.choices[0].message.model_dump(exclude_none=True)
+                return message_dict
+            except Exception as e:
+                logger.error(f"Error calling Qwen model for evaluate: {e}")
+                time.sleep(5)
+                continue
+        return {}
 
     @backoff.on_exception(
         backoff.constant,

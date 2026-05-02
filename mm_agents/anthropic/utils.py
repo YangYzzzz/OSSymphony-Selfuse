@@ -265,6 +265,7 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
                 pixels = abs(scroll_amount)
             q_args["pixels"] = pixels
 
+            # SFT 数据有位置信息
             if coordinate is not None:
                 q_args["coordinate"] = coordinate
 

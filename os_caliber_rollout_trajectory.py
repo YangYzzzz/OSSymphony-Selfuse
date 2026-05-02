@@ -724,17 +724,28 @@ def get_unfinished_tasks(test_file_list: Dict, result_dir, collect_qwen_sft: boo
     for domain, task_list in test_file_list.items():
         logger.info(f"[Origin {domain} task nums]: {len(task_list)}")
         if os.path.exists(os.path.join(result_dir, domain)):
-            file_lists = os.listdir(os.path.join(result_dir, domain))
             for task_id in task_list:
                 task_dir = os.path.join(result_dir, domain, task_id)
                 # 更改逻辑, 修改为同时有 sft.json + meta.json, 则认为该任务采集成功, 反之采集失败, 重新采集
-                if f"meta_{task_id}.json" not in file_lists or (collect_qwen_sft and "default_qwen_sft.jsonl" not in os.listdir(task_dir)):
+                meta_json_path = os.path.join(result_dir, domain, f"meta_{task_id}.json")
+                meta_not_exists_flag = not os.path.exists(meta_json_path)
+                qwen_sft_not_exists_flag = collect_qwen_sft and "default_qwen_sft.jsonl" not in os.listdir(task_dir)
+
+                meta_error_flag = False
+                error_key_string = ["Evaluation failed due to error"] # To be added
+                if os.path.exists(os.path.join(result_dir, domain, f"meta_{task_id}.json")):
+                    # 当 meta 存在的时候, 检查meta文件是否存在报错
+                    meta = json.load(open(meta_json_path, "r"))
+                    # 检查 "model_judge" 字段
+                    if any(e in meta["model_judge"]["rationale"] for e in error_key_string):
+                        meta_error_flag = True
+
+                if meta_not_exists_flag or qwen_sft_not_exists_flag or meta_error_flag:
                     if domain not in unfinished_test_file_list.keys(): 
                         unfinished_test_file_list[domain] = []
                     unfinished_test_file_list[domain].append(task_id)
                     
                     shutil.rmtree(path=task_dir, ignore_errors=True)
-                    meta_json_path = os.path.join(result_dir, domain, f"meta_{task_id}.json")
                     if os.path.exists(meta_json_path):
                         os.remove(path=meta_json_path)
 

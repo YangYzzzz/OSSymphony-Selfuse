@@ -207,7 +207,7 @@ def build_qwen_messages_from_gemini(
                     y = args.get("y", 0)
                     direction = args.get("direction") or "down"
                     magnitude = args.get("magnitude", 800) // BROWSER_TO_DESKTOP_SCROLL_RATIO
-                    q_actions.append({"action": "mouse_move", "coordinate": [x, y]})
+                    # q_actions.append({"action": "mouse_move", "coordinate": [x, y]})
                     if direction in ("left", "right"):
                         q_actions.append({"action": "hscroll", "pixels": magnitude, "direction": direction, "coordinate": [x, y]})
                     else:
