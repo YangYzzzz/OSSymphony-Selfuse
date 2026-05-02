@@ -25,12 +25,8 @@ from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
 
 logger = logging.getLogger("desktopenv.agent")
 
-<<<<<<< HEAD
-MAX_RETRY_TIMES = 50
-=======
 MAX_RETRY_TIMES = 5
 EMPTY_TOOL_CALL_RETRY_TIMES = 3
->>>>>>> jkm
 
 
 def encode_image(image_content):
