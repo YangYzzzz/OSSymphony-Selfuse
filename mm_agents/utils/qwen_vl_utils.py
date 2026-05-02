@@ -538,12 +538,13 @@ QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE = QWEN3VL_COMPUTER_USE_SYSTEM_P
 ### 1. Action Selection Strategy
 **Prioritize `code` actions for:**
 - **Data Processing:** Parsing or manipulating structured data (e.g., CSV, Excel, JSON).
+- **Precision Tasks**: Executing tasks that would otherwise require high-precision GUI interactions (which are prone to OCR and spatial reasoning failures).
 - **Batch Operations:** Bulk file management (rename, copy, move, delete).
 - **Text Manipulation:** Complex search/replace across files or within large documents.
 
 **Reserve GUI actions for:**
 - **System Navigation:** Launching, focusing, or switching between applications.
-- **Visual Interactions:** Precise clicking, dragging, or interacting with UI elements based on visual layout.
+- **Basic UI Interaction:** Interacting with large, prominent application controls (e.g., standard menus, distinct buttons) where pixel-perfect precision is NOT required.
 - **Non-Programmable Tasks:** Navigating browsers or desktop applications where no CLI/API is readily available.
 
 ### 2. Code Execution & Verification Workflow
