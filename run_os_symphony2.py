@@ -9,6 +9,7 @@ import sys
 import signal
 import time
 from multiprocessing import Process, Manager, current_process, Queue
+from urllib.request import CacheFTPHandler
 from mm_agents.os_symphony2.os_symphony2_agent import OSSymphony2Agent
 from mm_agents.os_symphony.agents.os_aci import OSACI
 import shutil
@@ -144,6 +145,7 @@ def run_env_tasks(
                 provider_name=args.provider_name,
                 region=region,
                 snapshot_name=snapshot_name,
+                cache_dir=f"cache/{args.exp_name}",
                 screen_size=(args.screen_width, args.screen_height),
                 headless=args.headless,
                 os_type="Ubuntu",

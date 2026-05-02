@@ -6,7 +6,7 @@ import time
 import copy
 from io import BytesIO
 from typing import Dict, List, Tuple, Any, Optional
-
+import httpx
 import backoff
 import openai
 from openai import OpenAI
@@ -16,12 +16,137 @@ from mm_agents.utils.qwen_vl_utils import smart_resize
 from mm_agents.uitars15_v2 import IMAGE_FACTOR
 from mm_agents.base import ComputerUseBaseAgent
 from mm_agents.utils.qwen_vl_utils import (
-    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE,
     smart_resize,
-    QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
-    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
 )
+import json
+import textwrap
 
+
+SYSTEM_PROMPT = """
+# Role & Goal
+You are a powerful OS Agent capable of both GUI interaction and direct system-level programming and are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
+Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
+
+# Environment & Screen
+- The user's home directory is "/home/user".
+- The user's password is "password".
+- The screen's resolution is represented on a 1000x1000 relative coordinate grid.
+
+# Additional Rules & Action Guidelines
+
+### 1. Action Selection Strategy
+**Prioritize `code` actions for:**
+- **Data Processing:** Parsing or manipulating structured data (e.g., CSV, Excel, JSON).
+- **Batch Operations:** Bulk file management (rename, copy, move, delete).
+- **Text Manipulation:** Complex search/replace across files or within large documents.
+
+**Reserve GUI actions for:**
+- **System Navigation:** Launching, focusing, or switching between applications.
+- **Visual Interactions:** Precise clicking, dragging, or interacting with UI elements based on visual layout.
+- **Non-Programmable Tasks:** Navigating browsers or desktop applications where no CLI/API is readily available.
+
+### 2. Execution & Verification Workflow
+- **Evaluate Output:** Immediately after executing a `code` action, analyze the textual output (stdout/stderr) to assess success before taking the next step.
+- **Visual Verification:** Because code executes in the background, you MUST use GUI actions to open and inspect the modified files or final results to ensure the outcome is visible.
+- **GUI Fallback:** If code-based approaches fail or encounter persistent errors, gracefully pivot to using GUI actions to complete the task.
+
+### 3. Environment & Dependencies
+- **Pre-installed Packages:** You have direct access to `ffmpeg`, `ffmpeg-python`, `av`, `python-pptx`, `python-docx`, `openpyxl`, `pillow`, `opencv-python`, `pydub`, `PyMuPDF`, `pdfplumber`.
+- **Dynamic Installation:** You are authorized to install any missing dependencies as needed to accomplish the task.
+"""
+
+TOOL_DEFINE_PROMPT = {
+    "type": "function", 
+    "function": {
+        "name_for_human": "custom_computer_use", 
+        "name": "custom_computer_use", 
+        "description": (                                            
+                "Control a desktop GUI and execute system-level code."
+                "Use it to move the mouse, click, type, scroll, wait, terminate tasks,"
+                "and run raw Python or Bash code on the operating system."
+            ),
+        "parameters": {
+            "properties": {
+                "action": {
+                    "description": 
+                        textwrap.dedent("""
+                            The type of operation to perform: 
+                            * `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.
+                            * `type`: Type a string of text on the keyboard.
+                            * `mouse_move`: Move the cursor to a specified (x, y) pixel coordinate on the screen.
+                            * `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                            * `left_click_drag`: Click and drag the cursor to a specified (x, y) pixel coordinate on the screen.
+                            * `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
+                            * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
+                            * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                            * `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).
+                            * `scroll`: Performs a scroll of the mouse scroll wheel.
+                            * `hscroll`: Performs a horizontal scroll (mapped to regular scroll).
+                            * `wait`: Wait specified seconds for the change to happen.
+                            * `terminate`: Terminate the current task and report its completion status.
+                            * `code`: Execute raw Python or Bash scripts to perform tasks directly in the operating system.
+                        """),
+                    "enum": [
+                            "key", "type", "mouse_move", "left_click", "left_click_drag",
+                            "right_click", "middle_click", "double_click", "triple_click", "scroll", "hscroll",
+                            "wait", "terminate", "code"
+                        ],
+                    "type": "string"
+                },
+                "keys": {"description": "Required only by `action=key`.", "type": "array"}, 
+                "text": {"description": "Required only by `action=type`.", "type": "string"}, 
+                "coordinate": {"description": "The x,y coordinates for mouse actions.", "type": "array"}, 
+                "pixels": {"description": "The amount of scrolling.", "type": "number"}, 
+                "time": {"description": "The seconds to wait.", "type": "number"}, 
+                "status": {
+                    "description": "The status of the task.", 
+                    "type": "string", 
+                    "enum": ["success", "failure"]
+                },
+                "execute_code": {
+                    "description": "The raw code string to execute. Required only when `action=code`.",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "The programming language of the code. Required only when `action=code`.",
+                    "type": "string",
+                    "enum": ["python", "bash"]
+                }
+            }, 
+            "required": ["action"], 
+            "type": "object"
+        }, 
+        "args_format": "Format the arguments as a JSON object."
+    }
+}
+
+OUTPUT_FORMAT_PROMPT = """
+# Tools
+
+You may call one or more functions to assist with the user query.
+
+You are provided with function signatures within <tools></tools> XML tags:
+<tools>
+""" + json.dumps(TOOL_DEFINE_PROMPT) + """
+</tools>
+
+For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
+<tool_call>
+{"name": <function-name>, "arguments": <args-json-object>}
+</tool_call>
+
+# Response format
+
+Response format for every step:
+1) Action: a short imperative describing what to do in the UI.
+2) A single <tool_call>...</tool_call> block containing only the JSON: {"name": <function-name>, "arguments": <args-json-object>}.
+
+Rules:
+- Output exactly in the order: Action, <tool_call>.
+- Be brief: one sentence for Action.
+- Do not output anything else outside those parts.
+- If finishing, use action=terminate in the tool call.
+"""
 
 logger = logging.getLogger("desktopenv.agent")
 
@@ -101,7 +226,7 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         # 统一维护对话历史（system + user + assistant）
         self.messages = []
 
-        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE
+        self.system_prompt = SYSTEM_PROMPT + '\n' + OUTPUT_FORMAT_PROMPT
         self.use_thinking = use_thinking
 
 
@@ -511,12 +636,13 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
             "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
         }
 
+        custom_timeout = httpx.Timeout(600.0, read=600.0, connect=60.0)
         if "kubebrain" in  self.base_url:
             logger.info(f"H Cluster Local VLLM: {self.base_url}")
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers=custom_headers)
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, default_headers=custom_headers, timeout=custom_timeout)
         else:
             logger.info(f"H Service VLLM / Boyue: {self.base_url}")
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+            client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=custom_timeout)
         
         for _ in range(MAX_RETRY_TIMES):
             # logger.info("Generating content with Qwen model: %s", model)

@@ -5,7 +5,7 @@ import textwrap
 import time
 from io import BytesIO
 from typing import Dict, List, Tuple, Any, Optional
-
+import httpx
 import backoff
 import openai
 from openai import OpenAI
@@ -25,7 +25,12 @@ from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
 
 logger = logging.getLogger("desktopenv.agent")
 
+<<<<<<< HEAD
 MAX_RETRY_TIMES = 50
+=======
+MAX_RETRY_TIMES = 5
+EMPTY_TOOL_CALL_RETRY_TIMES = 3
+>>>>>>> jkm
 
 
 def encode_image(image_content):
@@ -135,7 +140,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     result_text = f"Code Execution Result:\n```\n{self.last_code_result}\n```"
                     self.last_code_result = None
                 elif name == "":
-                    result_text = "The output on previous step is NOT a valid JSON object"
+                    result_text = "Fail to parse tool! The output on previous step is NOT a valid JSON object"
                 else:
                     result_text = "Success"
                 self.messages.append(
@@ -182,7 +187,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self._cleanup_old_screenshots()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
-        response_message = self.call_llm(
+        # 如果解析不出来工具就重试
+        response_message = self._call_llm_with_tool_call_retry(
             {
                 "model": self.model,
                 "messages": self.messages,
@@ -684,6 +690,29 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 continue
         return {}
 
+    def _call_llm_with_tool_call_retry(self, payload: Dict[str, Any], model: str) -> Dict[str, Any]:                                             
+        response_message = {}                 
+                                                                                                                                                
+        for attempt in range(EMPTY_TOOL_CALL_RETRY_TIMES):                                                                                       
+            response_message = self.call_llm(payload, model)                                                                                     
+            tool_calls = response_message.get("tool_calls") or []                                                                                
+                                                                                                                                                
+            if tool_calls:                                                                                                                       
+                if attempt > 0:                                                                                                                  
+                    logger.info(       
+                        f"Received non-empty tool_calls after retry {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"                                 
+                    )                  
+                return response_message                                                                                                          
+                                        
+            logger.warning(                                                                                                                      
+                f"LLM response missing tool_calls on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}: {response_message}"
+            )                                                                                                                                    
+                                            
+            if attempt < EMPTY_TOOL_CALL_RETRY_TIMES - 1:
+                time.sleep(1)                                                                                                                    
+                                        
+        return response_message                     
+
     @backoff.on_exception(
         backoff.constant,
         (
@@ -700,6 +729,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         custom_headers = {
             "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
         }
+        custom_timeout = httpx.Timeout(600.0, read=600.0, connect=60.0)
 
         if "kubebrain" in self.base_url:
             logger.info(f"H Cluster Local VLLM: {self.base_url}")
@@ -707,6 +737,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 base_url=self.base_url,
                 api_key=self.api_key,
                 default_headers=custom_headers,
+                timeout=custom_timeout,
             )
         else:
             logger.info(f"H Service VLLM / Boyue: {self.base_url}")
@@ -790,4 +821,3 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                         print(f"  ❓ ({item_type}) : {item}")
 
         print("\n" + "=" * 122 + "\n")
-    
