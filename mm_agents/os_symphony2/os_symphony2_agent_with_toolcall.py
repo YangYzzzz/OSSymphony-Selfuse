@@ -26,6 +26,7 @@ from mm_agents.base import ComputerUseBaseAgent
 logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
+EMPTY_TOOL_CALL_RETRY_TIMES = 3
 
 
 def encode_image(image_content):
@@ -184,7 +185,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         # self.debug_print_messages()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
-        response_message = self.call_llm(
+        # 如果解析不出来工具就重试
+        response_message = self._call_llm_with_tool_call_retry(
             {
                 "model": self.model,
                 "messages": self.messages,
@@ -224,7 +226,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             print("tool call 为空!!!")
             meta_data = [{
                 "raw_response": f"没有输出 tool call\n {response_message}",
-                "thought": "Completed",
+                "thought": "No available tool calls. End!",
                 "action": "",
                 "code": "DONE",
                 "coordinate": [],
@@ -510,6 +512,29 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         Returns a dictionary with 'thought' and 'score'.
         """
         pass
+
+    def _call_llm_with_tool_call_retry(self, payload: Dict[str, Any], model: str) -> Dict[str, Any]:                                             
+        response_message = {}                 
+                                                                                                                                                
+        for attempt in range(EMPTY_TOOL_CALL_RETRY_TIMES):                                                                                       
+            response_message = self.call_llm(payload, model)                                                                                     
+            tool_calls = response_message.get("tool_calls") or []                                                                                
+                                                                                                                                                
+            if tool_calls:                                                                                                                       
+                if attempt > 0:                                                                                                                  
+                    logger.info(       
+                        f"Received non-empty tool_calls after retry {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"                                 
+                    )                  
+                return response_message                                                                                                          
+                                        
+            logger.warning(                                                                                                                      
+                f"LLM response missing tool_calls on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}: {response_message}"
+            )                                                                                                                                    
+                                            
+            if attempt < EMPTY_TOOL_CALL_RETRY_TIMES - 1:
+                time.sleep(1)                                                                                                                    
+                                        
+        return response_message                     
 
     @backoff.on_exception(
         backoff.constant,
