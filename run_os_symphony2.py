@@ -198,7 +198,7 @@ def run_env_tasks(
                 api_key=args.api_key,
                 max_tokens=args.max_tokens,
                 temperature=args.temperature,
-                history_n=args.history_n,
+                max_trajectory_length=args.max_trajectory_length,
                 keep_first_image=args.keep_first_image,
                 use_thinking=args.use_thinking
             )
@@ -209,7 +209,7 @@ def run_env_tasks(
                 api_key=args.api_key,
                 max_tokens=args.max_tokens,
                 temperature=args.temperature,
-                history_n=args.history_n,
+                history_n=args.max_trajectory_length,
                 keep_first_image=args.keep_first_image,
                 use_thinking=args.use_thinking
             )
@@ -382,7 +382,7 @@ def config() -> argparse.Namespace:
     )
 
     # agent config
-    parser.add_argument("--max_trajectory_length", type=int, default=8)
+    parser.add_argument("--max_trajectory_length", type=int, default=8, help="最大图片数量")
     parser.add_argument("--enable_reflection", action="store_true", default=False)
     parser.add_argument("--enable_rewrite_instruction", action="store_true", default=False)
     parser.add_argument("--use_search_first", action="store_true", default=False)
@@ -419,12 +419,6 @@ def config() -> argparse.Namespace:
         type=int,
         default=None,
         help="max tokens",
-    )
-    parser.add_argument(
-        "--history_n",
-        type=int,
-        default=8,
-        help="最大图片数量",
     )
     parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
