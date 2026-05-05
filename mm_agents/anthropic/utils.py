@@ -1073,8 +1073,8 @@ def log_claude_api_call(
     month_calls_model_jsonl_filename = CALLS_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
     month_stats_model_jsonl_filename = STAT_LOG_DIR / now.strftime("%Y-%m") / model_name / f'{model_name}.jsonl'
 
-    month_calls_model_jsonl_dir.mkdir(exist_ok=True)
-    month_stats_model_jsonl_dir.mkdir(exist_ok=True)
+    month_calls_model_jsonl_dir.mkdir(parents=True, exist_ok=True)
+    month_stats_model_jsonl_dir.mkdir(parents=True, exist_ok=True)
     month_calls_model_jsonl_filename.touch(exist_ok=True)
     month_stats_model_jsonl_filename.touch(exist_ok=True)
 

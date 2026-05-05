@@ -729,7 +729,7 @@ def get_unfinished_tasks(test_file_list: Dict, result_dir, collect_qwen_sft: boo
                 # 更改逻辑, 修改为同时有 sft.json + meta.json, 则认为该任务采集成功, 反之采集失败, 重新采集
                 meta_json_path = os.path.join(result_dir, domain, f"meta_{task_id}.json")
                 meta_not_exists_flag = not os.path.exists(meta_json_path)
-                qwen_sft_not_exists_flag = collect_qwen_sft and "default_qwen_sft.jsonl" not in os.listdir(task_dir)
+                qwen_sft_not_exists_flag = collect_qwen_sft and "default_qwen_sft.jsonl" not in os.listdir(task_dir) if os.path.exists(task_dir) else True
 
                 meta_error_flag = False
                 error_key_string = ["Evaluation failed due to error"] # To be added

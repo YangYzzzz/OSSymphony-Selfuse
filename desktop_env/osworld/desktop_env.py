@@ -394,7 +394,7 @@ class DesktopEnv(gym.Env):
                 break
 
         if not func_name:
-            raise ValueError("No function definition found in dynamic metric code")
+            raise ValueError(f"No function definition found in dynamic metric code: {code}")
 
         # 在独立 namespace 中执行代码，避免污染当前模块的全局命名空间
         namespace: Dict[str, Any] = {}
@@ -436,8 +436,9 @@ class DesktopEnv(gym.Env):
                 else getattr(metrics, self.evaluator["func"])
         else:
             code = [code for code in self.evaluator["code"]] if isinstance(self.evaluator["code"], list) else self.evaluator["code"]
-            self.metric: Metric|List[Metric] = [self._create_tmp_metric_function(c) for c in code] if isinstance(code, list) else self._create_tmp_metric_function(code)
-        
+            if code:
+                self.metric: Metric|List[Metric] = [self._create_tmp_metric_function(c) for c in code] if isinstance(code, list) else self._create_tmp_metric_function(code)
+            
         self.metric_conj: str = self.evaluator.get("conj", "and")  # take conjunction of multiple metrics
         if "result" in self.evaluator and len(self.evaluator["result"]) > 0:
             self.result_getter: Getter = [getattr(getters, "get_{:}".format(res["type"])) for res in
