@@ -14,6 +14,7 @@ from requests.exceptions import SSLError
 
 from mm_agents.utils.qwen_vl_utils import (
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE,
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE_WITHOUT_CODE,
     smart_resize,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
@@ -98,7 +99,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         # 统一维护对话历史（system + user + assistant + tool）
         # 直接沿用 OpenAI/vLLM 的 messages 协议结构
-        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE
+        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE if enable_code_tool else QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE_WITHOUT_CODE
         self.messages: List[Dict[str, Any]] = []
 
         # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
