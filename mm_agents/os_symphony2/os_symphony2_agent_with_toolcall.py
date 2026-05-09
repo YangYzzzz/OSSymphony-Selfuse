@@ -479,7 +479,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     adj_x, adj_y = adjust_coordinates(x, y)
                     coord = [adj_x, adj_y]
                     step_code += f"pyautogui.moveTo({adj_x}, {adj_y});"
-                step_code = f"pyautogui.hscroll({pixels})"
+                step_code += f"pyautogui.hscroll({pixels})"
 
             elif action == "wait":
                 time = args.get("time", 5)
