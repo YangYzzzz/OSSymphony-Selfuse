@@ -74,7 +74,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
         keep_first_image: bool = True,
-        keep_cot: bool = True,
+        keep_all_text: bool = True, # 是否保留全部步数的模型输出（False 退化为 last k）
+        keep_cot: bool = True, # 模型输出是否仅保留action/cot+action
         use_thinking: bool = False,
         enable_code_tool: bool = True
     ):
@@ -93,6 +94,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.add_thought_prefix = add_thought_prefix
         self.coordinate_type = coordinate_type
         self.use_thinking = use_thinking
+        self.keep_all_text = keep_all_text
         assert action_space in ["pyautogui"], "Invalid action space"
         assert observation_type in ["screenshot"], "Invalid observation type"
 
@@ -185,7 +187,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 "content": curr_user_content,
             }
         )
-        self._cleanup_old_screenshots()
+        self._cleanup_old_context()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
         # 如果解析不出来工具就重试
@@ -248,8 +250,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         return meta_data, pyautogui_code
 
-    def _cleanup_old_screenshots(self):
-        """在 self.messages 上清理超出配额的截图。"""
+    def _cleanup_old_context(self):
+        """在 self.messages 上清理超出配额的截图和历史文本。"""
         user_indices_with_img = []
         for idx, msg in enumerate(self.messages):
             if msg.get("role") != "user":
@@ -296,27 +298,45 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             keep_indices.add(idx)
             remaining -= 1
 
-        # 清理不在 keep_indices 里的截图
+        # 清理不在 keep_indices 里的截图/文本
         for idx in user_indices_with_img:
             if idx in keep_indices:
                 continue
             msg = self.messages[idx]
             content = msg.get("content", [])
-            new_content = [
-                part
-                for part in content
-                if not (isinstance(part, dict) and part.get("type") == "image_url")
+            new_content = []
+            screenshot_removed = False
+            text_removed = False
+            for part in content:
+                if not isinstance(part, dict):
+                    new_content.append(part)
+                    continue
+                if part.get("type") == "image_url":
+                    screenshot_removed = True
+                    continue
+                if part.get("type") == "text" and not self.keep_all_text:
+                    text_removed = True
+                    continue
+                new_content.append(part)
+
+            placeholders = []
+            if screenshot_removed:
+                placeholders.append({
+                    "type": "text",
+                    "text": "[Old Screenshot Removed]",
+                })
+            if text_removed:
+                placeholders.append({
+                    "type": "text",
+                    "text": "[Old Text Removed]",
+                })
+
+            msg["content"] = placeholders + new_content if (placeholders or new_content) else [
+                {
+                    "type": "text",
+                    "text": "[Old Context Removed]",
+                }
             ]
-            if not new_content:
-                # 不会有这种情况出现
-                msg["content"] = [
-                    {
-                        "type": "text",
-                        "text": "[Old Screenshot Removed]",
-                    }
-                ]
-            else:
-                msg["content"] = new_content
 
     def parse_response(
         self,
