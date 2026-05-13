@@ -203,12 +203,12 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
                 with open(os.path.join(example_result_dir, img_name), "wb") as _f:
                     _f.write(obs['screenshot'])
 
-            if "coordinate" in response and isinstance(response["coordinate"], list):
-                draw_coordinates(
-                    image_bytes=obs['screenshot'],
-                    coordinates=response["coordinate"],
-                    save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
-                )
+            # if "coordinate" in response and isinstance(response["coordinate"], list):
+            #     draw_coordinates(
+            #         image_bytes=obs['screenshot'],
+            #         coordinates=response["coordinate"],
+            #         save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
+            #     )
             
             # Execute Environment Step
             if action.startswith("BASH") or action.startswith("PYTHON"):        # 如果是执行代码，就在这里提前执行好

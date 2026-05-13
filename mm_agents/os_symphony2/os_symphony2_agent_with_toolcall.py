@@ -1,6 +1,8 @@
 import base64
+import copy
 import json
 import logging
+import re
 import textwrap
 import time
 from io import BytesIO
@@ -27,7 +29,7 @@ from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
 logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
-EMPTY_TOOL_CALL_RETRY_TIMES = 3
+EMPTY_TOOL_CALL_RETRY_TIMES = 10
 
 
 def encode_image(image_content):
@@ -72,6 +74,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         add_thought_prefix: bool = False,
         coordinate_type: str = "relative",
         keep_first_image: bool = True,
+        keep_all_text: bool = True, # 是否保留全部步数的模型输出（False 退化为 last k）
+        keep_cot: bool = True, # 模型输出是否仅保留action/cot+action
         use_thinking: bool = False,
         enable_code_tool: bool = True
     ):
@@ -86,9 +90,11 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.observation_type = observation_type
         self.max_trajectory_length = max_trajectory_length
         self.keep_first_image = keep_first_image
+        self.keep_cot = keep_cot
         self.add_thought_prefix = add_thought_prefix
         self.coordinate_type = coordinate_type
         self.use_thinking = use_thinking
+        self.keep_all_text = keep_all_text
         assert action_space in ["pyautogui"], "Invalid action space"
         assert observation_type in ["screenshot"], "Invalid observation type"
 
@@ -181,7 +187,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 "content": curr_user_content,
             }
         )
-        self._cleanup_old_screenshots()
+        self._cleanup_old_context()
 
         # 让 call_llm 返回原始 message 对象（包含 message.tool_calls 和结构化 content）
         # 如果解析不出来工具就重试
@@ -197,7 +203,13 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         )
 
         logger.info(f"Qwen3VL Output: {response_message}")
-        self.messages.append(response_message)
+        if self.keep_cot:
+            self.messages.append(response_message)
+        else:
+            tmp_response = copy.deepcopy(response_message)
+            tmp_response.pop("content", None)
+            tmp_response.pop("reasoning_content", None)
+            self.messages.append(tmp_response)
 
         # 记录本轮产生的 tool_calls，供下一轮填充 tool 结果
         tool_calls = response_message.get("tool_calls") or []
@@ -219,10 +231,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         )
 
         if not pyautogui_code:
-            # print('解析失败!!!!!!!')
-            # print("tool_calls:", tool_calls)
-            # print("原始内容:", response_message)
-            print("tool call 为空!!!")
             fail_action = {
                 "name": "done",
                 "command": "DONE",
@@ -242,8 +250,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         return meta_data, pyautogui_code
 
-    def _cleanup_old_screenshots(self):
-        """在 self.messages 上清理超出配额的截图。"""
+    def _cleanup_old_context(self):
+        """在 self.messages 上清理超出配额的截图和历史文本。"""
         user_indices_with_img = []
         for idx, msg in enumerate(self.messages):
             if msg.get("role") != "user":
@@ -290,27 +298,45 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             keep_indices.add(idx)
             remaining -= 1
 
-        # 清理不在 keep_indices 里的截图
+        # 清理不在 keep_indices 里的截图/文本
         for idx in user_indices_with_img:
             if idx in keep_indices:
                 continue
             msg = self.messages[idx]
             content = msg.get("content", [])
-            new_content = [
-                part
-                for part in content
-                if not (isinstance(part, dict) and part.get("type") == "image_url")
+            new_content = []
+            screenshot_removed = False
+            text_removed = False
+            for part in content:
+                if not isinstance(part, dict):
+                    new_content.append(part)
+                    continue
+                if part.get("type") == "image_url":
+                    screenshot_removed = True
+                    continue
+                if part.get("type") == "text" and not self.keep_all_text:
+                    text_removed = True
+                    continue
+                new_content.append(part)
+
+            placeholders = []
+            if screenshot_removed:
+                placeholders.append({
+                    "type": "text",
+                    "text": "[Old Screenshot Removed]",
+                })
+            if text_removed:
+                placeholders.append({
+                    "type": "text",
+                    "text": "[Old Text Removed]",
+                })
+
+            msg["content"] = placeholders + new_content if (placeholders or new_content) else [
+                {
+                    "type": "text",
+                    "text": "[Old Context Removed]",
+                }
             ]
-            if not new_content:
-                # 不会有这种情况出现
-                msg["content"] = [
-                    {
-                        "type": "text",
-                        "text": "[Old Screenshot Removed]",
-                    }
-                ]
-            else:
-                msg["content"] = new_content
 
     def parse_response(
         self,
@@ -395,7 +421,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             step_code: str = ""
             coord: Optional[List[Any]] = None
 
-            if action == "left_click":
+            if action in ["left_click", "click"]:
                 if "coordinate" in args:
                     x, y = args["coordinate"]
                     adj_x, adj_y = adjust_coordinates(x, y)
@@ -687,28 +713,154 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 continue
         return {}
 
-    def _call_llm_with_tool_call_retry(self, payload: Dict[str, Any], model: str) -> Dict[str, Any]:                                             
-        response_message = {}                 
-                                                                                                                                                
-        for attempt in range(EMPTY_TOOL_CALL_RETRY_TIMES):                                                                                       
-            response_message = self.call_llm(payload, model)                                                                                     
-            tool_calls = response_message.get("tool_calls") or []                                                                                
-                                                                                                                                                
-            if tool_calls:                                                                                                                       
-                if attempt > 0:                                                                                                                  
-                    logger.info(       
-                        f"Received non-empty tool_calls after retry {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"                                 
-                    )                  
-                return response_message                                                                                                          
-                                        
-            logger.warning(                                                                                                                      
-                f"LLM response missing tool_calls on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}: {response_message}"
-            )                                                                                                                                    
-                                            
+    def _call_llm_with_tool_call_retry(self, payload: Dict[str, Any], model: str) -> Dict[str, Any]:
+        response_message = {}
+        supported_actions = {
+            "left_click",
+            "click",
+            "right_click",
+            "middle_click",
+            "double_click",
+            "triple_click",
+            "type",
+            "key",
+            "scroll",
+            "hscroll",
+            "wait",
+            "terminate",
+            "mouse_move",
+            "left_click_drag",
+            "code",
+        }
+
+        def parse_tool_calls_from_content(content: str) -> tuple[list, str]:
+            """
+            Fallback: 从 content 文本里用正则提取 <tool_call>...</tool_call>
+            返回标准 OpenAI/vLLM 风格的 tool_calls 列表和清理后的 content。
+            """
+            tool_calls = []
+            pattern = r'<tool_call>\s*(.*?)\s*</tool_call>'
+            matches = re.findall(pattern, content, re.DOTALL)
+
+            for idx, match in enumerate(matches):
+                try:
+                    parsed = json.loads(match)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to decode fallback tool_call block: {e}; raw={match}")
+                    continue
+
+                if isinstance(parsed, dict) and isinstance(parsed.get("function"), dict):
+                    function_block = parsed["function"]
+                    function_name = function_block.get("name")
+                    function_arguments = function_block.get("arguments")
+
+                    if isinstance(function_arguments, dict):
+                        function_arguments = json.dumps(function_arguments, ensure_ascii=False)
+
+                    if function_name and isinstance(function_arguments, str):
+                        tool_calls.append(
+                            {
+                                "id": parsed.get("id", f"fallback-tool-call-{idx}"),
+                                "type": parsed.get("type", "function"),
+                                "function": {
+                                    "name": function_name,
+                                    "arguments": function_arguments,
+                                },
+                            }
+                        )
+                    else:
+                        logger.warning(f"Invalid fallback tool_call function block: {parsed}")
+                    continue
+
+                function_name = parsed.get("name") if isinstance(parsed, dict) else None
+                function_arguments = parsed.get("arguments") if isinstance(parsed, dict) else None
+                if isinstance(function_arguments, dict):
+                    function_arguments = json.dumps(function_arguments, ensure_ascii=False)
+
+                if function_name and isinstance(function_arguments, str):
+                    tool_calls.append(
+                        {
+                            "id": f"fallback-tool-call-{idx}",
+                            "type": "function",
+                            "function": {
+                                "name": function_name,
+                                "arguments": function_arguments,
+                            },
+                        }
+                    )
+                else:
+                    logger.warning(f"Unsupported fallback tool_call format: {parsed}")
+
+            clean_content = re.sub(pattern, '', content, flags=re.DOTALL)
+            clean_content = re.sub(r'\n{3,}', '\n\n', clean_content).strip()
+
+            return tool_calls, clean_content
+
+        def extract_supported_tool_calls(tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            valid_tool_calls: List[Dict[str, Any]] = []
+            for tool_call in tool_calls:
+                try:
+                    args = json.loads(tool_call.get("function", {}).get("arguments", ""))
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to parse tool_call arguments during retry precheck: {e}; tool_call={tool_call}"
+                    )
+                    continue
+
+                action = args.get("action")
+                if action in supported_actions:
+                    valid_tool_calls.append(tool_call)
+                else:
+                    logger.warning(
+                        f"Unsupported tool action during retry precheck: action={action}, tool_call={tool_call}"
+                    )
+            return valid_tool_calls
+
+        for attempt in range(EMPTY_TOOL_CALL_RETRY_TIMES):
+            response_message = self.call_llm(payload, model)
+            tool_calls = response_message.get("tool_calls") or []
+            valid_tool_calls = extract_supported_tool_calls(tool_calls)
+
+            if valid_tool_calls:
+                if attempt > 0:
+                    logger.info(
+                        f"Received supported tool_calls after retry {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"
+                    )
+                if len(valid_tool_calls) != len(tool_calls):
+                    response_message = {
+                        **response_message,
+                        "tool_calls": valid_tool_calls,
+                    }
+                return response_message
+
+            # tool_calls 为空，或 action 不支持，先尝试 fallback 从 content 里解析, 注: 这一步理论上没用！！！！
+            content = response_message.get("content") or ""
+            if content:
+                fallback_tool_calls, clean_content = parse_tool_calls_from_content(content)
+                if fallback_tool_calls:
+                    valid_fallback_tool_calls = extract_supported_tool_calls(fallback_tool_calls)
+                    if valid_fallback_tool_calls:
+                        logger.info(
+                            f"Fallback parser recovered {len(valid_fallback_tool_calls)} supported tool_call(s) from content on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"
+                        )
+                        response_message = {
+                            **response_message,
+                            "content": clean_content,
+                            "tool_calls": valid_fallback_tool_calls,
+                        }
+                        return response_message
+                    logger.info(
+                        f"Fallback parser recovered tool_call(s), but none were supported on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"
+                    )
+
+            logger.warning(
+                f"LLM response missing supported tool_calls on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}: {response_message}"
+            )
+
             if attempt < EMPTY_TOOL_CALL_RETRY_TIMES - 1:
-                time.sleep(1)                                                                                                                    
-                                        
-        return response_message                     
+                time.sleep(1)
+
+        return response_message
 
     @backoff.on_exception(
         backoff.constant,
@@ -751,7 +903,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA) if self.enable_code_tool else json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE),
                     tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
                     extra_body={
-                        "chat_template_kwargs": {"enable_thinking": self.use_thinking}
+                        "chat_template_kwargs": {"enable_thinking": self.use_thinking},
+                        # "repetition_penalty": 1.2, # 给予适当的重复惩罚
                     }
                 )
 

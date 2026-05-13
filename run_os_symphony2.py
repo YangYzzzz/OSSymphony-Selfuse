@@ -4,16 +4,15 @@ import datetime
 import json
 import logging
 import os
+import shutil
+import signal
 import subprocess
 import sys
-import signal
 import time
-from multiprocessing import Process, Manager, current_process, Queue
-from urllib.request import CacheFTPHandler
-from mm_agents.os_symphony2.os_symphony2_agent import OSSymphony2Agent
-from mm_agents.os_symphony.agents.os_aci import OSACI
-import shutil
+from multiprocessing import Manager, Process, Queue, current_process
+
 import lib_run_single
+from mm_agents.os_symphony2.os_symphony2_agent import OSSymphony2Agent
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
 from desktop_env.macos.desktop_env import DesktopEnv as MacOSArenaDesktopEnv
@@ -200,6 +199,8 @@ def run_env_tasks(
                 temperature=args.temperature,
                 max_trajectory_length=args.max_trajectory_length,
                 keep_first_image=args.keep_first_image,
+                keep_cot=not args.remove_cot,
+                keep_all_text=args.keep_all_text,
                 use_thinking=args.use_thinking
             )
         else:
@@ -357,12 +358,16 @@ def config() -> argparse.Namespace:
         default=1,
         help="Number of environments to run in parallel",
     )
+    parser.add_argument(
+        "--sleep_after_execution",
+        type=int,
+        default=3,
+        help="Seconds after each step execution",
+    )
     parser.add_argument("--screen_width", type=int, default=1920, help="Main environment's width")
     parser.add_argument("--screen_height", type=int, default=1080, help="Main environment's height")
-    parser.add_argument("--sleep_after_execution", type=float, default=1.0)
     parser.add_argument("--max_steps", type=int, default=15)
 
-    # 选定Benchmark
     parser.add_argument("--benchmark", type=str, default="osworld", help="osworld / waa / macos")
 
     parser.add_argument("--domain", type=str, default="all")
@@ -373,6 +378,12 @@ def config() -> argparse.Namespace:
         "--test_config_base_dir", type=str, default="evaluation_examples"
     )
     parser.add_argument("--result_dir", type=str, default="./results")
+    parser.add_argument(
+        "--avg",
+        type=int,
+        default=1,
+        help="Number of repeated evaluation runs for aggregate statistics",
+    )
 
     parser.add_argument(
         "--region", type=str, default="us-east-1", help="AWS region for the VM"
@@ -381,20 +392,10 @@ def config() -> argparse.Namespace:
         "--client_password", type=str, default="password", help="Client password"
     )
 
-    # agent config
     parser.add_argument("--max_trajectory_length", type=int, default=8, help="最大图片数量")
-    parser.add_argument("--enable_reflection", action="store_true", default=False)
     parser.add_argument("--enable_rewrite_instruction", action="store_true", default=False)
-    parser.add_argument("--use_search_first", action="store_true", default=False)
-    parser.add_argument(
-        "--tool_config", 
-        type=str, 
-        default="/nvme/yangbowen/yangbowen/OSWorld/mm_agents/interngui/tool/all_tool_config.yaml",
-        help="The path of tool config yaml, default uses /nvme/yangbowen/yangbowen/OSWorld/Agent-S/gui_agents/interngui/tool/all_tool_config.yaml"
-    )
 
     # generator model config
-    parser.add_argument("--provider", type=str, default="openai")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument(
         "--base_url",
@@ -422,6 +423,8 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
+    parser.add_argument("--keep_all_text", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
+    parser.add_argument("--remove_cot", action="store_true", default=False, help="是否在历史信息内清除历史cot")
     parser.add_argument("--use_tool_call", action="store_true", default=False, help="是否使用vllm自带的tool call来调用llm, 默认关闭（qwen3vl官方的parse response逻辑）")
 
     # 实验名
@@ -436,15 +439,13 @@ def config() -> argparse.Namespace:
     return args
 
 
-def test(args: argparse.Namespace, test_all_meta: dict) -> None:
+def test(args: argparse.Namespace, test_all_meta: dict) -> list[float]:
     global processes
     logger.info("Args: %s", args)
     all_tasks = distribute_tasks(test_all_meta)
     logger.info(f"Total tasks: {len(all_tasks)}")
 
-    # --- 初始化 Worker 路径 ---
     num_envs = args.num_envs
-    # 仅 waa 需要作此处理
     if args.benchmark == "waa":
         logger.info(f"[WindowsAgentArena] Initializing storage for {num_envs} workers from golden image: {args.path_to_vm}")
         for i in range(num_envs):
@@ -460,12 +461,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
         for worker_id in range(num_envs):
             p = Process(
                 target=run_env_tasks,
-                args=(
-                    task_queue,
-                    args,
-                    shared_scores,
-                    worker_id
-                ),
+                args=(task_queue, args, shared_scores, worker_id),
                 name=f"EnvProcess-{worker_id+1}",
             )
             p.daemon = True
@@ -480,20 +476,13 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
                         logger.warning(f"Process {p.name} died, restarting...")
                         new_p = Process(
                             target=run_env_tasks,
-                            args=(
-                                task_queue,
-                                args,
-                                shared_scores,
-                                idx
-                            ),
+                            args=(task_queue, args, shared_scores, idx),
                             name=f"EnvProcess-Restart-{idx+1}",
                         )
                         new_p.daemon = True
                         new_p.start()
                         processes[idx] = new_p
-                        logger.info(
-                            f"Restarted process {new_p.name} with PID {new_p.pid}"
-                        )
+                        logger.info(f"Restarted process {new_p.name} with PID {new_p.pid}")
                     else:
                         alive_count += 1
                 if task_queue.empty():
@@ -506,14 +495,10 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
             for p in processes:
                 p.join()
         except KeyboardInterrupt:
-            logger.info(
-                "Main process received KeyboardInterrupt. Initiating graceful shutdown..."
-            )
+            logger.info("Main process received KeyboardInterrupt. Initiating graceful shutdown...")
             raise
         except Exception as e:
-            logger.error(
-                f"Unexpected error while waiting for processes: {e}", exc_info=True
-            )
+            logger.error(f"Unexpected error while waiting for processes: {e}", exc_info=True)
             for p in processes:
                 if p.is_alive():
                     try:
@@ -524,6 +509,7 @@ def test(args: argparse.Namespace, test_all_meta: dict) -> None:
             raise
         scores = list(shared_scores)
     logger.info(f"Average score: {sum(scores) / len(scores) if scores else 0}")
+    return scores
 
 # 把做错的目前也都视为未完成的
 def get_unfinished(
@@ -566,67 +552,184 @@ def get_result(target_dir, total_file_json: dict):
         print("New experiment, no result yet.")
         return None
 
-    # 记录总共任务列表
     all_result = []
+    per_task_result = {}
 
     for domain, example_id_list in total_file_json.items():
         for example_id in example_id_list:
             example_path = os.path.join(target_dir, domain, example_id)
-            if os.path.isdir(example_path):
-                if "result.txt" in os.listdir(example_path):
-                    # empty all files under example_id
-                    try:
-                        all_result.append(
-                            float(
-                                open(
-                                    os.path.join(example_path, "result.txt"), "r"
-                                ).read()
-                            )
-                        )
-                    except:
-                        all_result.append(0.0)
-                else:
-                    all_result.append(0.0)
-            # 确保统计的任务数量总和为 total_file_json 里的任务之和
-            else:
-                all_result.append(0.0)
+            score = 0.0
+            if os.path.isdir(example_path) and "result.txt" in os.listdir(example_path):
+                try:
+                    with open(os.path.join(example_path, "result.txt"), "r", encoding="utf-8") as f:
+                        score = float(f.read())
+                except Exception:
+                    score = 0.0
+            all_result.append(score)
+            per_task_result[(domain, example_id)] = score
 
     if not all_result:
         print("New experiment, no result yet.")
         return None
-    else:
-        print("Current Success Rate:", sum(all_result) / len(all_result) * 100, "%")
-        return all_result
+
+    success_rate = sum(all_result) / len(all_result)
+    print("Current Success Rate:", success_rate * 100, "%")
+    return {
+        "scores": all_result,
+        "per_task": per_task_result,
+        "success_rate": success_rate,
+    }
+
+
+def build_base_result_dir(args: argparse.Namespace) -> str:
+    if args.exp_name:
+        return os.path.join(args.result_dir, args.exp_name)
+    return os.path.join(args.result_dir, args.action_space, args.observation_type, args.model)
+
+
+def clone_args_with_result_dir(args: argparse.Namespace, result_dir: str, exp_name: str) -> argparse.Namespace:
+    run_args = argparse.Namespace(**vars(args))
+    run_args.result_dir = result_dir
+    run_args.exp_name = exp_name
+    return run_args
+
+
+def summarize_runs(run_summaries: list[dict], total_file_json: dict) -> dict:
+    run_rates = [summary["success_rate"] for summary in run_summaries]
+    pass_at_k_total = 0.0
+    task_count = 0
+    for domain, example_ids in total_file_json.items():
+        for example_id in example_ids:
+            task_count += 1
+            best_score = max(
+                summary["per_task"].get((domain, example_id), 0.0)
+                for summary in run_summaries
+            )
+            pass_at_k_total += best_score
+
+    avg_success_rate = sum(run_rates) / len(run_rates) if run_rates else 0.0
+    variance = 0.0
+    if run_rates:
+        variance = sum((rate - avg_success_rate) ** 2 for rate in run_rates) / len(run_rates)
+    std = variance ** 0.5
+    pass_at_k = pass_at_k_total / task_count if task_count else 0.0
+
+    best_run = None
+    worst_run = None
+    if run_summaries:
+        best_summary = max(run_summaries, key=lambda summary: summary["success_rate"])
+        worst_summary = min(run_summaries, key=lambda summary: summary["success_rate"])
+        best_run = {
+            "eval_time": best_summary["eval_time"],
+            "success_rate": best_summary["success_rate"],
+            "success_count": sum(best_summary["scores"]),
+            "result_dir": best_summary["result_dir"],
+        }
+        worst_run = {
+            "eval_time": worst_summary["eval_time"],
+            "success_rate": worst_summary["success_rate"],
+            "success_count": sum(worst_summary["scores"]),
+            "result_dir": worst_summary["result_dir"],
+        }
+
+    return {
+        "run_success_rates": run_rates,
+        "avg_success_rate": avg_success_rate,
+        "variance": variance,
+        "std": std,
+        "pass_at_k": pass_at_k,
+        "task_count": task_count,
+        "k": len(run_summaries),
+        "best_run": best_run,
+        "worst_run": worst_run,
+    }
+
+
+def write_summary_report(base_result_dir: str, report: dict) -> str:
+    report_path = os.path.join(base_result_dir, "avg_summary.json")
+    os.makedirs(base_result_dir, exist_ok=True)
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=4, ensure_ascii=False)
+    return report_path
+
+
+def format_percentage(value: float) -> str:
+    return f"{value * 100:.2f}%"
+
+
+def print_summary_table(report: dict) -> None:
+    run_headers = ["run", "success_rate", "success/total", "result_dir"]
+    run_rows = [
+        [
+            str(run["eval_time"]),
+            format_percentage(run["success_rate"]),
+            f"{run['success_count']:.2f}/{report['task_count']}",
+            run["result_dir"],
+        ]
+        for run in report["runs"]
+    ]
+
+    metric_headers = ["metric", "value"]
+    metric_rows = [
+        ["task_count", str(report["task_count"])],
+        ["avg_success_rate", format_percentage(report["avg_success_rate"])],
+        ["variance", f"{report['variance']:.6f}"],
+        ["std", f"{report['std']:.6f}"],
+        [f"pass@{report['k']}", format_percentage(report["pass_at_k"])],
+    ]
+
+    best_worst_headers = ["summary", "run", "success_rate", "success/total", "result_dir"]
+    best_worst_rows = []
+    if report["best_run"] is not None:
+        best_worst_rows.append(
+            [
+                "best_run",
+                str(report["best_run"]["eval_time"]),
+                format_percentage(report["best_run"]["success_rate"]),
+                f"{report['best_run']['success_count']:.2f}/{report['task_count']}",
+                report["best_run"]["result_dir"],
+            ]
+        )
+    if report["worst_run"] is not None:
+        best_worst_rows.append(
+            [
+                "worst_run",
+                str(report["worst_run"]["eval_time"]),
+                format_percentage(report["worst_run"]["success_rate"]),
+                f"{report['worst_run']['success_count']:.2f}/{report['task_count']}",
+                report["worst_run"]["result_dir"],
+            ]
+        )
+
+    def print_table(title: str, headers: list[str], rows: list[list[str]]) -> None:
+        widths = [len(header) for header in headers]
+        for row in rows:
+            for idx, cell in enumerate(row):
+                widths[idx] = max(widths[idx], len(cell))
+
+        border = "+-" + "-+-".join("-" * width for width in widths) + "-+"
+
+        print(f"\n{title}")
+        print(border)
+        print("| " + " | ".join(header.ljust(widths[idx]) for idx, header in enumerate(headers)) + " |")
+        print(border)
+        for row in rows:
+            print("| " + " | ".join(cell.ljust(widths[idx]) for idx, cell in enumerate(row)) + " |")
+        print(border)
+
+    print_table("Run Summary", run_headers, run_rows)
+    print_table("Aggregate Metrics", metric_headers, metric_rows)
+    if best_worst_rows:
+        print_table("Best / Worst Runs", best_worst_headers, best_worst_rows)
 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    ####### The complete version of the list of examples #######
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     args = config()
 
-    # save args to json in result_dir/action_space/observation_type/model/args.json
-    if args.exp_name != "":
-        args.result_dir = os.path.join(
-            args.result_dir,
-            args.exp_name
-        )
-    else:
-        args.result_dir = os.path.join(
-            args.result_dir,
-            args.action_space,
-            args.observation_type,
-            args.model
-        )
-
-    path_to_args = os.path.join(
-        args.result_dir,
-        "args.json"
-    )
-    os.makedirs(os.path.dirname(path_to_args), exist_ok=True)
-    with open(path_to_args, "w", encoding="utf-8") as f:
-        json.dump(vars(args), f, indent=4)
+    base_result_dir = build_base_result_dir(args)
 
     with open(args.test_all_meta_path, "r", encoding="utf-8") as f:
         test_all_meta = json.load(f)
@@ -634,21 +737,57 @@ if __name__ == "__main__":
     if args.domain != "all":
         test_all_meta = {args.domain: test_all_meta[args.domain]}
 
-    test_file_list = get_unfinished(
-        target_dir=args.result_dir,
-        total_file_json=test_all_meta
-    )
-    left_info = ""
-    for domain in test_file_list:
-        left_info += f"{domain}: {len(test_file_list[domain])}\n"
-    logger.info(f"Left tasks:\n{left_info}")
+    run_summaries = []
+    for eval_time in range(args.avg):
+        result_dir = base_result_dir if args.avg == 1 else f"{base_result_dir}_{eval_time}"
+        exp_name = args.exp_name if args.avg == 1 else f"{args.exp_name}_{eval_time}" if args.exp_name else ""
+        run_args = clone_args_with_result_dir(args, result_dir, exp_name)
 
-    get_result(
-        target_dir=args.result_dir,
-        total_file_json=test_all_meta
-    )
-    test(
-        args, 
-        test_file_list
-    )
+        path_to_args = os.path.join(run_args.result_dir, "args.json")
+        os.makedirs(os.path.dirname(path_to_args), exist_ok=True)
+        with open(path_to_args, "w", encoding="utf-8") as f:
+            json.dump(vars(run_args), f, indent=4)
+
+        test_file_list = get_unfinished(target_dir=run_args.result_dir, total_file_json=copy.deepcopy(test_all_meta))
+        left_info = ""
+        for domain in test_file_list:
+            left_info += f"{domain}: {len(test_file_list[domain])}\n"
+        logger.info(f"Run {eval_time + 1}/{args.avg} left tasks:\n{left_info}")
+
+        existing_result = get_result(target_dir=run_args.result_dir, total_file_json=test_all_meta)
+        if all(not examples for examples in test_file_list.values()):
+            logger.info(f"Run {eval_time + 1}/{args.avg} already finished, reusing existing results.")
+            run_summary = existing_result
+        else:
+            test(run_args, test_file_list)
+            run_summary = get_result(target_dir=run_args.result_dir, total_file_json=test_all_meta)
+
+        if run_summary is None:
+            run_summary = {
+                "scores": [],
+                "per_task": {},
+                "success_rate": 0.0,
+            }
+        run_summary["eval_time"] = eval_time
+        run_summary["result_dir"] = run_args.result_dir
+        run_summaries.append(run_summary)
+
+    report = summarize_runs(run_summaries, test_all_meta)
+    report["runs"] = [
+        {
+            "eval_time": summary["eval_time"],
+            "result_dir": summary["result_dir"],
+            "success_rate": summary["success_rate"],
+            "success_count": sum(summary["scores"]),
+        }
+        for summary in run_summaries
+    ]
+    report_path = write_summary_report(base_result_dir, report)
+    print_summary_table(report)
+
+    logger.info("Per-run success rates: %s", [round(rate * 100, 2) for rate in report["run_success_rates"]])
+    logger.info("Average success rate: %.2f%%", report["avg_success_rate"] * 100)
+    logger.info("Success rate variance: %.6f", report["variance"])
+    logger.info("pass@%s success rate: %.2f%%", report["k"], report["pass_at_k"] * 100)
+    logger.info("Summary report saved to %s", report_path)
     logger.info(f"====================\nExperiment {args.exp_name} is totally ended!\n====================")
