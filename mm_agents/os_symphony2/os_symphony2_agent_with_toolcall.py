@@ -15,12 +15,12 @@ from PIL import Image
 from requests.exceptions import SSLError
 
 from mm_agents.utils.qwen_vl_utils import (
-    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE,
-    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE_WITHOUT_CODE,
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE,
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE_WITHOUT_CODE,
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE,
     smart_resize,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
-    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN,
 )
 from mm_agents.base import ComputerUseBaseAgent
 from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
@@ -77,7 +77,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         keep_all_text: bool = True, # 是否保留全部步数的模型输出（False 退化为 last k）
         keep_cot: bool = True, # 模型输出是否仅保留action/cot+action
         use_thinking: bool = False,
-        enable_code_tool: bool = True
+        enable_code_tool: bool = True,
+        benchmark: str = "osworld"
     ):
         self.platform = platform
         self.model = model
@@ -105,7 +106,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         # 统一维护对话历史（system + user + assistant + tool）
         # 直接沿用 OpenAI/vLLM 的 messages 协议结构
-        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE if enable_code_tool else QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_INFERENCE_WITHOUT_CODE
+        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE if enable_code_tool and benchmark == "osworld" else QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE if enable_code_tool and benchmark == "waa" else QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE_WITHOUT_CODE
         self.messages: List[Dict[str, Any]] = []
 
         # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
