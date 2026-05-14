@@ -202,7 +202,8 @@ def run_env_tasks(
                 keep_cot=not args.remove_cot,
                 keep_all_text=args.keep_all_text,
                 use_thinking=args.use_thinking,
-                benchmark=args.benchmark
+                benchmark=args.benchmark,
+                enable_code_tool=not args.disable_code_tool
             )
         # else:
         #     agent = OSSymphony2Agent(
@@ -427,6 +428,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--keep_all_text", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
     parser.add_argument("--remove_cot", action="store_true", default=False, help="是否在历史信息内清除历史cot")
     parser.add_argument("--use_tool_call", action="store_true", default=False, help="是否使用vllm自带的tool call来调用llm, 默认关闭（qwen3vl官方的parse response逻辑）")
+    parser.add_argument("--disable_code_tool", action="store_true", default=False, help="是否禁用code工具")
 
     # 实验名
     parser.add_argument(
