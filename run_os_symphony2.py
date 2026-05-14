@@ -201,19 +201,20 @@ def run_env_tasks(
                 keep_first_image=args.keep_first_image,
                 keep_cot=not args.remove_cot,
                 keep_all_text=args.keep_all_text,
-                use_thinking=args.use_thinking
+                use_thinking=args.use_thinking,
+                benchmark=args.benchmark
             )
-        else:
-            agent = OSSymphony2Agent(
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                max_tokens=args.max_tokens,
-                temperature=args.temperature,
-                history_n=args.max_trajectory_length,
-                keep_first_image=args.keep_first_image,
-                use_thinking=args.use_thinking
-            )
+        # else:
+        #     agent = OSSymphony2Agent(
+        #         model=args.model,
+        #         base_url=args.base_url,
+        #         api_key=args.api_key,
+        #         max_tokens=args.max_tokens,
+        #         temperature=args.temperature,
+        #         history_n=args.max_trajectory_length,
+        #         keep_first_image=args.keep_first_image,
+        #         use_thinking=args.use_thinking
+        #     )
 
         active_environments.append(env)
         active_environments.append(search_env)
