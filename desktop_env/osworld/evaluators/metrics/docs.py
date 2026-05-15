@@ -674,7 +674,7 @@ def check_tabstops(docx_file1, docx_file2, **kwargs) -> float:
         for t1, t2 in zip(tabs1, tabs2):
             if t1.alignment != t2.alignment: return .0
             difference += abs(t1.position - t2.position)
-        minus += difference / paragraph_width
+        minus += difference / (paragraph_width * len(tabs1)) # Modified by Yang
     score = 1 - (minus / len(para1))
     return score
 

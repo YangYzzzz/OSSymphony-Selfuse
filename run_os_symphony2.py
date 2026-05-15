@@ -201,19 +201,21 @@ def run_env_tasks(
                 keep_first_image=args.keep_first_image,
                 keep_cot=not args.remove_cot,
                 keep_all_text=args.keep_all_text,
-                use_thinking=args.use_thinking
+                use_thinking=args.use_thinking,
+                benchmark=args.benchmark,
+                enable_code_tool=not args.disable_code_tool
             )
-        else:
-            agent = OSSymphony2Agent(
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                max_tokens=args.max_tokens,
-                temperature=args.temperature,
-                history_n=args.max_trajectory_length,
-                keep_first_image=args.keep_first_image,
-                use_thinking=args.use_thinking
-            )
+        # else:
+        #     agent = OSSymphony2Agent(
+        #         model=args.model,
+        #         base_url=args.base_url,
+        #         api_key=args.api_key,
+        #         max_tokens=args.max_tokens,
+        #         temperature=args.temperature,
+        #         history_n=args.max_trajectory_length,
+        #         keep_first_image=args.keep_first_image,
+        #         use_thinking=args.use_thinking
+        #     )
 
         active_environments.append(env)
         active_environments.append(search_env)
@@ -426,6 +428,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--keep_all_text", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
     parser.add_argument("--remove_cot", action="store_true", default=False, help="是否在历史信息内清除历史cot")
     parser.add_argument("--use_tool_call", action="store_true", default=False, help="是否使用vllm自带的tool call来调用llm, 默认关闭（qwen3vl官方的parse response逻辑）")
+    parser.add_argument("--disable_code_tool", action="store_true", default=False, help="是否禁用code工具")
 
     # 实验名
     parser.add_argument(
