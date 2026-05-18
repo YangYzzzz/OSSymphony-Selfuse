@@ -21,7 +21,8 @@ from multiprocessing import current_process
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
 import os
-from os_caliber_task_generator import OSCaliberTaskGenerator
+from os_caliber_task_generator import OSCaliberTaskGenerator, SeedTaskExpansionGenerator
+from osworld_seed_task_expansion import OSWorldSeedTaskLibrary
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
 from mm_agents.anthropic.main import AnthropicAgent
@@ -36,6 +37,7 @@ from mm_agents.anthropic.main_with_code import AnthropicAgentWithCode
 from mm_agents.gemini.gemini_openai_agent_with_code import GeminiOpenAIAgentWithCode
 from mm_agents.anthropic.main_with_self_defined_tools import AnthropicAgentWithSelfDefinedTools
 from mm_agents.os_symphony2.os_symphony2_agent_with_toolcall import OSSymphony2AgentWithToolCall
+from mm_agents.kimi.kimi_agent_with_code import KimiAgentWithCode
 
 
 # Global variables for signal handling
@@ -139,6 +141,15 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--rollout_app_list", nargs='+', default=[], help="Rollout application list, default all" # roll的应用列表, 当 mode 为 online 时生效
+    )
+    parser.add_argument(
+        "--seed_task_meta_path", type=str, default="evaluation_examples/osworld/test_os_symphony2_medium.json", help="Seed task id mapping for similar-task expansion"
+    )
+    parser.add_argument(
+        "--seed_examples_base_dir", type=str, default="evaluation_examples/osworld/examples", help="Base directory containing seed OSWorld task json files"
+    )
+    parser.add_argument(
+        "--seed_expansion_mode", action="store_true", help="Generate tasks by expanding partial-success OSWorld seed tasks"
     )
 
     # Distill model
@@ -263,6 +274,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     api_key=args.api_key,
                     max_tokens=args.max_tokens,
                     temperature=args.temperature,
+                    only_n_most_recent_images=args.max_image_history_length,
                     top_p=args.top_p,
                     no_thinking=not args.use_thinking,
                     collect_qwen_sft=args.collect_qwen_sft,
@@ -281,6 +293,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
             else:
+                # 优先使用!!!!!!
                 agent = AnthropicAgentWithCode(
                     model=args.model,
                     base_url=args.base_url,
@@ -288,29 +301,48 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     max_tokens=args.max_tokens,
                     temperature=args.temperature,
                     top_p=args.top_p,
+                    only_n_most_recent_images=args.max_image_history_length,
                     no_thinking=not args.use_thinking,
                     collect_qwen_sft=args.collect_qwen_sft,
                     collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
         elif "kimi" in args.model.lower():
             # Boyue API only support kimi-k2.5 with temperature 1 and top_p 0.95
-            agent = KimiAgent(
-                env=env,
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                max_tokens=args.max_tokens,
-                top_p=args.top_p if args.top_p == 0.95 else 0.95,
-                temperature=args.temperature if args.temperature == 1 else 1,
-                action_space=args.action_space,
-                observation_type=args.observation_type,
-                screen_size=(args.screen_width, args.screen_height),
-                coordinate_type="relative",
-                max_image_history_length=args.max_image_history_length,
-                max_steps=args.max_steps,
-                thinking=True, # Default True
-                password=args.client_password
-            )
+            if not args.enable_code_tool:
+                agent = KimiAgent(
+                    env=env,
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    max_tokens=args.max_tokens,
+                    top_p=args.top_p if args.top_p == 0.95 else 0.95,
+                    temperature=args.temperature if args.temperature == 1 else 1,
+                    screen_size=(args.screen_width, args.screen_height),
+                    max_image_history_length=args.max_image_history_length,
+                    max_steps=args.max_steps,
+                    thinking=args.use_thinking, # Default True
+                    password=args.client_password,
+                    collect_qwen_sft=args.collect_qwen_sft,
+                    collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
+                )
+            # 消融实验使用
+            else:
+                agent = KimiAgentWithCode(
+                    env=env,
+                    model=args.model,
+                    base_url=args.base_url,
+                    api_key=args.api_key,
+                    max_tokens=args.max_tokens,
+                    top_p=args.top_p if args.top_p == 0.95 else 0.95,
+                    temperature=args.temperature if args.temperature == 1 else 1,
+                    screen_size=(args.screen_width, args.screen_height),
+                    max_image_history_length=args.max_image_history_length,
+                    max_steps=args.max_steps,
+                    thinking=args.use_thinking, # Default True
+                    password=args.client_password,
+                    collect_qwen_sft=args.collect_qwen_sft,
+                    collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
+                )
         elif "glm" in args.model.lower():
             agent = GLM4VAgent(
                 model=args.model,
@@ -358,16 +390,16 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     collect_qwen_sft=args.collect_qwen_sft,
                     collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
-        elif "gpt" in args.model.lower(): # 仅支持GPT5.4
-            agent = GPT54Agent(
-                model=args.model,
-                base_url=args.base_url,
-                api_key=args.api_key,
-                max_tokens=args.max_tokens,
-                top_p=args.top_p,
-                temperature=args.temperature,
-                max_trajectory_length=args.max_trajectory_length, # 该参数无用
-            )
+        # elif "gpt" in args.model.lower(): # 仅支持GPT5.4
+        #     agent = GPT54Agent(
+        #         model=args.model,
+        #         base_url=args.base_url,
+        #         api_key=args.api_key,
+        #         max_tokens=args.max_tokens,
+        #         top_p=args.top_p,
+        #         temperature=args.temperature,
+        #         max_trajectory_length=args.max_trajectory_length, # 该参数无用
+        #     )
         else:
             raise Exception(f"Do not support {args.model} model!")
 
@@ -526,16 +558,34 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             "agent_name": "coarse_instruction_generator"
         }
         ig_agent = InstructionGenerationAgent(engine_params=engine_params)
-        task_generator = OSCaliberTaskGenerator(rollout_task_dir=args.rollout_task_dir, env=env, agent=ig_agent)
+        if args.seed_expansion_mode:
+            task_generator = SeedTaskExpansionGenerator(
+                rollout_task_dir=args.rollout_task_dir,
+                env=env,
+                agent=ig_agent,
+                seed_meta_path=args.seed_task_meta_path,
+                seed_examples_base_dir=args.seed_examples_base_dir,
+            )
+        else:
+            task_generator = OSCaliberTaskGenerator(rollout_task_dir=args.rollout_task_dir, env=env, agent=ig_agent)
 
         while True:
             try:
-                task_queue.get(timeout=5)
+                queue_item = task_queue.get(timeout=5)
             except Exception:
                 break
 
-            # task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list)
-            task_file_list = task_generator.generate_task(task_nums=args.rollout_task_nums, app_list=args.rollout_app_list, max_apps_per_group=args.rollout_max_apps_per_group)
+            if args.seed_expansion_mode:
+                task_file_list = task_generator.generate_task(
+                    seed_record=queue_item,
+                    task_nums=args.rollout_task_nums,
+                )
+            else:
+                task_file_list = task_generator.generate_task(
+                    task_nums=args.rollout_task_nums,
+                    app_list=args.rollout_app_list,
+                    max_apps_per_group=args.rollout_max_apps_per_group,
+                )
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])
@@ -640,9 +690,18 @@ def online_test(args: argparse.Namespace):
     with Manager() as manager:
         shared_task_meta = manager.dict()
         task_queue = manager.Queue()
-        lock = manager.Lock() 
-        for _ in range(args.rollout_times):
-            task_queue.put({})
+        lock = manager.Lock()
+        if args.seed_expansion_mode:
+            seed_records = OSWorldSeedTaskLibrary(
+                examples_base_dir=args.seed_examples_base_dir,
+                seed_meta_path=args.seed_task_meta_path,
+            ).records()
+            for seed_record in seed_records:
+                task_queue.put(seed_record)
+            logger.info(f"Seed expansion mode: queued {len(seed_records)} seed tasks from {args.seed_task_meta_path}")
+        else:
+            for _ in range(args.rollout_times):
+                task_queue.put({})
 
         # Start task generation processes
         processes = []

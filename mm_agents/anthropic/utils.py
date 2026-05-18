@@ -47,8 +47,8 @@ def _scale_single_coord_to_1000(coord: list[int], screen_size: tuple[int, int]) 
     w, h = screen_size
     if not w or not h:
         return coord
-    x_rel = max(0, min(1000, round(coord[0] / w * 1000)))
-    y_rel = max(0, min(1000, round(coord[1] / h * 1000)))
+    x_rel = int(max(0, min(1000, round(coord[0] / w * 1000))))
+    y_rel = int(max(0, min(1000, round(coord[1] / h * 1000))))
     return [x_rel, y_rel]
 
 

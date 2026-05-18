@@ -287,7 +287,7 @@ def create_app(
             resp = await state.http_client.post(
                 url,
                 json={"local_env_id": sess.local_env_id},
-                timeout=300.0,
+                timeout=1000.0,
             )
         except httpx.ReadTimeout:
             duration = asyncio.get_event_loop().time() - start
