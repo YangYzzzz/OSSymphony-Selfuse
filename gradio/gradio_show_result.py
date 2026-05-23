@@ -6,6 +6,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import random
 import shutil
+import subprocess
+import sys
 import matplotlib.pyplot as plt
 from collections import Counter
 import re
@@ -1105,6 +1107,20 @@ def plot_token_usage_stacked(stats_data, title, save_path):
         traceback.print_exc()
 
 
+def run_post_analysis_checks(root_dir):
+    script_paths = [
+        Path(__file__).resolve().parent.parent / "scripts" / "miscs" / "check_non_python_bash_code_actions.py",
+        Path(__file__).resolve().parent.parent / "scripts" / "miscs" / "count_infinite_cot_failures.py",
+    ]
+
+    for script_path in script_paths:
+        print(f"\nRunning post-analysis check: {script_path} {root_dir}")
+        try:
+            subprocess.run([sys.executable, str(script_path), str(root_dir)], check=False)
+        except Exception as e:
+            print(f"Failed to run post-analysis check {script_path}: {e}")
+
+
 def get_result(target_dir):
     """
     Analyzes experiment results from a target directory, calculates success rates,
@@ -1636,6 +1652,7 @@ def get_result(target_dir):
         plot_confusion_heatmap(stats, f"Domain: {domain}", os.path.join(target_dir, f"error_analysis_heatmap_{domain}.png"))
 
     print("\nAnalysis complete.")
+    run_post_analysis_checks(target_dir)
     return all_result
 
 

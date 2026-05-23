@@ -296,6 +296,10 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
         q_args["language"] = lang
         q_args["execute_code"] = code
 
+    elif tool_name == "terminate":
+        q_args["action"] = "terminate"
+        q_args["status"] = tool_input.get("status", "failure")
+        
     else:
         q_args["action"] = "terminate"
         q_args["status"] = "failure"

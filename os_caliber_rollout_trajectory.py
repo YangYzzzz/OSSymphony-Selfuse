@@ -262,9 +262,10 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 top_p=args.top_p,
                 temperature=args.temperature,
                 max_trajectory_length=args.max_trajectory_length,
-                action_space=args.action_space,
-                coordinate_type="relative",
-                enable_code_tool=args.enable_code_tool
+                use_thinking=args.use_thinking,
+                enable_code_tool=args.enable_code_tool,
+                collect_qwen_sft=args.collect_qwen_sft,
+                collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir,
             )
         elif "claude" in args.model.lower():
             if not args.enable_code_tool:

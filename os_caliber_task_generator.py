@@ -497,7 +497,7 @@ class OSCaliberTaskGenerator:
             observation=obs,
             task_nums=task_nums,
             launch_paths=launch_paths,
-            app_tutorial_md=app_tutorial_md,
+            app_tutorial_md=None,
             allowed_apps=allowed_apps,
             golden_paths=golden_paths,
         )
@@ -511,7 +511,7 @@ class OSCaliberTaskGenerator:
 
             # 每个 task 可以返回自己使用到的 related_apps, 若缺失则默认仅主 APP
             task_related_apps = task.get("related_apps") or [main_app]
-            task_related_apps_version = [APP_SET_CONFIG_DICT[a].get("version", a) for a in task_related_apps]
+            task_related_apps_version = [APP_SET_CONFIG_DICT.get(a, {"version": a}).get("version") for a in task_related_apps]
             task_config = {
                 "id": task_id,
                 "snapshot": main_app,

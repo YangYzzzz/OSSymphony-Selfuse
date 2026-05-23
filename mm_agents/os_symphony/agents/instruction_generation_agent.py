@@ -43,6 +43,9 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Are fully specified and unambiguous (no hidden assumptions about files or settings).
     - Are automatically verifiable by another program based on rules or VLMs.
     - Must explicitly write all evaluator-critical constraints directly into the task description, including any target object identity, ordering relation, destination, date/time, quantity, formatting, or scope constraints that determine success or failure.
+    - Must feel like meaningful real-world requests instead of bare operation commands.
+    - MUST assume a plausible user persona, job, or situational context for every task so the request has a concrete purpose.
+    - SHOULD briefly include why the task matters in that scenario, such as a work objective, reporting need, review need, or follow-up action.
 
     Each task must be represented as a JSON object with the following fields:
 

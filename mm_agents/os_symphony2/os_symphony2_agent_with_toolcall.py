@@ -3,10 +3,12 @@ import copy
 import json
 import logging
 import re
+import subprocess
 import textwrap
 import time
 from io import BytesIO
-from typing import Dict, List, Tuple, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 import httpx
 import backoff
 import openai
@@ -22,8 +24,9 @@ from mm_agents.utils.qwen_vl_utils import (
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
 )
-from mm_agents.base import ComputerUseBaseAgent
 from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
+from mm_agents.base import ComputerUseBaseAgent
+from mm_agents.kimi.utils import build_qwen_sft_sample_for_kimi as build_qwen_sft_sample_for_ossymphony
 
 
 logger = logging.getLogger("desktopenv.agent")
@@ -65,7 +68,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         model: str = "qwen3-vl",
         base_url: str = "",
         api_key: str = "",
-        max_tokens: int = 1500,
+        max_tokens: int = 15000,
         top_p: float = 0.9,
         temperature: float = 0.0,
         action_space: str = "pyautogui",
@@ -78,7 +81,9 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         keep_cot: bool = True, # 模型输出是否仅保留action/cot+action
         use_thinking: bool = False,
         enable_code_tool: bool = True,
-        benchmark: str = "osworld"
+        benchmark: str = "osworld",
+        collect_qwen_sft: bool = False,
+        collect_qwen_sft_image_dir: str = "",
     ):
         self.platform = platform
         self.model = model
@@ -113,6 +118,10 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.pending_tool_calls: List[Any] = []
 
         self.enable_code_tool = enable_code_tool
+
+        self.collect_qwen_sft = collect_qwen_sft
+        self.qwen_sft_image_hash_map: Dict[str, str] = {}
+        self.collect_qwen_sft_image_dir = Path(collect_qwen_sft_image_dir) if collect_qwen_sft_image_dir else Path("qwen3vl_sft_dataset/image")
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
@@ -248,6 +257,18 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
         # self.debug_print_messages()
+
+        if self.collect_qwen_sft and meta_data:
+            try:
+                sample, self.qwen_sft_image_hash_map = build_qwen_sft_sample_for_ossymphony(
+                    messages=self.messages,
+                    screen_size=(width, height),
+                    image_hash_map=self.qwen_sft_image_hash_map,
+                    image_root_dir=self.collect_qwen_sft_image_dir,
+                )
+                meta_data[0]["agent_sft"] = sample
+            except Exception as e:
+                logger.error(f"build_qwen_sft_sample error: {e}")
 
         return meta_data, pyautogui_code
 
@@ -743,10 +764,85 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             pattern = r'<tool_call>\s*(.*?)\s*</tool_call>'
             matches = re.findall(pattern, content, re.DOTALL)
 
+            def validate_code_action(language: str, code: str) -> bool:
+                try:
+                    if language == "python":
+                        compile(code, "<fallback_execute_code>", "exec")
+                        return True
+                    if language == "bash":
+                        proc = subprocess.run(
+                            ["bash", "-n"],
+                            input=code,
+                            text=True,
+                            capture_output=True,
+                        )
+                        return proc.returncode == 0
+                except Exception:
+                    return False
+                return False
+
+            def recover_code_tool_call(raw: str, idx: int) -> Optional[Dict[str, Any]]:
+                if '"action"' not in raw or '"code"' not in raw or '"execute_code"' not in raw:
+                    return None
+
+                function_name = "custom_computer_use"
+                function_match = re.search(r'"name"\s*:\s*"([^"]+)"', raw)
+                if function_match:
+                    function_name = function_match.group(1)
+
+                action_match = re.search(r'"action"\s*:\s*"code"', raw)
+                language_match = re.search(r'"language"\s*:\s*"(python|bash)"', raw)
+                execute_match = re.search(r'"execute_code"\s*:\s*"', raw)
+                if not action_match or not language_match or not execute_match:
+                    return None
+
+                language = language_match.group(1)
+                start = execute_match.end()
+                tail = raw[start:]
+                terminator_match = re.search(r'"\s*}[\s}]*$', tail, re.DOTALL)
+                if not terminator_match:
+                    terminator_match = re.search(r'"\s*,\s*"[^"]+"\s*:', tail, re.DOTALL)
+                if not terminator_match:
+                    return None
+
+                code = tail[:terminator_match.start()]
+                if not validate_code_action(language, code):
+                    logger.info(
+                        "Can't recovered code tool_call via regex fallback on block %s with language=%s",
+                        idx,
+                        language,
+                    )
+                    return None
+
+                logger.info(
+                    "Recovered code tool_call via regex fallback on block %s with language=%s",
+                    idx,
+                    language,
+                )
+                return {
+                    "id": f"fallback-tool-call-{idx}",
+                    "type": "function",
+                    "function": {
+                        "name": function_name,
+                        "arguments": json.dumps(
+                            {
+                                "action": "code",
+                                "language": language,
+                                "execute_code": code,
+                            },
+                            ensure_ascii=False,
+                        ),
+                    },
+                }
+
             for idx, match in enumerate(matches):
                 try:
                     parsed = json.loads(match)
                 except json.JSONDecodeError as e:
+                    recovered_tool_call = recover_code_tool_call(match, idx)
+                    if recovered_tool_call is not None:
+                        tool_calls.append(recovered_tool_call)
+                        continue
                     logger.warning(f"Failed to decode fallback tool_call block: {e}; raw={match}")
                     continue
 
@@ -923,6 +1019,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.last_code_result = None
         self.messages = []
         self.pending_tool_calls = []
+        self.qwen_sft_image_hash_map = {}
 
     def debug_print_messages(self):
         """优雅地打印 messages 列表，自动截断 Base64 图片以方便检查装填逻辑。"""
