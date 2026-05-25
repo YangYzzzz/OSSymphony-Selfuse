@@ -203,7 +203,8 @@ def run_env_tasks(
                 keep_all_text=args.keep_all_text,
                 use_thinking=args.use_thinking,
                 benchmark=args.benchmark,
-                enable_code_tool=not args.disable_code_tool
+                enable_code_tool=not args.disable_code_tool,
+                input_screen_size=(args.input_screen_width, args.input_screen_height)
             )
         # else:
         #     agent = OSSymphony2Agent(
@@ -368,6 +369,8 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument("--screen_width", type=int, default=1920, help="Main environment's width")
     parser.add_argument("--screen_height", type=int, default=1080, help="Main environment's height")
+    parser.add_argument("--input_screen_width", type=int, default=1920, help="Model Image width")
+    parser.add_argument("--input_screen_height", type=int, default=1080, help="Model Image height")
     parser.add_argument("--max_steps", type=int, default=15)
 
     parser.add_argument("--benchmark", type=str, default="osworld", help="osworld / waa / macos")

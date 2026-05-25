@@ -160,8 +160,9 @@ def calc_stats(domain_map: Dict[str, List[Path]]) -> Tuple[str, Dict[str, List[D
                 step_data["overall"] = []
             if domain not in step_data:
                 step_data[domain] = []
-            step_data["overall"].append({"score": score, "step": traj_len})
-            step_data[domain].append({"score": score, "step": traj_len})
+            step_success = rule_score >= 1 or vlm_score >= 1
+            step_data["overall"].append({"success": step_success, "step": traj_len})
+            step_data[domain].append({"success": step_success, "step": traj_len})
 
         n = len(domain_scores)
         if n == 0:
@@ -188,10 +189,10 @@ def calc_stats(domain_map: Dict[str, List[Path]]) -> Tuple[str, Dict[str, List[D
 
 
 def plot_step_histogram(step_data: Dict[str, List[Dict]], save_root: Path) -> None:
-    """按照 score 把任务划分为 success(>0) 和 failure(==0)，绘制步数直方图。"""
+    """按照 rule 或 vlm 是否达到阈值 1 把任务划分为 success 和 failure，绘制步数直方图。"""
     for name, items in step_data.items():
-        success_steps = [it["step"] for it in items if it.get("score", 0) > 0]
-        failure_steps = [it["step"] for it in items if it.get("score", 0) == 0]
+        success_steps = [it["step"] for it in items if it.get("success", False)]
+        failure_steps = [it["step"] for it in items if not it.get("success", False)]
 
         if not success_steps and not failure_steps:
             continue

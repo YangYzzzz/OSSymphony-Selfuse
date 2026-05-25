@@ -191,7 +191,6 @@ def build_qwen_messages_from_ossymphony(step_messages: List[Dict[str, Any]]) -> 
 
 def build_qwen_sft_sample_for_ossymphony(
     messages: List[Dict[str, Any]],
-    screen_size: tuple[int, int],
     image_hash_map: Dict[str, str],
     image_root_dir: Path,
 ):

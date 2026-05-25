@@ -35,29 +35,35 @@ MAX_RETRY_TIMES = 5
 EMPTY_TOOL_CALL_RETRY_TIMES = 10
 
 
-def encode_image(image_content):
+def encode_image(image_content, input_width: Optional[int] = None, input_height: Optional[int] = None):
+    if input_width is not None and input_height is not None:
+        image = Image.open(BytesIO(image_content))
+        image = image.resize((input_width, input_height))
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        image_content = buffer.getvalue()
     return base64.b64encode(image_content).decode("utf-8")
 
 
-def process_image(image_bytes):
-    """Process an image for Qwen VL models."""
-    image = Image.open(BytesIO(image_bytes))
-    width, height = image.size
+# def process_image(image_bytes):
+#     """Process an image for Qwen VL models."""
+#     image = Image.open(BytesIO(image_bytes))
+#     width, height = image.size
 
-    resized_height, resized_width = smart_resize(
-        height=height,
-        width=width,
-        factor=32,
-        max_pixels=16 * 16 * 4 * 1280,
-    )
+#     resized_height, resized_width = smart_resize(
+#         height=height,
+#         width=width,
+#         factor=32,
+#         max_pixels=16 * 16 * 4 * 1280,
+#     )
 
-    image = image.resize((resized_width, resized_height))
+#     image = image.resize((resized_width, resized_height))
 
-    buffer = BytesIO()
-    image.save(buffer, format="PNG")
-    processed_bytes = buffer.getvalue()
+#     buffer = BytesIO()
+#     image.save(buffer, format="PNG")
+#     processed_bytes = buffer.getvalue()
 
-    return base64.b64encode(processed_bytes).decode("utf-8")
+#     return base64.b64encode(processed_bytes).decode("utf-8")
 
 
 class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
@@ -82,6 +88,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         use_thinking: bool = False,
         enable_code_tool: bool = True,
         benchmark: str = "osworld",
+        input_screen_size: tuple = (1920, 1080),
         collect_qwen_sft: bool = False,
         collect_qwen_sft_image_dir: str = "",
     ):
@@ -101,6 +108,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.coordinate_type = coordinate_type
         self.use_thinking = use_thinking
         self.keep_all_text = keep_all_text
+        self.input_screen_size = input_screen_size
         assert action_space in ["pyautogui"], "Invalid action space"
         assert observation_type in ["screenshot"], "Invalid observation type"
 
@@ -132,12 +140,12 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         """
         screenshot_bytes = obs["screenshot"]
 
+        # width 一定等于 1920, height 一定等于 1080
         image = Image.open(BytesIO(screenshot_bytes))
         width, height = image.size
 
-        processed_image = process_image(screenshot_bytes)
-        processed_img = Image.open(BytesIO(base64.b64decode(processed_image)))
-        processed_width, processed_height = processed_img.size
+        # Resize 到指定分辨率
+        processed_image = encode_image(screenshot_bytes, input_width=self.input_screen_size[0], input_height=self.input_screen_size[1])
 
         # feed tool result for previous tool_calls
         result_text = ""
@@ -235,9 +243,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             response_message,
             response_str,
             width,
-            height,
-            processed_width,
-            processed_height,
+            height
         )
 
         if not pyautogui_code:
@@ -262,7 +268,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             try:
                 sample, self.qwen_sft_image_hash_map = build_qwen_sft_sample_for_ossymphony(
                     messages=self.messages,
-                    screen_size=(width, height),
                     image_hash_map=self.qwen_sft_image_hash_map,
                     image_root_dir=self.collect_qwen_sft_image_dir,
                 )
@@ -366,8 +371,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         thought: str,
         original_width: int = None,
         original_height: int = None,
-        processed_width: int = None,
-        processed_height: int = None,
     ) -> Tuple[List[Dict], List[str]]:
         """Parse LLM response (dict with tool_calls) and convert it to metadata and pyautogui code.
 
@@ -383,14 +386,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             return meta_data, pyautogui_code
 
         def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
-            if not (original_width and original_height):
-                return int(x), int(y)
-            if self.coordinate_type == "absolute":
-                if processed_width and processed_height:
-                    x_scale = original_width / processed_width
-                    y_scale = original_height / processed_height
-                    return int(x * x_scale), int(y * y_scale)
-                return int(x), int(y)
             x_scale = original_width / 999
             y_scale = original_height / 999
             return int(x * x_scale), int(y * y_scale)
@@ -627,7 +622,11 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
             content_parts = []
             if obs and obs.get("screenshot"):
-                processed_image = process_image(obs["screenshot"])
+                processed_image = encode_image(
+                    obs["screenshot"],
+                    input_width=self.input_screen_size[0],
+                    input_height=self.input_screen_size[1],
+                )
                 content_parts.append(
                     {
                         "type": "image_url",
@@ -720,8 +719,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     model=model,
                     messages=messages,
                     max_tokens=payload.get("max_tokens", self.max_tokens),
-                    temperature=payload.get("temperature", self.temperature),
-                    top_p=payload.get("top_p", self.top_p),
+                    temperature=payload.get("temperature", 0),
+                    # top_p=payload.get("top_p", self.top_p),
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}
                     }

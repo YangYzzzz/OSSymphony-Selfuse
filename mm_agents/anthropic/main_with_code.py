@@ -43,7 +43,7 @@ class AnthropicAgentWithCode:
                 only_n_most_recent_images: Optional[int] = 10,
                 action_space: str = "claude_computer_use",
                 screen_size: tuple[int, int] = (1920, 1080),
-                input_screen_size: tuple[int, int] = (1280, 720), # 感觉主要也是为了节省token
+                input_screen_size: tuple[int, int] = (1280, 720), # 主要也是为了节省token
                 no_thinking: bool = False,
                 use_isp: bool = False,
                 temperature: Optional[float] = None,

@@ -108,10 +108,10 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--screen_width", type=int, default=1920, help="Screen width"
-    )
+    ) # 无法更改
     parser.add_argument(
         "--screen_height", type=int, default=1080, help="Screen height"
-    )
+    ) # 无法更改
 
     parser.add_argument(
         "--exp_name", type=str, default="", help="Experiment name"
