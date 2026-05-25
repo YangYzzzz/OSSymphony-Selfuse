@@ -647,7 +647,7 @@ Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
 ### 4. Action Space Notes
 1. **scroll / hscroll:** Must include a `coordinate` parameter to specify the scroll position, and a `pixels` parameter to indicate the number of scroll wheel clicks (positive or negative), which maps to the `clicks` argument in `pyautogui.scroll/hscroll(clicks=xx)`.
 2. **drag:** A drag operation typically requires two actions in combination: `mouse_move` followed by `left_click_drag` to complete the full drag behavior.
-3. All output coordinates must be absolute coordinates.
+3. All output coordinates must be absolute coordinates. Most importantly, DON'T explicitly mention specific coordinates (e.g. x=300) in any text outside of the tool_call.
 """)
 
 if __name__ == "__main__":

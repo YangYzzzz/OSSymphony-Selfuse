@@ -108,10 +108,10 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--screen_width", type=int, default=1920, help="Screen width"
-    )
+    ) # 无法更改
     parser.add_argument(
         "--screen_height", type=int, default=1080, help="Screen height"
-    )
+    ) # 无法更改
 
     parser.add_argument(
         "--exp_name", type=str, default="", help="Experiment name"
@@ -171,7 +171,6 @@ def config() -> argparse.Namespace:
     # mode
     parser.add_argument("--enable_self_judge", action="store_true", default=False) # 是否采用 self-judge
     parser.add_argument("--enable_code_tool", action="store_true", default=False)
-    parser.add_argument("--enable_self_defined_tools", action="store_true", default=False)
 
     args = parser.parse_args()
     return args
@@ -262,9 +261,10 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 top_p=args.top_p,
                 temperature=args.temperature,
                 max_trajectory_length=args.max_trajectory_length,
-                action_space=args.action_space,
-                coordinate_type="relative",
-                enable_code_tool=args.enable_code_tool
+                use_thinking=args.use_thinking,
+                enable_code_tool=args.enable_code_tool,
+                collect_qwen_sft=args.collect_qwen_sft,
+                collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir,
             )
         elif "claude" in args.model.lower():
             if not args.enable_code_tool:
@@ -280,18 +280,18 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     collect_qwen_sft=args.collect_qwen_sft,
                     collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
-            elif args.enable_self_defined_tools and args.enable_code_tool:
-                agent = AnthropicAgentWithSelfDefinedTools(
-                    model=args.model,
-                    base_url=args.base_url,
-                    api_key=args.api_key,
-                    max_tokens=args.max_tokens,
-                    temperature=args.temperature,
-                    top_p=args.top_p,
-                    no_thinking=not args.use_thinking,
-                    collect_qwen_sft=args.collect_qwen_sft,
-                    collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
-                )
+            # elif args.enable_self_defined_tools and args.enable_code_tool:
+            #     agent = AnthropicAgentWithSelfDefinedTools(
+            #         model=args.model,
+            #         base_url=args.base_url,
+            #         api_key=args.api_key,
+            #         max_tokens=args.max_tokens,
+            #         temperature=args.temperature,
+            #         top_p=args.top_p,
+            #         no_thinking=not args.use_thinking,
+            #         collect_qwen_sft=args.collect_qwen_sft,
+            #         collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
+            #     )
             else:
                 # 优先使用!!!!!!
                 agent = AnthropicAgentWithCode(
