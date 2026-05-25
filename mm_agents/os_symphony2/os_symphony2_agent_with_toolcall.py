@@ -26,7 +26,7 @@ from mm_agents.utils.qwen_vl_utils import (
 )
 from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
 from mm_agents.base import ComputerUseBaseAgent
-from mm_agents.kimi.utils import build_qwen_sft_sample_for_kimi as build_qwen_sft_sample_for_ossymphony
+from mm_agents.os_symphony2.utils import build_qwen_sft_sample_for_ossymphony
 
 
 logger = logging.getLogger("desktopenv.agent")
