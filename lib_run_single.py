@@ -372,7 +372,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         "platform": "Desktop",
         "subdomain": "Ubuntu 22.04",
         "environment_details": {
-            "screen_resolution": "1920x1080",
+            "screen_resolution": f"{args.screen_width}x{args.screen_height}",
             "related_apps": example.get("related_apps") or [example.get("snapshot")] # 向前兼容, 后续仅通过 related_apps 记录
         },
         "instruction": instruction,

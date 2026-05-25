@@ -112,6 +112,8 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--screen_height", type=int, default=1080, help="Screen height"
     ) # 无法更改
+    parser.add_argument("--input_screen_width", type=int, default=1504, help="Model Image width")
+    parser.add_argument("--input_screen_height", type=int, default=832, help="Model Image height")
 
     parser.add_argument(
         "--exp_name", type=str, default="", help="Experiment name"
@@ -262,6 +264,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 temperature=args.temperature,
                 max_trajectory_length=args.max_trajectory_length,
                 use_thinking=args.use_thinking,
+                input_screen_size=(args.input_screen_width, args.input_screen_height),
                 enable_code_tool=args.enable_code_tool,
                 collect_qwen_sft=args.collect_qwen_sft,
                 collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir,
@@ -302,6 +305,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     temperature=args.temperature,
                     top_p=args.top_p,
                     only_n_most_recent_images=args.max_image_history_length,
+                    input_screen_size=(args.input_screen_width, args.input_screen_height),
                     no_thinking=not args.use_thinking,
                     collect_qwen_sft=args.collect_qwen_sft,
                     collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
