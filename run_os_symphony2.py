@@ -398,7 +398,6 @@ def config() -> argparse.Namespace:
     )
 
     parser.add_argument("--max_trajectory_length", type=int, default=8, help="最大图片数量")
-    parser.add_argument("--enable_rewrite_instruction", action="store_true", default=False)
 
     # generator model config
     parser.add_argument("--model", type=str, default="gpt-4o")

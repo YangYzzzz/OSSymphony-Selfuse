@@ -86,7 +86,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         keep_all_text: bool = True, # 是否保留全部步数的模型输出（False 退化为 last k）
         keep_cot: bool = True, # 模型输出是否仅保留action/cot+action
         use_thinking: bool = False,
-        enable_code_tool: bool = True,
+        enable_code_tool: bool = False,
         benchmark: str = "osworld",
         input_screen_size: tuple = (1920, 1080),
         collect_qwen_sft: bool = False,
@@ -532,6 +532,9 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 status = args.get("status", "success") # success / failure
                 step_code = "DONE" if status == "success" else "FAIL"
 
+            elif action == "answer":
+                step_code = "DONE"
+
             elif action == "mouse_move":
                 if "coordinate" in args:
                     x, y = args["coordinate"]
@@ -752,6 +755,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             "mouse_move",
             "left_click_drag",
             "code",
+            "answer" # = DONE
         }
 
         def parse_tool_calls_from_content(content: str) -> tuple[list, str]:
@@ -949,6 +953,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                         f"Fallback parser recovered tool_call(s), but none were supported on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"
                     )
 
+            # Log 检索此部分
             logger.warning(
                 f"LLM response missing supported tool_calls on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}: {response_message}"
             )

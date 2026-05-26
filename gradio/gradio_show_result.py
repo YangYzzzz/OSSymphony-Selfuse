@@ -352,10 +352,8 @@ def _draw_coordinate_cross(image_path, coordinate):
         draw = ImageDraw.Draw(image)
         x, y = coordinate
         width, height = image.size
-        # x = int(round(x / 1000 * width))
-        # y = int(round(y / 1000 * height))
-        x = int(round(x))
-        y = int(round(y))
+        x = int(round(x / 1000 * width))
+        y = int(round(y / 1000 * height))
         x = max(0, min(width - 1, x))
         y = max(0, min(height - 1, y))
 
