@@ -234,10 +234,8 @@ def run_env_tasks(
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
 
-                if args.enable_rewrite_instruction and "rewritten_instruction" in example:
-                    instruction = example["rewritten_instruction"]
-                else:
-                    instruction = example["instruction"]
+
+                instruction = example["instruction"]
                 
                 example_result_dir = os.path.join(
                     args.result_dir,
