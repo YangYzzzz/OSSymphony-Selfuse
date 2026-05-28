@@ -158,7 +158,25 @@ def build_example_result_dir(run_args: argparse.Namespace, domain: str, example_
     )
 
 
+def process_signal_handler(signum, frame):
+    logger.info("%s received signal %s. Shutting down...", current_process().name, signum)
+    for env in active_environments:
+        if env is not None:
+            try:
+                logger.info("%s closing environment...", current_process().name)
+                env.close()
+                logger.info("%s environment closed successfully", current_process().name)
+            except Exception as exc:
+                logger.error("%s error closing environment: %s", current_process().name, exc)
+    logger.info("%s shutdown complete. Exiting.", current_process().name)
+    sys.exit(0)
+
+
 def run_env_tasks(task_queue, run_args: argparse.Namespace, shared_scores: list):
+    global active_environments
+    signal.signal(signal.SIGINT, process_signal_handler)
+    signal.signal(signal.SIGTERM, process_signal_handler)
+
     env = None
     try:
         region = run_args.region
@@ -265,18 +283,29 @@ def signal_handler(signum, frame):
 
     for env in active_environments:
         try:
+            logger.info("Closing environment...")
             env.close()
-        except Exception:
-            pass
+            logger.info("Environment closed successfully")
+        except Exception as exc:
+            logger.error("Error closing environment: %s", exc)
 
     for process in processes:
         if process.is_alive():
             try:
+                logger.info("Sending termination signal to process %s...", process.name)
                 process.terminate()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("Error sending termination signal to process %s: %s", process.name, exc)
 
     time.sleep(1)
+    for process in processes:
+        if process.is_alive():
+            try:
+                logger.info("Forcefully terminating process %s...", process.name)
+                os.kill(process.pid, signal.SIGKILL)
+            except Exception as exc:
+                logger.error("Error forcefully terminating process %s: %s", process.name, exc)
+
     logger.info("Shutdown complete. Exiting.")
     sys.exit(0)
 
@@ -310,33 +339,47 @@ def test(run_args: argparse.Namespace, test_all_meta: Dict[str, List[str]]) -> N
             processes.append(process)
             logger.info("Started process %s with PID %s", process.name, process.pid)
 
-        while True:
-            alive_count = 0
-            for idx, process in enumerate(processes):
-                if not process.is_alive():
-                    logger.warning("Process %s died, restarting...", process.name)
-                    new_process = Process(
-                        target=run_env_tasks,
-                        args=(task_queue, run_args, shared_scores),
-                        name=f"EnvProcess-Restart-{idx + 1}",
-                    )
-                    new_process.daemon = True
-                    new_process.start()
-                    processes[idx] = new_process
-                    logger.info("Restarted process %s with PID %s", new_process.name, new_process.pid)
-                else:
-                    alive_count += 1
+        try:
+            while True:
+                alive_count = 0
+                for idx, process in enumerate(processes):
+                    if not process.is_alive():
+                        logger.warning("Process %s died, restarting...", process.name)
+                        new_process = Process(
+                            target=run_env_tasks,
+                            args=(task_queue, run_args, shared_scores),
+                            name=f"EnvProcess-Restart-{idx + 1}",
+                        )
+                        new_process.daemon = True
+                        new_process.start()
+                        processes[idx] = new_process
+                        logger.info("Restarted process %s with PID %s", new_process.name, new_process.pid)
+                    else:
+                        alive_count += 1
 
-            if task_queue.empty():
-                logger.info("All tasks finished.")
-                break
-            if alive_count == 0:
-                logger.error("All processes died, exiting.")
-                break
-            time.sleep(5)
+                if task_queue.empty():
+                    logger.info("All tasks finished.")
+                    break
+                if alive_count == 0:
+                    logger.error("All processes died, exiting.")
+                    break
+                time.sleep(5)
 
-        for process in processes:
-            process.join()
+            for process in processes:
+                process.join()
+        except KeyboardInterrupt:
+            logger.info("Main process received KeyboardInterrupt. Initiating graceful shutdown...")
+            raise
+        except Exception as exc:
+            logger.error("Unexpected error while waiting for processes: %s", exc, exc_info=True)
+            for process in processes:
+                if process.is_alive():
+                    try:
+                        logger.info("Terminating process %s due to error...", process.name)
+                        process.terminate()
+                    except Exception as term_exc:
+                        logger.error("Error terminating process %s: %s", process.name, term_exc)
+            raise
 
         scores = list(shared_scores)
         logger.info("Average score: %s", (sum(scores) / len(scores)) if scores else 0)

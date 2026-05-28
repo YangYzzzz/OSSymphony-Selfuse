@@ -153,6 +153,9 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--seed_expansion_mode", action="store_true", help="Generate tasks by expanding partial-success OSWorld seed tasks"
     )
+    parser.add_argument(
+        "--enable_agentworkflow", action="store_true", help="Generate tasks with the multi-stage instruction generation workflow"
+    )
 
     # Distill model
     parser.add_argument(
@@ -585,11 +588,18 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
                     task_nums=args.rollout_task_nums,
                 )
             else:
-                task_file_list = task_generator.generate_task(
-                    task_nums=args.rollout_task_nums,
-                    app_list=args.rollout_app_list,
-                    max_apps_per_group=args.rollout_max_apps_per_group,
-                )
+                if args.enable_agentworkflow:
+                    task_file_list = task_generator.generate_task_v2(
+                        task_nums=args.rollout_task_nums,
+                        app_list=args.rollout_app_list,
+                        max_apps_per_group=args.rollout_max_apps_per_group,
+                    )
+                else:
+                    task_file_list = task_generator.generate_task(
+                        task_nums=args.rollout_task_nums,
+                        app_list=args.rollout_app_list,
+                        max_apps_per_group=args.rollout_max_apps_per_group,
+                    )
             with lock:
                 for app_name, new_tasks in task_file_list.items():
                     existing_tasks = task_all_meta.get(app_name, [])

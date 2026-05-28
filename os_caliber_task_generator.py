@@ -11,6 +11,10 @@ from typing import List, Dict, Tuple, Any
 import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
+from mm_agents.os_symphony.agents.instruction_generator.workflow import (
+    GenerationContext,
+    InstructionGenerationWorkflow,
+)
 from osworld_seed_task_expansion import (
     DOMAIN_TO_APP,
     OSWorldSeedTaskLibrary,
@@ -451,6 +455,61 @@ class OSCaliberTaskGenerator:
             "dynamic": True
         }
         return evaluator
+
+    def generate_task_v2(self, task_nums: int = 10, app_list: List | str = [], max_apps_per_group: int = 1):
+        if isinstance(app_list, list) and len(app_list) > 0:
+            available_apps = app_list
+        else:
+            available_apps = list(APP_SETUP_DICT.keys())
+
+        if not available_apps:
+            raise ValueError("No apps available to generate tasks.")
+
+        main_app, apps_for_group = self._sample_app_group(max_apps=max_apps_per_group, available_apps=available_apps)
+        logger.info(f"Generating workflow tasks for {main_app} with app group: {apps_for_group}...")
+
+        domain_dir = os.path.join(self.rollout_task_dir, main_app)
+        os.makedirs(domain_dir, exist_ok=True)
+
+        task_setup_config, launch_paths, golden_paths = self._generate_config(main_app)
+        self.env.reset(
+            task_config={
+                "config": task_setup_config,
+                "id": "init_id",
+                "instruction": "init_instruction",
+            }
+        )
+        time.sleep(20)
+        self.agent.reset()
+        obs = self.env._get_obs()
+
+        app_name = APP_SET_CONFIG_DICT[main_app].get("version", main_app)
+        allowed_apps = [APP_SET_CONFIG_DICT[a].get("version", a) for a in apps_for_group]
+        context = GenerationContext(
+            main_app=main_app,
+            apps_for_group=apps_for_group,
+            task_setup_config=task_setup_config,
+            launch_paths=launch_paths,
+            golden_paths=golden_paths,
+            setup_image=obs["screenshot"],
+            app_tutorial_md=self._load_app_tutorial_md(main_app),
+            app_memory={},
+            app_name=app_name,
+            allowed_apps=allowed_apps,
+            observation=obs,
+        )
+        engine_params = getattr(self.agent, "engine_params", None)
+        if not engine_params:
+            raise ValueError("InstructionGenerationAgent.engine_params is required for agentworkflow.")
+        workflow = InstructionGenerationWorkflow(
+            rollout_task_dir=self.rollout_task_dir,
+            env=self.env,
+            engine_params=engine_params,
+            build_evaluator_fn=self._build_evaluator_from_verification,
+            app_version_lookup=lambda app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app),
+            platform=getattr(self.agent, "platform", "linux"),
+        )
+        return workflow.run(context=context, task_nums=task_nums, domain_dir=domain_dir)
 
     def generate_task(self, task_nums: int = 10, app_list: List | str = [], max_apps_per_group: int = 1):
         if isinstance(app_list, list) and len(app_list) > 0:
