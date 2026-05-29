@@ -93,7 +93,6 @@ def config() -> argparse.Namespace:
     parser.add_argument("--screen_height", type=int, default=1080)
 
     parser.add_argument("--benchmark", type=str, default="osworld")
-    parser.add_argument("--max_trajectory_length", type=int, default=5)
     parser.add_argument(
         "--exp_name", type=str, default="debug-experiment", help="name of experiment"
     )
@@ -109,9 +108,7 @@ root_logger.setLevel(log_level)
 
 datetime_str = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
 os.makedirs("logs", exist_ok=True)
-file_handler = logging.FileHandler(os.path.join("logs", f"qwen35vl-light-{datetime_str}.log"), encoding="utf-8")
 stdout_handler = logging.StreamHandler(sys.stdout)
-file_handler.setLevel(logging.INFO)
 stdout_handler.setLevel(log_level)
 formatter = logging.Formatter(
     fmt=(
@@ -120,9 +117,7 @@ formatter = logging.Formatter(
         "\x1b[0m%(message)s"
     )
 )
-file_handler.setFormatter(formatter)
 stdout_handler.setFormatter(formatter)
-root_logger.addHandler(file_handler)
 root_logger.addHandler(stdout_handler)
 
 logger = logging.getLogger("desktopenv.experiment")
@@ -216,7 +211,7 @@ def run_env_tasks(task_queue, run_args: argparse.Namespace, shared_scores: list)
             action_space=run_args.action_space,
             coordinate_type=run_args.coord,
             add_thought_prefix=run_args.add_thought_prefix,
-            history_n=run_args.max_trajectory_length,
+            history_n=run_args.history_n,
             image_max=run_args.image_max,
             fold_size=run_args.fold_size,
         )

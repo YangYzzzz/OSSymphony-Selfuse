@@ -120,20 +120,17 @@ def run_single_example_qwen3vl(agent, env, example, max_steps, instruction, args
         # 理论上每一轮只会产生一个操作
         for action in actions:
             # Save screenshot and trajectory information
-            if "reflection" in response and response["reflection"].get("is_milestone"):
-                img_name = f"step_{step_idx + 1}_milestone.png"
-            else:
-                img_name = f"step_{step_idx + 1}.png"
+            img_name = f"step_{step_idx + 1}.png"
                 
             with open(os.path.join(example_result_dir, img_name),
                       "wb") as _f:
                 _f.write(obs['screenshot'])
-            if "coordinates" in response and response["coordinates"]:
-                draw_coordinates(
-                    image_bytes=obs['screenshot'], 
-                    coordinates=response["coordinates"], 
-                    save_path=os.path.join(example_result_dir, img_name[:-4] + "_draw.png")
-                )
+            # if "coordinates" in response and response["coordinates"]:
+            #     draw_coordinates(
+            #         image_bytes=obs['screenshot'], 
+            #         coordinates=response["coordinates"], 
+            #         save_path=os.path.join(example_result_dir, img_name[:-4] + "_draw.png")
+            #     )
 
             logger.info("Step %d: %s", step_idx + 1, action)
             obs, reward, done, info = env.step(action, args.sleep_after_execution)

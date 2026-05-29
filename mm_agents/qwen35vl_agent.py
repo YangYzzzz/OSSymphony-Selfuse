@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from io import BytesIO
 from typing import Dict, List, Optional, Tuple
-
+import httpx
 import openai
 from PIL import Image
 from requests.exceptions import SSLError
@@ -17,7 +17,7 @@ from mm_agents.utils.qwen_vl_utils import smart_resize
 
 logger = None
 
-MAX_RETRY_TIMES = int(os.getenv("OSWORLD_MAX_RETRY_TIMES", "5"))
+MAX_RETRY_TIMES = int(os.getenv("OSWORLD_MAX_RETRY_TIMES", "20"))
 
 
 def process_image(image_bytes: bytes) -> str:
@@ -100,6 +100,20 @@ class Qwen35VLAgent:
         self.responses: List[str] = []
         self.screenshots: List[str] = []
         self.folded_prefix_k = 0
+
+        custom_timeout = httpx.Timeout(600.0, read=600.0, connect=60.0)
+        base_url = os.environ.get("OPENAI_BASE_URL", "http://127.0.0.1:8000/v1")
+        api_key = os.environ.get("OPENAI_API_KEY", "dummy")
+
+        custom_headers = {
+            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
+        }
+        try:
+            print(f"H Cluster Local VLLM: {base_url}")
+            self.client = openai.OpenAI(base_url=base_url, api_key=api_key, default_headers=custom_headers, timeout=custom_timeout)
+        except TypeError:
+            self.client = openai.OpenAI(base_url=base_url, api_key=api_key, timeout=custom_timeout)
+
 
     @staticmethod
     def _py_string(text: str) -> str:
@@ -328,17 +342,6 @@ class Qwen35VLAgent:
                         "content": [{"type": "text", "text": self.responses[step_num - 1]}],
                     }
                 )
-
-        try:
-            draft_dir = "./draft/message_cache"
-            os.makedirs(draft_dir, exist_ok=True)
-            step_idx = total_steps - 1
-            message_file_path = os.path.join(draft_dir, f"qwen35vl_messages_step_{step_idx}.json")
-            with open(message_file_path, "w", encoding="utf-8") as file_obj:
-                json.dump(self._sanitize_messages_for_dump(messages), file_obj, ensure_ascii=False, indent=2)
-        except Exception as exc:
-            if logger:
-                logger.warning("[Qwen35VLAgent] failed to dump debug messages: %s", exc)
 
         response = self.call_llm(
             {
@@ -590,23 +593,6 @@ class Qwen35VLAgent:
         return str(content)
 
     def call_llm(self, payload: Dict, model: str) -> str:
-        base_url = os.environ.get("OPENAI_BASE_URL", "http://127.0.0.1:8000/v1")
-        api_key = os.environ.get("OPENAI_API_KEY", "dummy")
-        default_timeout = str(
-            float(os.environ.get("OSWORLD_HTTP_CONNECT_TIMEOUT", "10"))
-            + float(os.environ.get("OSWORLD_HTTP_READ_TIMEOUT", "120"))
-        )
-        timeout_s = float(os.environ.get("OSWORLD_OPENAI_TIMEOUT", default_timeout))
-
-        custom_headers = {
-            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
-        }
-        try:
-            print(f"H Cluster Local VLLM: {base_url}")
-            client = openai.OpenAI(base_url=base_url, api_key=api_key, timeout=timeout_s, default_headers=custom_headers)
-        except TypeError:
-            client = openai.OpenAI(base_url=base_url, api_key=api_key)
-
         retryable_types = tuple(
             exc
             for exc in [
@@ -622,12 +608,15 @@ class Qwen35VLAgent:
         last_err: Optional[Exception] = None
         for attempt in range(1, MAX_RETRY_TIMES + 1):
             try:
-                response = client.chat.completions.create(
+                response = self.client.chat.completions.create(
                     model=model,
                     messages=payload["messages"],
                     max_tokens=payload.get("max_tokens", self.max_tokens),
                     temperature=payload.get("temperature", self.temperature),
                     top_p=payload.get("top_p", self.top_p),
+                    extra_body={
+                        "chat_template_kwargs": {"enable_thinking": False}, # 明确说了不开启思考模式
+                    }
                 )
                 content = response.choices[0].message.content
                 return self._extract_content_text(content)
