@@ -61,7 +61,6 @@ PROPOSAL_SCHEMA: Dict[str, Any] = {
                     "verification_plan_hint",
                     "risk_notes",
                 ],
-                "additionalProperties": True,
             },
         },
         "generation_notes": {"type": "array", "items": {"type": "string"}},

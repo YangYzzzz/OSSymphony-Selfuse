@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from desktop_env.osworld.desktop_env import DesktopEnv
 
-from .constants import ALLOWED_GETTER_TYPES, DANGEROUS_CALLS, DANGEROUS_IMPORTS
+from mm_agents.os_symphony.agents.instruction_generator.constants import ALLOWED_GETTER_TYPES, DANGEROUS_CALLS, DANGEROUS_IMPORTS
 
 
 class StaticEvaluatorValidator:

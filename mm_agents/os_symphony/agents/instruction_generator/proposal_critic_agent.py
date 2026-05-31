@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List
 
-from .base_agent import WorkflowCostTracker, WorkflowLLMAgent
-from .models import GenerationContext
-from .prompts import load_prompt
+from mm_agents.os_symphony.agents.instruction_generator.base_agent import WorkflowCostTracker, WorkflowLLMAgent
+from mm_agents.os_symphony.agents.instruction_generator.models import GenerationContext
+from mm_agents.os_symphony.agents.instruction_generator.prompts import load_prompt
 
 
 class ProposalCritiqueAgent(WorkflowLLMAgent):

@@ -9,10 +9,10 @@ from typing import Any, Dict, List, Tuple
 
 from desktop_env.osworld.desktop_env import DesktopEnv
 
-from .base_agent import WorkflowCostTracker, WorkflowLLMAgent
-from .constants import EXPLORATION_PROPOSAL_TOOL_SCHEMA
-from .models import GenerationContext
-from .prompts import load_prompt
+from mm_agents.os_symphony.agents.instruction_generator.base_agent import WorkflowCostTracker, WorkflowLLMAgent
+from mm_agents.os_symphony.agents.instruction_generator.constants import EXPLORATION_PROPOSAL_TOOL_SCHEMA
+from mm_agents.os_symphony.agents.instruction_generator.models import GenerationContext
+from mm_agents.os_symphony.agents.instruction_generator.prompts import load_prompt
 
 logger = logging.getLogger("desktopenv.instruction_generation_workflow")
 

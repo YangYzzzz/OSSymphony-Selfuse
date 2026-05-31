@@ -10,13 +10,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from desktop_env.osworld.desktop_env import DesktopEnv
 
-from .app_memory import AppMemoryStore
-from .base_agent import WorkflowCostTracker
-from .evaluator_agents import EvaluatorCritiqueAgent, EvaluatorSynthesisAgent
-from .exploration_proposal_agent import ExplorationProposalAgent
-from .models import GenerationContext
-from .proposal_critic_agent import ProposalCritiqueAgent
-from .validators import PreflightValidator, StaticEvaluatorValidator
+from mm_agents.os_symphony.agents.instruction_generator.app_memory import AppMemoryStore
+from mm_agents.os_symphony.agents.instruction_generator.base_agent import WorkflowCostTracker
+from mm_agents.os_symphony.agents.instruction_generator.evaluator_agents import EvaluatorCritiqueAgent, EvaluatorSynthesisAgent
+from mm_agents.os_symphony.agents.instruction_generator.exploration_proposal_agent import ExplorationProposalAgent
+from mm_agents.os_symphony.agents.instruction_generator.models import GenerationContext
+from mm_agents.os_symphony.agents.instruction_generator.proposal_critic_agent import ProposalCritiqueAgent
+from mm_agents.os_symphony.agents.instruction_generator.validators import PreflightValidator, StaticEvaluatorValidator
 
 logger = logging.getLogger("desktopenv.instruction_generation_workflow")
 

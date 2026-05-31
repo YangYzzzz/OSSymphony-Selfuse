@@ -5,7 +5,7 @@ import os
 import re
 from typing import Any, Dict, List, Tuple
 
-from .constants import APP_MEMORY_DIR
+from mm_agents.os_symphony.agents.instruction_generator.constants import APP_MEMORY_DIR
 
 
 class AppMemoryStore:
