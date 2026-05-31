@@ -564,11 +564,7 @@ QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_ADDITIONAL_RULES = textwrap.dedent("""
 - **Dynamic Installation:** You are authorized to install any missing dependencies as needed to accomplish the task.
 
 # Output Contract
-
-Before tool call, you MUST output a short block in the following format:
-
-**Thought:** <why this action is needed, what you expect to happen>
-**Action:** <one-sentence plain-language description of what the tool call will do>
+Before each tool call, briefly explain your reasoning: why this action is needed and what you expect to happen.
 
 Do NOT skip this reasoning block, and do NOT call the tool without it appearing immediately above.
 """)
@@ -596,12 +592,8 @@ Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
 - The user's sudo password is "password".
 - The screen's resolution is represented on a 1000x1000 relative coordinate grid.
                                                                                 
-
 # Output Contract
-Before tool call, you MUST output a short block in the following format:
-
-**Thought:** <why this action is needed, what you expect to happen>
-**Action:** <one-sentence plain-language description of what the tool call will do>
+Before each tool call, briefly explain your reasoning: why this action is needed and what you expect to happen.
 
 Do NOT skip this reasoning block, and do NOT call the tool without it appearing immediately above.                                                    
 """)

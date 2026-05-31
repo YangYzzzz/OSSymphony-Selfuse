@@ -1,385 +1,688 @@
-# OSSymphony Instruction Generation Workflow
+# OSSymphony2 Instruction Generation Workflow
 
-目标是在保留现有核心基底的前提下增强任务质量：仍然随机选择主 app / app graph / 初始化文件与截图，但把“一次性让 LLM 直接生成任务”升级为多阶段、可验证、可迭代的生成流程。
+本文档描述新版 OSSymphony2 task generation workflow。目标是在保留现有 app graph 随机采样、真实 `desktop_env` reset/evaluate、动态 evaluator schema 的基础上，把“一次性生成完整任务”拆成可探索、可筛选、可验证、可修复、可积累经验的多阶段流程。
 
-## 可以参考的文件
-1. 当前生成指令的核心代码：/nvme/yangbowen/yangbowen/OSSymphony/os_caliber_task_generator.py
-2. 指令Agent的核心代码：/nvme/yangbowen/yangbowen/OSSymphony/mm_agents/os_symphony/agents/instruction_generation_agent.py
-3. APP 的文档以及config：/nvme/yangbowen/yangbowen/OSSymphony/evaluation_examples/ubuntu_online_rollout/config，/nvme/yangbowen/yangbowen/OSSymphony/evaluation_examples/ubuntu_online_rollout/app_tutorial
-4. 参考的 GUI Action 执行：/nvme/yangbowen/yangbowen/OSSymphony/mm_agents/anthropic/main_with_code.py，这个文件告诉你如何配置Click，Scroll动作
-4. 参考的项目：/nvme/yangbowen/yangbowen/OpenComputer（具体的设计已经列在下面了）
+核心优先级：
 
-## 生成Agent Workflow的额外要求
-1. 每个agent调用时都增加成本统计，参考 /nvme/yangbowen/yangbowen/OSSymphony/mm_agents/anthropic/main_with_code.py，统计调用次数等开销
-2. 每个agent独立建类，然后最外层框架搭起整个工作流
-3. 每个agent用相同的模型 api_key, base_url 即可
+1. 优先参考新版方案：随机采样 -> 探索 + 任务提议 -> 提议打分 -> 评估代码生成 -> 评估代码验证/修复 -> APP 动态记忆更新。
+2. 当前 workflow 必须深度依赖 `desktop_env`，探索、reset、evaluate 都应以真实初始化环境为准。
+3. 每个 agent 独立建类，最外层 workflow 只负责调度、状态流转、日志和失败恢复。
+4. 每次 LLM / agent 调用都记录成本统计，包括调用次数、模型名、输入输出 token、耗时、成功/失败状态。
+
+---
 
 ## Non-goals
 
-- 不在当前 pipeline 中引入真实 agent rollout。
-- 不要求验证黄金状态是否正确。
-- 不重写现有 DesktopEnv、OSCaliberTaskGenerator、InstructionGenerationAgent 的核心接口。
+- 不在当前 pipeline 中引入真实 task-solving agent rollout。
+- 不要求验证 golden 状态一定正确，也不要求完成后 reward 一定为 1。
+- 不重写 `DesktopEnv` 的核心接口。
 - 不强制为每个 app 预先写静态 verifier；继续使用现有动态 evaluator 结构。
+- 不把生成期的探索摘要、打分详情、preflight 日志塞进最终 task JSON 的顶层字段。
+- 不允许 VLM-only 任务进入最终集；最终任务必须至少有一个 rule-based evaluator，可以额外带 VLM judge。
 
-## Key ideas borrowed from OpenComputer
+---
 
-1. **Proposal 和 verification 分离**：先让任务围绕 app 能力和真实用户场景发散，再单独审查 evaluator 是否可执行、可判分。
-2. **Quality gate**：每个阶段都有结构化输出和 reject reason，不再把 LLM 的一次输出直接当最终任务。
-3. **Environment validation before finalization**：任务最终写盘前，先在初始化环境里验证 evaluator 不会误给正分。
-4. **Repair without rollout**：当前不跑 agent，但可以修复 task description、evaluator getter/code、初始化 config、文件路径和 app memory。
-5. **Lessons / memory feedback loop**：把每个 app 已覆盖功能、失败模式、好用验证通道记录下来，下一轮生成时注入 prompt。
-
-## Proposed stages
+## 总体阶段
 
 ```text
-Stage 0  Sample base context
-Stage 1  Sandbox exploration
-Stage 2  Proposal generation
-Stage 3  Proposal critique and selection
-Stage 4  Evaluator synthesis and static validation
-Stage 5  Sandbox preflight validation: init reward must be 0
-Stage 6  Repair loop without rollout
-Stage 7  Finalize task files and update app memory
+Stage 0  随机采样
+Stage 1  Sandbox 探索 + 任务提议生成
+Stage 2  任务提议打分与筛选
+Stage 3  Evaluator 代码生成
+Stage 4  Evaluator 验证、初态 0 检查、修复
+Stage 5  Finalize task file + APP 动态记忆更新
 ```
+
+关键变化：
+
+- Stage 0 不再区分 `main_app`；所有 sampled apps 地位相同。
+- Stage 0 只采样软件、支持文件类型、候选文件；不再生成固定任务初始化。
+- Stage 1 的探索环境初始 `config` 为空，即不做任何初始化。
+- Stage 1 proposal 必须生成 `instruction` 和该 proposal 自己的 `config`。
+- Stage 1 的奖励/评估字段只写自然语言检查要求，不生成 evaluator code。
+- Stage 4 preflight 必须用 candidate/proposal 生成的最终 `config` reset，而不是 Stage 0 的固定初始化。
 
 ---
 
-## Stage 0: Sample base context
+## 跨阶段数据契约
 
-保留现有基底：
+### 共享运行对象
 
-- 从 `app_config.json` 中采样 `main_app`。
-- 通过 `APP_GRAPH` 采样 `apps_for_group`。
-- 通过 `_generate_config()` 随机选择 app 启动方式和文件路径。
-- 创建 `golden_paths`。
-- reset 环境并保存初始截图。
+这些对象只在 Python runtime 中共享，不写入最终 task JSON：
 
-现有入口基本对应：
-
-- `os_caliber_task_generator.py::_sample_app_group`
-- `os_caliber_task_generator.py::_generate_config`
-- `OSCaliberTaskGenerator.generate_task`
-
-建议改动：Stage 0 只产出一个结构化 `generation_context`，不要立刻调用 task generator。
-
-```json
-{
-  "main_app": "libreoffice_calc",
-  "apps_for_group": ["libreoffice_calc", "vscode"],
-  "task_setup_config": [...],
-  "launch_paths": [...],
-  "golden_paths": [...],
-  "setup_image": "...png",
-  "app_tutorial_md": "...",
-  "app_memory": {...}
-}
+```python
+desktop_env: DesktopEnv
+cost_tracker: WorkflowCostTracker
+app_memory_store: AppMemoryStore
+build_evaluator_fn: Callable[[dict], dict]
+app_version_lookup: Callable[[str], str]
 ```
 
----
-
-## Stage 1: Sandbox exploration
-
-这一阶段不是执行任务，而是对初始化环境做轻量探索，给 LLM 更多 grounding，避免只凭 tutorial 和首屏截图生成 naive 任务。
-
-### Allowed exploration
-
-探索阶段允许一个最小动作子集，目标是观察初始环境，而不是完成任务或改变持久状态。
-
-#### Read-only probes
-
-- 截图当前窗口。
-- 查询窗口标题、进程、文件是否存在。
-- 对 `launch_paths` 做只读 metadata 检查，例如文件大小、扩展名、目录 listing。
-- 对文本类 / 表格类 / 代码类文件做只读摘要。
-- 对 app 配置目录做只读存在性检查，如 `~/.config/<app>`。
-- 对可安全执行的 command-line introspection 做查询，如版本号、MIME、文件结构。
-
-#### Minimal GUI exploration actions
-
-- `click(x, y)`：只允许点击明显的导航、展开、tab、菜单入口或空白区域，用于揭示 UI affordance；不得点击保存、导出、确认、删除、应用设置、运行脚本、发送消息等会改变状态的控件。
-- `scroll(dx, dy)`：只允许在当前页面、侧栏、菜单或文档视图内滚动以观察更多内容；不得依赖滚动来完成任务目标。
-
-建议把探索动作限制在很小的步数内，例如每个 candidate context 最多 3-5 个 GUI exploration actions。探索结束后必须 reset 回 Stage 0 的初始化状态，再进入 proposal/evaluator/preflight，避免探索动作污染任务初始状态。
-
-### Disallowed exploration
-
-- 不修改文件内容。
-- 不保存、不导出、不改变 app setting。
-- 不点击会触发持久写入、确认弹窗、网络提交、删除、安装、运行代码或发送消息的 GUI 控件。
-- 不访问不稳定网络资源。
-
-### Output
+### Stage 0 输出：`GenerationContext`
 
 ```json
 {
-  "visible_state": "The spreadsheet is open on Sheet1 with columns A-D visible...",
-  "file_inventory": [
-    {"path": "/home/user/Desktop/test_files/xlsx/budget.xlsx", "type": "xlsx", "summary": "3 sheets: Sales, Costs, Summary"}
+  "rollout_id": "uuid",
+  "sampled_apps": ["libreoffice_calc", "vscode"],
+  "app_file_support": {
+    "libreoffice_calc": ["xlsx", "csv"],
+    "vscode": ["txt", "py", "csv"]
+  },
+  "sampled_files": [
+    {
+      "path": "/home/user/Desktop/test_files/xlsx/budget.xlsx",
+      "type": "xlsx",
+      "supported_apps": ["libreoffice_calc"]
+    },
+    {
+      "path": "/home/user/Desktop/test_files/csv/sales.csv",
+      "type": "csv",
+      "supported_apps": ["libreoffice_calc", "vscode"]
+    }
   ],
-  "app_affordances_seen": ["spreadsheet grid", "formula bar", "sheet tabs"],
-  "safe_verification_channels": ["vm_file:xlsx via openpyxl", "vm_command_line:python inspect zip/xml"],
-  "constraints": ["Only one launch file is open", "No internet required"]
+  "app_tutorials": {
+    "libreoffice_calc": "static tutorial markdown",
+    "vscode": "static tutorial markdown"
+  },
+  "app_memory": {
+    "libreoffice_calc": {
+      "covered_features": {},
+      "known_good_verification_channels": [],
+      "failure_patterns": [],
+      "next_generation_bias": {},
+      "recent_tasks": []
+    }
+  },
+  "app_versions": {
+    "libreoffice_calc": "LibreOffice Calc ...",
+    "vscode": "VS Code ..."
+  },
+  "app_open_commands": {
+    "libreoffice_calc": [["libreoffice", "--calc"], ["libreoffice", "--calc", "PATH"]]
+  },
+  "initial_config": [],
+  "observation": "desktop_env initial observation object",
+  "setup_image": "bytes"
 }
 ```
 
-### Why it helps
+字段含义：
 
-当前 prompt 只知道 app、截图、路径和可选 tutorial，容易生成泛泛任务。探索摘要能让模型知道“这个文件里到底有什么、当前 UI 到哪一步、哪些结果能被 rule 检查”。
+| 字段 | 阶段来源 | 后续用途 |
+|---|---|---|
+| `rollout_id` | Stage 0 | sidecar log、debug、无 app fallback key |
+| `sampled_apps` | Stage 0 | Stage 1 prompt、Stage 2 筛选、Stage 5 memory update |
+| `app_file_support` | Stage 0 | 明确 app 与可加载文件类型对应关系，例如 `libreoffice_calc -> xlsx` |
+| `sampled_files` | Stage 0 | Stage 1 探索、proposal `used_files`、最终 `launch_paths` |
+| `sampled_files[].path` | Stage 0 | 允许 `open(app, path)` 打开的具体文件路径 |
+| `sampled_files[].type` | Stage 0 | evaluator channel hint，例如 `vm_file:xlsx` |
+| `sampled_files[].supported_apps` | Stage 0 | 提示模型哪个 app 能打开哪个文件 |
+| `app_tutorials` | Stage 0 | Stage 1/3 prompt 静态能力说明 |
+| `app_memory` | Stage 0/5 | Stage 1/2 降重和偏置；Stage 5 更新 |
+| `app_versions` | Stage 0 | final `related_apps_version` 和提示 |
+| `app_open_commands` | Stage 0 | Stage 1 `open` action 内部转为 bash command |
+| `initial_config` | Stage 0 | 固定为空；用于探索后 reset 到空初态 |
+| `observation` | Stage 0 | 初态观测 |
+| `setup_image` | Stage 0 | Stage 1/2/3 image prompt 和最终 `setup_image` 文件 |
 
----
-
-## Stage 2: Proposal generation
-
-复用 `InstructionGenerationAgent` 的 LLM 调用能力，但把输出拆成 proposal，不立刻要求完整 evaluator code。
-
-### Prompt inputs
-
-- Stage 0 context
-- Stage 1 exploration summary
-- static app tutorial
-- dynamic app memory
-- current generated-task coverage target
-
-### Proposal schema
+### Stage 1 输出：`ExplorationAndProposalResult`
 
 ```json
 {
-  "proposal_id": "local_short_id",
-  "description": "goal-oriented user request",
-  "category": "file_only | app_only | mixed",
-  "complexity": "simple | medium | complex",
-  "estimated_steps": 20,
-  "related_apps": ["libreoffice_calc"],
-  "target_features": ["formula", "conditional_formatting", "export_csv"],
-  "required_artifacts": ["/home/user/Desktop/test_files/xlsx/budget.xlsx"],
-  "success_criteria": [
-    "Sheet Summary contains total revenue in B2",
-    "Rows with margin below 10% are highlighted red"
+  "exploration_summary": {
+    "visible_state": "Empty desktop or opened sampled file state summary.",
+    "opened_files": [
+      {
+        "path": "/home/user/Desktop/test_files/xlsx/budget.xlsx",
+        "app": "libreoffice_calc",
+        "type": "xlsx",
+        "summary": "Workbook has sheets Budget and Summary."
+      }
+    ],
+    "file_inventory": [
+      {
+        "path": "/home/user/Desktop/test_files/xlsx/budget.xlsx",
+        "type": "xlsx",
+        "supported_apps": ["libreoffice_calc"],
+        "exists": true,
+        "size": 20480
+      }
+    ],
+    "app_affordances_seen": ["spreadsheet grid", "sheet tabs", "formula bar"],
+    "safe_verification_channels": ["vm_file:xlsx", "vm_command_line"],
+    "constraints": ["Only sampled files may be opened during exploration"],
+    "tool_results": []
+  },
+  "proposals": [
+    {
+      "proposal_id": "p01",
+      "instruction": "...",
+      "config": [],
+      "related_apps": ["libreoffice_calc"],
+      "used_files": ["/home/user/Desktop/test_files/xlsx/budget.xlsx"],
+      "category": "file_only",
+      "complexity": "medium",
+      "estimated_steps": 20,
+      "target_features": ["formula", "formatting"],
+      "success_criteria": ["Summary sheet contains ..."],
+      "evaluation_requirements_text": ["Check cell B2 equals ...", "Check style/font ..."],
+      "verification_plan_hint": {
+        "preferred": "rule",
+        "channels": ["vm_file", "vm_command_line"],
+        "rationale": "The modified xlsx can be inspected with openpyxl."
+      },
+      "risk_notes": []
+    }
+  ]
+}
+```
+
+Stage 1 必须生成 exactly requested proposal count，即请求几个 proposal 就返回几个 proposal。
+
+### Stage 2 输出：`ProposalSelectionResult`
+
+```json
+{
+  "accepted": [
+    {
+      "proposal_id": "p01",
+      "instruction": "...",
+      "config": [],
+      "related_apps": [],
+      "used_files": [],
+      "evaluation_requirements_text": []
+    }
   ],
-  "verification_plan_hint": {
-    "preferred": "rule",
-    "channels": ["vm_file"],
-    "rationale": "The edited xlsx can be inspected with openpyxl"
-  }
-}
-```
-
-### Generation policy
-
-- 每次 oversample，比如需要 10 个最终任务，先生成 16-20 个 proposal。
-- 强制分布覆盖：core content、settings/preferences、layout、import/export、cross-app、file transformation。
-- 对已有 memory 中覆盖过多的 feature 降权。
-- 不允许只做“打开文件、输入一句话、保存”这种单点操作。
-
----
-
-## Stage 3: Proposal critique and selection
-
-这一阶段用 LLM 或规则对 proposal 打分，不生成 evaluator code。
-
-### Scoring axes
-
-| Axis | Accept target | Reject reason examples |
-|---|---:|---|
-| specificity | high | 缺少路径、目标对象、输出位置、精确值 |
-| realism | high | 像 benchmark 指令，不像真实用户需求 |
-| complexity | medium/complex | 太短、单步、只改一个无意义字段 |
-| verifiability | high | 结果不可观察、只能凭主观判断 |
-| data fit | high | 与当前 launch file 无关或假设不存在的数据 |
-| diversity | high | 与本轮或历史 memory 功能重复 |
-| non-destructiveness | required | 删除大量文件、修改系统设置、不可逆 |
-
-### Output
-
-```json
-{
-  "accepted": [...],
   "rejected": [
     {
       "proposal_id": "p03",
       "reason": "too_simple",
-      "suggested_repair": "Combine formula creation with chart/export requirement"
+      "suggested_repair": "Combine content edit with verifiable formatting."
     }
   ],
   "coverage_summary": {
-    "formula": 2,
-    "chart": 1,
-    "settings": 1
+    "formula": 1,
+    "cross_app": 1
   }
 }
 ```
 
-如果 accepted 数量不足，带 rejected reason 回到 Stage 2 重试，最多 2-3 轮。
-
----
-
-## Stage 4: Evaluator synthesis and static validation
-
-只对 accepted proposals 生成完整 evaluator。
-
-### Evaluator synthesis
-
-复用当前 schema：
-
-- `need_rule_judge`
-- `need_vlm_judge`
-- `vlm_desc`
-- `rule_items`
-  - `result_getter`
-  - `expected_getter`
-  - `code`
-
-但 prompt 要从“生成任务”改为“为已接受 proposal 生成 evaluator”，这样 code 质量会明显更稳定。
-
-### Static validation checks
-
-在不进入真实 rollout 的情况下，先做静态检查：
-
-1. JSON 可解析。
-2. 每个 rule item 的 Python code 可 `ast.parse`。
-3. 函数名存在且以 `call_rule_judge_` 开头。
-4. 函数签名兼容 `(result, expected, **options)`。
-5. getter 类型只允许 `vm_file`、`vm_command_line`、`empty`。
-6. `vm_file.path` 必须是 VM 内绝对路径。
-7. `vm_command_line.command` 必须是 list。
-8. 如果 task 描述提到文件路径，evaluator 至少覆盖关键输出路径。
-9. 若 task 修改 launch file，优先使用 golden path 做 negative check。
-10. code 中不允许危险操作：`subprocess`、`os.system`、网络访问、写文件、删除文件等。
-
-### Output
+### Stage 3 输出：`TaskCandidate`
 
 ```json
 {
-  "task_candidate": {...},
-  "static_validation": {
-    "passed": true,
-    "warnings": []
-  }
-}
-```
-
----
-
-## Stage 5: Sandbox preflight validation: init reward must be 0
-
-这是当前阶段最关键的新增 gate：不跑 agent，只在初始化后的 sandbox 里直接运行 evaluator。
-
-### Principle
-
-初始化状态一定不能已经满足任务。也就是说：
-
-```text
-reward(init_state, task_evaluator) == 0
-```
-
-如果初始化状态给了正分，说明任务或 evaluator 有问题：
-
-- 任务太 trivial，初始文件已经满足。
-- evaluator 过宽，误判初始状态通过。
-- getter 路径错了，读到了 golden 或错误文件。
-- rule code 只检查文件存在，没有检查目标修改。
-- VLM desc 太宽泛，初始截图也可能被判成功。
-
-### What to run
-
-对每个 task candidate：
-
-1. 使用 Stage 0 的 `task_setup_config` reset sandbox，确保状态等同于最终任务的真实初始化状态。
-2. 不执行任何完成任务的 agent action；如果 Stage 1 做过 click/scroll 探索，这里必须重新 reset，而不是复用探索后的环境。
-3. 注入 candidate evaluator，保持最终任务 JSON 中将要写入的 evaluator 字段不变。
-4. 执行 `env.evaluate()`，只验证初始化环节的 reward。
-5. 若 `need_vlm_judge` 为 true，当前阶段不调用 VLM 当最终判据；只做 `vlm_desc` 静态检查或可选 screenshot self-check。
-6. 记录 `preflight_reward`、每个 rule 的 result/expected getter 是否成功、以及每个 rule 的 init score。
-
-### Pass criteria
-
-- rule-only：`preflight_reward == 0.0`。
-- rule + VLM：rule 部分必须是 `0.0`；VLM 部分只做 prompt 风险检查。
-- VLM-only：默认进入 repair，要求补充至少一个 rule-based negative/preflight check；除非这个任务被标记为 `visual_only_allowed`。
-
-### Output
-
-```json
-{
-  "task_id": "candidate_uuid",
-  "preflight": {
-    "init_rule_reward": 0.0,
-    "passed": true,
-    "details": [
-      {"rule": "call_rule_judge_1", "score": 0.0, "result_source": "vm_file:/home/user/..."}
+  "instruction": "...",
+  "config": [],
+  "complexity": "medium",
+  "category": "file_only",
+  "related_apps": ["libreoffice_calc"],
+  "used_files": ["/home/user/Desktop/test_files/xlsx/budget.xlsx"],
+  "estimated_steps": 20,
+  "feature_tags": ["formula"],
+  "verification": {
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "vlm_desc": "",
+    "rule_items": [
+      {
+        "result_getter": {
+          "type": "vm_file",
+          "path": "/home/user/Desktop/test_files/xlsx/budget.xlsx",
+          "dest": "budget.xlsx"
+        },
+        "expected_getter": {"type": "empty"},
+        "code": "def call_rule_judge_1(result, expected, **options):\n    return 0.0"
+      }
     ]
   }
 }
 ```
 
-### Important distinction from golden validation
+### Stage 4 输出：`ValidationResult`
 
-不要求证明 golden 状态正确，也不要求任务完成后的 reward 为 1。当前只证明“初始化不是成功态”，这是更稳、更便宜、也更适合当前 pipeline 的验证。
-
----
-
-## Stage 6: Repair loop without rollout
-
-如果 Stage 3-5 失败，不丢弃，先尝试修复。
-
-### Repair classes
-
-| Failure | Likely cause | Repair action |
-|---|---|---|
-| `init_reward_positive` | evaluator 过宽或任务已满足 | 加强 positive condition、添加 negative check、换输出路径、改任务目标 |
-| `getter_failed` | path/command 错 | 修正 getter path、dest、command list |
-| `code_invalid` | LLM 生成代码不可执行 | 只修 code，不改任务意图 |
-| `description_ambiguous` | success criteria 不可判 | 明确对象、路径、数量、格式 |
-| `too_simple` | 初始状态或一步可完成 | 合并多条件目标，提高复杂度 |
-| `memory_duplicate` | 功能覆盖重复 | 换 feature 或降低优先级 |
-| `vlm_only_weak` | 没有稳定 rule anchor | 增加文件/命令类检查，或降级为候选池 |
-
-### Repair loop
-
-```text
-candidate -> diagnose -> repair prompt -> static validation -> preflight validation
+```json
+{
+  "passed": true,
+  "static_validation": {
+    "passed": true,
+    "errors": [],
+    "warnings": []
+  },
+  "preflight": {
+    "init_rule_reward": 0.0,
+    "passed": true,
+    "details": []
+  },
+  "repair_history": []
+}
 ```
 
-最多 2 轮。仍失败则 reject，并把原因写入 app memory，避免下次重复。
+### Stage 5 输出：final task JSON
 
----
-
-## Stage 7: Finalize and update app memory
-
-只有通过 Stage 5 的 candidate 才写成最终任务 JSON。
-
-### Final task schema
-
-最终写盘格式必须和当前 `OSCaliberTaskGenerator.generate_task()` 输出保持一致：不改名、不删除、不改变现有字段语义，默认也不新增顶层字段。探索摘要、preflight 结果、feature tags、memory version 等生成期信息写到 sidecar log 或 app memory，不塞进最终 task JSON。
+最终写盘格式保持现有任务格式，不把生成期字段塞入顶层：
 
 ```json
 {
   "id": "uuid",
-  "snapshot": "main_app",
-  "related_apps": [...],
-  "related_apps_version": [...],
+  "snapshot": "libreoffice_calc",
+  "related_apps": ["libreoffice_calc"],
+  "related_apps_version": ["LibreOffice Calc ..."],
   "instruction": "...",
-  "config": [...],
+  "config": [],
   "complexity": "medium",
-  "estimated_steps": 25,
+  "estimated_steps": 20,
   "category": "file_only",
-  "evaluator": {...},
+  "evaluator": {},
   "setup_image": "image/<uuid>.png",
-  "launch_paths": [...]
+  "launch_paths": ["/home/user/Desktop/test_files/xlsx/budget.xlsx"]
 }
 ```
 
-### App memory update
+---
 
-每个 app 维护一个动态 memory，类似 tutorial，但它记录的是生成经验，不是静态功能说明。
+## Stage 0: 随机采样
 
-建议路径：
+### 目标
+
+随机选择多个软件和多个文件，构建一轮 rollout 的基础上下文。Stage 0 只负责采样和收集提示信息，不负责生成任务初始化。
+
+### 软件采样
+
+输入超参数：
+
+```python
+max_apps_per_group: int = n
+rollout_app_list: list[str] | None
+```
+
+采样流程：
+
+1. 从 `rollout_app_list` 或 `app_config.json` 全量 app 中得到 `available_apps`。
+2. 随机采样 `m`，其中 `1 <= m <= n`。
+3. 通过 `APP_GRAPH` 从一个随机起点扩展到 `m` 个 app。
+4. 如果图邻居不足，可以从剩余 `available_apps` 中补充。
+5. 输出 `sampled_apps: list[str]`。
+
+约束：
+
+- 不再产生 `main_app`。
+- 不再产生 `apps_for_group` 这种带主从含义的字段。
+- 每个 sampled app 地位相同。
+
+### 文件采样
+
+输入：
+
+```python
+sampled_apps: list[str]
+app_file_support: dict[str, list[str]]
+```
+
+采样流程：
+
+1. 令 `m = len(sampled_apps)`。
+2. 随机采样文件数 `k`，其中 `k in [0, m + 1]`。
+3. `k == 0` 表示本轮允许生成 no-file task。
+4. `k == m + 1` 用于支持“单个 APP 操作多个文件”这类任务。
+5. 从 `sampled_apps` 支持/可打开的文件类型并集中构造候选文件池。
+6. 从候选文件池随机抽取最多 `k` 个具体文件。
+7. 如果某些 app/type 没有实际 `PATH` 文件，最终 `len(sampled_files)` 可以小于 `k`。
+
+输出字段：
+
+```python
+app_file_support: dict[str, list[str]]
+sampled_files: list[dict]
+```
+
+其中 `sampled_files[]` 的字段固定为：
+
+```json
+{
+  "path": "/home/user/Desktop/test_files/xlsx/example.xlsx",
+  "type": "xlsx",
+  "supported_apps": ["libreoffice_calc", "wps_et"]
+}
+```
+
+### 环境初始化
+
+Stage 0 的环境初始化状态为空：
+
+```python
+initial_config = []
+desktop_env.reset(task_config={
+    "config": initial_config,
+    "id": "init_id",
+    "instruction": "init_instruction"
+})
+```
+
+Stage 0 不再调用旧版 `_generate_config()` 来决定某个 main app 的启动方式、文件路径或 golden path。
+
+---
+
+## Stage 1: Sandbox 探索 + 任务提议
+
+### 目标
+
+给定 Stage 0 采样到的软件、文件路径、APP 教程、APP 动态记忆，在空初始化环境中做最多 10 步探索，然后生成多个任务提议。
+
+输入字段：
+
+```python
+sampled_apps
+app_file_support
+sampled_files
+app_tutorials
+app_memory
+app_versions
+app_open_commands
+initial_config
+setup_image
+```
+
+### 探索动作
+
+探索 agent 只允许三个动作，使用 OpenAI-format `tool_schema`：
+
+```json
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "open",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app": {"type": "string"},
+          "path": {"type": "string"},
+          "purpose": {"type": "string"}
+        },
+        "required": ["app"]
+      }
+    }
+  },
+  {"type": "function", "function": {"name": "click"}},
+  {"type": "function", "function": {"name": "scroll"}}
+]
+```
+
+动作语义：
+
+1. `open(app, path)`
+   - `app` 必须来自 `sampled_apps`。
+   - `path` 必须来自 `sampled_files[].path`，或为空表示打开空 app。
+   - 内部通过 `desktop_env.controller.run_bash_script(...)` 执行对应 app command。
+2. `click(x, y)`
+   - 只用于非破坏性 UI 观察。
+   - 禁止点击保存、导出、删除、确认、系统设置、发送、安装、运行脚本等会改变持久状态的控件。
+3. `scroll(amount, x=None, y=None)`
+   - 只用于观察更多内容。
+
+探索限制：
+
+- 最多 `max_exploration_steps = 10`。
+- 不修改文件内容。
+- 不保存、不导出、不改变 app setting。
+- 不访问不稳定网络资源。
+- 探索后的环境不得直接用于 Stage 4 preflight；进入 Stage 2/3/4 前必须 reset 到空初态或 candidate config 初态。
+
+### Proposal schema
+
+每个 proposal 必须包含：
+
+```json
+{
+  "proposal_id": "p01",
+  "instruction": "xxxxx",
+  "config": [],
+  "related_apps": ["libreoffice_calc"],
+  "used_files": ["/home/user/Desktop/test_files/xlsx/example.xlsx"],
+  "category": "file_only | app_only | mixed",
+  "complexity": "simple | medium | complex",
+  "estimated_steps": 20,
+  "target_features": ["formula", "formatting"],
+  "success_criteria": ["..."],
+  "evaluation_requirements_text": ["..."],
+  "verification_plan_hint": {
+    "preferred": "rule | hybrid",
+    "channels": ["vm_file", "vm_command_line"],
+    "rationale": "..."
+  },
+  "risk_notes": []
+}
+```
+
+字段要求：
+
+- `instruction`：用户可见任务指令，必须满足旧版本所有生成限制：自然、清晰、非破坏性、非单步 trivial、不是 benchmark 描述、不依赖主观视觉判断、目标可验证。
+- `config`：该 proposal 自己的初始化配置，由模型自由选择。可以打开某个 app、复制某个文件、打开某个文件、或保持空。不同 proposal 可以有不同 `config`。
+- `related_apps`：只列该 proposal 实际需要的软件；不得假设主 APP。
+- `used_files`：只列该 proposal 实际使用的 Stage 0 sampled file path。
+- `evaluation_requirements_text`：只写自然语言，不写 code；必须非常细粒度，足够 Stage 3 evaluator agent 生成完备 rule function。
+
+文件使用策略：
+
+- 如果 `sampled_files` 非空，应强烈鼓励模型尽可能生成有文件特色的任务。
+- Proposal 不需要强制使用全部 sampled files，但应优先利用已准备文件，避免文件采样浪费。
+- 如果 proposal 使用文件，必须在 `used_files` 中列出具体路径，并在 `config` 中体现初始化方式。
+
+---
+
+## Stage 2: 任务提议打分与筛选
+
+### 目标
+
+对 Stage 1 proposals 进行多维度打分，筛掉不可执行、不可验证、过于简单或重复的任务。
+
+### 输入字段
+
+```python
+GenerationContext
+exploration_summary
+proposals
+app_memory
+```
+
+### 打分维度
+
+| Axis | Accept target | Reject reason examples |
+|---|---:|---|
+| specificity | high | 缺少具体文件、对象、输出位置、数值、格式 |
+| realism | high | 像 benchmark 指令，不像真实用户需求 |
+| complexity | medium/complex | 单步打开、只输入一句话、只保存 |
+| verifiability | high | 结果不可观察、只能主观判断 |
+| data fit | high | 没使用 sampled file，或假设不存在文件内容 |
+| diversity | high | 与本轮或历史 memory 功能重复 |
+| non-destructiveness | required | 删除文件、改系统设置、不可逆操作 |
+| rule anchor | required | 没有稳定 rule-based 检查点 |
+| config quality | required | proposal 缺少任务专属初始化或初始化与任务不匹配 |
+
+输出字段：
+
+```python
+accepted: list[proposal]
+rejected: list[dict]
+coverage_summary: dict[str, int]
+```
+
+如果 accepted 数量不足：
+
+1. 将 rejected reasons 和 suggested repairs 反馈给 Stage 1。
+2. 保留当前 exploration summary。
+3. 重新生成缺口数量的 proposals。
+4. 最多重试 `max_proposal_regen_rounds` 次。
+5. 仍不足则本 rollout 可部分成功或失败，并把可复用失败写入 app memory。
+
+---
+
+## Stage 3: Evaluator 代码生成
+
+### 目标
+
+只对 Stage 2 通过的 proposal 生成完整 task candidate 和 evaluator code。
+
+### 输入字段
+
+```python
+accepted_proposal
+GenerationContext
+exploration_summary
+app_tutorials
+app_memory
+```
+
+### 复用当前 evaluator schema
+
+保持现有动态 evaluator 结构：
+
+```python
+need_rule_judge: bool
+need_vlm_judge: bool
+vlm_desc: str
+rule_items: list[dict]
+```
+
+每个 `rule_item`：
+
+```json
+{
+  "result_getter": {},
+  "expected_getter": {},
+  "code": "def call_rule_judge_1(result, expected, **options):\n    ..."
+}
+```
+
+生成要求：
+
+- 必须使用 proposal 的 `evaluation_requirements_text` 作为 evaluator 覆盖依据。
+- 每个最终任务必须至少有一个 rule item。
+- 可以同时使用 VLM judge，但 VLM 只能作为补充，不可作为唯一判据。
+- evaluator 不应只检查文件存在；必须检查内容、结构、格式、metadata 或可观察状态变化。
+- getter path 必须指向 VM 内真实绝对路径。
+- `vm_command_line.command` 必须是 list，不允许字符串 shell。
+- code 必须定义 `call_rule_judge_*` 函数。
+- code 不允许写文件、删文件、访问网络、启动 GUI、调用危险系统命令。
+
+---
+
+## Stage 4: Evaluator 验证、初态 0 检查、修复
+
+### 目标
+
+对 Stage 3 的 task candidate 做静态验证和真实初始化环境 preflight。任一环节失败则进入有限 repair loop。
+
+### 静态验证
+
+检查：
+
+1. JSON 可解析。
+2. candidate 必填字段存在：`instruction`、`config`、`related_apps`、`verification`。
+3. `need_rule_judge` 必须为 true，且 `rule_items` 非空。
+4. 每个 rule item 的 Python code 可 `ast.parse`。
+5. 函数名存在且以 `call_rule_judge_` 开头。
+6. 函数签名兼容 `(result, expected, **options)`。
+7. getter 类型只允许 `vm_file`、`vm_command_line`、`empty`。
+8. `vm_file.path` 必须是 VM 内绝对路径。
+9. `vm_command_line.command` 必须是 list。
+10. code 中不允许危险操作：`subprocess`、`os.system`、`shutil.rmtree`、网络访问、写文件、删除文件等。
+11. 不允许 evaluator 只检查文件存在。
+
+### 初态 0 preflight validation
+
+对每个 candidate，在真实 sandbox 初始状态下直接运行 evaluator：
+
+```text
+reward(init_state, task_evaluator) == 0
+```
+
+执行步骤：
+
+1. 使用 candidate 最终 task JSON 中的 `config` reset `desktop_env`。
+2. 确保不复用 Stage 1 探索后的状态。
+3. 不执行任何完成任务的 agent action。
+4. 注入 candidate evaluator。
+5. 调用 `env.evaluate()`。
+6. 记录总 reward、异常信息和 failure type。
+
+通过标准：
+
+- rule-only：`preflight_reward == 0.0`。
+- rule + VLM：rule 部分必须是 `0.0`；VLM 只作为补充。
+- VLM-only：直接失败，必须修复为至少包含一个 rule-based evaluator。
+
+常见失败：
+
+| Failure | 含义 | 修复方向 |
+|---|---|---|
+| `init_reward_positive` | 初始状态已满足任务或 evaluator 过宽 | 加强成功条件、换输出目标、增加 negative check |
+| `getter_failed` | path / dest / command list / 依赖错误 | 修 getter 或 config |
+| `code_invalid` | rule code 不可解析 | 只修 code |
+| `code_runtime_error` | rule code 运行失败 | 修输入类型、依赖、异常处理 |
+| `vlm_only_weak` | 没有 rule anchor | 增加文件/命令类检查或丢弃 |
+
+Repair 规则：
+
+- 每轮 repair 后都必须重新 reset sandbox。
+- 默认最多 `max_evaluator_repair_rounds = 2`。
+- code invalid 优先只修 code，不改任务意图。
+- init reward positive 可以修 instruction、config、success criteria 或 evaluator。
+- 修复后仍失败则 reject，并将失败模式写入 app memory。
+
+---
+
+## Stage 5: Finalize task file + APP 动态记忆更新
+
+### 目标
+
+只有通过 Stage 4 的 candidate 才能写成最终任务 JSON，并更新对应 app 的动态 memory。
+
+### Final task 字段来源
+
+| Final 字段 | 来源 |
+|---|---|
+| `id` | Stage 5 生成 UUID |
+| `snapshot` | `related_apps[0]` 或 `sampled_apps[0]` fallback |
+| `related_apps` | candidate/proposal `related_apps` 标准化到 internal app name |
+| `related_apps_version` | `app_version_lookup(related_app)` |
+| `instruction` | candidate/proposal `instruction` |
+| `config` | candidate/proposal `config` |
+| `complexity` | candidate/proposal `complexity` |
+| `estimated_steps` | candidate/proposal `estimated_steps` |
+| `category` | candidate/proposal `category` |
+| `evaluator` | `build_evaluator_fn(candidate.verification)` |
+| `setup_image` | `image/<task_id>.png` |
+| `launch_paths` | candidate/proposal `used_files` 与 Stage 0 `sampled_files[].path` 的交集 |
+
+### Sidecar generation log
+
+每个 rollout 写 sidecar log，不影响最终 task schema：
+
+```json
+{
+  "time": "...",
+  "rollout_id": "uuid",
+  "sampled_apps": [],
+  "app_file_support": {},
+  "sampled_files": [],
+  "initial_config": [],
+  "exploration": {},
+  "accepted_count": 0,
+  "generated_ids": [],
+  "failures": []
+}
+```
+
+### APP memory schema
+
+路径：
 
 ```text
 mm_agents/os_symphony/agents/instruction_generator/app_memory/<app>.json
 ```
 
-### App memory schema
+内容：
 
 ```json
 {
@@ -387,94 +690,105 @@ mm_agents/os_symphony/agents/instruction_generator/app_memory/<app>.json
   "version": 3,
   "covered_features": {
     "formula": 8,
-    "chart": 3,
-    "conditional_formatting": 2,
-    "settings": 1
+    "chart": 3
   },
   "recent_tasks": [
     {
       "task_id": "...",
-      "feature_tags": ["formula", "chart"],
+      "feature_tags": ["formula"],
       "category": "file_only",
-      "instruction_summary": "Create margin analysis and chart from budget workbook",
+      "instruction_summary": "...",
       "preflight_passed": true
     }
   ],
-  "known_good_verification_channels": [
-    "xlsx via openpyxl",
-    "csv via pandas",
-    "png via pillow"
-  ],
+  "known_good_verification_channels": ["xlsx via openpyxl"],
   "failure_patterns": [
     {
       "type": "init_reward_positive",
-      "lesson": "Do not score only on output file existence; check content changed from golden file."
+      "lesson": "Do not score only on output file existence."
     }
   ],
   "next_generation_bias": {
-    "undercovered_features": ["settings", "import_export"],
+    "undercovered_features": ["settings"],
     "overcovered_features": ["formula"]
+  },
+  "co_use_counts": {
+    "vscode": 2
   }
 }
 ```
 
-### Memory write policy
+更新策略：
 
-- append/update only after finalization or rejection with useful failure reason。
+- 成功 finalization 后更新所有 sampled apps 的 memory。
+- 如果某 app 在 final `related_apps` 中，更新其 `covered_features` 和 `recent_tasks`。
+- 如果某 app 只是同轮 sampled 但未参与该 task，只更新轻量 `co_use_counts`。
+- rejection 只有在失败原因有复用价值时才写入 memory。
 - 不把完整 task JSON 塞进 memory，避免 prompt 过长。
-- recent_tasks 保留最近 N 条，比如 30。
-- covered_features 用计数和衰减都可以；先用简单计数。
-- 每轮 generation prompt 注入 summary，而不是整个 memory。
-- 这个 memory 和静态 tutorial 分工不同：tutorial 描述 app 能力，app memory 描述本 pipeline 已生成过什么、哪些 verifier 写法容易误判、哪些 feature 应该被降权或补足。
+- `recent_tasks` 保留最近 30 条。
 
 ---
 
-## Recommended implementation shape
+## 推荐实现结构
 
-### New module candidates
-
-```text
-instruction_generator/
-├── WORKFLOW.md
-├── app_memory/
-│   └── <app>.json
-├── prompts/
-│   ├── exploration_summary.md
-│   ├── proposal_generation.md
-│   ├── proposal_critique.md
-│   ├── evaluator_synthesis.md
-│   └── repair_candidate.md
-└── workflow.py
-```
-
-### Minimal integration path
-
-1. 先不改现有 `generate_task()` 的 public behavior。
-2. 新增一个 `generate_task_v2()` 或 `InstructionGenerationWorkflow`。
-3. 复用：
-   - `_sample_app_group()`
-   - `_generate_config()`
-   - `_build_evaluator_from_verification()`
-   - `InstructionGenerationAgent` 的 LLM wrapper / parse utilities。
-4. 把 preflight validation 写成独立函数，输入 `env` 和 candidate task config。
-5. 通过 CLI 参数选择 v1/v2，便于对比。
-
-### Suggested first implementation milestone
-
-先实现最小闭环：
+主要实现文件：
 
 ```text
-Stage 0 -> Stage 1(light) -> Stage 2 -> Stage 4 -> Stage 5 -> Stage 6 -> Stage 7
+/nvme/yangbowen/yangbowen/OSSymphony/ossymphony2_task_generation.py
+/nvme/yangbowen/yangbowen/OSSymphony/mm_agents/os_symphony/agents/instruction_generator/workflow.py
 ```
 
-Stage 1 light 版本包含：截图、launch_paths 文件摘要、app memory 注入，以及最多 3-5 步 `click` / `scroll` 的非持久探索。探索后必须 reset，再进行 evaluator synthesis 和 preflight。
+`ossymphony2_task_generation.py` 负责：
 
-第二阶段再把 Stage 3 critique、更完整 exploration、以及更细的 per-app coverage policy 加进去。
+- 初始化 `desktop_env`。
+- 加载 app config、app graph、tutorial。
+- Stage 0 采样 `sampled_apps`、`app_file_support`、`sampled_files`。
+- 使用空 `initial_config` reset 环境并保存初始 screenshot。
+- 构造 `GenerationContext`。
+- 调用 `InstructionGenerationWorkflow`。
+- 写 `test_all.json`。
 
-## Discussion points
+`workflow.py` 负责：
 
-1. VLM-only 任务是否允许进入最终集？建议默认不允许，除非有明确 `visual_only_allowed` 标记。
-2. preflight reward 是否要求严格等于 0？建议 rule reward 严格 0；浮点可用 `<= 1e-6`。
-3. app memory 是按 app name 还是 app version 区分？建议文件名按 app name，内部记录 version。
-4. repair loop 是在同一个 sandbox 反复 validate，还是每轮 reset？建议每轮 reset，避免 evaluator postconfig 改变状态。
-5. 多 app 任务的 memory 更新：主 app 必更，related apps 可只增加轻量 co-use count。
+- Stage 1 exploration。
+- Stage 1 proposal generation。
+- Stage 2 proposal critique。
+- Stage 3 evaluator synthesis。
+- Stage 4 static validation、preflight validation、repair。
+- Stage 5 final task 写盘、sidecar log、app memory 更新。
+
+---
+
+## 最小实现里程碑
+
+### Milestone 1: 最小闭环
+
+实现：
+
+```text
+Stage 0 -> Stage 1 -> Stage 2 -> Stage 3 -> Stage 4 -> Stage 5
+```
+
+最低要求：
+
+- Stage 0 可采样 `1..n` 个 app。
+- Stage 0 可采样 `0..m+1` 个文件。
+- Stage 1 可用 `open`、`click`、`scroll` 探索最多 10 步。
+- Stage 1 proposal 包含 `instruction`、`config`、`evaluation_requirements_text`。
+- Stage 3 生成至少一个 rule evaluator。
+- Stage 4 能 reject init reward positive 的任务。
+- Stage 5 能写最终 task JSON 和 sidecar log。
+
+### Milestone 2: 提升质量
+
+- 更细的 proposal diversity control。
+- 更强的 evaluator static validator。
+- 更完整的 preflight detail。
+- app memory 中加入 verifier channel 成功率。
+
+### Milestone 3: 批量生成稳定性
+
+- 多进程生成。
+- 成本汇总。
+- 失败统计。
+- app/file coverage 报告。
