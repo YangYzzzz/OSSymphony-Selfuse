@@ -102,13 +102,15 @@ def config() -> argparse.Namespace:
     parser.add_argument("--num_envs", type=int, default=1)
     parser.add_argument("--exp_name", type=str, default="")
     parser.add_argument("--log_level", type=str, choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO")
-    parser.add_argument("--ig_provider", type=str, default="openai")
-    parser.add_argument("--ig_model", type=str, default="gpt-5")
-    parser.add_argument("--ig_base_url", type=str, default="https://api.boyuerichdata.opensphereai.com/v1")
-    parser.add_argument("--ig_api_key", type=str, default="")
-    parser.add_argument("--ig_temperature", type=float, default=0.5)
-    parser.add_argument("--ig_top_p", type=float, default=0.95)
-    parser.add_argument("--ig_max_tokens", type=int, default=32768)
+    parser.add_argument("--provider", type=str, default="openai")
+    parser.add_argument("--model", type=str, default="gpt-5")
+    parser.add_argument("--generator_model", type=str, default=None)
+    parser.add_argument("--scorer_model", type=str, default=None)
+    parser.add_argument("--base_url", type=str, default="https://api.boyuerichdata.opensphereai.com/v1")
+    parser.add_argument("--api_key", type=str, default="")
+    parser.add_argument("--temperature", type=float, default=0.5)
+    parser.add_argument("--top_p", type=float, default=0.95)
+    parser.add_argument("--max_tokens", type=int, default=32768)
     parser.add_argument("--setup_wait_seconds", type=float, default=20.0)
     parser.add_argument("--max_repair_rounds", type=int, default=2)
     parser.add_argument("--exploration_max_actions", type=int, default=10)
@@ -141,11 +143,22 @@ def extract_function_docstring(code_str: str, function_name: str | None = None) 
 
 
 class OSSymphony2TaskGenerator:
-    def __init__(self, rollout_task_dir: str, env: DesktopEnv, engine_params: Dict[str, Any], platform: str = "linux", setup_wait_seconds: float = 20.0, max_repair_rounds: int = 2, exploration_max_actions: int = 10) -> None:
+    def __init__(
+        self,
+        rollout_task_dir: str,
+        env: DesktopEnv,
+        engine_params: Dict[str, Any],
+        scorer_engine_params: Dict[str, Any] | None = None,
+        platform: str = "linux",
+        setup_wait_seconds: float = 20.0,
+        max_repair_rounds: int = 2,
+        exploration_max_actions: int = 10,
+    ) -> None:
         self.rollout_task_dir = rollout_task_dir
         self.env_file_base_dir = ENV_FILE_BASE_DIR
         self.env = env
         self.engine_params = engine_params
+        self.scorer_engine_params = scorer_engine_params or engine_params
         self.platform = platform
         self.setup_wait_seconds = setup_wait_seconds
         self.max_repair_rounds = max_repair_rounds
@@ -190,6 +203,7 @@ class OSSymphony2TaskGenerator:
             platform=self.platform,
             max_repair_rounds=self.max_repair_rounds,
             exploration_max_actions=self.exploration_max_actions,
+            scorer_engine_params=self.scorer_engine_params,
         )
         return workflow.run(context=context, task_nums=task_nums, domain_dir=domain_dir)
 
@@ -409,15 +423,15 @@ def build_desktop_env(args: argparse.Namespace) -> DesktopEnv:
     )
 
 
-def build_engine_params(args: argparse.Namespace) -> Dict[str, Any]:
+def build_engine_params(args: argparse.Namespace, model: str | None = None) -> Dict[str, Any]:
     return {
-        "engine_type": args.ig_provider,
-        "model": args.ig_model,
-        "base_url": getattr(args, "ig_base_url", ""),
-        "api_key": getattr(args, "ig_api_key", ""),
-        "temperature": getattr(args, "ig_temperature", None),
-        "top_p": getattr(args, "ig_top_p", None),
-        "max_tokens": getattr(args, "ig_max_tokens", None),
+        "engine_type": args.provider,
+        "model": model or args.model,
+        "base_url": getattr(args, "base_url", ""),
+        "api_key": getattr(args, "api_key", ""),
+        "temperature": getattr(args, "temperature", None),
+        "top_p": getattr(args, "top_p", None),
+        "max_tokens": getattr(args, "max_tokens", None),
         "agent_name": "ossymphony2_instruction_generator",
     }
 
@@ -432,7 +446,8 @@ def run_task_generation(task_queue: Queue, args: argparse.Namespace, task_all_me
         generator = OSSymphony2TaskGenerator(
             rollout_task_dir=args.rollout_task_dir,
             env=env,
-            engine_params=build_engine_params(args),
+            engine_params=build_engine_params(args, args.generator_model),
+            scorer_engine_params=build_engine_params(args, args.scorer_model),
             setup_wait_seconds=args.setup_wait_seconds,
             max_repair_rounds=args.max_repair_rounds,
             exploration_max_actions=args.exploration_max_actions,
