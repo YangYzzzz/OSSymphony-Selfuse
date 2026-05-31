@@ -88,9 +88,9 @@ def config() -> argparse.Namespace:
         choices=["screenshot", "a11y_tree", "screenshot_a11y_tree", "som"],
         default="screenshot",
     )
-    parser.add_argument("--provider_name", type=str, default="aws", choices=["aws", "virtualbox", "vmware", "docker", "azure"])
+    parser.add_argument("--provider_name", type=str, default="docker", choices=["aws", "virtualbox", "vmware", "docker", "azure"])
     parser.add_argument("--region", type=str, default="us-east-1")
-    parser.add_argument("--client_password", type=str, default="")
+    parser.add_argument("--client_password", type=str, default="password")
     parser.add_argument("--screen_width", type=int, default=1920)
     parser.add_argument("--screen_height", type=int, default=1080)
     parser.add_argument("--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout/synthesis")
@@ -172,7 +172,8 @@ class OSSymphony2TaskGenerator:
         rollout_id = str(uuid.uuid4())
         domain_key = "__".join(sampled_apps) if sampled_apps else rollout_id
         domain_dir = os.path.join(self.rollout_task_dir, domain_key)
-        os.makedirs(domain_dir, exist_ok=True)
+        rollout_dir = os.path.join(domain_dir, rollout_id)
+        os.makedirs(rollout_dir, exist_ok=True)
 
         logger.info("Generating OSSymphony2 workflow tasks for sampled apps: %s; sampled files: %s", sampled_apps, [f.get("path") for f in sampled_files])
         initial_config: List[Dict[str, Any]] = []
@@ -205,7 +206,7 @@ class OSSymphony2TaskGenerator:
             exploration_max_actions=self.exploration_max_actions,
             scorer_engine_params=self.scorer_engine_params,
         )
-        return workflow.run(context=context, task_nums=task_nums, domain_dir=domain_dir)
+        return workflow.run(context=context, task_nums=task_nums, rollout_dir=rollout_dir)
 
     def _available_apps(self, app_list: List[str] | str | None) -> List[str]:
         if isinstance(app_list, str) and app_list:
