@@ -4,7 +4,6 @@ import copy
 import json
 import logging
 import os
-import re
 import time
 from typing import Any, Dict
 
@@ -62,10 +61,9 @@ class WorkflowLLMAgent:
             usage = None
             success = False
             try:
-                response = self.agent.get_response(temperature=self.temperature)
-                if isinstance(response, tuple):
-                    response, usage = response
-                data = json.loads(self._strip_json_fence(str(response or "")))
+                raw_response, data = self.agent.get_json_response(temperature=self.temperature)
+                usage = self.agent.last_usage
+                logger.info("%s raw response: %s", self.name, raw_response)
                 success = True
                 return data
             except Exception as e:
@@ -74,8 +72,3 @@ class WorkflowLLMAgent:
             finally:
                 self.cost_tracker.record(self.name, (time.time() - start) * 1000.0, success, usage, None if success else last_error)
         raise ValueError(f"{self.name} failed to return valid JSON: {last_error}")
-
-    def _strip_json_fence(self, response: str) -> str:
-        response = response.strip()
-        match = re.search(r"^```(?:json)?\s*\n?(.*?)\n?```$", response, re.DOTALL)
-        return match.group(1).strip() if match else response

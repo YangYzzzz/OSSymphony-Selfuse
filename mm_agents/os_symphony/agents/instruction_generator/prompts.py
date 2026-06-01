@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Dict
 
-PROMPT_DIR = os.path.dirname(__file__)
+PROMPT_DIR = os.path.join(os.path.dirname(__file__), "prompts")
 _PROMPT_CACHE: Dict[str, str] = {}
 
 

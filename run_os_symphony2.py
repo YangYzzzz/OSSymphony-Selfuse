@@ -426,6 +426,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
     parser.add_argument("--keep_all_text", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
+    parser.add_argument("--save_image", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
     parser.add_argument("--remove_cot", action="store_true", default=False, help="是否在历史信息内清除历史cot")
     parser.add_argument("--use_tool_call", action="store_true", default=False, help="是否使用vllm自带的tool call来调用llm, 默认关闭（qwen3vl官方的parse response逻辑）")
     parser.add_argument("--disable_code_tool", action="store_true", default=False, help="是否禁用code工具")

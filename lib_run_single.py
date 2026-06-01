@@ -196,7 +196,7 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
             # Save screenshot and trajectory information
             img_name = f"step_{step_idx + 1}.png"
             
-            if i == 0:
+            if i == 0 and args.save_image:
                 with open(os.path.join(example_result_dir, img_name), "wb") as _f:
                     _f.write(obs['screenshot'])
 

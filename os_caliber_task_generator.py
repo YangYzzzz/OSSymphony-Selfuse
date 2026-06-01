@@ -15,7 +15,7 @@ from mm_agents.os_symphony.agents.instruction_generator.workflow import (
     GenerationContext,
     InstructionGenerationWorkflow,
 )
-from osworld_seed_task_expansion import (
+from yangbowen.OSSymphony.tmp.osworld_seed_task_expansion import (
     DOMAIN_TO_APP,
     OSWorldSeedTaskLibrary,
     SeedTaskRecord,
@@ -505,11 +505,11 @@ class OSCaliberTaskGenerator:
             rollout_task_dir=self.rollout_task_dir,
             env=self.env,
             engine_params=engine_params,
-            build_evaluator_fn=self._build_evaluator_from_verification,
+            build_evaluator_from_task_fn=self._build_evaluator_from_verification,
             app_version_lookup=lambda app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app),
             platform=getattr(self.agent, "platform", "linux"),
         )
-        return workflow.run(context=context, task_nums=task_nums, domain_dir=domain_dir)
+        return workflow.run(context=context, task_nums=task_nums, rollout_dir=domain_dir)
 
     def generate_task(self, task_nums: int = 10, app_list: List | str = [], max_apps_per_group: int = 1):
         if isinstance(app_list, list) and len(app_list) > 0:

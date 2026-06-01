@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Tuple
 
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.os_symphony.agents.instruction_generator.workflow import (
-    GenerationContext,
+    WorkflowSharedState,
     InstructionGenerationWorkflow,
 )
 from mm_agents.os_symphony.utils.process_context import set_current_result_dir
@@ -93,6 +93,8 @@ def config() -> argparse.Namespace:
     parser.add_argument("--client_password", type=str, default="password")
     parser.add_argument("--screen_width", type=int, default=1920)
     parser.add_argument("--screen_height", type=int, default=1080)
+    parser.add_argument("--input_screen_width", type=int, default=1080)
+    parser.add_argument("--input_screen_height", type=int, default=720)
     parser.add_argument("--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout/synthesis")
     parser.add_argument("--rollout_task_dir", type=str, default=None)
     parser.add_argument("--rollout_times", type=int, default=10)
@@ -108,7 +110,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--scorer_model", type=str, default=None)
     parser.add_argument("--base_url", type=str, default="https://api.boyuerichdata.opensphereai.com/v1")
     parser.add_argument("--api_key", type=str, default="")
-    parser.add_argument("--temperature", type=float, default=0.5)
+    parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--top_p", type=float, default=0.95)
     parser.add_argument("--max_tokens", type=int, default=32768)
     parser.add_argument("--setup_wait_seconds", type=float, default=20.0)
@@ -153,6 +155,7 @@ class OSSymphony2TaskGenerator:
         setup_wait_seconds: float = 20.0,
         max_repair_rounds: int = 2,
         exploration_max_actions: int = 10,
+        input_screen_size: Tuple[int, int] = (1080, 720),
     ) -> None:
         self.rollout_task_dir = rollout_task_dir
         self.env_file_base_dir = ENV_FILE_BASE_DIR
@@ -163,6 +166,7 @@ class OSSymphony2TaskGenerator:
         self.setup_wait_seconds = setup_wait_seconds
         self.max_repair_rounds = max_repair_rounds
         self.exploration_max_actions = exploration_max_actions
+        self.input_screen_size = input_screen_size
 
     def generate_task(self, task_nums: int = 10, app_list: List[str] | str | None = None, max_apps_per_group: int = 1) -> Dict[str, List[str]]:
         available_apps = self._available_apps(app_list)
@@ -170,19 +174,14 @@ class OSSymphony2TaskGenerator:
         app_file_support = {app: list(APP_SETUP_DICT.get(app, {}).get("type", []) or []) for app in sampled_apps}
         sampled_files = self._sample_files(sampled_apps, app_file_support)
         rollout_id = str(uuid.uuid4())
-        domain_key = "__".join(sampled_apps) if sampled_apps else rollout_id
-        domain_dir = os.path.join(self.rollout_task_dir, domain_key)
-        rollout_dir = os.path.join(domain_dir, rollout_id)
+        rollout_dir = os.path.join(self.rollout_task_dir, rollout_id)
         os.makedirs(rollout_dir, exist_ok=True)
 
         logger.info("Generating OSSymphony2 workflow tasks for sampled apps: %s; sampled files: %s", sampled_apps, [f.get("path") for f in sampled_files])
         initial_config: List[Dict[str, Any]] = []
         self.env.reset(task_config={"config": initial_config, "id": "init_id", "instruction": "init_instruction"})
-        if self.setup_wait_seconds > 0:
-            time.sleep(self.setup_wait_seconds)
-        obs = self.env._get_obs()
 
-        context = GenerationContext(
+        shared_state = WorkflowSharedState(
             rollout_id=rollout_id,
             sampled_apps=sampled_apps,
             app_file_support=app_file_support,
@@ -191,22 +190,22 @@ class OSSymphony2TaskGenerator:
             app_memory={},
             app_versions={app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in sampled_apps},
             app_open_commands={app: self._open_command_variants(app) for app in sampled_apps},
-            observation=obs,
-            setup_image=obs["screenshot"],
             initial_config=initial_config,
+            input_screen_size=self.input_screen_size
         )
         workflow = InstructionGenerationWorkflow(
             rollout_task_dir=self.rollout_task_dir,
             env=self.env,
             engine_params=self.engine_params,
-            build_evaluator_fn=self._build_evaluator_from_verification,
+            build_evaluator_from_task_fn=self._build_evaluator_from_verification,
             app_version_lookup=lambda app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app),
             platform=self.platform,
             max_repair_rounds=self.max_repair_rounds,
             exploration_max_actions=self.exploration_max_actions,
             scorer_engine_params=self.scorer_engine_params,
+            input_screen_size=self.input_screen_size,
         )
-        return workflow.run(context=context, task_nums=task_nums, rollout_dir=rollout_dir)
+        return workflow.run(shared_state=shared_state, task_nums=task_nums, rollout_dir=rollout_dir)
 
     def _available_apps(self, app_list: List[str] | str | None) -> List[str]:
         if isinstance(app_list, str) and app_list:
@@ -320,7 +319,7 @@ class OSSymphony2TaskGenerator:
         return selected_file
 
     def _build_evaluator_from_verification(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        verification = task.get("verification") or task.get("evaluation") or {}
+        verification = task.get("verification") or {}
         need_rule = bool(verification.get("need_rule_judge", False))
         need_vlm = bool(verification.get("need_vlm_judge", False))
         vlm_desc = verification.get("vlm_desc", "")
@@ -452,6 +451,7 @@ def run_task_generation(task_queue: Queue, args: argparse.Namespace, task_all_me
             setup_wait_seconds=args.setup_wait_seconds,
             max_repair_rounds=args.max_repair_rounds,
             exploration_max_actions=args.exploration_max_actions,
+            input_screen_size=(args.input_screen_width, args.input_screen_height)
         )
         while True:
             try:

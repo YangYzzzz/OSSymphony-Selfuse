@@ -80,7 +80,6 @@ EXPLORATION_PROPOSAL_TOOL_SCHEMA: List[Dict[str, Any]] = [
                 "properties": {
                     "app": {"type": "string", "description": "One app from sampled_apps."},
                     "path": {"type": "string", "description": "One path from sampled_files, or empty for app-only exploration."},
-                    "purpose": {"type": "string"},
                 },
                 "required": ["app"],
                 "additionalProperties": False,
@@ -94,7 +93,7 @@ EXPLORATION_PROPOSAL_TOOL_SCHEMA: List[Dict[str, Any]] = [
             "description": "Click a screen coordinate for non-destructive UI inspection.",
             "parameters": {
                 "type": "object",
-                "properties": {"x": {"type": "integer"}, "y": {"type": "integer"}, "purpose": {"type": "string"}},
+                "properties": {"x": {"type": "integer"}, "y": {"type": "integer"}},
                 "required": ["x", "y"],
                 "additionalProperties": False,
             },
@@ -111,7 +110,6 @@ EXPLORATION_PROPOSAL_TOOL_SCHEMA: List[Dict[str, Any]] = [
                     "amount": {"type": "integer", "description": "Positive scrolls up, negative scrolls down."},
                     "x": {"type": "integer"},
                     "y": {"type": "integer"},
-                    "purpose": {"type": "string"},
                 },
                 "required": ["amount"],
                 "additionalProperties": False,

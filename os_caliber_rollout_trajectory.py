@@ -22,7 +22,7 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
 import os
 from os_caliber_task_generator import OSCaliberTaskGenerator, SeedTaskExpansionGenerator
-from osworld_seed_task_expansion import OSWorldSeedTaskLibrary
+from yangbowen.OSSymphony.tmp.osworld_seed_task_expansion import OSWorldSeedTaskLibrary
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
 from mm_agents.anthropic.main import AnthropicAgent

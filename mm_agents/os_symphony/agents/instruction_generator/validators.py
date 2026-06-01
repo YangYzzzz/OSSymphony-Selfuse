@@ -105,12 +105,18 @@ class PreflightValidator:
                     "evaluator": task_config.get("evaluator", {}),
                 }
             )
+        except Exception as e:
+            print(f'[PreflightValidator] Reset Exception: {e}')
+            return {"passed": False, "init_rule_reward": None, "details": str(e), "failure_type": "reset_failed"}
+        try:
             reward = float(env.evaluate())
+            print(f'[PreflightValidator] Preflight Evaluate Score: {reward}')
             return {
                 "passed": reward <= 1e-6,
                 "init_rule_reward": reward,
-                "details": [],
+                "details": "",
                 "failure_type": "init_reward_positive" if reward > 1e-6 else None,
             }
         except Exception as e:
-            return {"passed": False, "init_rule_reward": None, "details": [str(e)], "failure_type": "getter_failed"}
+            print(f'[PreflightValidator] Evaluate Exception: {e}')
+            return {"passed": False, "init_rule_reward": None, "details": str(e), "failure_type": "getter_failed"}
