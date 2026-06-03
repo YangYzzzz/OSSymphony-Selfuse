@@ -1,0 +1,199 @@
+{
+  "app": "gimp",
+  "covered_features": {
+    "Brightness adjustment (decrease)": 3,
+    "Saturation/color vibrancy adjustment (increase)": 2,
+    "Export/save image to a specific file path with rename": 2,
+    "Layer/object selection and repositioning (centering)": 3,
+    "Hide/show docks (UI panel visibility)": 2,
+    "Background removal / transparency (alpha channel)": 3,
+    "Add new layer with custom name": 2,
+    "Open filter dialog via menu (Filters > Vignette)": 2,
+    "Preferences configuration (undo steps/levels)": 2,
+    "Layer scaling/resizing with aspect ratio preservation": 2,
+    "Image mode conversion to Palette/Indexed (Image > Mode > Indexed)": 2,
+    "Text layer repositioning (move to specific side/region)": 2,
+    "Contrast adjustment (increase)": 2,
+    "Horizontal flip/mirror image": 2,
+    "Theme configuration (dark/light theme switching)": 2,
+    "Fill layer with solid color (bucket fill / foreground color fill)": 2,
+    "Animated GIF export from video frames": 2,
+    "Copy image to clipboard for use in other applications": 2,
+    "Brightness adjustment (increase)": 2,
+    "Export/save image as PDF": 2,
+    "Multi-step image editing from written instructions (composite edits)": 2,
+    "Script-Fu image resize and export": 1,
+    "JPEG export with compression/quality reduction to meet file size target": 1,
+    "Image slicing and section rearrangement (vertical split and reorder)": 1,
+    "Crop image (remove percentage from edge)": 1,
+    "Extract transaction data from image files": 2,
+    "Identify and filter images by subject/person depicted": 2,
+    "Identify landmarks/locations depicted in images": 1
+  },
+  "recent_tasks": [],
+  "co_use_counts": {},
+  "verification_experience": {
+    "Brightness adjustment (decrease)": [
+      "Compute mean pixel brightness of both images (e.g., convert to grayscale and average pixel values) and assert the edited image has a lower mean brightness than the reference.",
+      "To isolate brightness change from structural edits, normalize both images to the same target brightness before comparing structure; use MSE or SSIM on the normalized versions to confirm the image content is otherwise unchanged.",
+      "Use PIL/Pillow ImageStat or manual numpy mean on the grayscale array as a reliable brightness proxy; avoid relying on histogram peaks which can be misleading for natural photos.",
+      "Compare mean pixel brightness of output image vs. input using PIL ImageStat; output mean should be lower than input mean."
+    ],
+    "Saturation/color vibrancy adjustment (increase)": [
+      "Convert images to HSV mode using PIL's Image.convert('HSV') and compare mean S-channel values to verify saturation increased",
+      "Use SSIM on the H (hue) and V (value) channels to confirm image structure is preserved while only saturation changed",
+      "The measure_saturation helper computes mean pixel value of the S channel from an HSV image; structure_check_by_ssim wraps skimage.metrics.structural_similarity for channel-wise comparison",
+      "Convert output image to HSV/HSL with PIL or colorsys; compare mean saturation channel value against input — higher saturation indicates successful adjustment."
+    ],
+    "Export/save image to a specific file path with rename": [
+      "Use os.path.isfile to confirm the exported file exists at the target path before any image comparison.",
+      "Compare exported image content against a reference using SSIM (structure_check_by_ssim) rather than exact pixel equality, since JPEG re-encoding introduces minor artifacts.",
+      "Both source and result images should be opened with PIL and passed to an SSIM-based structural similarity check; a threshold-based pass/fail is more robust than pixel-diff for lossy formats.",
+      "Use vm_file getter to retrieve the file from the expected path; verify it is a valid image with correct format using PIL."
+    ],
+    "Layer/object selection and repositioning (centering)": [
+      "To verify an object is centered, load the exported image as a numpy array, isolate the object pixels by color (second most frequent color after background), compute the centroid of those pixels, compare centroid to image_center (shape[:2]/2), and check both axes are within a tolerance fraction (e.g., 5%) of image dimensions.",
+      "When identifying the object color programmatically, sort unique colors by pixel count ascending; the least-frequent non-background color is typically the foreground object.",
+      "np.argwhere on a boolean mask gives (row, col) coordinates; mean(axis=0) yields the centroid in (y, x) order matching image shape[:2].",
+      "Use PIL to inspect pixel positions in exported flat image; locate bounding box of target content (e.g., dark pixels for text) and verify its position relative to image width/height fractions",
+      "When verifying layer position, export/flatten the image and scan pixel rows/columns for content boundaries rather than relying on GIMP's internal layer offset metadata",
+      "Use gimp-drawable-offsets via Script-Fu or check flattened export to verify layer position; for centering, offsets should equal (canvas_w - layer_w)/2 and (canvas_h - layer_h)/2."
+    ],
+    "Hide/show docks (UI panel visibility)": [
+      "Read GIMP's sessionrc config file (~/.config/GIMP/2.10/sessionrc on Linux) and parse key-value pairs (lines wrapped in parentheses) to check boolean flags like 'hide-docks yes/no'; use the same line-splitting logic: strip parens, split on whitespace, compare items[0] to key and items[-1] to value.",
+      "Accessibility tree or screenshot comparison can detect dock panel presence; dockable-dialog visibility is hard to assert programmatically without screenshot diffing."
+    ],
+    "Background removal / transparency (alpha channel)": [
+      "Use SSIM-based structural similarity (check_structure_sim pattern) to compare the result PNG against a gold reference; images must match in size first, then structural content.",
+      "Verify the output is a PNG with an alpha channel (mode 'RGBA') and that background pixels have alpha=0, distinguishing true transparency from a white fill.",
+      "SSIM comparison on RGBA images should be done on the RGB channels or after compositing onto a neutral background to avoid alpha-channel noise skewing the score.",
+      "Image dimensions must be identical between result and reference before any similarity metric is meaningful; a size mismatch should immediately return 0.",
+      "Use SSIM (skimage.metrics.structural_similarity) with channel_axis=2 on RGB-converted arrays to compare background-removed outputs against a gold reference; resize source to target dimensions before comparison if sizes differ",
+      "When evaluating alpha-channel / background-removal results, convert both images to RGB before SSIM to avoid mode mismatch errors; the evaluator tolerates minor pixel differences with a threshold around 0.85",
+      "For pixel-art character extraction, the gold reference PNG will have transparent background; comparing SSIM after RGB conversion effectively checks structural fidelity of the extracted character region",
+      "Open exported PNG with PIL, convert to RGBA, check alpha channel values at expected transparent regions (e.g., corners or background pixels should have alpha==0)."
+    ],
+    "Add new layer with custom name": [
+      "GIMP stores the last-used new-layer name in gimprc as the key `layer-new-name`; parse gimprc lines (skip `#` comments and blank lines), strip surrounding parentheses, split on whitespace, and compare key token and value token (quoted string) to verify the layer name was set.",
+      "Use the `check_config_status` / `gimp_config_file` getter+checker pattern: retrieve `~/.config/GIMP/2.10/gimprc` from the VM, scan for the relevant key-value pair; a match returns 1.0, no match returns 0.0.",
+      "The gimprc value for layer names is stored as a quoted string (e.g., `\"Square\"`), so comparisons must include the surrounding double-quotes.",
+      "Use gimp-image-get-active-drawable or gimp-image-get-layers via Script-Fu to retrieve layer names and properties; compare against expected name strings."
+    ],
+    "Open filter dialog via menu (Filters > Vignette)": [
+      "GIMP logs recently used actions in ~/.config/GIMP/2.10/action-history; check that file for the action identifier (e.g., 'filters-vignette') to confirm a filter dialog was opened, without needing screenshot comparison.",
+      "Verify vignette effect by sampling pixel brightness near image corners vs. center; corners should be darker after vignette application."
+    ],
+    "Preferences configuration (undo steps/levels)": [
+      "GIMP preferences are persisted in gimprc (Linux: ~/.config/GIMP/2.10/gimprc); parse it by stripping parentheses and splitting tokens — each setting is a line like `(key value)`",
+      "Use check_config_status-style parsing: skip comment lines starting with '#', strip leading '(' and trailing ')', split on whitespace, then match items[0] as key and items[-1] as value",
+      "The undo-levels key stores the minimum undo steps; verify its integer value as a string token in gimprc after GIMP quits (config is written on exit)",
+      "Read GIMP's gimprc or preferences XML file from the VM using vm_file getter; parse the relevant config key (e.g., undo-levels) and compare its value."
+    ],
+    "Layer scaling/resizing with aspect ratio preservation": [
+      "Export the result and use PIL to open it; when the layer has transparency, use alpha.getbbox() to find the bounding box of non-transparent pixels and measure content height/width from that bbox rather than the full canvas size.",
+      "For structural correctness after resize, crop the reference image to its non-transparent content area, resize it to match the output dimensions, then compare with SSIM (structure_check_by_ssim pattern) to confirm the subject is visually intact.",
+      "check_image_size with ignore_transparent=True is the right metric family for layer-resize tasks where the layer sits on a transparent canvas—canvas size may differ from content size.",
+      "Aspect ratio preservation can be inferred indirectly: if the target height is met and SSIM against the original (rescaled) passes, the ratio was maintained without needing to assert the exact width.",
+      "Retrieve layer dimensions via Script-Fu gimp-drawable-width/height or check exported image size with PIL; verify width/height ratio matches original."
+    ],
+    "Image mode conversion to Palette/Indexed (Image > Mode > Indexed)": [
+      "Check PIL image mode == 'P' to confirm palette-based conversion; use structure_check_by_ssim after converting the palette image to RGB for structural similarity against a reference.",
+      "Open exported file with PIL and check img.mode == 'P'; verify palette length matches expected number of colors."
+    ],
+    "Text layer repositioning (move to specific side/region)": [
+      "Export the canvas as a flat PNG, convert to grayscale, then scan pixel rows for dark-pixel x-coordinates to determine the leftmost/rightmost extent of text content",
+      "Define positional thresholds as fractions of total image width (e.g., left 5%) rather than absolute pixel values to stay resolution-agnostic",
+      "PIL pixel-scanning loops over (x, y) with an early break per row are sufficient to find the bounding edge of text content in a flat export",
+      "Use gimp-text-layer-get-text and gimp-drawable-offsets via Script-Fu, or flatten and inspect pixel regions for text presence using PIL."
+    ],
+    "Contrast adjustment (increase)": [
+      "Use a `calculate_contrast` helper (e.g., standard deviation of grayscale pixel values) to compare contrast between the modified and original image; the modified image must have a strictly higher value.",
+      "Use SSIM (skimage.metrics.structural_similarity) with a moderate threshold (~0.65) to confirm the image structure is preserved after contrast enhancement — resize both images to the same dimensions before comparison.",
+      "Contrast can be boosted via Colors > Brightness-Contrast, Colors > Curves, or Colors > Levels; all produce measurable increases in pixel value standard deviation.",
+      "Compare pixel value standard deviation of output vs. input using PIL ImageStat; higher std deviation indicates increased contrast."
+    ],
+    "Horizontal flip/mirror image": [
+      "Use PIL's Image.transpose(Image.FLIP_LEFT_RIGHT) on the original image and compare with the result using SSIM (threshold ~0.99) to confirm a horizontal mirror was applied",
+      "structure_check_by_ssim comparing the flipped source against the exported result handles minor JPEG/PNG re-encoding artifacts; use a high SSIM threshold (≥0.99) rather than pixel-exact equality",
+      "Export the result via GIMP's overwrite/export-as flow and load both source and result with PIL for comparison — format differences (JPEG→PNG) are tolerable as long as structural similarity is high",
+      "Compare left-column pixels of output with right-column pixels of input (and vice versa) using PIL to confirm horizontal mirroring."
+    ],
+    "Theme configuration (dark/light theme switching)": [
+      "Read the gimprc config file (~/.config/GIMP/2.10/gimprc on Linux) and parse lines as space-separated tokens stripped of parentheses; look for a key-value pair where the key token matches 'theme' and the value token matches the expected theme string (e.g., '\"Light\"' or '\"Dark\"')",
+      "The check_config_status pattern is reusable for any gimprc preference: skip comment lines starting with '#', strip surrounding parentheses, split on whitespace, then compare items[0] to key and items[-1] to value — works for single-key and two-token-key rules alike",
+      "Read GIMP's gimprc or theme config file from the VM; check the theme key value matches expected theme name string."
+    ],
+    "Fill layer with solid color (bucket fill / foreground color fill)": [
+      "Load the exported PNG with PIL/numpy and iterate over pixels; identify background pixels using a reference image (e.g., non-object pixels are non-black in the reference), then verify each corresponding pixel in the result satisfies the target color condition (e.g., green channel dominates both red and blue channels).",
+      "When the task involves selective layer filling, compare pixel-by-pixel against a reference image to distinguish object pixels from background pixels before asserting color values.",
+      "Use numpy array indexing on RGBA or RGB pixel arrays; check channel relationships (g > r and g > b for green) rather than exact RGB tuples to handle shade variations of the target color.",
+      "Sample pixel color at multiple points in the filled region using PIL; all sampled pixels should match the expected fill color within tolerance."
+    ],
+    "Animated GIF export from video frames": [
+      "Use PIL/Pillow to open the output GIF and check that it has multiple frames (n_frames > 1), confirming animation was created rather than a static image.",
+      "Compare the first frame of the output GIF against the reference GIF using grayscale SSIM (as done here); resize both to the smaller dimension before comparison to handle minor resolution differences.",
+      "For multi-frame GIFs, comparing only the first frame via SSIM is a practical proxy for content correctness when full frame-by-frame comparison is too strict.",
+      "When verifying GIF content derived from a video clip, SSIM scores in the 0.7–0.9 range typically indicate correct source segment; scores below 0.5 suggest wrong time offset or wrong source video.",
+      "PIL's Image.seek(n) can iterate frames; checking frame count and representative frame similarity covers both structure and content without exact pixel matching.",
+      "Check exported GIF with PIL: verify n_frames > 1 and frame dimensions match expected canvas size."
+    ],
+    "Copy image to clipboard for use in other applications": [
+      "When verifying that a GIMP image was copied and pasted into a docx, use python-docx to extract embedded image blobs via doc.part.rels and compare pixel data with Image.tobytes(); count equality and pixel-level equality are both needed.",
+      "Images embedded in docx are stored as relationship parts; iterate doc.part.rels.values() filtering by 'image' in rel.reltype to extract all images regardless of paragraph/inline placement.",
+      "Pixel-exact comparison (tobytes()) is stricter than size comparison; if the copy-paste pipeline introduces re-encoding, consider tolerance-based comparison or format normalization before comparing.",
+      "Use xclip or xsel command-line tools via vm_command_line getter to inspect clipboard content type/format."
+    ],
+    "Brightness adjustment (increase)": [
+      "Use PIL to compute mean brightness of the output image (convert to grayscale, call stat().mean or np.array mean) and compare against the original; the output must have a higher mean brightness value.",
+      "After brightness-normalizing both images to the same target brightness, compute MSE between them to confirm structural similarity is preserved despite the brightness change — use a small MSE threshold (e.g. 0.03–0.15 depending on image size).",
+      "The check_brightness_decrease_and_structure_sim pattern (despite its name) is reused for increase tasks by swapping src/tgt order: verify brightness_tgt > brightness_src where tgt is the user-produced file and src is the reference original.",
+      "Compare mean pixel brightness of output image vs. input using PIL ImageStat; output mean should be higher than input mean."
+    ],
+    "Export/save image as PDF": [
+      "Use PyMuPDF (fitz) to extract embedded images from both the result and reference PDFs, then compare them using perceptual hashing (e.g., imagehash.phash) with a small hash-difference threshold to allow minor encoding variations",
+      "Check that the PDF contains the same number of embedded images as the reference; a mismatch in image count should score 0",
+      "When the PDF contains no embedded images (e.g., vector-only or text-only), treat it as a special case separate from image-based comparison",
+      "Check file existence and use a PDF parser (e.g., PyPDF2 or pdfplumber) to verify page count and approximate page dimensions."
+    ],
+    "Multi-step image editing from written instructions (composite edits)": [
+      "Use SSIM-based grayscale comparison against a reference image; resize both to the smaller dimension before computing similarity to handle minor resolution differences.",
+      "When the task involves reading instructions from a document (e.g., LibreOffice Writer) and applying them in GIMP, the evaluator should compare the output image structurally/visually rather than checking individual edit parameters, since the exact combination of edits is unknown without parsing the instruction document.",
+      "The compare_images metric converts both images to grayscale and resizes to the smaller size before SSIM comparison, so color-only changes may score high even if incorrect; be aware this metric is relatively permissive for color edits.",
+      "need_rule_judge=true signals a human or LLM rule judge is also applied alongside the automated SSIM score, useful when the edit combination is complex or ambiguous.",
+      "Break verification into per-step checks: image size, layer count, pixel color samples, and metadata; use PIL for pixel-level and file-level assertions."
+    ],
+    "Script-Fu image resize and export": [
+      "Use check_image_size metric with PIL Image.open on the exported file; verify img.size matches (width, height) exactly. For Script-Fu execution results, the output file existence and correct dimensions are the primary signals."
+    ],
+    "JPEG export with compression/quality reduction to meet file size target": [
+      "Use os.path.getsize() to verify the output file is strictly below the required byte threshold; no image library needed for the size check itself.",
+      "When resizing is also permitted, verify the file is a valid JPEG (e.g., PIL Image.open + verify) in addition to the size check, to confirm it wasn't just truncated.",
+      "GIMP Script-Fu export quality parameter (0–100) directly controls JPEG file size; evaluators can test multiple quality levels programmatically if needed."
+    ],
+    "Image slicing and section rearrangement (vertical split and reorder)": [
+      "Use SSIM-based structural similarity (check_structure_sim pattern) to compare output PNG against a gold reference; both images must have identical pixel dimensions before SSIM is computed, so verify size equality first.",
+      "When verifying column-reorder tasks, compare horizontal strip statistics (mean color per column band) between output and reference to confirm warm-tone gradient ordering without relying on exact pixel values.",
+      "Script-Fu or command-line gimp batch (gimp -i -b) can crop, reorder, and flatten sections; verify the exported file exists at the expected path and is a valid PNG before structural comparison."
+    ],
+    "Crop image (remove percentage from edge)": [
+      "Use SSIM-based structural similarity after verifying exact pixel dimensions match; both size equality and structural content must pass for a crop operation to be considered correct.",
+      "When cropping a percentage from an edge, verify the output height equals (1 - crop_fraction) * original_height and width is unchanged before running SSIM comparison.",
+      "check_structure_sim returns 1.0 only when sizes match AND structure_check_by_ssim passes, so evaluators must ensure the crop produces the exact expected dimensions, not just visually similar content."
+    ],
+    "Extract transaction data from image files": [
+      "Use PIL/Pillow or similar to open image files and verify readable content; for evaluator purposes, the key check is whether numeric values extracted from images match expected amounts within a tolerance (approx matching).",
+      "When transactions are sourced from images, verify that OCR or manual extraction produces values matching expected numeric amounts; use approx-tolerance checks (e.g., within 0.1) rather than exact equality for currency values."
+    ],
+    "Identify and filter images by subject/person depicted": [
+      "Use compare_image_list (pixel-diff via ImageChops.difference + getbbox) to verify correct images were selected; mismatched sizes are handled by resizing pred to gold before comparison.",
+      "When the task produces a zip, postconfig typically unzips it first so individual image files can be fetched via get_vm_file for comparison against gold references.",
+      "For multi-image checks, all images in the list must match exactly (all-or-nothing score of 1.0 or 0.0), so verify the complete set of selected images, not just a subset.",
+      "Use image content hashing (e.g., SHA256) to map each file to its identity, then check the resulting filename against a list of acceptable name variants (case-insensitive, with/without extension, with/without spaces)."
+    ],
+    "Identify landmarks/locations depicted in images": [
+      "Verification uses a script that hashes image file contents and maps hashes to expected filename variants; check that each image file's new name (with or without extension, any case) appears in the accepted-names list for its hash.",
+      "The accepted-names list should include common alternate names, local names, and partial names for the landmark, since AI identification may return any recognized variant.",
+      "Use expect_in_result mode with per-hash lists of acceptable filenames so that any reasonable identification is accepted rather than requiring an exact single answer."
+    ]
+  }
+}

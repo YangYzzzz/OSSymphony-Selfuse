@@ -6,7 +6,7 @@ from collections import Counter
 from typing import Any, Dict, List, Tuple
 
 from mm_agents.os_symphony.agents.instruction_generator.base_agent import WorkflowCostTracker, WorkflowLLMAgent
-from mm_agents.os_symphony.agents.instruction_generator.models import ExplorationContext, ExplorationResult, ProposalCandidate, TaskCandidate, VerificationRepairInput, VerificationSynthesisInput, WorkflowSharedState
+from mm_agents.os_symphony.agents.instruction_generator.models import ProposalCandidate, TaskCandidate, VerificationRepairInput, VerificationSynthesisInput, WorkflowSharedState
 from mm_agents.os_symphony.agents.instruction_generator.prompts import load_prompt
 
 
@@ -18,7 +18,6 @@ class EvaluatorSynthesisAgent(WorkflowLLMAgent):
         self,
         shared_state: WorkflowSharedState,
         proposal: ProposalCandidate,
-        exploration_result: ExplorationResult,
         app_memory_summary: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         system_prompt = load_prompt("evaluator_synthesizer.md")
@@ -29,28 +28,26 @@ class EvaluatorSynthesisAgent(WorkflowLLMAgent):
             app_file_support=shared_state.app_file_support,
             sampled_files=shared_state.sampled_files,
             app_tutorials=shared_state.app_tutorials,
-            verification_experience=self._matching_verification_experience(proposal, app_memory_summary or {}),
-            exploration_context=ExplorationContext(
-                trajectory=exploration_result.trajectory,
-                generation_notes=exploration_result.generation_notes,
-            ),
+            verification_experience=self._matching_verification_experience(proposal, app_memory_summary or {})
         )
         user_text = json.dumps(synthesis_input.to_dict(), ensure_ascii=False)
         verification_spec = self.call_json(system_prompt, user_text).get("verification")
         return verification_spec if isinstance(verification_spec, dict) else {}
 
     def _matching_verification_experience(self, proposal: ProposalCandidate, app_memory_summary: Dict[str, Any]) -> Dict[str, Any]:
-        query_features = proposal.target_features or self._fallback_query_features(proposal)
         related_apps = proposal.related_apps or list(app_memory_summary.keys())
+        fallback_features = self._fallback_query_features(proposal)
         matches: Dict[str, List[Dict[str, Any]]] = {}
         for app in related_apps:
-            app_summary = app_memory_summary.get(str(app), {})
+            app = str(app)
+            query_features = proposal.features_for_app(app) or fallback_features
+            app_summary = app_memory_summary.get(app, {})
             experiences = app_summary.get("verification_experience", {}) if isinstance(app_summary, dict) else {}
             if not isinstance(experiences, dict):
                 continue
             ranked = self._rank_feature_experiences(query_features, experiences)
             if ranked:
-                matches[str(app)] = ranked[:3]
+                matches[app] = ranked[:3]
         return matches
 
     def _rank_feature_experiences(self, query_features: List[str], experiences: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -122,16 +119,18 @@ class EvaluatorCritiqueAgent(WorkflowLLMAgent):
     def __init__(self, name: str, engine_params: Dict[str, Any], cost_tracker: WorkflowCostTracker, platform: str = "linux"):
         super().__init__(name, engine_params, cost_tracker, platform)
 
-    def critique_and_repair(self, shared_state: WorkflowSharedState, task_draft: TaskCandidate, failure: Dict[str, Any], exploration_context: ExplorationContext) -> Dict[str, Any]:
+    def critique_and_repair(self, shared_state: WorkflowSharedState, task_draft: TaskCandidate, failure: Dict[str, Any]) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
         system_prompt = load_prompt("evaluator_critic.md")
         repair_input = VerificationRepairInput(
             candidate=task_draft,
             failure=failure,
             sampled_apps=shared_state.sampled_apps,
             app_file_support=shared_state.app_file_support,
-            sampled_files=shared_state.sampled_files,
-            exploration_context=exploration_context,
+            sampled_files=shared_state.sampled_files
         )
         user_text = json.dumps(repair_input.to_dict(), ensure_ascii=False)
-        verification_spec = self.call_json(system_prompt, user_text).get("verification")
-        return verification_spec if isinstance(verification_spec, dict) else task_draft.verification.to_dict()
+        data = self.call_json(system_prompt, user_text)
+        verification_spec = data.get("verification")
+        lessons = data.get("verification_experience_lessons") if isinstance(data.get("verification_experience_lessons"), list) else []
+        normalized_lessons = [lesson for lesson in lessons if isinstance(lesson, dict)]
+        return verification_spec if isinstance(verification_spec, dict) else task_draft.verification.to_dict(), normalized_lessons

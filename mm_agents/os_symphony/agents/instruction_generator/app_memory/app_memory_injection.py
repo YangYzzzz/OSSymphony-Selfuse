@@ -96,7 +96,7 @@ def resolve_evaluator(evaluator: Dict[str, Any]) -> Dict[str, Any]:
 
     resolved = dict(evaluator)
     resolved["resolved_checks"] = resolved_checks
-    del resolved["func"], resolved["result"], resolved["expected"]
+    # del resolved["func"], resolved["result"], resolved["expected"]
     return resolved
 
 
@@ -185,7 +185,9 @@ def call_llm(client: OpenAI, model: str, task: Dict[str, Any], domain: str, doma
     system_prompt = (
         "You build compact app-memory from OSWorld tasks. "
         "Given one task instruction and its full evaluator metric/getter source code, identify the app feature(s) covered by this task and concise verification experience. "
-        "Prefer reusing feature names from existing_covered_features when they describe the same capability; create a new short feature name only when no existing feature fits. "
+        "A field 'existing_covered_features_and_verification_experience' will be provided with already-accumulated features and verification experience. "
+        "If the current task's feature already exists in that field, reuse the exact same wording (do not paraphrase or rephrase the same concept in different words). "
+        "Reusing does not mean omitting — always include the feature in your output. "
         "Verification experience must describe reusable code-verification lessons for this feature class, not human UI steps or one task's exact assertion. "
         "Do not include obvious mechanics such as opening a file, loading JSON, reading an image with PIL, or locating a VM path unless there is a non-obvious caveat. "
         "Do not include task-specific constants, filenames, URLs, reference assets, exact dimensions, expected values, or exact assertion expressions. "

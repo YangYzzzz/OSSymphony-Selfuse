@@ -1,0 +1,136 @@
+{
+  "app": "vlc",
+  "covered_features": {
+    "Video clip extraction (trim/convert to frames)": 1,
+    "Set as default video player": 1,
+    "Play video file": 2,
+    "Subtitle extraction/export from video": 1,
+    "Audio extraction from video": 2,
+    "Embed audio as background music in presentation slide": 1,
+    "Video frame extraction (snapshot at timestamp)": 2,
+    "Set slide background image in presentation": 1,
+    "Recording folder configuration": 1,
+    "Stream network URL (HLS/HTTP streaming)": 1,
+    "Set desktop wallpaper from video frame": 1,
+    "Fullscreen mode": 1,
+    "Video rotation/flip transformation and export": 1,
+    "Global hotkey configuration (play/pause without focus)": 1,
+    "Maximum volume limit configuration": 1,
+    "Volume slider color configuration (qt-slider-colours)": 1,
+    "Minimal view (hide playback controls) configuration": 1,
+    "Play-and-exit (auto-close after playback) configuration": 1,
+    "One-instance-when-started-from-file configuration": 1,
+    "Splash screen cone icon (qt-bgcone) configuration": 1,
+    "Export/extract subtitles from video to SRT file": 1
+  },
+  "recent_tasks": [],
+  "co_use_counts": {},
+  "verification_experience": {
+    "Video clip extraction (trim/convert to frames)": [
+      "Use PIL/Image.open on the output GIF to verify it is a valid animated GIF; check n_frames > 1 and that frame content matches the expected video segment via SSIM comparison against a reference GIF resized to the smaller of the two sizes."
+    ],
+    "Set as default video player": [
+      "On Linux, use `xdg-mime query default video/<ext>` for a range of video MIME subtypes to retrieve the registered .desktop file; the most-common result across extensions is the effective default — check that it contains 'vlc.desktop'."
+    ],
+    "Play video file": [
+      "VLC playback state can be checked via the VLC HTTP interface or D-Bus; inspect recently-opened files in VLC config/history to confirm a file was opened",
+      "Use VLC's HTTP interface (/requests/status.xml) to get playback state; parse XML for <state> (must be 'playing') and meta info fields like 'filename', 'title', 'uri', 'location', 'name' under information/category[@name='meta']",
+      "Match the playing file by checking basename equality, endswith, or path containment against the expected filename",
+      "VLC HTTP interface requires basic auth with empty username and configured password; query programmatically via requests.get with auth=('', password)",
+      "The status.xml XML tree uses ElementTree; try multiple XPath expressions for file info since VLC version/content type affects which meta field is populated"
+    ],
+    "Subtitle extraction/export from video": [
+      "Use a Python script (e.g., pysrt) executed via vm_command_line to validate the exported .srt file's content against a gold reference; exact_match on script stdout ('true'/'false') is the typical pattern",
+      "When verifying SRT files, pysrt can parse and compare subtitle entries (timing, text) between the exported file and a gold reference; check both structure and content rather than raw string equality to handle minor formatting differences",
+      "The evaluator downloads a gold .srt and a comparison script post-config, then runs the script; the script returns 'true\\n' if the exported subtitles match the gold file"
+    ],
+    "Audio extraction from video": [
+      "Use librosa.load() to verify the extracted audio file is valid and non-empty before comparing content.",
+      "Compare extracted audio against a reference using MFCC features + DTW (fastdtw with cosine distance); normalize DTW distance by path length and apply exp(-d) for a similarity score in [0,1].",
+      "Audio extraction can be verified format-agnostically by loading with librosa regardless of container (wav, mp3, etc.).",
+      "Use librosa to load both the result and reference MP3 files, extract MFCC features, normalize them, then apply DTW (fastdtw with cosine distance) to get a normalized distance; convert to similarity via exp(-normalized_distance) for a [0,1] score",
+      "Check that the output file exists at the expected path and is loadable as audio before comparing content",
+      "MFCC+DTW comparison is robust to minor encoding differences between VLC-extracted audio and a reference; a similarity threshold around 0.8–0.9 typically indicates correct extraction"
+    ],
+    "Embed audio as background music in presentation slide": [
+      "A .pptx file is a ZIP archive; parse ppt/slides/_rels/slideN.xml.rels to find Relationship elements whose Type contains 'audio' — this confirms audio is embedded/linked in a specific slide.",
+      "The Target attribute of the audio relationship may be a relative path (starting with '..') pointing inside the ZIP (ppt/media/), or an external 'file://' URI; handle both cases when extracting the audio for comparison.",
+      "Extract the embedded audio via zipfile.ZipFile.extract() using the resolved path, then load with librosa to compare content against a reference audio."
+    ],
+    "Video frame extraction (snapshot at timestamp)": [
+      "Use VLC's scene filter or snapshot feature to extract a frame at a specific timestamp; verify the extracted image by comparing it against a reference using SSIM on grayscale-resized versions of both images.",
+      "When checking frame accuracy, resize both images to the smaller of the two sizes before SSIM comparison to handle resolution differences.",
+      "Use SSIM-based grayscale image comparison (scikit-image ssim) to verify snapshot content matches expected frame; resize both images to the smaller dimension before comparing",
+      "Check that the output file exists at the specified path and is a valid PNG image",
+      "Compare against a reference snapshot using structural similarity rather than exact pixel equality, as encoding/scaling may differ slightly"
+    ],
+    "Set slide background image in presentation": [
+      "Parse the PPTX as a ZIP; in ppt/slides/slideN.xml look for the <p:bgPr> element containing a <a:blip r:embed='rIdX'/> to confirm a background image is set.",
+      "Resolve the relationship ID via ppt/slides/_rels/slideN.xml.rels to get the actual embedded image file path, then extract and compare the image content using SSIM rather than exact pixel equality.",
+      "Background images set via LibreOffice Impress are stored under ppt/media/ and referenced through the slide relationships file; relative paths starting with '..' must be normalized before extraction from the ZIP."
+    ],
+    "Recording folder configuration": [
+      "Parse the vlcrc config file (plain text, key=value format) by splitting on newlines, skipping lines starting with '#' or empty, and matching the key 'input-record-path' to extract and compare the configured path value.",
+      "The vlcrc file location is OS-dependent: ~/.config/vlc/vlcrc on Linux, ~/Library/Preferences/org.videolan.vlc/vlcrc on macOS, ~\\AppData\\Roaming\\vlc\\vlcrc on Windows — retrieve it via the VM controller's Python execution.",
+      "If 'input-record-path' key is absent from vlcrc, treat it as not configured (return failure); the key must be explicitly present with the correct value."
+    ],
+    "Stream network URL (HLS/HTTP streaming)": [
+      "Use VLC's HTTP interface (/requests/status.xml) to retrieve playback state; parse the XML tree for <state> and meta/info elements to confirm both playing status and the active URL/filename.",
+      "For HLS streams, VLC may expose only the filename (e.g., master.m3u8) rather than the full URL in meta info fields; check multiple XPath candidates: info[@name='url'], info[@name='URI'], info[@name='filename'], info[@name='title'], info[@name='location'].",
+      "When comparing expected URL against VLC-reported info, handle three cases: exact substring match, basename-only match (VLC strips the host/path), and same-domain path-prefix match for redirected or variant URLs.",
+      "The vlc_playing_info getter queries the VLC HTTP API with basic auth (empty user, 'password') and writes status.xml to cache; the is_vlc_playing metric then parses that XML — reuse this getter/metric pair for any playback-state verification."
+    ],
+    "Set desktop wallpaper from video frame": [
+      "Retrieve the current VM wallpaper via get_vm_wallpaper() controller method and compare it against a reference frame using SSIM on grayscale, resized images; a meaningful similarity score well above a baseline (~0.11) indicates the correct frame was set",
+      "When VLC's 'Set as Wallpaper' or snapshot-then-set workflow is used, verify both that the wallpaper file is non-empty bytes and that its visual content matches the expected video frame, not just that a wallpaper exists",
+      "SSIM comparison should resize both images to the smaller of the two sizes before computing the score to handle resolution mismatches between the captured wallpaper and the reference frame"
+    ],
+    "Fullscreen mode": [
+      "Compare VLC window size against screen size using get_vm_window_size(app_class_name='vlc') and get_vm_screen_size(); fullscreen is confirmed when both width and height match exactly.",
+      "get_vm_window_size may return None if the window is not found or minimized; treat None as non-fullscreen (score 0)."
+    ],
+    "Video rotation/flip transformation and export": [
+      "Use cv2.VideoCapture to sample frames from both result and reference videos, then compare perceptual hashes (imagehash.phash) frame-by-frame; a threshold-based mismatch count tolerates minor encoding differences while catching wrong orientation.",
+      "When verifying rotation/flip correctness, perceptual hash comparison across sampled frames is more robust than pixel-exact comparison because re-encoding introduces minor artifacts.",
+      "Check that both videos terminate at the same frame count (both cap.read() return False simultaneously) to confirm duration is preserved after transformation.",
+      "The compare_videos pattern with a mismatch_count tolerance (e.g., threshold=5 mismatches allowed out of max_frames_to_check) handles codec/compression variance while still detecting orientation errors."
+    ],
+    "Global hotkey configuration (play/pause without focus)": [
+      "Parse vlcrc line by line and check for 'global-key-play-pause=' key; a non-empty value after '=' means a global hotkey is set, an empty value means it is unset",
+      "Use the vlc_config result getter which reads vlcrc from the platform-specific path (~/.config/vlc/vlcrc on Linux, ~/Library/Preferences/org.videolan.vlc/vlcrc on macOS, ~\\AppData\\Roaming\\vlc\\vlcrc on Windows)",
+      "Distinguish between 'global-key-play-pause' (works without VLC focus) and 'key-play-pause' (requires VLC focus); only the global variant satisfies background/global hotkey requirements",
+      "The config file is text-decoded as UTF-8 from binary; split on newlines and filter lines containing the target key name before splitting on '=' to extract the value"
+    ],
+    "Maximum volume limit configuration": [
+      "Parse the vlcrc config file as text, split by newlines, and look for the 'qt-max-volume=' key; if the key is absent, VLC defaults to 125, so absence must be treated as the default value when checking",
+      "Use the vlc_config result getter (reads platform-specific vlcrc path) combined with a line-by-line search for the config key; the value is always stored as a plain integer string after '='"
+    ],
+    "Volume slider color configuration (qt-slider-colours)": [
+      "Read the vlcrc config file and parse the `qt-slider-colours` key, which stores semicolon-separated RGB triplets (4 colors × 3 channels = 12 integers); verify color properties by checking each RGB tuple against a threshold (e.g., all channels < 100 for blackish)",
+      "If `qt-slider-colours` is absent from vlcrc, VLC uses a hardcoded default string; always fall back to the default when the key is missing rather than treating absence as an error",
+      "Use the vlc_config result getter (reads platform-specific vlcrc path) combined with a rule-based checker that parses the semicolon-delimited color string into RGB tuples for property checks like 'blackish', 'match', etc."
+    ],
+    "Minimal view (hide playback controls) configuration": [
+      "Parse vlcrc for `qt-minimal-view=` key; value is an integer (0/1) stored as a string, so cast both sides to str before comparing.",
+      "Use the vlc_config result getter family to retrieve vlcrc from the VM; the file path is OS-dependent (~/.config/vlc/vlcrc on Linux, ~/Library/Preferences/org.videolan.vlc/vlcrc on macOS, ~\\AppData\\Roaming\\vlc\\vlcrc on Windows).",
+      "To confirm persistence, the evaluator should kill and relaunch VLC before reading vlcrc, ensuring the setting was written to disk rather than only held in memory."
+    ],
+    "Play-and-exit (auto-close after playback) configuration": [
+      "Read vlcrc and search for the `play-and-exit=` key; VLC defaults to 0 (disabled) when the key is absent, so treat a missing key as value 0 when comparing against the expected setting."
+    ],
+    "One-instance-when-started-from-file configuration": [
+      "Parse vlcrc line by line looking for 'one-instance-when-started-from-file=' key; the default implicit value is '1' (enabled), so absence of the key should be treated as '1', not as disabled",
+      "Use the vlc_config result getter (reads platform-specific vlcrc path) combined with a line-scan checker; no XML/INI parser needed — plain string split on '=' suffices",
+      "The setting controls whether files opened externally reuse an existing VLC instance; disabling it (value=0) allows truly independent multiple instances each capable of playing their own file"
+    ],
+    "Splash screen cone icon (qt-bgcone) configuration": [
+      "Parse vlcrc for the `qt-bgcone` key; if the key is absent the default is 1 (enabled), so absence must be treated as enabled when checking for disabled state",
+      "Use the vlc_config result getter (reads platform-specific vlcrc path) and check the `qt-bgcone=` line value as a string comparison"
+    ],
+    "Export/extract subtitles from video to SRT file": [
+      "Use a Python script (e.g., pysrt) executed via vm_command_line to validate the exported .srt file's content against a gold reference; exact_match on script output ('true\\n') is the typical pattern",
+      "When verifying SRT exports, compare subtitle entries count, timing, and text content between the generated file and a gold .srt using pysrt's load(); structural equality matters more than byte-exact match",
+      "The evaluator script is downloaded as a postconfig step and run via vm_command_line — the script itself encodes the comparison logic, so understanding pysrt's SubRipFile comparison is key to writing similar evaluators"
+    ]
+  }
+}

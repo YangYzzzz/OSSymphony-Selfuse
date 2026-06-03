@@ -1,0 +1,282 @@
+{
+  "app": "libreoffice_writer",
+  "covered_features": {
+    "Paragraph line spacing": 3,
+    "Tab stops (alignment and position)": 1,
+    "Subscript text formatting": 1,
+    "Page numbers in footers": 1,
+    "Font name (typeface) applied to text runs": 1,
+    "Paragraph alignment (center, left, right, justify)": 1,
+    "Export document to PDF": 1,
+    "Insert table (rows × columns)": 1,
+    "Text highlight color (character background color)": 2,
+    "Insert image into document": 2,
+    "Remove duplicate lines/records from document content": 1,
+    "Strikethrough text formatting": 1,
+    "Font color applied to text runs in tables": 1,
+    "Insert empty paragraph lines between sentences": 2,
+    "Convert comma-separated text to table": 1,
+    "Append reference entry to reference list": 1,
+    "Insert cross-reference (by reference number) into body paragraph": 1,
+    "Convert uppercase text to lowercase (case transformation)": 1,
+    "Font size applied to text runs with specific formatting (italic)": 1,
+    "Title case (capitalize each word) text transformation": 1,
+    "Insert page break": 1,
+    "Set default font (typeface) for Writer": 1,
+    "Force quit / terminate LibreOffice Writer process from terminal": 1,
+    "Save/export text content to Word (.docx) format": 2,
+    "Batch convert .doc files to PDF via command line (--convert-to pdf)": 1,
+    "Insert/type text content into document body": 3,
+    "Read instructions from a Writer document to perform spreadsheet modifications": 1,
+    "Insert table with data extracted from external spreadsheet into document section": 2,
+    "Insert speaker notes into presentation slide note sections": 1,
+    "File classification and organization into categorized folders": 1,
+    "Append formatted answer content to existing document following established format": 2,
+    "Extract and transfer text from Impress presentation to Writer document (.docx)": 1,
+    "Read algorithm instructions from Writer document to implement code": 1,
+    "Package/zip files for submission according to document guidelines": 1,
+    "Capture terminal screenshot for document reference": 1,
+    "Read image editing instructions from Writer document to perform image modifications": 1,
+    "Merge/concatenate multiple text files into a single .docx document": 1,
+    "Font size applied to entire document (global/default font size)": 1,
+    "Read paper references from Writer document to export BibTeX (.bib) file": 1,
+    "Split document into multiple chapter PDFs": 1,
+    "Save text content to Writer document": 2,
+    "Chrome extension installation via Web Store": 1,
+    "Extension installation": 1
+  },
+  "recent_tasks": [],
+  "co_use_counts": {},
+  "verification_experience": {
+    "Paragraph line spacing": [
+      "Use python-docx paragraph_format.line_spacing to read spacing values; double spacing can be represented as a float multiplier (e.g., 2.0) or as a fixed Pt value, so check both the value and line_spacing_rule attribute when comparing",
+      "When comparing per-paragraph line spacing between a result doc and a gold doc, iterate zip(doc1.paragraphs, doc2.paragraphs) and assert spacing equality for each pair; also verify paragraph counts match first",
+      "Line spacing set via LibreOffice UI may be stored differently than via python-docx API (rule WD_LINE_SPACING.DOUBLE vs numeric 2.0), so gold files may come in two variants — use an 'or' conjunction across both gold references when evaluating",
+      "Use python-docx paragraph_format.line_spacing and line_spacing_rule properties to verify spacing; compare across paragraphs using zip on non-empty paragraph lists",
+      "Use python-docx paragraph_format.line_spacing to read spacing values; compare per-paragraph between result and reference documents using zip(doc1.paragraphs, doc2.paragraphs).",
+      "Line spacing values in python-docx can be a float multiplier (e.g., 2.0 for double) or a Pt/Emu length for exact spacing; check the type before comparing.",
+      "Paragraph count equality must be verified before per-paragraph spacing comparison to avoid false positives from mismatched structure."
+    ],
+    "Tab stops (alignment and position)": [
+      "Use python-docx paragraph_format.tab_stops to retrieve tab stop objects; each has .alignment (WD_TAB_ALIGNMENT enum) and .position (EMU integer) properties",
+      "Filter out CLEAR and default LEFT-at-0 tab stops before comparing, as these are noise entries not set by the user",
+      "Compare tab stop alignment equality directly; for position, compute relative difference against paragraph width (page_width minus margins) to get a normalized score rather than exact match",
+      "Verify paragraph text is split by '\\t' and check word counts in each segment to confirm the tab character is actually inserted in the text",
+      "paragraph_width = section.page_width - section.left_margin - section.right_margin is the correct denominator for normalizing position differences"
+    ],
+    "Subscript text formatting": [
+      "Use python-docx `run.font.subscript` (bool) to check whether a run has subscript formatting applied; iterate paragraph runs to find the target run.",
+      "The `compare_subscript_contains` pattern checks that at least one paired run in both documents has `font.subscript == True`, confirming the property is set rather than just visually similar text."
+    ],
+    "Page numbers in footers": [
+      "Use python-docx Document.sections to iterate sections; check section.footer.paragraphs for presence of digit characters as a proxy for a page-number field (PAGE fields render as digits after save/reload).",
+      "python-docx does not expose OoxmlElement PAGE fields as plain text; after saving from LibreOffice the field value may appear as a digit string in paragraph.text, so checking any(char.isdigit() for char in footer_text) is a reliable heuristic.",
+      "Footer alignment (left/center/right) can be inspected via paragraph.alignment on footer.paragraphs[0]; tab stops in the footer style distinguish left vs. center vs. right placement."
+    ],
+    "Font name (typeface) applied to text runs": [
+      "Use python-docx: iterate doc.paragraphs → paragraph.runs and check run.font.name for each run; a run with font.name == None may inherit the default theme font rather than an explicit override, so treat None as a potential mismatch when a specific font is required",
+      "When a font is applied 'throughout the document', every run in every paragraph must carry the explicit font name — paragraph-level or document-default styles are not reflected in run.font.name, so per-run checking is the correct strategy",
+      "python-docx's Document(path).paragraphs only covers body paragraphs; headers, footers, tables, and text boxes require separate traversal if full-document coverage must be verified"
+    ],
+    "Paragraph alignment (center, left, right, justify)": [
+      "Use python-docx `paragraph.paragraph_format.alignment` and compare against `WD_PARAGRAPH_ALIGNMENT` enum values; note that alignment may be `None` (inheriting from style) rather than an explicit value, so treat `None` as non-centered when checking for explicit center alignment.",
+      "When a heading or specific paragraph index is targeted, access `doc.paragraphs[n]` directly; be aware that paragraph index can shift if content is added/removed, so also consider checking by style name via `paragraph.style.name` to locate the correct paragraph.",
+      "python-docx reads `.docx` files natively; alignment is stored at the paragraph level in `<w:pPr><w:jc>` XML, which python-docx exposes through `paragraph_format.alignment`."
+    ],
+    "Export document to PDF": [
+      "Use fitz (PyMuPDF) to extract text from each page of the produced PDF and compare against a reference PDF using fuzzy string ratio (fuzz.ratio); a high ratio indicates correct export content.",
+      "Check multiple common save locations (Desktop, Documents, Downloads, home directory) with an 'or' conjunction, since the user may choose different export destinations.",
+      "Verify the exported PDF retains the original filename stem (only extension changes to .pdf), not a renamed file."
+    ],
+    "Insert table (rows × columns)": [
+      "Use python-docx Document.tables to retrieve all tables; verify count, row count (len(table.rows)), and column count (len(table.columns)) match expectations.",
+      "Compare cell text with table.cell(i,j).text.strip() across all rows and columns to confirm cell content equality between result and reference documents."
+    ],
+    "Text highlight color (character background color)": [
+      "Use odfpy to parse .odt files: iterate over Span elements, retrieve their 'stylename' attribute, then look up matching automatic styles and check child property nodes for 'backgroundcolor' attribute (e.g., '#ffff00' for yellow) to detect remaining highlights.",
+      "Highlight is stored as a character-level automatic style property (backgroundcolor), not a paragraph property, so check automaticstyles childNodes rather than paragraph styles.",
+      "compare_docx_files (or equivalent structural comparison) can be used as a preliminary check before inspecting highlight properties, ensuring overall document structure matches before diving into style attributes.",
+      "Use python-docx to inspect run.font.highlight_color for each run in paragraphs; highlight colors are WD_COLOR_INDEX enum values (e.g., YELLOW), not RGB—check the enum value rather than an RGB tuple.",
+      "When a word like a keyword appears mid-sentence, it may be split across multiple runs; iterate all runs in a paragraph and check both run.text content and run.font.highlight_color together.",
+      "compare_docx_files_and_ignore_new_lines only checks paragraph text equality, not formatting—highlight verification requires a separate run-level inspection of font.highlight_color."
+    ],
+    "Insert image into document": [
+      "Use python-docx Document.part.rels to extract embedded image blobs; compare count and pixel-level content (Image.tobytes()) between result and reference docx to verify correct image insertion.",
+      "Images are stored as relationship parts in the docx package; iterating doc.part.rels.values() and filtering by 'image' in rel.reltype reliably enumerates all embedded images regardless of paragraph position.",
+      "Use python-docx to extract embedded images via doc.part.rels; check that the number of images matches and compare raw pixel bytes (Image.open(img).tobytes()) between result and reference docx to verify image identity."
+    ],
+    "Remove duplicate lines/records from document content": [
+      "Use python-docx Document.paragraphs to extract all non-empty paragraph texts; parse structured fields by splitting on delimiters to extract the key field (e.g., second CSV column) for uniqueness checks.",
+      "Apply three-part validation: (1) subset check — every remaining line must exist in the original document's line set; (2) uniqueness check — the key field must have no duplicates among remaining paragraphs; (3) completeness check — the set of unique key values must match the gold standard's set and line counts must agree.",
+      "When comparing sets of extracted field values across processed vs. gold files, set equality is more robust than ordered list comparison since line order may vary."
+    ],
+    "Strikethrough text formatting": [
+      "Use python-docx Document.paragraphs[-1] to access the last paragraph; iterate run.font.strike to check strikethrough on each run.",
+      "All runs in the target paragraph must have font.strike == True; a single run without it means incomplete formatting.",
+      "compare_docx_files can be used as a structural pre-check before inspecting specific font attributes."
+    ],
+    "Font color applied to text runs in tables": [
+      "Use python-docx to iterate document.tables → rows → cells → paragraphs → runs; check run.font.color.rgb against expected RGBColor values",
+      "For perceptual color comparison, convert RGB to Lab and use deltaE_ciede2000 (from colormath or skimage) rather than exact RGB equality, with a threshold around 3–4 CIEDE2000 units",
+      "When coloring is conditional on word content (e.g., first letter), verify the logic by grouping runs by their text's first character and asserting the corresponding color family (red vs. blue)",
+      "compare_docx_files can be used as a structural pre-check before inspecting per-run color attributes"
+    ],
+    "Insert empty paragraph lines between sentences": [
+      "Use python-docx Document.paragraphs to extract the full paragraph list including empty ones; compare paragraph count and text sequence against a reference, since empty lines appear as paragraphs with empty text (p.text == '')",
+      "The compare_docx_files metric with ignore_blanks=False does a strict paragraph-by-paragraph count and text match, so both the number of paragraphs and their exact text must match the gold file; use this approach when verifying empty-line insertion tasks",
+      "Multiple gold files may represent equivalent valid solutions (e.g., different sentence-splitting strategies); use an 'or' conjunction across compare_docx_files calls to accept any valid variant",
+      "When checking empty-line separation, verify that empty paragraphs (p.text.strip() == '') appear at the correct positions between content paragraphs, not just that the total count is right",
+      "compare_docx_files_and_ignore_new_lines with ignore_blanks=False checks that blank paragraphs exist at expected positions; blank paragraphs have p.text == '' and are filtered out when ignore_blanks=True, so the option choice affects whether separator lines are validated."
+    ],
+    "Convert comma-separated text to table": [
+      "Use python-docx Document.tables to retrieve all tables; compare table count, row count, and column count between result and reference documents.",
+      "Compare cell text with table.cell(i,j).text.strip() for each row/column index to verify correct mapping of comma-delimited values into table cells.",
+      "When multiple valid gold references exist (e.g., different column arrangements), use an 'or' conjunction across compare_docx_tables calls so any acceptable layout passes."
+    ],
+    "Append reference entry to reference list": [
+      "Use python-docx paragraph text extraction to verify the new reference string appears verbatim in the document's paragraph list; compare_docx_files with ignore_blanks=True collapses whitespace, so minor spacing differences are tolerated.",
+      "When the reference list is numbered, check that the new entry carries the correct sequential number prefix as plain text within the paragraph."
+    ],
+    "Insert cross-reference (by reference number) into body paragraph": [
+      "compare_docx_files compares full paragraph text including inline cross-reference markers; verify the target paragraph contains the bracketed or superscript reference number at the marked location by checking p.text of the relevant paragraph.",
+      "Cross-references inserted via LibreOffice may be stored as field codes (REF fields) or as plain text; python-docx exposes run-level text so iterate runs within the paragraph to confirm the reference number token is present regardless of field encoding.",
+      "Fuzzy matching (fuzz.ratio) is useful here because field-based cross-references may render slightly differently; a high similarity threshold (≥0.95) is a reliable signal."
+    ],
+    "Convert uppercase text to lowercase (case transformation)": [
+      "Use python-docx to extract paragraph texts and compare against a gold document; the compare_docx_files pattern (joining paragraphs, normalizing whitespace) is the standard metric here.",
+      "When verifying case transformation, extract all paragraph texts via doc.paragraphs and check that no uppercase characters remain where they should be lowercase; a direct string comparison against a gold .docx is the most reliable approach.",
+      "python-docx's p.text aggregates all runs in a paragraph, so run-level case changes are captured without iterating individual runs."
+    ],
+    "Font size applied to text runs with specific formatting (italic)": [
+      "Use python-docx to iterate document.paragraphs and each paragraph's runs; check run.italic to filter italic runs, then verify run.font.size.pt for the expected size — note that run.font.size may be None if size is inherited rather than explicitly set on the run, so always guard with a None check before accessing .pt",
+      "When verifying character-level formatting changes scoped to a style (italic, bold, etc.), iterate all runs across all paragraphs rather than relying on paragraph-level styles, since the formatting is stored at the run level in python-docx",
+      "compare_docx_files can be used as a structural pre-check before inspecting individual run properties, to catch gross document-level differences early"
+    ],
+    "Title case (capitalize each word) text transformation": [
+      "Use python-docx to extract paragraph texts and compare against expected title-cased content; the compare_docx_files metric collapses whitespace and does exact string matching by default, so verify that every word's first letter is uppercase and remaining letters match the expected casing.",
+      "When checking title-case transformations, iterate over all paragraphs (doc.paragraphs) and inspect p.text; be aware that runs within a paragraph may split words, so reconstructing full paragraph text is more reliable than run-level inspection.",
+      "compare_docx_files with default options (ignore_blanks=True) normalizes whitespace before comparing, so minor spacing differences won't cause failures, but case differences will — use this to confirm title-case was applied correctly."
+    ],
+    "Insert page break": [
+      "Use python-docx to iterate all paragraphs and their runs, searching for `w:br` elements with `w:type='page'` attribute to count explicit page breaks; compare total count against expected value.",
+      "Page breaks inserted via LibreOffice Writer appear as `w:br` elements inside run XML (`run.element.findall('.//w:br', namespaces)`), not as paragraph properties, so check run-level XML rather than paragraph-level `pPr`."
+    ],
+    "Set default font (typeface) for Writer": [
+      "Parse registrymodifications.xcu with xml.etree.ElementTree; look for item[@oor:path='/org.openoffice.Office.Writer/DefaultFont'] then prop[@oor:name='Standard']/value to retrieve the configured default font name.",
+      "The namespace prefix 'oor' maps to 'http://openoffice.org/2001/registry'; always pass the namespace dict to findall/find calls when querying this file.",
+      "This setting is stored per-user in ~/.config/libreoffice/4/user/registrymodifications.xcu, not in the document itself, so verification reads that config file rather than any .odt/.docx."
+    ],
+    "Force quit / terminate LibreOffice Writer process from terminal": [
+      "Use `ps aux | grep soffice` (with bracket trick to exclude grep itself) to confirm the process is no longer running after the kill command.",
+      "Check `~/.bash_history` for a kill-family command (kill, killall, pkill) to verify the user performed the action from the terminal rather than through the GUI.",
+      "Combine process-absence check and bash-history check with include/exclude string rules on a single shell command output for atomic pass/fail evaluation."
+    ],
+    "Save/export text content to Word (.docx) format": [
+      "Use python-docx's Document class to read paragraph texts from .docx files; compare with ignore_blanks by collapsing whitespace via re.sub before equality check.",
+      "The compare_docx_files pattern extracts all paragraph texts as a flat list, joins them, and normalizes whitespace — useful for plain-text content comparison without caring about paragraph boundaries.",
+      "fuzzy matching via fuzz.ratio is available as a fallback when exact text match is too strict; consider it for notes content that may have minor whitespace differences.",
+      "python-docx Document() can open and parse .docx files for structural verification; check both paragraph text and run-level formatting attributes after saving."
+    ],
+    "Batch convert .doc files to PDF via command line (--convert-to pdf)": [
+      "Check bash history for a command matching `(soffice|libreoffice).+--convert-to\\s+pdf.+\\*.doc` to confirm the batch conversion was invoked correctly",
+      "Use `compare_archive` with `file_type='pdf'` to compare the set of produced PDF files against a reference archive; verify both filenames and PDF content match",
+      "The `compare_pdfs` function is used internally by `compare_archive` for PDF file type; it compares rendered PDF content, so structural/content fidelity of the conversion is checked, not just file existence"
+    ],
+    "Insert/type text content into document body": [
+      "Use python-docx Document.paragraphs to extract all paragraph texts; compare with expected using whitespace-normalized string comparison (re.sub r'\\s+' -> ' ').strip(), which is what compare_docx_files with ignore_blanks=True does",
+      "fuzzy_match via fuzz.ratio can catch near-correct answers; for exact title matching, exact string equality after whitespace normalization is the standard check",
+      "compare_docx_files_and_ignore_new_lines compares paragraph text after stripping blank paragraphs; with ignore_blanks=False it also checks paragraph count equality, so paragraph structure matters.",
+      "When pasting content from JSON values, verify that each value maps to exactly one paragraph and that paragraph text matches the source string character-for-character.",
+      "Use python-docx Document.paragraphs to extract all paragraph texts; compare with expected content using ignore_blanks and ignore_case normalization via re.sub(r'\\s+',' ') before equality check",
+      "When order-insensitive comparison is needed, sort both paragraph lists before comparing; fuzz.ratio from rapidfuzz/thefuzz can handle near-match scoring"
+    ],
+    "Read instructions from a Writer document to perform spreadsheet modifications": [
+      "This task is evaluated entirely on the resulting spreadsheet (xlsx), not on the Writer document itself; use compare_table with sheet_data rules via openpyxl/pandas to verify cell values across all sheets."
+    ],
+    "Insert table with data extracted from external spreadsheet into document section": [
+      "Use python-docx Document.tables to retrieve all tables; compare count, row/column dimensions, and cell text between result and reference documents — compare_docx_tables pattern covers all these checks in one pass",
+      "When verifying table cell content, strip whitespace from both sides before comparing to avoid false mismatches from trailing newlines or spaces",
+      "Table position within the document (e.g., under a specific heading) is not checked by compare_docx_tables; only table count and cell content are validated, so placement verification requires inspecting paragraph order relative to tables if needed",
+      "Use python-docx Document.tables to retrieve all tables; compare row/column counts and cell text (stripped) against a reference docx to verify structural and content fidelity",
+      "compare_docx_tables pattern: iterate zip(tables1,tables2), check len(rows)==len(rows) and len(columns)==len(columns), then cell(i,j).text.strip() equality for every cell",
+      "When transferring spreadsheet data to a Writer table, verify the table dimensions match the source sheet's used range (rows × columns) and that numeric/text cell values are preserved exactly"
+    ],
+    "Insert speaker notes into presentation slide note sections": [
+      "Use python-pptx: slide.notes_slide.notes_text_frame.text to retrieve note content; compare stripped text against expected value per slide",
+      "The compare_pptx_files evaluator checks notes via get_slide_notes(slide).strip() != get_slide_notes(slide2).strip() with examine_note=True by default; ensure note text matches exactly after stripping whitespace",
+      "When reading speaking notes from a Writer document to populate Impress slide notes, verify the correct mapping of note text to slide index by iterating prs.slides and checking each slide's notes_text_frame"
+    ],
+    "File classification and organization into categorized folders": [
+      "Use vm_command_line with `ls` on each target directory and compare the exact sorted output string (including trailing newline) against expected filenames; exact_match is strict so order and whitespace matter.",
+      "When files lack clear extensions, content analysis (reading file text/metadata) is needed to classify them; verify by checking presence/absence of files across all category folders, not just one.",
+      "Verify all three category folders (e.g., Paper_reading, Projects, Miscellaneous) together to ensure no file is missing or misplaced across the full set."
+    ],
+    "Append formatted answer content to existing document following established format": [
+      "Use python-docx Document.paragraphs to extract all paragraph texts and compare against a gold .docx file; the compare_docx_files metric collapses whitespace and optionally ignores case, so focus on logical text content equality rather than exact whitespace",
+      "When a task requires replicating an existing format (e.g., answer list structure), verify by comparing paragraph-level text of the result doc against a reference doc using fuzz.ratio or exact match after whitespace normalization",
+      "python-docx paragraph iteration covers the full document body; tables and other non-paragraph elements are not captured by doc.paragraphs, so if answers are in tables use doc.tables[i].rows[j].cells[k].text instead",
+      "Load both candidate and gold .docx with python-docx, extract paragraph texts, normalize whitespace, and compare as joined strings; ignore_order option is useful when entry sequence may differ",
+      "For structured list entries (e.g., paper metadata blocks), sorting paragraphs before comparison handles insertion-order variance without losing correctness signal"
+    ],
+    "Extract and transfer text from Impress presentation to Writer document (.docx)": [
+      "Use python-docx to read paragraph texts from the output .docx and compare against expected content; the compare_docx_files metric uses fuzz.ratio on joined paragraph text with ignore_blanks, ignore_order, content_only, and delete_empty_lines options, so focus on text content rather than formatting",
+      "When verifying cross-app text extraction (Impress→Writer), extract all text frames/shapes from the .pptx/.odp source using python-pptx or odfpy and confirm each text string appears in the Writer document paragraphs",
+      "The evaluator collapses whitespace with re.sub(r'\\s+', ' ', ...) before comparing, so minor spacing differences are tolerated; verify that all non-empty text blocks are present rather than exact paragraph structure"
+    ],
+    "Read algorithm instructions from Writer document to implement code": [
+      "Use compare_text_file metric on the output text file; exact string match (after strip) is required unless ignore_blanks/ignore_case options are set",
+      "When a task requires reading a .docx for coding instructions, verify the output file content matches a gold reference file byte-for-byte (post-strip); no partial-credit path exists with this metric"
+    ],
+    "Package/zip files for submission according to document guidelines": [
+      "Use Python's zipfile module to compare zip contents: verify both the set of filenames (namelist) and byte-level content of each entry match the reference zip; for PDF entries inside the zip, use a fuzzy PDF text-content comparison (e.g., extract text with pdfminer/PyMuPDF and compare with a similarity threshold) rather than byte equality, since PDF rendering can vary slightly across runs."
+    ],
+    "Capture terminal screenshot for document reference": [
+      "Use easyocr (compare_image_text metric) to verify screenshot content by OCR-extracting text and checking for expected substrings; account for OCR misreads (e.g., 'ls' vs '1s') by accepting alternative OCR renderings as valid matches",
+      "Image files may be saved in X11 screen dump (xwd) format rather than true PNG even with a .png extension; verify format with subprocess 'file' command and convert via PIL, custom X11 reader, or netpbm tools before OCR",
+      "When verifying screenshot content, use substring matching on the full joined OCR text rather than exact equality, since OCR output order and spacing vary"
+    ],
+    "Read image editing instructions from Writer document to perform image modifications": [
+      "Use SSIM (structural similarity index) via skimage.metrics to compare grayscale versions of the output image against a reference; resize both to the smaller dimension before comparison to handle minor size differences.",
+      "When instructions are embedded in a Writer document, parse the document text (e.g., via python-docx or LibreOffice UNO) to extract editing parameters rather than hard-coding them.",
+      "Image comparison metrics like SSIM are sensitive to both structural content and pixel-level changes; a base_score reference pattern is sometimes used so only improvements above a threshold count as correct."
+    ],
+    "Merge/concatenate multiple text files into a single .docx document": [
+      "Use python-docx Document.paragraphs to extract all paragraph texts and compare against a reference docx; the compare_docx_files metric normalizes whitespace (re.sub r'\\s+') before comparing, so focus on logical text content equality rather than exact whitespace.",
+      "When merging files without separators, verify that paragraph text from all source files appears contiguously in the output docx with no extra blank-line paragraphs between them.",
+      "compare_docx_files with ignore_blanks=True collapses all whitespace, so minor spacing differences won't cause failure; content order and completeness are the critical checks."
+    ],
+    "Font size applied to entire document (global/default font size)": [
+      "Check document-level default font size via doc.styles['Default Paragraph Style'] or doc.styles['Normal'] style's font.size attribute in python-docx; individual run-level font sizes may override this.",
+      "Iterate all runs across all paragraphs and verify run.font.size is consistent with the target pt value (python-docx stores size in EMUs: pt * 12700); runs inheriting from style may have font.size == None, meaning they use the style default.",
+      "Also inspect the document's default character style and paragraph style font size to confirm the global setting, not just individual run overrides."
+    ],
+    "Read paper references from Writer document to export BibTeX (.bib) file": [
+      "Use compare_text_file with ignore_blanks=True to normalize whitespace differences; exact BibTeX field order and blank-line separators are collapsed, so content equality is what matters",
+      "When checking BibTeX entries, prefer published venue entries over arXiv preprint entries for the same paper — verify that @article/@inproceedings entries are used rather than @misc with eprint fields when a published version exists",
+      "DBLP BibTeX keys and field values must match the canonical DBLP record; compare against a gold .bib file using text comparison rather than parsing the BibTeX structure"
+    ],
+    "Split document into multiple chapter PDFs": [
+      "Use compare_archive with file_type='pdf' to compare sets of per-chapter PDF files; filenames must match exactly (sorted comparison), so verify naming convention matches the established example before exporting",
+      "compare_pdfs is used internally; PDF content comparison checks rendered page content, so chapter boundaries (page ranges) must be correct, not just file count",
+      "When splitting a multi-chapter document, each exported PDF should contain only its respective chapter's pages; verify page count per PDF matches expected chapter length",
+      "The archive comparison first checks that pred_files == gold_files (exact filename match including order); naming pattern derived from the existing chapter-one example must be followed precisely for all subsequent chapters"
+    ],
+    "Save text content to Writer document": [
+      "Use python-docx's Document class to read .docx files; iterate doc.paragraphs and collect para.text to get all written content",
+      "When verifying multi-item list content (e.g., addresses), split paragraph text on whitespace and use fuzzy string matching (e.g., fuzz.ratio) against a set of acceptable answers rather than exact equality, since formatting may vary",
+      "Score-based evaluation: compute per-token fuzzy match scores against an expected list, threshold low scores to zero, and normalize by the expected item count to get a partial-credit float metric",
+      "Use file read + text normalization (expand tabs, strip trailing whitespace, drop empty lines) before comparing; shebang/encoding header lines at file start may be skipped safely.",
+      "Compare normalized line-by-line content rather than raw byte equality to tolerate minor whitespace differences.",
+      "Python file content comparison should preserve indentation and inline comments; only strip truly empty lines and file-level metadata headers."
+    ],
+    "Chrome extension installation via Web Store": [
+      "Read installed extension names from the Chrome Preferences JSON file (path varies by OS/architecture) under extensions.settings.<id>.manifest.name; use this list for subset-membership checks rather than exact equality.",
+      "Normalize extension name aliases (e.g. alternate store titles for the same extension) before comparing expected vs. installed sets, since store display names can vary across Chrome versions."
+    ],
+    "Extension installation": [
+      "Verify extension installation by grepping for the .oxt filename pattern under the LibreOffice user uno_packages cache directory (e.g., /home/user/.config/libreoffice/4/user/uno_packages/cache/uno_packages/); use regex matching on grep output rather than exact path checks.",
+      "For extensions with Java dependencies, verify the required JRE/JDK is installed by checking `apt list --installed` output with a regex like `openjdk-\\d+-(jre|jdk)`.",
+      "Use check_list-style evaluation: collect command stdout to a cache file, then apply regex expect/unexpect rules line-by-line to confirm presence or absence of installation artifacts."
+    ]
+  }
+}

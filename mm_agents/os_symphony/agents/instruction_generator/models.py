@@ -39,7 +39,6 @@ class AppMemory:
     covered_features: Dict[str, int] = field(default_factory=dict)
     recent_tasks: List[AppMemoryRecentTask] = field(default_factory=list)
     verification_experience: Dict[str, Any] = field(default_factory=dict)
-    next_generation_bias: Dict[str, Any] = field(default_factory=dict)
     co_use_counts: Dict[str, int] = field(default_factory=dict)
 
     @classmethod
@@ -48,14 +47,12 @@ class AppMemory:
         covered_features = data.get("covered_features") if isinstance(data.get("covered_features"), dict) else {}
         recent_tasks = data.get("recent_tasks") if isinstance(data.get("recent_tasks"), list) else []
         verification_experience = data.get("verification_experience") if isinstance(data.get("verification_experience"), dict) else {}
-        next_generation_bias = data.get("next_generation_bias") if isinstance(data.get("next_generation_bias"), dict) else {}
         co_use_counts = data.get("co_use_counts") if isinstance(data.get("co_use_counts"), dict) else {}
         return cls(
             app=str(data.get("app") or app),
             covered_features={str(key): cls._int_or_default(value, 0) for key, value in covered_features.items()},
             recent_tasks=[AppMemoryRecentTask.from_dict(item) for item in recent_tasks if isinstance(item, dict)],
             verification_experience=verification_experience,
-            next_generation_bias=next_generation_bias,
             co_use_counts={str(key): cls._int_or_default(value, 0) for key, value in co_use_counts.items()},
         )
 
@@ -65,14 +62,12 @@ class AppMemory:
             "covered_features": self.covered_features,
             "recent_tasks": [task.to_dict() for task in self.recent_tasks],
             "verification_experience": self.verification_experience,
-            "next_generation_bias": self.next_generation_bias,
             "co_use_counts": self.co_use_counts,
         }
 
     def proposal_summary(self) -> Dict[str, Any]:
         return {
             "covered_features": self.covered_features,
-            "next_generation_bias": self.next_generation_bias,
             "recent_tasks": [task.to_dict() for task in self.recent_tasks[-8:]],
         }
 
@@ -80,7 +75,7 @@ class AppMemory:
         return {"verification_experience": self.verification_experience}
 
     def record_finalized(self, task: Dict[str, Any]) -> None:
-        feature_tags = task.get("feature_tags") or task.get("target_features") or []
+        feature_tags = self._features_for_memory_app(task)
         feature_tags = feature_tags if isinstance(feature_tags, list) else []
         normalized_tags = [str(tag) for tag in feature_tags]
         for tag in normalized_tags:
@@ -96,7 +91,15 @@ class AppMemory:
         )
         self.recent_tasks = self.recent_tasks[-30:]
         self.record_co_use(task.get("related_apps") if isinstance(task.get("related_apps"), list) else [])
-        self.update_bias()
+        self.record_verification_experience(task.get("verification_experience_lessons"))
+
+    def _features_for_memory_app(self, task: Dict[str, Any]) -> List[Any]:
+        target_features = task.get("target_features")
+        if isinstance(target_features, dict):
+            app_features = target_features.get(self.app)
+            return app_features if isinstance(app_features, list) else []
+        feature_tags = task.get("feature_tags") or target_features or []
+        return feature_tags if isinstance(feature_tags, list) else []
 
     def record_co_use(self, related_apps: List[str]) -> None:
         for app in related_apps:
@@ -104,15 +107,26 @@ class AppMemory:
             if app and app != self.app:
                 self.co_use_counts[app] = int(self.co_use_counts.get(app, 0)) + 1
 
-    def update_bias(self) -> None:
-        if not self.covered_features:
-            self.next_generation_bias = {}
+    def record_verification_experience(self, lessons: Any) -> None:
+        if not isinstance(lessons, list):
             return
-        ordered = sorted(self.covered_features.items(), key=lambda item: item[1])
-        self.next_generation_bias = {
-            "undercovered_features": [key for key, _ in ordered[:5]],
-            "overcovered_features": [key for key, _ in ordered[-5:]],
-        }
+        for lesson in lessons:
+            if not isinstance(lesson, dict):
+                continue
+            app = str(lesson.get("app") or "")
+            if app and app != self.app:
+                continue
+            feature = str(lesson.get("feature") or "").strip()
+            lesson_text = str(lesson.get("lesson") or "").strip()
+            if not feature or not lesson_text:
+                continue
+            experiences = self.verification_experience.setdefault(feature, [])
+            if not isinstance(experiences, list):
+                experiences = []
+                self.verification_experience[feature] = experiences
+            if lesson_text not in experiences:
+                experiences.append(lesson_text)
+                self.verification_experience[feature] = experiences[-12:]
 
     @staticmethod
     def _int_or_default(value: Any, default: int) -> int:
@@ -183,10 +197,11 @@ class ProposalCandidate:
     category: str = "mixed"
     complexity: str = "medium"
     estimated_steps: int = -1
-    target_features: List[str] = field(default_factory=list)
+    target_features: Dict[str, List[str]] = field(default_factory=dict)
     success_criteria: List[str] = field(default_factory=list)
     evaluation_requirements_text: List[str] = field(default_factory=list)
-    verification_plan_hint: Dict[str, Any] = field(default_factory=dict)
+    dependency_chain: List[Dict[str, Any]] = field(default_factory=list)
+    critic_scores: Dict[str, float] = field(default_factory=dict)
     risk_notes: List[str] = field(default_factory=list)
 
     @classmethod
@@ -201,10 +216,11 @@ class ProposalCandidate:
             category=str(data.get("category") or "mixed"),
             complexity=str(data.get("complexity") or "medium"),
             estimated_steps=cls._int_or_default(data.get("estimated_steps"), -1),
-            target_features=[str(tag) for tag in cls._list_or_default(data.get("target_features") or data.get("feature_tags"))],
+            target_features=cls._target_features_by_app(data.get("target_features") or data.get("feature_tags"), data.get("related_apps")),
             success_criteria=[str(item) for item in cls._list_or_default(data.get("success_criteria"))],
             evaluation_requirements_text=[str(item) for item in cls._list_or_default(data.get("evaluation_requirements_text"))],
-            verification_plan_hint=data.get("verification_plan_hint") if isinstance(data.get("verification_plan_hint"), dict) else {},
+            dependency_chain=cls._list_of_dicts(data.get("dependency_chain")),
+            critic_scores=cls._float_dict(data.get("critic_scores")),
             risk_notes=[str(item) for item in cls._list_or_default(data.get("risk_notes"))],
         )
 
@@ -221,9 +237,37 @@ class ProposalCandidate:
             "target_features": self.target_features,
             "success_criteria": self.success_criteria,
             "evaluation_requirements_text": self.evaluation_requirements_text,
-            "verification_plan_hint": self.verification_plan_hint,
+            "dependency_chain": self.dependency_chain,
+            "critic_scores": self.critic_scores,
             "risk_notes": self.risk_notes,
         }
+
+    def flattened_target_features(self) -> List[str]:
+        flattened: List[str] = []
+        for features in self.target_features.values():
+            for feature in features:
+                if feature not in flattened:
+                    flattened.append(feature)
+        return flattened
+
+    def features_for_app(self, app: str) -> List[str]:
+        return list(self.target_features.get(app, []))
+
+    @staticmethod
+    def _target_features_by_app(value: Any, related_apps: Any) -> Dict[str, List[str]]:
+        if isinstance(value, dict):
+            result: Dict[str, List[str]] = {}
+            for app, features in value.items():
+                if isinstance(features, list):
+                    normalized = [str(feature) for feature in features if feature is not None]
+                    if normalized:
+                        result[str(app)] = normalized
+            return result
+        if isinstance(value, list):
+            apps = [str(app) for app in related_apps] if isinstance(related_apps, list) else []
+            features = [str(feature) for feature in value if feature is not None]
+            return {app: list(features) for app in apps if app} if features else {}
+        return {}
 
     @staticmethod
     def _list_or_default(value: Any) -> List[Any]:
@@ -232,6 +276,18 @@ class ProposalCandidate:
     @staticmethod
     def _list_of_dicts(value: Any) -> List[Dict[str, Any]]:
         return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+    @staticmethod
+    def _float_dict(value: Any) -> Dict[str, float]:
+        if not isinstance(value, dict):
+            return {}
+        result: Dict[str, float] = {}
+        for key, score in value.items():
+            try:
+                result[str(key)] = float(score)
+            except (TypeError, ValueError):
+                continue
+        return result
 
     @staticmethod
     def _int_or_default(value: Any, default: int) -> int:
@@ -251,6 +307,8 @@ class TaskCandidate:
     related_apps: List[str] = field(default_factory=list)
     used_files: List[str] = field(default_factory=list)
     feature_tags: List[str] = field(default_factory=list)
+    dependency_chain: List[Dict[str, Any]] = field(default_factory=list)
+    critic_scores: Dict[str, float] = field(default_factory=dict)
     verification: VerificationSpec = field(default_factory=VerificationSpec)
 
     @classmethod
@@ -264,7 +322,9 @@ class TaskCandidate:
             estimated_steps=proposal_model.estimated_steps,
             related_apps=proposal_model.related_apps,
             used_files=proposal_model.used_files,
-            feature_tags=proposal_model.target_features,
+            feature_tags=proposal_model.flattened_target_features(),
+            dependency_chain=proposal_model.dependency_chain,
+            critic_scores=proposal_model.critic_scores,
             verification=VerificationSpec.from_dict(verification),
         )
 
@@ -282,6 +342,8 @@ class TaskCandidate:
             related_apps=[str(app) for app in cls._list_or_default(merged.get("related_apps"))],
             used_files=[str(path) for path in cls._list_or_default(merged.get("used_files"))],
             feature_tags=[str(tag) for tag in cls._list_or_default(merged.get("feature_tags"))],
+            dependency_chain=ProposalCandidate._list_of_dicts(merged.get("dependency_chain")),
+            critic_scores=ProposalCandidate._float_dict(merged.get("critic_scores")),
             verification=VerificationSpec.from_dict(merged.get("verification")),
         )
 
@@ -295,6 +357,8 @@ class TaskCandidate:
             "related_apps": self.related_apps,
             "used_files": self.used_files,
             "feature_tags": self.feature_tags,
+            "dependency_chain": self.dependency_chain,
+            "critic_scores": self.critic_scores,
             "verification": self.verification.to_dict(),
         }
 
@@ -323,48 +387,23 @@ class ProposalSelectionInput:
 class ExplorationResult:
     proposals: List[ProposalCandidate] = field(default_factory=list)
     generation_notes: List[str] = field(default_factory=list)
-    trajectory: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any] | None) -> "ExplorationResult":
         data = data or {}
         proposals = data.get("proposals") if isinstance(data.get("proposals"), list) else []
         generation_notes = data.get("generation_notes") if isinstance(data.get("generation_notes"), list) else []
-        trajectory = data.get("trajectory") if isinstance(data.get("trajectory"), dict) else {}
         return cls(
             proposals=[ProposalCandidate.from_dict(item) for item in proposals if isinstance(item, dict)],
             generation_notes=[str(item) for item in generation_notes],
-            trajectory=trajectory,
         )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "proposals": [proposal.to_dict() for proposal in self.proposals],
             "generation_notes": self.generation_notes,
-            "trajectory": self.trajectory,
         }
-
-
-@dataclass
-class ExplorationContext:
-    trajectory: Dict[str, Any] = field(default_factory=dict)
-    generation_notes: List[str] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any] | None) -> "ExplorationContext":
-        data = data or {}
-        return cls(
-            trajectory=data.get("trajectory") if isinstance(data.get("trajectory"), dict) else {},
-            generation_notes=[str(item) for item in data.get("generation_notes", [])] if isinstance(data.get("generation_notes"), list) else [],
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "trajectory": self.trajectory,
-            "generation_notes": self.generation_notes,
-        }
-
-
+    
 @dataclass
 class VerificationSynthesisInput:
     proposal: ProposalCandidate
@@ -374,7 +413,6 @@ class VerificationSynthesisInput:
     sampled_files: List[Dict[str, Any]]
     app_tutorials: Dict[str, str]
     verification_experience: Dict[str, Any]
-    exploration_context: ExplorationContext = field(default_factory=ExplorationContext)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -384,8 +422,7 @@ class VerificationSynthesisInput:
             "app_file_support": self.app_file_support,
             "sampled_files": self.sampled_files,
             "app_tutorials": self.app_tutorials,
-            "verification_experience": self.verification_experience,
-            "exploration_context": self.exploration_context.to_dict(),
+            "verification_experience": self.verification_experience
         }
 
 
@@ -396,7 +433,6 @@ class VerificationRepairInput:
     sampled_apps: List[str]
     app_file_support: Dict[str, List[str]]
     sampled_files: List[Dict[str, Any]]
-    exploration_context: ExplorationContext = field(default_factory=ExplorationContext)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -405,7 +441,6 @@ class VerificationRepairInput:
             "sampled_apps": self.sampled_apps,
             "app_file_support": self.app_file_support,
             "sampled_files": self.sampled_files,
-            "exploration_context": self.exploration_context.to_dict(),
         }
 
 

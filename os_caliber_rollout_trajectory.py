@@ -21,8 +21,8 @@ from multiprocessing import current_process
 import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
 import os
-from os_caliber_task_generator import OSCaliberTaskGenerator, SeedTaskExpansionGenerator
-from yangbowen.OSSymphony.tmp.osworld_seed_task_expansion import OSWorldSeedTaskLibrary
+from os_caliber_task_generator import OSCaliberTaskGenerator
+
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
 from mm_agents.anthropic.main import AnthropicAgent
@@ -705,17 +705,8 @@ def online_test(args: argparse.Namespace):
         shared_task_meta = manager.dict()
         task_queue = manager.Queue()
         lock = manager.Lock()
-        if args.seed_expansion_mode:
-            seed_records = OSWorldSeedTaskLibrary(
-                examples_base_dir=args.seed_examples_base_dir,
-                seed_meta_path=args.seed_task_meta_path,
-            ).records()
-            for seed_record in seed_records:
-                task_queue.put(seed_record)
-            logger.info(f"Seed expansion mode: queued {len(seed_records)} seed tasks from {args.seed_task_meta_path}")
-        else:
-            for _ in range(args.rollout_times):
-                task_queue.put({})
+        for _ in range(args.rollout_times):
+            task_queue.put({})
 
         # Start task generation processes
         processes = []

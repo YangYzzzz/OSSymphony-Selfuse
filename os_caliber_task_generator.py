@@ -11,16 +11,6 @@ from typing import List, Dict, Tuple, Any
 import ast
 from desktop_env.osworld.desktop_env import DesktopEnv
 from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
-from mm_agents.os_symphony.agents.instruction_generator.workflow import (
-    GenerationContext,
-    InstructionGenerationWorkflow,
-)
-from yangbowen.OSSymphony.tmp.osworld_seed_task_expansion import (
-    DOMAIN_TO_APP,
-    OSWorldSeedTaskLibrary,
-    SeedTaskRecord,
-    build_seed_expansion_requirements,
-)
 
 logger = logging.getLogger("desktopenv.task_generator")
 
@@ -456,61 +446,6 @@ class OSCaliberTaskGenerator:
         }
         return evaluator
 
-    def generate_task_v2(self, task_nums: int = 10, app_list: List | str = [], max_apps_per_group: int = 1):
-        if isinstance(app_list, list) and len(app_list) > 0:
-            available_apps = app_list
-        else:
-            available_apps = list(APP_SETUP_DICT.keys())
-
-        if not available_apps:
-            raise ValueError("No apps available to generate tasks.")
-
-        main_app, apps_for_group = self._sample_app_group(max_apps=max_apps_per_group, available_apps=available_apps)
-        logger.info(f"Generating workflow tasks for {main_app} with app group: {apps_for_group}...")
-
-        domain_dir = os.path.join(self.rollout_task_dir, main_app)
-        os.makedirs(domain_dir, exist_ok=True)
-
-        task_setup_config, launch_paths, golden_paths = self._generate_config(main_app)
-        self.env.reset(
-            task_config={
-                "config": task_setup_config,
-                "id": "init_id",
-                "instruction": "init_instruction",
-            }
-        )
-        time.sleep(20)
-        self.agent.reset()
-        obs = self.env._get_obs()
-
-        app_name = APP_SET_CONFIG_DICT[main_app].get("version", main_app)
-        allowed_apps = [APP_SET_CONFIG_DICT[a].get("version", a) for a in apps_for_group]
-        context = GenerationContext(
-            main_app=main_app,
-            apps_for_group=apps_for_group,
-            task_setup_config=task_setup_config,
-            launch_paths=launch_paths,
-            golden_paths=golden_paths,
-            setup_image=obs["screenshot"],
-            app_tutorial_md=self._load_app_tutorial_md(main_app),
-            app_memory={},
-            app_name=app_name,
-            allowed_apps=allowed_apps,
-            observation=obs,
-        )
-        engine_params = getattr(self.agent, "engine_params", None)
-        if not engine_params:
-            raise ValueError("InstructionGenerationAgent.engine_params is required for agentworkflow.")
-        workflow = InstructionGenerationWorkflow(
-            rollout_task_dir=self.rollout_task_dir,
-            env=self.env,
-            engine_params=engine_params,
-            build_evaluator_from_task_fn=self._build_evaluator_from_verification,
-            app_version_lookup=lambda app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app),
-            platform=getattr(self.agent, "platform", "linux"),
-        )
-        return workflow.run(context=context, task_nums=task_nums, rollout_dir=domain_dir)
-
     def generate_task(self, task_nums: int = 10, app_list: List | str = [], max_apps_per_group: int = 1):
         if isinstance(app_list, list) and len(app_list) > 0:
             available_apps = app_list
@@ -599,121 +534,121 @@ class OSCaliberTaskGenerator:
         return test_file_list
 
 
-class SeedTaskExpansionGenerator(OSCaliberTaskGenerator):
-    def __init__(
-        self,
-        rollout_task_dir: str,
-        env: DesktopEnv,
-        agent: InstructionGenerationAgent,
-        seed_meta_path: str,
-        seed_examples_base_dir: str,
-    ) -> None:
-        super().__init__(rollout_task_dir=rollout_task_dir, env=env, agent=agent)
-        self.seed_records = OSWorldSeedTaskLibrary(
-            examples_base_dir=seed_examples_base_dir,
-            seed_meta_path=seed_meta_path,
-        ).records()
+# class SeedTaskExpansionGenerator(OSCaliberTaskGenerator):
+#     def __init__(
+#         self,
+#         rollout_task_dir: str,
+#         env: DesktopEnv,
+#         agent: InstructionGenerationAgent,
+#         seed_meta_path: str,
+#         seed_examples_base_dir: str,
+#     ) -> None:
+#         super().__init__(rollout_task_dir=rollout_task_dir, env=env, agent=agent)
+#         self.seed_records = OSWorldSeedTaskLibrary(
+#             examples_base_dir=seed_examples_base_dir,
+#             seed_meta_path=seed_meta_path,
+#         ).records()
 
-    def _resolve_seed_main_app(self, seed_record: SeedTaskRecord) -> str:
-        candidates = [
-            seed_record.snapshot,
-            DOMAIN_TO_APP.get(seed_record.domain, ""),
-            *seed_record.related_apps,
-        ]
-        for app in candidates:
-            if app in APP_SETUP_DICT:
-                return app
-        return candidates[0] or seed_record.domain
+#     def _resolve_seed_main_app(self, seed_record: SeedTaskRecord) -> str:
+#         candidates = [
+#             seed_record.snapshot,
+#             DOMAIN_TO_APP.get(seed_record.domain, ""),
+#             *seed_record.related_apps,
+#         ]
+#         for app in candidates:
+#             if app in APP_SETUP_DICT:
+#                 return app
+#         return candidates[0] or seed_record.domain
 
-    def generate_task(
-        self,
-        seed_record: SeedTaskRecord,
-        task_nums: int = 10,
-    ):
-        main_app = self._resolve_seed_main_app(seed_record)
-        apps_for_group = [app for app in seed_record.related_apps if app in APP_SETUP_DICT] or [main_app]
-        logger.info(
-            f"Generating seed-expanded tasks for {seed_record.domain}/{seed_record.task_id} "
-            f"with init app {main_app} and app group: {apps_for_group}..."
-        )
+#     def generate_task(
+#         self,
+#         seed_record: SeedTaskRecord,
+#         task_nums: int = 10,
+#     ):
+#         main_app = self._resolve_seed_main_app(seed_record)
+#         apps_for_group = [app for app in seed_record.related_apps if app in APP_SETUP_DICT] or [main_app]
+#         logger.info(
+#             f"Generating seed-expanded tasks for {seed_record.domain}/{seed_record.task_id} "
+#             f"with init app {main_app} and app group: {apps_for_group}..."
+#         )
 
-        domain_dir = os.path.join(self.rollout_task_dir, seed_record.domain)
-        os.makedirs(domain_dir, exist_ok=True)
-        image_base_dir = os.path.join(domain_dir, "image")
-        os.makedirs(image_base_dir, exist_ok=True)
+#         domain_dir = os.path.join(self.rollout_task_dir, seed_record.domain)
+#         os.makedirs(domain_dir, exist_ok=True)
+#         image_base_dir = os.path.join(domain_dir, "image")
+#         os.makedirs(image_base_dir, exist_ok=True)
         
-        if main_app in APP_SETUP_DICT:
-            task_setup_config, launch_paths, golden_paths = self._generate_config(main_app, always_need_path=True)
-        else:
-            task_setup_config, launch_paths, golden_paths = [], [], []
+#         if main_app in APP_SETUP_DICT:
+#             task_setup_config, launch_paths, golden_paths = self._generate_config(main_app, always_need_path=True)
+#         else:
+#             task_setup_config, launch_paths, golden_paths = [], [], []
             
-        self.env.reset(
-            task_config={
-                "config": task_setup_config,
-                "id": "init_id",
-                "instruction": "init_instruction",
-            }
-        )
-        time.sleep(20)
-        self.agent.reset()
+#         self.env.reset(
+#             task_config={
+#                 "config": task_setup_config,
+#                 "id": "init_id",
+#                 "instruction": "init_instruction",
+#             }
+#         )
+#         time.sleep(20)
+#         self.agent.reset()
 
-        obs = self.env._get_obs()
-        app_name = APP_SET_CONFIG_DICT.get(main_app, {}).get("version", main_app)
-        allowed_apps = [APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in apps_for_group]
-        extra_requirements = build_seed_expansion_requirements(
-            seed_records=[seed_record],
-            launch_paths=launch_paths,
-            golden_paths=golden_paths,
-            target_app=seed_record.domain,
-        )
-        logger.info(f"[Important Extra Seed]: {extra_requirements}")
-        task_list = self.agent.generate(
-            app_name=app_name,
-            observation=obs,
-            task_nums=task_nums,
-            launch_paths=launch_paths,
-            app_tutorial_md=None,
-            allowed_apps=allowed_apps,
-            golden_paths=golden_paths,
-            extra_requirements=extra_requirements,
-        )
+#         obs = self.env._get_obs()
+#         app_name = APP_SET_CONFIG_DICT.get(main_app, {}).get("version", main_app)
+#         allowed_apps = [APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in apps_for_group]
+#         extra_requirements = build_seed_expansion_requirements(
+#             seed_records=[seed_record],
+#             launch_paths=launch_paths,
+#             golden_paths=golden_paths,
+#             target_app=seed_record.domain,
+#         )
+#         logger.info(f"[Important Extra Seed]: {extra_requirements}")
+#         task_list = self.agent.generate(
+#             app_name=app_name,
+#             observation=obs,
+#             task_nums=task_nums,
+#             launch_paths=launch_paths,
+#             app_tutorial_md=None,
+#             allowed_apps=allowed_apps,
+#             golden_paths=golden_paths,
+#             extra_requirements=extra_requirements,
+#         )
 
-        test_file_list: Dict[str, List[str]] = {}
-        for task in task_list:
-            task_id = str(uuid.uuid4())
-            json_path = os.path.join(domain_dir, f"{task_id}.json")
-            task_related_apps = task.get("related_apps") or seed_record.related_apps or [main_app]
-            task_related_apps_version = [APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in task_related_apps]
-            task_config = {
-                "id": task_id,
-                "snapshot": main_app,
-                "related_apps": task_related_apps,
-                "related_apps_version": task_related_apps_version,
-                "related_task": {
-                    "domain": seed_record.domain,
-                    "task_id": seed_record.task_id,
-                    "instruction": seed_record.instruction,
-                },
-                "instruction": task.get("description"),
-                "config": task_setup_config,
-                "complexity": task.get("complexity"),
-                "estimated_steps": task.get("estimated_steps"),
-                "category": task.get("category"),
-                "evaluator": self._build_evaluator_from_verification(task),
-                "setup_image": f"image/{task_id}.png", # Rel Path
-                "launch_paths": launch_paths,
-            }
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(task_config, f, indent=4, ensure_ascii=False)
-            # 记录初始化截图
-            with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
-                _f.write(obs['screenshot'])
+#         test_file_list: Dict[str, List[str]] = {}
+#         for task in task_list:
+#             task_id = str(uuid.uuid4())
+#             json_path = os.path.join(domain_dir, f"{task_id}.json")
+#             task_related_apps = task.get("related_apps") or seed_record.related_apps or [main_app]
+#             task_related_apps_version = [APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in task_related_apps]
+#             task_config = {
+#                 "id": task_id,
+#                 "snapshot": main_app,
+#                 "related_apps": task_related_apps,
+#                 "related_apps_version": task_related_apps_version,
+#                 "related_task": {
+#                     "domain": seed_record.domain,
+#                     "task_id": seed_record.task_id,
+#                     "instruction": seed_record.instruction,
+#                 },
+#                 "instruction": task.get("description"),
+#                 "config": task_setup_config,
+#                 "complexity": task.get("complexity"),
+#                 "estimated_steps": task.get("estimated_steps"),
+#                 "category": task.get("category"),
+#                 "evaluator": self._build_evaluator_from_verification(task),
+#                 "setup_image": f"image/{task_id}.png", # Rel Path
+#                 "launch_paths": launch_paths,
+#             }
+#             with open(json_path, "w", encoding="utf-8") as f:
+#                 json.dump(task_config, f, indent=4, ensure_ascii=False)
+#             # 记录初始化截图
+#             with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
+#                 _f.write(obs['screenshot'])
 
-            if seed_record.domain not in test_file_list:
-                test_file_list[seed_record.domain] = []
-            test_file_list[seed_record.domain].append(task_id)
+#             if seed_record.domain not in test_file_list:
+#                 test_file_list[seed_record.domain] = []
+#             test_file_list[seed_record.domain].append(task_id)
 
-        return test_file_list
+#         return test_file_list
 
 
 if __name__=="__main__":

@@ -13,7 +13,7 @@ from mm_agents.os_symphony.agents.instruction_generator.app_memory import AppMem
 from mm_agents.os_symphony.agents.instruction_generator.base_agent import WorkflowCostTracker
 from mm_agents.os_symphony.agents.instruction_generator.evaluator_agents import EvaluatorCritiqueAgent, EvaluatorSynthesisAgent
 from mm_agents.os_symphony.agents.instruction_generator.exploration_proposal_agent import ExplorationProposalAgent
-from mm_agents.os_symphony.agents.instruction_generator.models import AcceptedProposalWorkItem, ExplorationContext, ExplorationResult, GenerationRunLog, ProposalCandidate, TaskCandidate, WorkflowSharedState
+from mm_agents.os_symphony.agents.instruction_generator.models import AcceptedProposalWorkItem, ExplorationResult, GenerationRunLog, ProposalCandidate, TaskCandidate, WorkflowSharedState
 from mm_agents.os_symphony.agents.instruction_generator.proposal_critic_agent import ProposalCritiqueAgent
 from mm_agents.os_symphony.agents.instruction_generator.validators import PreflightValidator, StaticEvaluatorValidator
 
@@ -80,17 +80,12 @@ class InstructionGenerationWorkflow:
             verification_spec = self.verification_synthesizer.synthesize(
                 shared_state,
                 work_item.proposal,
-                work_item.exploration_result,
                 evaluator_memory,
             )
             task_config, failure, finalized_task_draft = self._validate_repair_and_build_task_config(
                 shared_state,
                 work_item.proposal,
-                verification_spec,
-                ExplorationContext(
-                    trajectory=work_item.exploration_result.trajectory,
-                    generation_notes=work_item.exploration_result.generation_notes,
-                ),
+                verification_spec
             )
             if task_config:
                 task_id = task_config["id"]
@@ -149,10 +144,10 @@ class InstructionGenerationWorkflow:
         self,
         shared_state: WorkflowSharedState,
         accepted_proposal: ProposalCandidate,
-        initial_verification_spec: Dict[str, Any],
-        exploration_context: ExplorationContext,
+        initial_verification_spec: Dict[str, Any]
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Dict[str, Any]]:
         task_draft = self._build_task_draft(accepted_proposal, initial_verification_spec)
+        verification_experience_lessons: List[Dict[str, Any]] = []
         last_failure: Optional[Dict[str, Any]] = None
         for round_idx in range(self.max_repair_rounds + 1):
             static = self.static_validator.validate(task_draft)
@@ -174,13 +169,15 @@ class InstructionGenerationWorkflow:
                 }
             if round_idx >= self.max_repair_rounds:
                 break
-            repaired_verification_spec = self.verification_critic.critique_and_repair(
+            repaired_verification_spec, repair_lessons = self.verification_critic.critique_and_repair(
                 shared_state,
-                task_draft,
+                TaskCandidate.from_dict(task_draft),
                 last_failure,
-                exploration_context,
             )
+            verification_experience_lessons.extend(repair_lessons)
             task_draft = self._build_task_draft(accepted_proposal, repaired_verification_spec)
+            if verification_experience_lessons:
+                task_draft["verification_experience_lessons"] = verification_experience_lessons
         return None, last_failure, task_draft
 
     def _build_task_draft(self, accepted_proposal: ProposalCandidate, verification_spec: Dict[str, Any]) -> Dict[str, Any]:
@@ -190,7 +187,9 @@ class InstructionGenerationWorkflow:
         for idx, rule_item in enumerate(verification.get("rule_items") or [], start=1):
             if isinstance(rule_item, dict) and "function_name" not in rule_item and isinstance(rule_item.get("code"), str):
                 rule_item["function_name"] = f"call_rule_judge_{idx}"
-        return TaskCandidate.from_proposal(accepted_proposal, verification).to_dict()
+        task_draft = TaskCandidate.from_proposal(accepted_proposal, verification).to_dict()
+        task_draft["target_features"] = accepted_proposal.target_features
+        return task_draft
 
     def _list_or_default(self, value: Any) -> List[Any]:
         return value if isinstance(value, list) else []
@@ -215,6 +214,8 @@ class InstructionGenerationWorkflow:
             "complexity": task_draft.get("complexity"),
             "estimated_steps": task_draft.get("estimated_steps"),
             "category": task_draft.get("category"),
+            "dependency_chain": task_draft.get("dependency_chain", []),
+            "critic_scores": task_draft.get("critic_scores", {}),
             "evaluator": self.build_evaluator_from_task_fn(task_draft),
             "setup_image": f"setup.png",
             "launch_paths": launch_paths,

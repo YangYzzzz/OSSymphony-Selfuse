@@ -216,7 +216,6 @@ class ExplorationProposalAgent(WorkflowLLMAgent):
         return {
             "proposals": normalized_proposals[:target_count],
             "generation_notes": generation_notes,
-            "trajectory": {"rollout_id": shared_state.rollout_id, "log": "traj.jsonl"},
         }
 
     def _normalize_proposal_setup_config(self, shared_state: WorkflowSharedState, proposal: Dict[str, Any]) -> Dict[str, Any]:
@@ -267,7 +266,7 @@ class ExplorationProposalAgent(WorkflowLLMAgent):
             self._write_step_trajectory(shared_state, screenshot_dir, record)
             return self._build_generation_result(shared_state, action, target_count)
         logger.warning("Exploration-proposal forced done failed, returning empty proposal set.")
-        return {"proposals": [], "generation_notes": ["forced_done_failed"], "trajectory": {"rollout_id": shared_state.rollout_id, "log": "traj.jsonl"}}
+        return {"proposals": [], "generation_notes": ["forced_done_failed"]}
 
     def _step_action(self, shared_state: WorkflowSharedState, env: DesktopEnv, action: Dict[str, Any], obs: Dict[str, Any]) -> Tuple[Dict[str, Any], float, bool, Dict[str, Any]]:
         tool = self._action_tool(action)

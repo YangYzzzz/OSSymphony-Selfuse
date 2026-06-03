@@ -1,0 +1,51 @@
+"""
+Initial Setup: Empty project directory for scaffolding task
+Task ID: vscode_lp_082
+Domain: vscode
+"""
+
+import os
+import shlex
+import subprocess
+import time
+
+WORKDIR = '/home/user'
+TASK_ID = 'vscode_lp_082'
+PROJECT_DIR = f'{WORKDIR}/projects/newlib'
+
+
+def launch_gui(command: str, delay_sec: float = 1.0):
+    """Launch GUI app on VM display without blocking script exit."""
+    env = os.environ.copy()
+    env["DISPLAY"] = ":0"
+    subprocess.Popen(
+        shlex.split(command),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=env,
+    )
+    time.sleep(delay_sec)
+
+
+def create_initial():
+    # Create the empty project directory
+    os.makedirs(PROJECT_DIR, exist_ok=True)
+    print(f'Project directory created: {PROJECT_DIR}')
+
+    # Ensure the directory is empty (remove any pre-existing content)
+    for item in os.listdir(PROJECT_DIR):
+        item_path = os.path.join(PROJECT_DIR, item)
+        if os.path.isdir(item_path):
+            import shutil
+            shutil.rmtree(item_path)
+        else:
+            os.remove(item_path)
+
+    print(f'Project directory is empty and ready: {PROJECT_DIR}')
+
+    # Open VSCode with the empty project folder
+    launch_gui(f'code "{PROJECT_DIR}"', delay_sec=2.0)
+    print('GUI_READY: launched VSCode with DISPLAY=:0')
+
+
+create_initial()

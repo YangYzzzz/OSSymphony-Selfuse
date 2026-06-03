@@ -1,0 +1,334 @@
+{
+  "app": "libreoffice_impress",
+  "covered_features": {
+    "Image size and position adjustment on slide": 4,
+    "Text strikethrough formatting on slide text runs": 3,
+    "Export slide to PNG image file": 2,
+    "Summary Slide generation": 2,
+    "Embed audio file into presentation slide": 2,
+    "Slide panel (Slides View) visibility toggle": 1,
+    "Slide duplication and reordering": 1,
+    "Presenter Console (dual-monitor presenter screen) enable/disable": 1,
+    "Slide orientation (Portrait/Landscape) setting": 1,
+    "Slide background fill color setting (all slides)": 4,
+    "Save/export presentation as PPTX file": 1,
+    "Insert image onto slide (one image per slide, ordered)": 2,
+    "Create blank slides (no placeholder text boxes)": 1,
+    "Slide transition effect setting": 1,
+    "Slide number placeholder text color formatting": 1,
+    "Auto-save interval configuration": 1,
+    "Font name change across all text boxes (bulk/global font replacement)": 3,
+    "Paragraph indent level (outline level) adjustment on slide text": 1,
+    "Text insertion into slide content textbox": 1,
+    "Title text box vertical position adjustment (move to bottom of slide)": 1,
+    "Text underline formatting on slide text runs": 4,
+    "Font color change on slide text runs and table cells": 6,
+    "Font size change on slide text runs": 4,
+    "Slide notes text editing": 4,
+    "Font bold formatting on slide text runs": 3,
+    "Title text content editing on a specific slide": 4,
+    "Image position adjustment on slide (horizontal/right positioning)": 1,
+    "Slide background fill color setting (specific slide)": 3,
+    "Paragraph text alignment setting on slide (right-align title)": 2,
+    "Insert table into slide": 1,
+    "Table position adjustment on slide (move to bottom)": 1,
+    "Add bullet point to slide content": 1,
+    "Delete shapes (including images/icons) from a specific slide": 1,
+    "Image height adjustment on specific slides": 2,
+    "Table cell text editing (header row content replacement)": 1,
+    "Image position adjustment on slide (top positioning)": 1,
+    "Extract slide notes to external document (DOCX export)": 1,
+    "PPT/presentation file classification and organization (file management)": 1,
+    "Extract slide text content to Writer document (DOCX export)": 1,
+    "Image brightness enhancement (export to PNG)": 1,
+    "Slide background image setting (specific slide)": 1
+  },
+  "recent_tasks": [],
+  "co_use_counts": {},
+  "verification_experience": {
+    "Image size and position adjustment on slide": [
+      "Use python-pptx to parse .pptx files; shapes with shape_type == 13 are picture/image shapes; compare .width, .height, .left, .top attributes against slide dimensions (presentation.slide_width, presentation.slide_height) using EMU units — python-pptx's Inches() helper converts inches to EMU for tolerance checks.",
+      "To verify centering, check that .left == (slide_width - shape.width) / 2 and .top == (slide_height - shape.height) / 2 within a reasonable tolerance (e.g., ~0.5 inch in EMU).",
+      "To verify the correct image was modified (not a replacement), match shapes across original and modified files by comparing shape.image.blob byte content.",
+      "When checking 'fill entire page', compare shape width/height to slide_width/slide_height with a tolerance rather than exact equality, since aspect-ratio-preserving scaling may leave one dimension slightly under the slide boundary.",
+      "shape.width and shape.height are in EMUs (914400 per inch, 360000 per cm); 1cm = 360000 EMU",
+      "compare_pptx_files with examine_image_size=True checks width/height of shape_type==13 shapes with is_approximately_equal tolerance (~1%)",
+      "When examine_shape=False, position (left/top) is not checked for image shapes under examine_image_size mode; only width and height are validated"
+    ],
+    "Text strikethrough formatting on slide text runs": [
+      "Access strikethrough state via run.font._element.attrib.get('strike', 'noStrike'); a value other than 'noStrike' (e.g., 'sngStrike') indicates strikethrough is applied — python-pptx's high-level font API does not expose a .strike property directly.",
+      "When comparing strikethrough across runs, iterate paragraph runs per shape per slide and compare the 'strike' XML attribute; absence of the attribute defaults to 'noStrike'.",
+      "Applying strikethrough may split a paragraph's text into multiple runs; verify run count consistency alongside the strike attribute check."
+    ],
+    "Export slide to PNG image file": [
+      "Use SSIM (structural similarity index) via skimage.metrics.ssim on grayscale numpy arrays to compare exported PNG against a reference; resize both to the smaller dimension before comparison.",
+      "Both images should be opened with PIL and converted to grayscale ('L') before SSIM comparison to avoid channel mismatch issues.",
+      "Check that the exported file exists at the expected path and is a valid PNG before running similarity metrics."
+    ],
+    "Summary Slide generation": [
+      "Use python-pptx to compare slide count between result and reference PPTX; a Summary Slide adds one new slide so len(prs.slides) must match the reference.",
+      "Check that the new summary slide's text shapes contain titles/headings extracted from the other slides; compare shape text content against the reference gold file using compare_pptx_files logic.",
+      "Shape count per slide and paragraph-level text must match the reference; the Summary Slide feature produces a specific layout with bullet items drawn from each slide's title, so text content comparison is the primary signal.",
+      "compare_pptx_files checks slide count, shape count, shape positions/sizes, paragraph text, and run-level font properties — all must match the reference gold PPTX for a passing result."
+    ],
+    "Embed audio file into presentation slide": [
+      "To verify audio embedding, open the .pptx as a ZIP and inspect `ppt/slides/_rels/slideN.xml.rels` for a Relationship element whose Type contains 'audio'; the Target attribute will point to the embedded media path (e.g., `../media/filename.mp3`).",
+      "Extract the embedded audio from the ZIP at the resolved path (normalizing `../` relative to `ppt/slides/`) and compare it against the reference audio using MFCC-based DTW similarity (librosa + fastdtw) rather than byte equality, since re-encoding may alter raw bytes.",
+      "Distinguish embedded vs. linked audio: embedded targets start with `..` (relative path inside ZIP), while linked targets start with `file://`; evaluators should handle both cases when extracting the audio for comparison.",
+      "To verify audio is embedded in a slide, open the PPTX as a ZIP and inspect ppt/slides/_rels/slideN.xml.rels for a Relationship element whose Type contains 'audio'; extract the referenced media file and compare it against the expected audio using MFCC+DTW similarity (librosa + fastdtw) rather than exact byte comparison",
+      "The audio relationship target may be a relative path (starting with '..') pointing into ppt/media/, or an external 'file://' URI; handle both cases when extracting for comparison",
+      "Use librosa.feature.mfcc with normalization and fastdtw with cosine distance to get a normalized DTW similarity score (np.exp(-normalized_distance)) for fuzzy audio matching"
+    ],
+    "Slide panel (Slides View) visibility toggle": [
+      "Use the accessibility tree to check for a `document-frame` node with name `Slides View`; its presence indicates the left slide panel is visible, its absence means it is hidden.",
+      "The accessibility tree getter returns an XML string parseable with `ET.fromstring`; iterate `root.iter('document-frame')` and inspect the `name` attribute to detect panel state without relying on pixel coordinates."
+    ],
+    "Slide duplication and reordering": [
+      "Use python-pptx Presentation.slides to check total slide count after duplication; duplicated slides increase count by the number of copies made.",
+      "Compare slide content (shapes, text, layout) at each index position using compare_pptx_files-style iteration to verify both correct content and correct ordering of originals and duplicates.",
+      "Slide identity/content can be compared by iterating shape text and positions per slide index; matching a result file against a gold file slide-by-slide is the most reliable approach.",
+      "When verifying interleaved/alternating insertion patterns, check that slide[n] and slide[n+2] (or similar offset pairs) share identical shape content, confirming duplication rather than move."
+    ],
+    "Presenter Console (dual-monitor presenter screen) enable/disable": [
+      "Parse registrymodifications.xcu with xml.etree.ElementTree and query the item with oor:path='/org.openoffice.Office.Impress/Misc/Start' and prop oor:name='EnablePresenterScreen'; check its <value> text for 'false' (case-insensitive) to confirm the presenter console is disabled.",
+      "The setting is stored under the LibreOffice user profile at ~/.config/libreoffice/4/user/registrymodifications.xcu; if the node is absent the feature has never been changed from its default (true), so absence counts as not disabled.",
+      "Use namespace {'oor': 'http://openoffice.org/2001/registry'} when constructing XPath queries against this file."
+    ],
+    "Slide orientation (Portrait/Landscape) setting": [
+      "Use python-pptx Presentation object: compare slide_width vs slide_height — portrait means slide_width < slide_height, landscape means slide_width >= slide_height.",
+      "Slide dimensions are stored in EMUs in the pptx XML; python-pptx exposes them as Presentation.slide_width and Presentation.slide_height directly without needing to parse XML manually."
+    ],
+    "Slide background fill color setting (all slides)": [
+      "Use python-pptx to inspect slide.background.fill: check fill.type==1 for solid fill and read fill.fore_color.rgb; fill.type==5 means the slide inherits from the master, so also check slide.slide_layout.slide_master.background.fill for the actual color.",
+      "When verifying 'apply to all slides', iterate every slide in prs.slides and confirm each slide's background fill (or its inherited master fill) matches the target RGB, rather than checking only the first slide.",
+      "Compute Euclidean RGB distance normalized by sqrt(255²+255²+255²) to allow near-match scoring instead of exact equality; also guard against the fill still being the original/unchanged color to avoid false positives.",
+      "Use slide.background.fill to get fill type; fill.type==1 means solid fill with fore_color.rgb; fill.type==5 means inherited from master — walk up to slide_layout.slide_master.background.fill to resolve.",
+      "Compare the resolved RGB value across all slides between result and reference.",
+      "Read background fill via slide.background.fill; fill.type==1 means solid fill with fore_color.rgb; fill.type==5 means inherited from master — check master's fill in that case.",
+      "compare_pptx_files with examine_background_color=True compares get_slide_background_color() which handles both direct and master-inherited fills.",
+      "Use slide.background.fill to read fill type and fore_color.rgb; fill.type==1 means solid fill, type==5 means inherited from master — check both slide and master fill when type==5",
+      "Compare RGBColor values directly; python-pptx's get_slide_background_color pattern handles the master-inheritance fallback case"
+    ],
+    "Save/export presentation as PPTX file": [
+      "Use python-pptx's Presentation() to load both files and compare slide count, shape count, text content, font properties (name, size, bold, italic, color, underline, strikethrough), paragraph alignment, bullet characters/levels, background color, and notes text across all slides.",
+      "compare_pptx_files supports granular option flags (examine_shape, examine_text, examine_font_*, examine_alignment, examine_background_color, examine_note, examine_bullets, etc.) — set only the relevant flags to True for the specific task being verified.",
+      "When examine_shape=False is set, shape position/size mismatches are skipped; this is required when examine_modify_height is used, since examine_shape would short-circuit before height checks run.",
+      "None vs False for bold/italic and None vs LEFT for paragraph alignment are treated as equivalent — account for this normalization when writing assertions.",
+      "Empty paragraphs (whitespace-only text) use nonempty_runs filtering to avoid false mismatches between 0-run and 1-empty-run representations."
+    ],
+    "Insert image onto slide (one image per slide, ordered)": [
+      "Use python-pptx to check each slide's shapes for shape_type == 13 (MSO_SHAPE_TYPE.PICTURE) to confirm images are present and in correct slide order.",
+      "Verify slide count matches expected number of image-bearing slides via len(prs.slides).",
+      "When examine_shape=True (default), shape position/size (left, top, width, height) must match reference within ~0.5% tolerance; use is_approximately_equal pattern for EMU-unit comparisons.",
+      "Blank slides (no textboxes) can be verified by checking that no text-bearing shapes exist: all shapes should be images only, with no hasattr(shape, 'text') shapes containing non-empty text.",
+      "Use python-pptx to check shape count per slide and verify shape_type==13 (MSO_SHAPE_TYPE.PICTURE) exists on the target slide",
+      "When examine_shape=False and examine_image_size=True, the evaluator only checks image width/height equality (with ~1% tolerance), not position; set examine_shape=False explicitly when position is not required",
+      "Shape order in slide.shapes matches insertion order; verify the image shape appears at the expected index"
+    ],
+    "Create blank slides (no placeholder text boxes)": [
+      "Check that each slide's shapes list contains only image shapes (shape_type == 13) and no text-frame shapes with content; compare shape count per slide against reference.",
+      "compare_pptx_files with examine_shape=False and examine_text=True can detect unexpected text placeholders."
+    ],
+    "Slide transition effect setting": [
+      "Parse the saved PPTX as a ZIP, open ppt/slides/slideN.xml, and look for a `p:transition` element containing a child element named after the transition type (e.g., `p:dissolve`, `p:fade`) using the presentationml namespace `http://schemas.openxmlformats.org/presentationml/2006/main`; absence of either the `p:transition` element or the named child means the transition was not applied.",
+      "Transition type names in OOXML match lowercase strings like 'dissolve', 'fade', 'wipe', etc., so use `transition.find('.//p:{transition_type}', namespaces)` to check for the specific effect child element."
+    ],
+    "Slide number placeholder text color formatting": [
+      "Parse the saved PPTX as a ZIP and inspect `ppt/slideMasters/slideMaster1.xml`; the slide-number placeholder is identified by `p:ph[@type='sldNum']` and its color lives under `a:solidFill/a:srgbClr[@val]` within that element or its parent `a:rPr`",
+      "When the color element is absent on the placeholder itself, fall back to scanning all `a:rPr//a:solidFill//a:srgbClr` elements in the slide master, preferring non-black values found in reverse order",
+      "Color comparison should be hue-dominant (e.g., R > G+threshold and R > B+threshold for red) rather than exact hex equality, to tolerate slight shade variations",
+      "The same XML namespace pair (`a:` = drawingml/2006/main, `p:` = presentationml/2006/main) is needed for all ElementTree XPath queries in PPTX slide-master XML"
+    ],
+    "Auto-save interval configuration": [
+      "Parse `registrymodifications.xcu` (XML) using ElementTree; search for `<item>` with `oor:path` == `/org.openoffice.Office.Common/Save/Document`, then find `<prop oor:name=\"AutoSaveTimeIntervall\">` and read its `<value>` text as an integer representing minutes.",
+      "The XCU file only contains user-overridden registry entries, so the target item/prop may be absent entirely if the setting was never changed from default — treat a missing node as verification failure.",
+      "Use ElementTree's `.findall('.//item')` and `.findall('.//prop')` with the `{http://openoffice.org/2001/registry}` namespace prefix when accessing `oor:path` and `oor:name` attributes."
+    ],
+    "Font name change across all text boxes (bulk/global font replacement)": [
+      "Use python-pptx to iterate all shapes on every slide; for each shape with a text_frame, iterate paragraphs and runs, checking run.font.name against the expected font string — None means the run inherits from theme/layout, so verify the actual rendered font by also checking paragraph-level and text-frame-level defaults if run-level is None.",
+      "The compare_pptx_files metric checks run.font.name equality with examine_font_name=True; a bulk font change must set the font name explicitly on every run (not just the placeholder or theme), otherwise run.font.name remains None and the comparison may still pass or fail depending on the gold file's encoding.",
+      "When a font is applied via 'Find & Replace Fonts' or macro in Impress, it typically sets the font at the run level in the XML (<a:rPr> typeface attribute); verify by inspecting the raw XML of each shape's text frame for the expected typeface string.",
+      "Use python-pptx to iterate all runs in all shapes of the target slide(s) and check run.font.name against the expected font string; note that font.name may be None if inherited from theme/layout, so check both explicit run-level and paragraph-level defaults",
+      "compare_pptx_files with examine_font_name=True is the primary metric; it compares run.font.name for every run in every paragraph across all shapes including tables",
+      "When font is applied to an entire slide's text boxes, every non-empty run on that slide should have the new font name set explicitly at the run level in the XML",
+      "Access run.font.name for each run in each paragraph of each text shape; when only one shape/run is targeted, check that specific run's font.name rather than all runs; note that font name may be stored at run level and not inherited from paragraph or text frame level in python-pptx.",
+      "When examine_font_name=True in compare_pptx_files, mismatches in run.font.name cause return 0; verify by iterating slide shapes, text_frame.paragraphs, and para.runs checking .font.name equality."
+    ],
+    "Paragraph indent level (outline level) adjustment on slide text": [
+      "Use python-pptx paragraph.level to check outline/indent level of each paragraph in a text frame; compare against expected level values across all paragraphs.",
+      "Bullet character presence/absence is stored in paragraph XML as <a:buChar> or <a:buNone>; use _extract_bullets-style XML parsing on the shape's XML to verify bullet char is 'No Bullet' or a specific character per paragraph.",
+      "compare_pptx_files with examine_indent=True and examine_bullets=True covers both indent level and bullet character checks simultaneously; these are the primary axes for this feature class.",
+      "para.level returns an integer (0-based); None and 0 are treated as equivalent in some comparisons, so normalize accordingly when writing custom checks."
+    ],
+    "Text insertion into slide content textbox": [
+      "Use python-pptx to access a specific slide's shapes, find the content/body text frame by shape type or placeholder index, and compare the full text content including paragraph structure and run text against the expected value.",
+      "When verifying text insertion, check both shape.text (full concatenated text) and individual paragraph/run text to ensure the new text appears in the correct paragraph rather than appended incorrectly.",
+      "The compare_pptx_files metric checks text at multiple levels: shape.text.strip(), para.text, and run text — so inserted text must match exactly in the correct paragraph position."
+    ],
+    "Title text box vertical position adjustment (move to bottom of slide)": [
+      "Use `examine_title_bottom_position=True` option in compare_pptx_files; the evaluator checks that the title shape's `.top` value is greater than a threshold (e.g., ~3600000 EMUs) and strictly greater than the reference file's `.top`, so verify by reading `shape.top` on the title shape and confirming it has increased significantly toward the slide bottom",
+      "Shape position is stored in EMUs (914400 per inch); slide height is typically 6858000 EMUs, so 'bottom' means `.top` should be near that value minus the shape height",
+      "When `examine_shape=False` is set, individual shape dimension checks are skipped and only the custom positional logic runs; be aware that other shapes on the same slide still must match in position/size unless also exempted",
+      "The title shape is identified by matching `shape.text` to the known title string, so text content must remain unchanged after repositioning"
+    ],
+    "Text underline formatting on slide text runs": [
+      "Check run.font.underline on each run in text_frame paragraphs; None and False are treated as equivalent (not underlined), but None vs True is a mismatch — the evaluator explicitly handles this edge case.",
+      "For table cells, iterate table.cell(row, col).text_frame.paragraphs and their runs to verify underline is applied consistently across all cell content.",
+      "Use compare_pptx_files with examine_font_underline=True (default); the metric treats None==False but flags None vs True as a real difference.",
+      "run.font.underline can be True, False, or None; the evaluator treats None vs False as equivalent (not underlined) but None vs True as a mismatch, so verify True is explicitly set on the target runs.",
+      "compare_pptx_files with examine_font_underline=True handles the None/True/False edge cases correctly.",
+      "run.font.underline returns True/False/None; None and False are treated as equivalent (not underlined), but None vs True is a real mismatch — evaluator logic must handle this three-way distinction",
+      "compare_pptx_files with examine_font_underline=True covers both regular text shapes and table cells",
+      "Underline applied only to title shapes on specific slides: verify non-title shapes and non-targeted slides are unchanged",
+      "run.font.underline returns True/False/None; None and False are treated differently from True — the evaluator flags mismatches when one is True and the other is None or False",
+      "Check underline on all runs across all text shapes on the relevant slides; underline applied to a textbox affects all runs within it",
+      "When comparing underline, treat None vs False as equivalent (both mean not underlined), but None vs True is a mismatch"
+    ],
+    "Font color change on slide text runs and table cells": [
+      "Access run.font.color.rgb for text shape runs and table cell runs; compare against expected RGB value using the examine_color_rgb flag in compare_pptx_files.",
+      "Table cell font colors must be checked separately by iterating shape.table.cell(r,c).text_frame.paragraphs[*].runs[*].font.color.rgb — the evaluator handles both text shapes and table shapes in the same comparison loop.",
+      "Named theme colors like 'dark red 2' map to specific RGB hex values in OOXML; verify the actual stored RGB rather than relying on theme color names.",
+      "Access run.font.color.rgb for text runs and table cell runs; compare RGBColor values between result and reference files.",
+      "Color may be absent (no explicit color set) vs present; guard with hasattr checks on color.rgb before comparing.",
+      "Use python-pptx to iterate over runs in each text frame paragraph and check run.font.color.rgb; compare against the expected RGBColor value for the target color (e.g., yellow = FFFF00).",
+      "When color may be set at the run level or inherited, check run.font.color.type to distinguish explicit vs. inherited color; explicit RGB color is stored as run.font.color.rgb.",
+      "The compare_pptx_files metric checks examine_color_rgb across both regular text shapes and table cells, so verify color on all textbox runs on the target slide, not just the title.",
+      "Two gold files may be provided (one with only target-slide changes, one with all-font changes) combined with 'or' conjunction, meaning either exact match is acceptable; evaluators should handle both variants.",
+      "Scope color verification to the specific slide index (e.g., slide 5, index 4) rather than all slides, since other slides should remain unchanged.",
+      "Use compare_pptx_files with examine_color_rgb=True; access run.font.color.rgb per run in each paragraph of each shape across target slides.",
+      "Font color is stored per run; if a run has no explicit color set, hasattr(run.font.color, 'rgb') may be False, so guard before comparing.",
+      "When verifying color on title shapes specifically, identify the title placeholder by shape name or placeholder type rather than shape index, as index can vary.",
+      "Use run.font.color.rgb from python-pptx to read RGB color values on text runs; check hasattr(run.font.color, 'rgb') before comparing to avoid AttributeError on theme-colored runs",
+      "compare_pptx_files with examine_color_rgb=True is the primary metric; it compares run-level font color across all slides and table cells",
+      "When color is set via theme rather than explicit RGB, font.color.rgb may raise or return differently — explicit RGB setting is reliably detectable",
+      "Scoped changes (only specific slides) require verifying that unaffected slides retain their original color values, not just that target slides changed",
+      "Use run.font.color.rgb from python-pptx to read per-run RGB color values; compare against expected RGBColor values for each textbox in top-to-bottom shape order on the target slide.",
+      "Shapes are iterated in XML order (slide.shapes), so top-to-bottom visual order corresponds to the shape list order; sort by shape.top if positional ordering must be enforced.",
+      "compare_pptx_files with examine_color_rgb=True is the primary metric; it checks run.font.color.rgb equality across all runs in all text frames.",
+      "When a task requires distinct pure colors (yellow, red, green) on separate textboxes, verify each shape's runs independently rather than checking the whole slide at once, since different shapes may have different colors.",
+      "color.type must be RGBColor (type 1) for the rgb attribute to be accessible; if color.type is None or theme-based, rgb access raises an exception—guard with hasattr checks."
+    ],
+    "Font size change on slide text runs": [
+      "Use python-pptx to iterate runs in each paragraph of each text shape; compare run.font.size (in EMUs, where 1pt = 12700 EMUs) between result and reference files.",
+      "Font size may be set at run level or inherited from paragraph/placeholder defaults; check run.font.size directly as the evaluator does, not inherited values.",
+      "Check run.font.size (in EMUs, multiply pt by 12700) per run across paragraphs; compare_pptx_files with examine_font_size=True covers this at run level.",
+      "Access run.font.size (in EMUs, where 1pt = 12700 EMUs) for each run across all text shapes on the target slide; iterate all paragraphs and runs in every text frame",
+      "Font size may be set at run level (run.font.size) or inherited from paragraph/shape defaults; check both levels when verifying bulk changes",
+      "When the task requires changing all textboxes on a specific slide, iterate all shapes with text_frame and check every run's font.size on that slide index",
+      "Use python-pptx to access run.font.size on each text run; font size is stored in EMUs (914400 per inch, 12700 per pt), so compare against expected pt value multiplied by 12700",
+      "When multiple textboxes on the same slide need different font sizes, iterate shapes in order and check each shape's runs independently",
+      "compare_pptx_files with examine_font_size=True (default) will catch mismatches at the run level across all slides"
+    ],
+    "Slide notes text editing": [
+      "Access notes via slide.notes_slide.notes_text_frame.text; compare stripped text between result and reference files.",
+      "The compare_pptx_files metric checks notes with examine_note=True by default; use get_slide_notes helper pattern to retrieve and strip-compare note content.",
+      "Access notes via slide.notes_slide.notes_text_frame.text; strip whitespace before comparing since LibreOffice may add trailing newlines.",
+      "compare_pptx_files with examine_note=True checks notes equality; the getter uses .strip() on both sides so leading/trailing whitespace is ignored.",
+      "Access notes via slide.notes_slide.notes_text_frame.text; strip whitespace before comparing since trailing newlines are common",
+      "notes_text_frame.text returns the full plain-text content of the notes pane, suitable for exact-match or substring checks",
+      "Use python-pptx: slide.notes_slide.notes_text_frame.text to retrieve notes content; compare stripped strings between result and reference files",
+      "The compare_pptx_files metric checks notes via get_slide_notes(slide).strip() equality per slide, so partial completion (some slides already done) means only remaining slides' notes need to match the gold file"
+    ],
+    "Font bold formatting on slide text runs": [
+      "Check run.font.bold on each run in the target shape's text_frame paragraphs; treat None and False as equivalent (both mean not bold) when comparing.",
+      "The compare_pptx_files metric handles None vs False equivalence for bold; ensure the title shape's runs have bold=True in the result file.",
+      "Use compare_pptx_files with examine_font_bold=True; note that None and False are both treated as 'not bold' and should be considered equivalent.",
+      "Bold is set per run (run.font.bold); paragraph-level or text-frame-level bold inheritance may not be reflected in run.font.bold directly.",
+      "Use compare_pptx_files with examine_font_bold=True; note that run.font.bold returns True/False/None where None and False are treated as equivalent (not bold), so only True vs None/False is a real mismatch."
+    ],
+    "Title text content editing on a specific slide": [
+      "Use python-pptx to access slide by index and inspect shape text; compare title shape text against expected value using shape.text_frame.paragraphs and run.text properties",
+      "When verifying that formatting (color, size, position) matches a reference slide's title, compare run.font.color.rgb, run.font.size, and shape.left/shape.top/shape.width/shape.height between slides using python-pptx",
+      "compare_pptx_files with examine_text=True and examine_color_rgb=True covers both text content and font color matching across slides; examine_font_size=True adds size verification; examine_shape=True adds position/dimension verification",
+      "Use python-pptx to access slide by index, find the title shape, and check shape.text or paragraph text matches the expected string.",
+      "Use python-pptx Presentation to load the file and check shape.text or text_frame paragraph text on the target slide index; compare against expected string with .strip() to handle whitespace differences.",
+      "Access slide shapes and find the title placeholder (placeholder type TITLE or shape with is_title) and compare its text_frame text against expected value.",
+      "When comparing PPTX files, shape text is checked via shape.text.strip() and per-paragraph/run text; ensure the title shape on the target slide index matches the expected string."
+    ],
+    "Image position adjustment on slide (horizontal/right positioning)": [
+      "Use `examine_right_position` option in `compare_pptx_files`: for a target slide index, check that a non-text shape's `left` property is greater in the result than in the reference and exceeds a minimum threshold (e.g., ~4320000 EMUs for right-side placement)",
+      "Access shape position via `shape.left` (EMUs) from python-pptx; non-text/image shapes are identified by absence of `text` attribute or `shape_type == 13` (MSO_SHAPE_TYPE.PICTURE)",
+      "When `examine_shape=False` is set, positional checks like `examine_right_position` are evaluated independently without being blocked by general dimension mismatch guards"
+    ],
+    "Slide background fill color setting (specific slide)": [
+      "Use slide.background.fill to read fill type; fill.type==1 indicates a solid color fill, accessible via fill.fore_color.rgb",
+      "When fill.type==5 the slide inherits from master; check slide_layout.slide_master.background.fill for the actual color",
+      "compare_pptx_files with examine_background_color=True compares get_slide_background_color() per slide, so per-slide background changes are caught automatically",
+      "Use slide.background.fill to read fill type and fore_color.rgb; fill.type==1 means solid color, fill.type==5 means inherited from master/layout",
+      "To read a title's font color from a slide, iterate shapes to find the title placeholder, then access text_frame.paragraphs[0].runs[0].font.color.rgb",
+      "Compare slide background RGB against the title text run's font color RGB to verify they match",
+      "Use slide.background.fill to read fill type; type==1 means solid fill with fore_color.rgb accessible directly; type==5 means inherited from master/layout, so check master fill instead.",
+      "Compare RGB values of background fill across slides to verify only target slides (those with images of real people) received the color change.",
+      "python-pptx's fill.type returns None for no fill, 1 for solid, 5 for background (inherited); handle all cases when verifying selective background changes."
+    ],
+    "Paragraph text alignment setting on slide (right-align title)": [
+      "Access paragraph.alignment via python-pptx; compare against PP_ALIGN enum values. Note that None is treated as LEFT by the evaluator, so only explicit RIGHT (PP_ALIGN.RIGHT) satisfies a right-alignment requirement.",
+      "The compare_pptx_files evaluator checks alignment at both the per-shape paragraph level and via a secondary get_all_text_shapes pass, so alignment must be set on the actual paragraph object, not just inherited from a placeholder default.",
+      "Use para.alignment from pptx; treat None and PP_ALIGN.LEFT as equivalent since unset alignment defaults to left.",
+      "Check alignment on all paragraphs of the target text frame, not just the first run, as alignment is a paragraph-level property.",
+      "When verifying multi-slide alignment tasks (e.g., right on slide N, center on slide M, left on slide P), iterate per-slide and per-shape paragraph alignment independently.",
+      "compare_pptx_files with examine_alignment=True covers paragraph alignment comparison including the None==LEFT normalization."
+    ],
+    "Insert table into slide": [
+      "Use python-pptx to check that a shape with shape_type == MSO_SHAPE_TYPE.TABLE (19) exists on the target slide; verify table.rows and table.columns counts match the required dimensions.",
+      "The compare_pptx_files metric checks table row/column counts via len(table.rows) and len(table.columns), so mismatched dimensions immediately return 0 — no need for cell-content checks when only structure is required.",
+      "When verifying table insertion, also confirm the total shape count on the slide increased by 1 (the table shape), since the metric checks len(slide.shapes) equality."
+    ],
+    "Table position adjustment on slide (move to bottom)": [
+      "Use `examine_table_bottom_position` option in `compare_pptx_files`: for the target slide, find shapes with `shape_type == 19` (MSO_SHAPE_TYPE.TABLE) and verify the result file's table `.top` value is greater than the reference file's `.top` AND exceeds a minimum threshold (e.g., ~3600000 EMUs) indicating bottom placement.",
+      "Shape position is stored in EMUs (English Metric Units) via `shape.top`, `shape.left`, `shape.width`, `shape.height`; 914400 EMUs = 1 inch, so a 7.5-inch slide height is ~6858000 EMUs — use this to reason about 'bottom' thresholds.",
+      "When `examine_shape=False` and a positional option like `examine_table_bottom_position=True` is active, the evaluator skips strict dimension equality for the table shape and instead applies directional inequality checks; other shapes still get full dimension comparison."
+    ],
+    "Add bullet point to slide content": [
+      "Use compare_pptx_files with examine_bullets=True; bullet verification parses the slide XML via run.part.blob, extracting a:buChar/@char, a:pPr/@lvl, and paragraph text for each non-empty paragraph, then compares count, bullet character, level (None=='0'), and text across files.",
+      "Paragraph count in the content text frame must match the reference; a new bullet point adds a new paragraph, so len(text_frame.paragraphs) is a reliable structural check.",
+      "Bullet character comparison is strict (char must match exactly); level comparison treats None and '0' as equivalent, so default-level bullets are accepted regardless of whether lvl attribute is explicit or absent."
+    ],
+    "Delete shapes (including images/icons) from a specific slide": [
+      "Use compare_pptx_files which checks len(slide.shapes) equality per slide; a mismatch in shape count on the target slide immediately returns 0.",
+      "Shapes inside GROUP containers are iterated via get_all_text_shapes; non-text shapes (icons, images) are counted in slide.shapes but not in text_shapes — verify both counts match the reference.",
+      "Deleting personal information may involve removing both text shapes and image/icon shapes; verify the total shape count on the affected slide matches the gold file."
+    ],
+    "Image height adjustment on specific slides": [
+      "Use compare_pptx_files with examine_modify_height=True and examine_shape=False; the examine_shape flag must be False or it short-circuits before the height check runs",
+      "For non-text shapes (shape_type != text-bearing) the evaluator only checks shape.height equality with ~0.5% tolerance; width, left, top are not compared for image shapes under examine_modify_height",
+      "Shape height in python-pptx is stored in EMUs (914400 per inch, 360000 per cm); verify by reading shape.height from the saved PPTX and comparing to expected cm values converted to EMUs",
+      "Identify image shapes by shape_type == 13 (MSO_SHAPE_TYPE.PICTURE) when iterating slide.shapes; filter by slide index to target specific slides",
+      "Use shape.height (in EMUs) to verify image height on a target slide; python-pptx shape type 13 identifies picture shapes; compare with ~0.5% tolerance since EMU conversions can introduce small rounding differences",
+      "When verifying height-only changes, set examine_shape=False and examine_modify_height=True in compare_pptx_files to avoid false failures from position/width differences that are irrelevant to the task"
+    ],
+    "Table cell text editing (header row content replacement)": [
+      "Use python-pptx to access table cells via shape.table.cell(row_idx, col_idx).text_frame and check cell text content; iterate over rows/columns to verify specific row values",
+      "The compare_pptx_files metric checks table cell text through paragraph runs inside each cell's text_frame; verify that cell.text or run.text matches expected values for the target row",
+      "When editing only the first row of a table, ensure other rows remain unchanged; the evaluator compares all rows and columns, so partial edits are caught",
+      "Table shapes have shape_type == MSO_SHAPE_TYPE.TABLE (19); locate them by iterating slide.shapes and checking shape_type before accessing .table"
+    ],
+    "Image position adjustment on slide (top positioning)": [
+      "Use examine_top_position=True in compare_pptx_files; the evaluator checks shape.top for image shapes (shape_type==13) on a specific slide, verifying the top value is below a threshold (e.g., near 0) compared to the gold file",
+      "Access shape.top via python-pptx; for 'move to top' tasks, verify the image's top coordinate is significantly smaller than its original position and within a small absolute value"
+    ],
+    "Extract slide notes to external document (DOCX export)": [
+      "Use python-docx's Document.paragraphs to read paragraph texts from the output .docx and compare against expected notes content; the compare_docx_files metric collapses whitespace with re.sub before comparing, so whitespace normalization differences are tolerated when ignore_blanks=True",
+      "When extracting notes from an ODP/PPTX file programmatically, use python-pptx's slide.notes_slide.notes_text_frame or LibreOffice UNO API's getNotesPage(); verify that each slide's notes text is present as a separate paragraph or block in the output docx",
+      "The evaluator joins all paragraphs with newlines then collapses all whitespace sequences to a single space before comparing, so paragraph ordering and blank-line differences are irrelevant — focus on ensuring all note text content is present and no extra text (e.g., page numbers, formatting markers) is injected"
+    ],
+    "PPT/presentation file classification and organization (file management)": [
+      "Use `ls` output (via vm_command_line) and exact_match to verify files are placed in correct category folders; `ls` output is newline-separated and alphabetically sorted by default, so expected strings must match that order exactly."
+    ],
+    "Extract slide text content to Writer document (DOCX export)": [
+      "Use python-docx to load the output .docx and collect all paragraph texts; compare against expected text using fuzz.ratio or set/sorted-list equality with whitespace normalization and empty-line removal, matching the compare_docx_files pattern (ignore_blanks, ignore_order, content_only, delete_empty_lines options).",
+      "When order is ignored, sort both paragraph lists before comparing; collapse all whitespace runs to single spaces and strip before fuzzy or exact comparison.",
+      "The evaluator uses fuzz.ratio on the joined, whitespace-normalized paragraph text, so partial credit is possible; aim for high similarity by ensuring all slide text (titles, body, bullets) is present in the docx paragraphs."
+    ],
+    "Image brightness enhancement (export to PNG)": [
+      "Use PIL to compute mean pixel brightness of both the output and reference images; verify output brightness is higher than reference (for enhancement) or lower (for reduction).",
+      "After brightness normalization, compare structural similarity via MSE between normalized images to confirm the image content/structure is preserved despite brightness change; a threshold around 0.1–0.2 on normalized MSE is typical.",
+      "The metric pattern here is: (1) brightness direction check, (2) structure-preserving check via normalize-then-MSE — both must pass for full credit."
+    ],
+    "Slide background image setting (specific slide)": [
+      "Extract background image from a slide by parsing the PPTX ZIP: look for <p:bgPr> tag in ppt/slides/slideN.xml, find the <a:blip r:embed='rIdX'/> element, then resolve rIdX via ppt/slides/_rels/slideN.xml.rels to get the actual image file path inside the ZIP.",
+      "Use SSIM-based image comparison (grayscale, resized to smaller dimension) to verify the extracted background image matches the expected frame; compare_images with ssim from skimage is a reliable metric family here.",
+      "When verifying video-frame-as-background tasks, the getter extracts the embedded image from the PPTX and compares it against a reference frame; focus on structural/content similarity rather than exact pixel match since encoding may alter pixels slightly."
+    ]
+  }
+}

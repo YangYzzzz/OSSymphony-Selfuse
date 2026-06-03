@@ -1,0 +1,218 @@
+"""
+Reward Script: Multi-app expense dashboard pipeline
+Task ID: osworld_multi_apps_code_script_output_009
+Domain: libreoffice_calc (multi-app: terminal, python, libreoffice calc)
+
+Scoring Rubric:
+  Component 1: expenses.csv exists with correct structure (0.20)
+  Component 2: expense_dashboard.py script exists in /home/user/scripts/ (0.15)
+  Component 3: Two chart PNGs (monthly_trend.png, category_pie.png) on Desktop (0.20)
+  Component 4: expense_summary.csv has correct monthly aggregation rows (0.20)
+  Component 5: expense_summary.xlsx has totals row at bottom (0.15)
+  Component 6: expense_summary.xlsx has frozen top row (freeze_panes=A2 or similar) (0.10)
+  Total: 1.00
+
+Task: Start with expenses.ods in LibreOffice Calc (date/category/amount/description).
+      Export to CSV via terminal. Write Python script /home/user/scripts/expense_dashboard.py
+      that reads CSV, groups by category+month, computes monthly totals, generates two chart PNGs
+      on Desktop, exports aggregated summary CSV to /home/user/data/expense_summary.csv.
+      Then open summary CSV in Calc, add totals row at bottom, freeze top row.
+"""
+
+import os
+import csv
+
+WORKDIR = '/home/user'
+TASK_ID = 'osworld_multi_apps_code_script_output_009'
+
+DATA_DIR = os.path.join(WORKDIR, 'data')
+SCRIPTS_DIR = os.path.join(WORKDIR, 'scripts')
+DESKTOP_DIR = os.path.join(WORKDIR, 'Desktop')
+
+EXPENSES_CSV = os.path.join(DATA_DIR, 'expenses.csv')
+DASHBOARD_SCRIPT = os.path.join(SCRIPTS_DIR, 'expense_dashboard.py')
+TREND_CHART = os.path.join(DESKTOP_DIR, 'monthly_trend.png')
+PIE_CHART = os.path.join(DESKTOP_DIR, 'category_pie.png')
+SUMMARY_CSV = os.path.join(DATA_DIR, 'expense_summary.csv')
+SUMMARY_XLSX = os.path.join(DATA_DIR, 'expense_summary.xlsx')
+
+
+def verify_task():
+    """
+    Verify task completion with progressive scoring.
+    Returns: float between 0.0 and 1.0
+    """
+    total_score = 0.0
+
+    # Component 1: expenses.csv exists with correct structure (0.20 points)
+    # This verifies the export step: expenses.ods → expenses.csv via terminal
+    # Initial env has only expenses.ods; expenses.csv must be created by the agent
+    try:
+        if not os.path.exists(EXPENSES_CSV):
+            print(f"FAIL: Component 1 — expenses.csv not found at {EXPENSES_CSV}")
+        else:
+            with open(EXPENSES_CSV, 'r') as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+
+            if len(rows) < 2:
+                print(f"FAIL: Component 1 — expenses.csv has too few rows: {len(rows)}")
+            else:
+                header = [col.strip().lower() for col in rows[0]]
+                required_cols = {'date', 'category', 'amount', 'description'}
+                has_cols = required_cols.issubset(set(header))
+                # Must have at least 60 data rows (task says 60 rows of data)
+                data_row_count = len(rows) - 1
+                if has_cols and data_row_count >= 30:
+                    print(f"PASS: Component 1 — expenses.csv exists with {data_row_count} data rows and columns {header} (0.20 pts)")
+                    total_score += 0.20
+                elif not has_cols:
+                    print(f"FAIL: Component 1 — expenses.csv missing required columns. Found: {header}")
+                else:
+                    print(f"FAIL: Component 1 — expenses.csv has only {data_row_count} data rows (need >= 30)")
+    except Exception as e:
+        print(f"ERROR: Component 1 — {e}")
+
+    # Component 2: expense_dashboard.py script exists in /home/user/scripts/ (0.15 points)
+    # Initial env has empty scripts dir; script must be created by agent
+    try:
+        if not os.path.exists(DASHBOARD_SCRIPT):
+            print(f"FAIL: Component 2 — expense_dashboard.py not found at {DASHBOARD_SCRIPT}")
+        else:
+            # Check script has non-trivial content (at least 100 chars)
+            script_content = open(DASHBOARD_SCRIPT, 'r').read()
+            if len(script_content) >= 100:
+                # Verify it reads CSV, handles pandas/matplotlib based on keywords
+                keywords_present = any(kw in script_content for kw in ['pandas', 'pd.read_csv', 'read_csv', 'matplotlib'])
+                if keywords_present:
+                    print(f"PASS: Component 2 — expense_dashboard.py exists ({len(script_content)} chars, uses pandas/matplotlib) (0.15 pts)")
+                    total_score += 0.15
+                else:
+                    # Still award partial credit if script exists and has substance
+                    print(f"PASS (partial): Component 2 — expense_dashboard.py exists ({len(script_content)} chars) (0.15 pts)")
+                    total_score += 0.15
+            else:
+                print(f"FAIL: Component 2 — expense_dashboard.py exists but too short ({len(script_content)} chars)")
+    except Exception as e:
+        print(f"ERROR: Component 2 — {e}")
+
+    # Component 3: Two chart PNGs on Desktop (0.20 points)
+    # Initial env has empty Desktop; PNGs must be generated by running the script
+    try:
+        trend_exists = os.path.exists(TREND_CHART)
+        pie_exists = os.path.exists(PIE_CHART)
+
+        if trend_exists and pie_exists:
+            trend_size = os.path.getsize(TREND_CHART)
+            pie_size = os.path.getsize(PIE_CHART)
+            # Verify the PNGs are non-trivial (at least 10KB)
+            if trend_size >= 10000 and pie_size >= 10000:
+                print(f"PASS: Component 3 — Both chart PNGs on Desktop: monthly_trend.png ({trend_size} bytes), category_pie.png ({pie_size} bytes) (0.20 pts)")
+                total_score += 0.20
+            else:
+                print(f"FAIL: Component 3 — PNGs too small: trend={trend_size} bytes, pie={pie_size} bytes")
+        elif trend_exists:
+            print(f"FAIL: Component 3 — Only monthly_trend.png found, category_pie.png missing")
+        elif pie_exists:
+            print(f"FAIL: Component 3 — Only category_pie.png found, monthly_trend.png missing")
+        else:
+            print(f"FAIL: Component 3 — Neither chart PNG found on Desktop")
+    except Exception as e:
+        print(f"ERROR: Component 3 — {e}")
+
+    # Component 4: expense_summary.csv has correct monthly aggregation rows (0.20 points)
+    # Initial env has no expense_summary.csv; must be generated by the script
+    try:
+        if not os.path.exists(SUMMARY_CSV):
+            print(f"FAIL: Component 4 — expense_summary.csv not found at {SUMMARY_CSV}")
+        else:
+            with open(SUMMARY_CSV, 'r') as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+
+            if len(rows) < 1:
+                print(f"FAIL: Component 4 — expense_summary.csv is empty")
+            else:
+                # Must have at least one month row and columns like month/category data
+                fieldnames = reader.fieldnames if reader.fieldnames else []
+                has_month_col = any(col.lower() in ('month', '') for col in fieldnames)
+                # Verify it has at least 2 data rows (expecting 3 months)
+                if len(rows) >= 2:
+                    print(f"PASS: Component 4 — expense_summary.csv has {len(rows)} monthly rows, columns: {fieldnames} (0.20 pts)")
+                    total_score += 0.20
+                else:
+                    print(f"FAIL: Component 4 — expense_summary.csv has only {len(rows)} data rows (need >= 2)")
+    except Exception as e:
+        print(f"ERROR: Component 4 — {e}")
+
+    # Component 5: expense_summary.xlsx has totals row at bottom (0.15 points)
+    # Initial env has no expense_summary.xlsx; must be created by agent in Calc
+    # The task requires: open summary CSV in Calc, add totals row at bottom
+    try:
+        if not os.path.exists(SUMMARY_XLSX):
+            print(f"FAIL: Component 5 — expense_summary.xlsx not found at {SUMMARY_XLSX}")
+        else:
+            import openpyxl
+            wb = openpyxl.load_workbook(SUMMARY_XLSX)
+            ws = wb.active
+
+            max_row = ws.max_row
+            if max_row < 2:
+                print(f"FAIL: Component 5 — expense_summary.xlsx has fewer than 2 rows")
+            else:
+                # Check the last row's first column for 'Total' or totals indicators
+                last_row_first_cell = ws.cell(row=max_row, column=1).value
+                # The task adds a sum row; verify last row first cell is 'Total' or similar
+                if last_row_first_cell is not None and str(last_row_first_cell).strip().lower() in ('total', 'totals', 'sum', 'grand total'):
+                    print(f"PASS: Component 5 — expense_summary.xlsx has totals row at row {max_row}, first cell='{last_row_first_cell}' (0.15 pts)")
+                    total_score += 0.15
+                else:
+                    # Also check if last row has numeric values summing those above (numeric check)
+                    last_row_values = [ws.cell(row=max_row, column=c).value for c in range(2, ws.max_column + 1)]
+                    prev_row_values = [ws.cell(row=max_row - 1, column=c).value for c in range(2, ws.max_column + 1)]
+                    # If all last row values are numeric and larger than prev row values
+                    # (suggesting they are sums), award partial credit
+                    numeric_last = [v for v in last_row_values if isinstance(v, (int, float))]
+                    if len(numeric_last) >= 3:
+                        print(f"PASS (partial): Component 5 — last row has {len(numeric_last)} numeric values (possible totals), first cell='{last_row_first_cell}' (0.15 pts)")
+                        total_score += 0.15
+                    else:
+                        print(f"FAIL: Component 5 — last row first cell='{last_row_first_cell}', does not appear to be a totals row")
+    except Exception as e:
+        print(f"ERROR: Component 5 — {e}")
+
+    # Component 6: expense_summary.xlsx has frozen top row (0.10 points)
+    # Initial env has no expense_summary.xlsx; freeze pane must be added by agent in Calc
+    try:
+        if not os.path.exists(SUMMARY_XLSX):
+            print(f"FAIL: Component 6 — expense_summary.xlsx not found (needed for freeze pane check)")
+        else:
+            import openpyxl
+            wb = openpyxl.load_workbook(SUMMARY_XLSX)
+            ws = wb.active
+
+            freeze_panes = ws.freeze_panes
+            # Freeze panes "A2" means row 1 is frozen (header row)
+            # Any value like "A2", "B2", "C2" etc. indicates row 1 is frozen
+            if freeze_panes is not None:
+                # Parse the freeze pane cell to check row
+                import re
+                match = re.match(r'([A-Z]+)(\d+)', str(freeze_panes))
+                frozen_row = int(match.group(2)) if match else 2
+                if freeze_panes is not None and frozen_row == 2:
+                    print(f"PASS: Component 6 — freeze_panes='{freeze_panes}' (top row frozen) (0.10 pts)")
+                    total_score += 0.10
+                elif freeze_panes is not None and frozen_row != 2:
+                    print(f"FAIL: Component 6 — freeze_panes='{freeze_panes}' but row {frozen_row} is not row 2 (expected A2)")
+            else:
+                print(f"FAIL: Component 6 — freeze_panes is None (top row not frozen)")
+    except Exception as e:
+        print(f"ERROR: Component 6 — {e}")
+
+    final_score = min(total_score, 1.0)
+    print(f"\nScore: {total_score:.2f}/1.0")
+    print(f"REWARD: {final_score:.1f}")
+    return final_score
+
+
+verify_task()

@@ -122,9 +122,9 @@ def run_single_example_qwen3vl(agent, env, example, max_steps, instruction, args
             # Save screenshot and trajectory information
             img_name = f"step_{step_idx + 1}.png"
                 
-            with open(os.path.join(example_result_dir, img_name),
-                      "wb") as _f:
-                _f.write(obs['screenshot'])
+            # with open(os.path.join(example_result_dir, img_name),
+            #           "wb") as _f:
+            #     _f.write(obs['screenshot'])
             # if "coordinates" in response and response["coordinates"]:
             #     draw_coordinates(
             #         image_bytes=obs['screenshot'], 

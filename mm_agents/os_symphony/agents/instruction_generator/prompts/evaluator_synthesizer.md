@@ -10,6 +10,7 @@ The proposal already owns the task instruction, setup config, related apps, used
 
 - Use `proposal.evaluation_requirements_text` as the primary specification.
 - Use proposal task fields only as context for designing `verification`; do not output task fields other than `verification`.
+- Use `proposal.dependency_chain` to make the evaluator check that later artifacts are grounded in earlier source information, not merely that the final file exists or contains plausible text.
 - Every candidate must include at least one rule item. VLM-only final tasks are not allowed.
 - VLM may be added only as a supplement when an essential visual condition cannot be checked by files or commands.
 - Do not merely check that a file exists. Check content, structure, formatting, metadata, or command-observable state.
@@ -40,6 +41,9 @@ The proposal already owns the task instruction, setup config, related apps, used
 - Include robust parsing and data cleaning for common file formats and command output.
 - Be strict against cheating: reward specific target changes and, when useful, penalize likely collateral changes using expected/golden data.
 - Prefer several independent checks with weights over one broad condition.
+- Decompose reward into meaningful subgoals. Use multiple `rule_items` when different files, apps, or dependency stages can be checked independently. Inside each rule function, compute named component scores such as source grounding, transformation correctness, destination content, formatting, and negative/collateral checks; combine them gradually so partial progress receives partial credit but only complete, dependency-faithful completion returns 1.0.
+- Avoid a single broad boolean that jumps directly from 0.0 to 1.0 unless the task has exactly one atomic verification condition.
+- Do not let superficial final-output checks dominate. For cross-app tasks, include at least one check that proves the final artifact used the required source data or intermediate transformation.
 - If a task modifies a sampled file in place, check the modified file at its VM path.
 
 ## Response format
