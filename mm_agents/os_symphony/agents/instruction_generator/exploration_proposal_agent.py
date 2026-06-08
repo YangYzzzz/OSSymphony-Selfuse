@@ -123,7 +123,7 @@ class ExplorationProposalAgent(WorkflowLLMAgent):
                 if raw_response:
                     self._append_assistant_message(raw_response)
                     self.agent.add_message(
-                        text_content="Return valid JSON only. Use exactly one action in the actions list. Use done with proposals if exploration should finish.",
+                        text_content="Return exactly one ```json fenced block and no text outside the fence. Do not include [Engine] logs, prose, comments, or rationale. Use exactly one action in the actions list. Use done with proposals if exploration should finish.",
                         role="user",
                     )
             finally:
@@ -211,11 +211,9 @@ class ExplorationProposalAgent(WorkflowLLMAgent):
     def _build_generation_result(self, shared_state: WorkflowSharedState, action: Dict[str, Any], target_count: int) -> Dict[str, Any]:
         arguments = self._action_arguments(action)
         proposals = arguments.get("proposals") if isinstance(arguments.get("proposals"), list) else []
-        generation_notes = arguments.get("generation_notes") if isinstance(arguments.get("generation_notes"), list) else []
         normalized_proposals = [self._normalize_proposal_setup_config(shared_state, proposal) for proposal in proposals if isinstance(proposal, dict)]
         return {
             "proposals": normalized_proposals[:target_count],
-            "generation_notes": generation_notes,
         }
 
     def _normalize_proposal_setup_config(self, shared_state: WorkflowSharedState, proposal: Dict[str, Any]) -> Dict[str, Any]:
@@ -266,7 +264,7 @@ class ExplorationProposalAgent(WorkflowLLMAgent):
             self._write_step_trajectory(shared_state, screenshot_dir, record)
             return self._build_generation_result(shared_state, action, target_count)
         logger.warning("Exploration-proposal forced done failed, returning empty proposal set.")
-        return {"proposals": [], "generation_notes": ["forced_done_failed"]}
+        return {"proposals": []}
 
     def _step_action(self, shared_state: WorkflowSharedState, env: DesktopEnv, action: Dict[str, Any], obs: Dict[str, Any]) -> Tuple[Dict[str, Any], float, bool, Dict[str, Any]]:
         tool = self._action_tool(action)
@@ -393,8 +391,6 @@ class ExplorationProposalAgent(WorkflowLLMAgent):
             }
             with open(os.path.join(screenshot_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
                 f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-            with open(os.path.join(screenshot_dir, f"traj_{record.get('step_num')}.json"), "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=4, ensure_ascii=False)
         except Exception as e:
             logger.warning("Failed to write exploration trajectory step_%s: %s", record.get("step_num"), e)
 

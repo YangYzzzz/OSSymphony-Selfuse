@@ -43,10 +43,16 @@ with open(APP_CONFIG_PATH, "r", encoding="utf-8") as f:
 with open(URL_CONFIG_PATH, "r", encoding="utf-8") as f:
     URL_LIST: List[str] = json.load(f)
 
-APP_SET_CONFIG_DICT: Dict[str, Any] = APP_CONFIG_DICT.get("app", {})
-for excluded_app in APP_CONFIG_DICT.get("excluded", []):
-    APP_SET_CONFIG_DICT.pop(excluded_app, None)
-APP_SETUP_DICT = APP_SET_CONFIG_DICT
+APP_SETUP_DICT_TMP: Dict[str, Any] = dict(APP_CONFIG_DICT.get("app", {}))
+SELECTED_APP_LIST: List[str] = list(APP_CONFIG_DICT.get("selected", []))
+if SELECTED_APP_LIST:
+    unknown_selected_apps = [app for app in SELECTED_APP_LIST if app not in APP_SETUP_DICT_TMP]
+    if unknown_selected_apps:
+        logger.warning("Ignoring selected apps missing from app_config.json app section: %s", unknown_selected_apps)
+    APP_SETUP_DICT: Dict[str, Any] = {app: APP_SETUP_DICT_TMP[app] for app in SELECTED_APP_LIST if app in APP_SETUP_DICT_TMP}
+else:
+    logger.warning("No selected apps configured; falling back to all apps in app_config.json.")
+    APP_SETUP_DICT = dict(APP_SETUP_DICT_TMP)
 
 APP_GRAPH: Dict[str, List[str]] = {}
 TYPE_TO_APPS: Dict[str, List[str]] = {}
@@ -169,6 +175,8 @@ class OSSymphony2TaskGenerator:
         self.input_screen_size = input_screen_size
 
     def generate_task(self, task_nums: int = 10, app_list: List[str] | str | None = None, max_apps_per_group: int = 1) -> Dict[str, List[str]]:
+        # 增加Selected App的过滤
+
         available_apps = self._available_apps(app_list)
         sampled_apps = self._sample_app_group(max_apps=max_apps_per_group, available_apps=available_apps)
         app_file_support = {app: list(APP_SETUP_DICT.get(app, {}).get("type", []) or []) for app in sampled_apps}
@@ -188,7 +196,7 @@ class OSSymphony2TaskGenerator:
             sampled_files=sampled_files,
             app_tutorials={app: self._load_app_tutorial_md(app) for app in sampled_apps},
             app_memory={},
-            app_versions={app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in sampled_apps},
+            app_versions={app: APP_SETUP_DICT.get(app, {}).get("version", app) for app in sampled_apps},
             app_open_commands={app: self._open_command_variants(app) for app in sampled_apps},
             initial_config=initial_config,
             input_screen_size=self.input_screen_size
@@ -198,7 +206,7 @@ class OSSymphony2TaskGenerator:
             env=self.env,
             engine_params=self.engine_params,
             build_evaluator_from_task_fn=self._build_evaluator_from_verification,
-            app_version_lookup=lambda app: APP_SET_CONFIG_DICT.get(app, {}).get("version", app),
+            app_version_lookup=lambda app: APP_SETUP_DICT.get(app, {}).get("version", app),
             platform=self.platform,
             max_repair_rounds=self.max_repair_rounds,
             exploration_max_actions=self.exploration_max_actions,

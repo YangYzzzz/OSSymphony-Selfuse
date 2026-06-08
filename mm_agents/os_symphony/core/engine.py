@@ -128,7 +128,7 @@ class LMMEngineOpenAI(LMMEngine):
         )
         usage = result.usage
         response = result.choices[0].message.content
-        logger.info(f'[Engine]: {response}')
+        # logger.info(f'[Engine]: {response}')
         return (response, usage)
 
 

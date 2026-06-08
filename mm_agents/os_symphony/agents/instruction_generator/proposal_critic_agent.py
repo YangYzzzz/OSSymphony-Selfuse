@@ -15,10 +15,14 @@ class ProposalCritiqueAgent(WorkflowLLMAgent):
         engine_params: Dict[str, Any],
         cost_tracker: WorkflowCostTracker,
         platform: str = "linux",
-        rationality_threshold: float = 0.8,
+        rationality_threshold: float = 4.0,
+        success_criteria_threshold: float = 4.0,
+        instruction_leakage_threshold: float = 4.0,
     ):
         super().__init__(name, engine_params, cost_tracker, platform)
         self.rationality_threshold = rationality_threshold
+        self.success_criteria_threshold = success_criteria_threshold
+        self.instruction_leakage_threshold = instruction_leakage_threshold
 
     def select(self, shared_state: WorkflowSharedState, proposals: List[Dict[str, Any]], target_count: int) -> Dict[str, Any]:
         system_prompt = load_prompt("proposal_critic.md")
@@ -51,8 +55,17 @@ class ProposalCritiqueAgent(WorkflowLLMAgent):
             proposal
             for proposal in normalized_accepted
             if proposal.get("critic_scores", {}).get("rationality_score", 0.0) >= self.rationality_threshold
+            and proposal.get("critic_scores", {}).get("success_criteria_score", 0.0) >= self.success_criteria_threshold
+            and proposal.get("critic_scores", {}).get("instruction_leakage_score", 0.0) >= self.instruction_leakage_threshold
         ]
-        thresholded_accepted.sort(key=lambda proposal: proposal.get("critic_scores", {}).get("rationality_score", 0.0), reverse=True)
+        thresholded_accepted.sort(
+            key=lambda proposal: (
+                proposal.get("critic_scores", {}).get("rationality_score", 0.0),
+                proposal.get("critic_scores", {}).get("success_criteria_score", 0.0),
+                proposal.get("critic_scores", {}).get("instruction_leakage_score", 0.0),
+            ),
+            reverse=True,
+        )
         return {
             "accepted": thresholded_accepted[:target_count],
             "rejected": rejected,
@@ -86,9 +99,9 @@ class ProposalCritiqueAgent(WorkflowLLMAgent):
     def _score_dict(self, item: Dict[str, Any]) -> Dict[str, float]:
         raw_scores = item.get("critic_scores") if isinstance(item.get("critic_scores"), dict) else item
         scores: Dict[str, float] = {}
-        for key in ("rationality_score", "complexity_score"):
+        for key in ("rationality_score", "complexity_score", "success_criteria_score", "instruction_leakage_score"):
             try:
-                scores[key] = max(0.0, min(1.0, float(raw_scores.get(key))))
+                scores[key] = float(max(1, min(5, int(float(raw_scores.get(key))))))
             except (AttributeError, TypeError, ValueError):
                 continue
         return scores

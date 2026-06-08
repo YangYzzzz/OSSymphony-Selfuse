@@ -6,7 +6,7 @@ from collections import Counter
 from typing import Any, Dict, List, Tuple
 
 from mm_agents.os_symphony.agents.instruction_generator.base_agent import WorkflowCostTracker, WorkflowLLMAgent
-from mm_agents.os_symphony.agents.instruction_generator.models import ProposalCandidate, TaskCandidate, VerificationRepairInput, VerificationSynthesisInput, WorkflowSharedState
+from mm_agents.os_symphony.agents.instruction_generator.models import ProposalCandidate, TaskCandidate, EvaluatorCritiqueInput, VerificationSynthesisInput, WorkflowSharedState
 from mm_agents.os_symphony.agents.instruction_generator.prompts import load_prompt
 
 
@@ -19,6 +19,8 @@ class EvaluatorSynthesisAgent(WorkflowLLMAgent):
         shared_state: WorkflowSharedState,
         proposal: ProposalCandidate,
         app_memory_summary: Dict[str, Any] | None = None,
+        evaluator_feedback: Dict[str, Any] | None = None,
+        current_verification: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         system_prompt = load_prompt("evaluator_synthesizer.md")
         synthesis_input = VerificationSynthesisInput(
@@ -29,8 +31,12 @@ class EvaluatorSynthesisAgent(WorkflowLLMAgent):
             sampled_files=shared_state.sampled_files,
             app_tutorials=shared_state.app_tutorials,
             verification_experience=self._matching_verification_experience(proposal, app_memory_summary or {})
-        )
-        user_text = json.dumps(synthesis_input.to_dict(), ensure_ascii=False)
+        ).to_dict()
+        if evaluator_feedback:
+            synthesis_input["evaluator_feedback"] = evaluator_feedback
+        if current_verification:
+            synthesis_input["current_verification"] = current_verification
+        user_text = json.dumps(synthesis_input, ensure_ascii=False)
         verification_spec = self.call_json(system_prompt, user_text).get("verification")
         return verification_spec if isinstance(verification_spec, dict) else {}
 
@@ -116,21 +122,60 @@ class EvaluatorSynthesisAgent(WorkflowLLMAgent):
 
 
 class EvaluatorCritiqueAgent(WorkflowLLMAgent):
-    def __init__(self, name: str, engine_params: Dict[str, Any], cost_tracker: WorkflowCostTracker, platform: str = "linux"):
+    def __init__(
+        self,
+        name: str,
+        engine_params: Dict[str, Any],
+        cost_tracker: WorkflowCostTracker,
+        platform: str = "linux",
+        quality_threshold: float = 4.0,
+    ):
         super().__init__(name, engine_params, cost_tracker, platform)
+        self.quality_threshold = quality_threshold
 
-    def critique_and_repair(self, shared_state: WorkflowSharedState, task_draft: TaskCandidate, failure: Dict[str, Any]) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    def critique(
+        self,
+        shared_state: WorkflowSharedState,
+        task_draft: TaskCandidate,
+        validation_status: Dict[str, Any],
+    ) -> Tuple[Dict[str, float], Dict[str, Any], List[Dict[str, Any]], bool]:
         system_prompt = load_prompt("evaluator_critic.md")
-        repair_input = VerificationRepairInput(
+        critique_input = EvaluatorCritiqueInput(
             candidate=task_draft,
-            failure=failure,
+            validation_status=validation_status,
             sampled_apps=shared_state.sampled_apps,
             app_file_support=shared_state.app_file_support,
             sampled_files=shared_state.sampled_files
         )
-        user_text = json.dumps(repair_input.to_dict(), ensure_ascii=False)
+        user_text = json.dumps(critique_input.to_dict(), ensure_ascii=False)
         data = self.call_json(system_prompt, user_text)
-        verification_spec = data.get("verification")
+        scores = self._score_dict(data.get("evaluator_scores"))
+        rejected = data.get("rejected") if isinstance(data.get("rejected"), dict) else {}
+        rationale = str(data.get("rationale") or "")
+        if rationale:
+            rejected = dict(rejected)
+            rejected.setdefault("rationale", rationale)
         lessons = data.get("verification_experience_lessons") if isinstance(data.get("verification_experience_lessons"), list) else []
         normalized_lessons = [lesson for lesson in lessons if isinstance(lesson, dict)]
-        return verification_spec if isinstance(verification_spec, dict) else task_draft.verification.to_dict(), normalized_lessons
+        repair_required = bool(data.get("repair_required"))
+        if scores.get("evaluator_quality_score", 0.0) < self.quality_threshold:
+            repair_required = True
+        if validation_status.get("failure_type") != "none":
+            repair_required = True
+        return scores, rejected, normalized_lessons, repair_required
+
+    def _score_dict(self, item: Any) -> Dict[str, float]:
+        raw_scores = item if isinstance(item, dict) else {}
+        scores: Dict[str, float] = {}
+        for key in (
+            "evaluator_quality_score",
+            "coverage_score",
+            "getter_correctness_score",
+            "structure_validation_score",
+            "false_positive_resistance_score",
+        ):
+            try:
+                scores[key] = float(max(1, min(5, int(float(raw_scores.get(key))))))
+            except (AttributeError, TypeError, ValueError):
+                continue
+        return scores

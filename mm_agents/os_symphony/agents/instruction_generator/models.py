@@ -202,7 +202,6 @@ class ProposalCandidate:
     evaluation_requirements_text: List[str] = field(default_factory=list)
     dependency_chain: List[Dict[str, Any]] = field(default_factory=list)
     critic_scores: Dict[str, float] = field(default_factory=dict)
-    risk_notes: List[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any] | None) -> "ProposalCandidate":
@@ -221,7 +220,6 @@ class ProposalCandidate:
             evaluation_requirements_text=[str(item) for item in cls._list_or_default(data.get("evaluation_requirements_text"))],
             dependency_chain=cls._list_of_dicts(data.get("dependency_chain")),
             critic_scores=cls._float_dict(data.get("critic_scores")),
-            risk_notes=[str(item) for item in cls._list_or_default(data.get("risk_notes"))],
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -239,7 +237,6 @@ class ProposalCandidate:
             "evaluation_requirements_text": self.evaluation_requirements_text,
             "dependency_chain": self.dependency_chain,
             "critic_scores": self.critic_scores,
-            "risk_notes": self.risk_notes,
         }
 
     def flattened_target_features(self) -> List[str]:
@@ -363,6 +360,15 @@ class TaskCandidate:
         }
 
 
+    @staticmethod
+    def _list_or_default(value: Any) -> List[Any]:
+        return ProposalCandidate._list_or_default(value)
+
+    @staticmethod
+    def _int_or_default(value: Any, default: int) -> int:
+        return ProposalCandidate._int_or_default(value, default)
+
+
 @dataclass
 class ProposalSelectionInput:
     target_count: int
@@ -386,22 +392,18 @@ class ProposalSelectionInput:
 @dataclass
 class ExplorationResult:
     proposals: List[ProposalCandidate] = field(default_factory=list)
-    generation_notes: List[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any] | None) -> "ExplorationResult":
         data = data or {}
         proposals = data.get("proposals") if isinstance(data.get("proposals"), list) else []
-        generation_notes = data.get("generation_notes") if isinstance(data.get("generation_notes"), list) else []
         return cls(
             proposals=[ProposalCandidate.from_dict(item) for item in proposals if isinstance(item, dict)],
-            generation_notes=[str(item) for item in generation_notes],
         )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "proposals": [proposal.to_dict() for proposal in self.proposals],
-            "generation_notes": self.generation_notes,
         }
     
 @dataclass
@@ -427,9 +429,9 @@ class VerificationSynthesisInput:
 
 
 @dataclass
-class VerificationRepairInput:
+class EvaluatorCritiqueInput:
     candidate: TaskCandidate
-    failure: Dict[str, Any]
+    validation_status: Dict[str, Any]
     sampled_apps: List[str]
     app_file_support: Dict[str, List[str]]
     sampled_files: List[Dict[str, Any]]
@@ -437,7 +439,7 @@ class VerificationRepairInput:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "candidate": self.candidate.to_dict(),
-            "failure": self.failure,
+            "validation_status": self.validation_status,
             "sampled_apps": self.sampled_apps,
             "app_file_support": self.app_file_support,
             "sampled_files": self.sampled_files,

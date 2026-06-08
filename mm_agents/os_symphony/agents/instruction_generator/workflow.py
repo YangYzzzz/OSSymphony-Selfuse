@@ -67,12 +67,6 @@ class InstructionGenerationWorkflow:
         failures: List[Dict[str, Any]] = []
         logger.info(f"Generation Accepted Proposals: {[item.proposal.to_dict() for item in accepted_work_items]}")
 
-        self.env.reset(task_config={"config": shared_state.initial_config, "id": "init_id", "instruction": "init_instruction"})
-        time.sleep(60)
-        obs = self.env._get_obs()
-        with open(os.path.join(rollout_dir, f"setup.png"), "wb") as f:
-            f.write(obs["screenshot"])
-
         for work_item in accepted_work_items:
             if len(generated_ids) >= task_nums:
                 break
@@ -82,10 +76,25 @@ class InstructionGenerationWorkflow:
                 work_item.proposal,
                 evaluator_memory,
             )
+            self._write_agent_stage_log(
+                rollout_dir,
+                "agentworkflow_evaluator_synthesis_log.jsonl",
+                {
+                    "stage": "evaluator_synthesize",
+                    "rollout_id": shared_state.rollout_id,
+                    "proposal_id": work_item.proposal.proposal_id,
+                    "repair_round": 0,
+                    "proposal": work_item.proposal.to_dict(),
+                    "evaluator_feedback": None,
+                    "current_verification": None,
+                    "output": verification_spec,
+                },
+            )
             task_config, failure, finalized_task_draft = self._validate_repair_and_build_task_config(
                 shared_state,
                 work_item.proposal,
-                verification_spec
+                verification_spec,
+                rollout_dir,
             )
             if task_config:
                 task_id = task_config["id"]
@@ -129,6 +138,18 @@ class InstructionGenerationWorkflow:
             if not proposals:
                 continue
             critique = self.proposal_critic.select(shared_state, proposals, task_nums - len(accepted))
+            self._write_agent_stage_log(
+                rollout_dir,
+                "agentworkflow_proposal_critic_log.jsonl",
+                {
+                    "stage": "proposal_critic",
+                    "rollout_id": shared_state.rollout_id,
+                    "attempt_idx": attempt_idx,
+                    "target_count": task_nums - len(accepted),
+                    "input_proposal_ids": [proposal.get("proposal_id") for proposal in proposals if isinstance(proposal, dict)],
+                    "output": critique,
+                },
+            )
             proposals_by_id = {p.get("proposal_id"): p for p in proposals if p.get("proposal_id")}
             for item in critique.get("accepted", []):
                 if isinstance(item, dict):
@@ -144,41 +165,123 @@ class InstructionGenerationWorkflow:
         self,
         shared_state: WorkflowSharedState,
         accepted_proposal: ProposalCandidate,
-        initial_verification_spec: Dict[str, Any]
+        initial_verification_spec: Dict[str, Any],
+        rollout_dir: str,
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Dict[str, Any]]:
         task_draft = self._build_task_draft(accepted_proposal, initial_verification_spec)
         verification_experience_lessons: List[Dict[str, Any]] = []
-        last_failure: Optional[Dict[str, Any]] = None
+        last_feedback: Optional[Dict[str, Any]] = None
         for round_idx in range(self.max_repair_rounds + 1):
             static = self.static_validator.validate(task_draft)
+            task_config: Optional[Dict[str, Any]] = None
+            preflight: Optional[Dict[str, Any]] = None
+
             if not static["passed"]:
-                last_failure = {
+                validation_status = {
                     "failure_type": static["errors"][0] if static["errors"] else "static_validation_failed",
                     "static_validation": static,
-                    "lesson": "Repair verification schema/code before preflight.",
+                    "repair_round": round_idx,
+                    "lesson": "Regenerate verification schema/code before preflight.",
                 }
             else:
                 task_config = self._task_draft_to_task_config(shared_state, task_draft)
                 preflight = self.preflight_validator.validate(self.env, task_config)
                 if preflight["passed"]:
-                    return task_config, None, task_draft
-                last_failure = {
-                    "failure_type": preflight.get("failure_type") or "preflight_failed",
-                    "preflight": preflight,
-                    "lesson": "Initial state must not already satisfy the evaluator." + preflight.get("details", ""),
-                }
-            if round_idx >= self.max_repair_rounds:
-                break
-            repaired_verification_spec, repair_lessons = self.verification_critic.critique_and_repair(
+                    validation_status = {
+                        "failure_type": "none",
+                        "static_validation": static,
+                        "preflight": preflight,
+                        "repair_round": round_idx,
+                        "lesson": "Static validation and initial-state preflight passed; critique evaluator quality.",
+                    }
+                else:
+                    validation_status = {
+                        "failure_type": preflight.get("failure_type") or "preflight_failed",
+                        "static_validation": static,
+                        "preflight": preflight,
+                        "repair_round": round_idx,
+                        "lesson": "Initial state must not already satisfy the evaluator." + preflight.get("details", ""),
+                    }
+
+            evaluator_scores, rejected, critique_lessons, repair_required = self.verification_critic.critique(
                 shared_state,
                 TaskCandidate.from_dict(task_draft),
-                last_failure,
+                validation_status,
             )
-            verification_experience_lessons.extend(repair_lessons)
+            self._write_agent_stage_log(
+                rollout_dir,
+                "agentworkflow_evaluator_critic_log.jsonl",
+                {
+                    "stage": "evaluator_critic",
+                    "rollout_id": shared_state.rollout_id,
+                    "proposal_id": accepted_proposal.proposal_id,
+                    "repair_round": round_idx,
+                    "validation_status": validation_status,
+                    "task_draft": task_draft,
+                    "output": {
+                        "evaluator_scores": evaluator_scores,
+                        "rejected": rejected,
+                        "verification_experience_lessons": critique_lessons,
+                        "repair_required": repair_required,
+                    },
+                },
+            )
+            self._merge_evaluator_scores(task_draft, evaluator_scores)
+            if critique_lessons:
+                verification_experience_lessons.extend(critique_lessons)
+                task_draft["verification_experience_lessons"] = verification_experience_lessons
+
+            if not repair_required:
+                if task_config is None:
+                    task_config = self._task_draft_to_task_config(shared_state, task_draft)
+                return task_config, None, task_draft
+
+            last_feedback = {
+                "failure_type": validation_status.get("failure_type") or "evaluator_quality_failed",
+                "validation_status": validation_status,
+                "evaluator_scores": evaluator_scores,
+                "rejected": rejected,
+                "repair_round": round_idx,
+            }
+            if round_idx >= self.max_repair_rounds:
+                last_feedback["lesson"] = "Evaluator synthesizer could not produce an evaluator accepted by the critic within the repair budget."
+                break
+
+            repaired_verification_spec = self.verification_synthesizer.synthesize(
+                shared_state,
+                accepted_proposal,
+                shared_state.app_memory,
+                evaluator_feedback=last_feedback,
+                current_verification=task_draft.get("verification"),
+            )
+            self._write_agent_stage_log(
+                rollout_dir,
+                "agentworkflow_evaluator_synthesis_log.jsonl",
+                {
+                    "stage": "evaluator_synthesize",
+                    "rollout_id": shared_state.rollout_id,
+                    "proposal_id": accepted_proposal.proposal_id,
+                    "repair_round": round_idx + 1,
+                    "proposal": accepted_proposal.to_dict(),
+                    "evaluator_feedback": last_feedback,
+                    "current_verification": task_draft.get("verification"),
+                    "output": repaired_verification_spec,
+                },
+            )
             task_draft = self._build_task_draft(accepted_proposal, repaired_verification_spec)
+            self._merge_evaluator_scores(task_draft, evaluator_scores)
             if verification_experience_lessons:
                 task_draft["verification_experience_lessons"] = verification_experience_lessons
-        return None, last_failure, task_draft
+        return None, last_feedback, task_draft
+
+    def _merge_evaluator_scores(self, task_draft: Dict[str, Any], evaluator_scores: Dict[str, float]) -> None:
+        if not evaluator_scores:
+            return
+        critic_scores = task_draft.setdefault("critic_scores", {})
+        if not isinstance(critic_scores, dict):
+            critic_scores = {}
+            task_draft["critic_scores"] = critic_scores
+        critic_scores.update(evaluator_scores)
 
     def _build_task_draft(self, accepted_proposal: ProposalCandidate, verification_spec: Dict[str, Any]) -> Dict[str, Any]:
         verification = dict(verification_spec) if isinstance(verification_spec, dict) else {}
@@ -238,6 +341,19 @@ class InstructionGenerationWorkflow:
         if not isinstance(used_files, list):
             return []
         return [str(path) for path in used_files if str(path) in sampled]
+
+    def _write_agent_stage_log(self, rollout_dir: str, filename: str, payload: Dict[str, Any]) -> None:
+        os.makedirs(rollout_dir, exist_ok=True)
+        log_path = os.path.join(rollout_dir, filename)
+        enriched_payload = {
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            **payload,
+        }
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(enriched_payload, ensure_ascii=False, default=str) + "\n")
+        except Exception as e:
+            logger.warning("Failed to write %s: %s", filename, e)
 
     def _write_sidecar_log(
         self,
