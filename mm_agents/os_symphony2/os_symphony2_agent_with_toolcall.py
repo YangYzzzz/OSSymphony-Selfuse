@@ -29,7 +29,7 @@ from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
 logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
-EMPTY_TOOL_CALL_RETRY_TIMES = 10
+EMPTY_TOOL_CALL_RETRY_TIMES = 5
 
 
 def encode_image(image_content):
