@@ -82,7 +82,11 @@ Your job is to choose exactly one next non-destructive exploration action for th
 
 - Across proposals, vary apps, file types, target features, task categories, and verification channels where possible.
 - Avoid duplicate tasks that differ only in wording or filenames.
-- Use app memory and previous rejection feedback to avoid over-covered features and repeat failure patterns. When `covered_features` shows uneven coverage, prefer task ideas that exercise uncovered or less-covered app features while still staying grounded in the current exploration.
+- Treat `app_memory_summary` as the primary coverage signal for novelty. For each sampled app, inspect `covered_features` and `recent_tasks` before finalizing proposals.
+- Prefer target features that are not present in `covered_features` when the current exploration reveals a plausible, verifiable app capability.
+- If no clearly new feature is grounded by exploration, choose existing feature areas with the lowest `covered_features` counts before choosing frequently covered features.
+- Avoid repeating feature combinations, task shapes, and final artifact patterns from `recent_tasks`, especially when they only change filenames or extracted values.
+- Use previous rejection feedback to avoid repeat failure patterns, but do not let memory force ungrounded tasks; every novel or low-frequency feature must still be supported by sampled apps, sampled files, and observed UI/file content.
 
 ## Planning guidance
 

@@ -128,7 +128,7 @@ class EvaluatorCritiqueAgent(WorkflowLLMAgent):
         engine_params: Dict[str, Any],
         cost_tracker: WorkflowCostTracker,
         platform: str = "linux",
-        quality_threshold: float = 4.0,
+        quality_threshold: float = 3.0,
     ):
         super().__init__(name, engine_params, cost_tracker, platform)
         self.quality_threshold = quality_threshold

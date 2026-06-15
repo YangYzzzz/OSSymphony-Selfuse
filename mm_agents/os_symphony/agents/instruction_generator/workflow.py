@@ -5,6 +5,7 @@ import logging
 import os
 import time
 import uuid
+from dataclasses import replace
 from typing import Any, Dict, List, Optional, Tuple
 
 from desktop_env.osworld.desktop_env import DesktopEnv
@@ -33,12 +34,14 @@ class InstructionGenerationWorkflow:
         exploration_max_actions: int = 10,
         scorer_engine_params: Dict[str, Any] | None = None,
         input_screen_size: Tuple[int, int] | None = None,
+        include_app_tutorials: bool = False,
     ):
         self.rollout_task_dir = rollout_task_dir
         self.env = env
         self.build_evaluator_from_task_fn = build_evaluator_from_task_fn
         self.app_version_lookup = app_version_lookup
         self.max_repair_rounds = max_repair_rounds
+        self.include_app_tutorials = include_app_tutorials
         self.cost_tracker = WorkflowCostTracker(rollout_task_dir)
         self.memory_store = AppMemoryStore()
         scorer_engine_params = scorer_engine_params or engine_params
@@ -58,6 +61,7 @@ class InstructionGenerationWorkflow:
 
     def run(self, shared_state: WorkflowSharedState, task_nums: int, rollout_dir: str) -> Dict[str, List[str]]:
         os.makedirs(rollout_dir, exist_ok=True)
+        shared_state = self._prepare_shared_state(shared_state)
         proposal_memory, evaluator_memory, raw_memories = self.memory_store.load_many_summaries(shared_state.sampled_apps)
 
         shared_state.app_memory = proposal_memory
@@ -111,6 +115,11 @@ class InstructionGenerationWorkflow:
                 failures.append(failure)
         self._write_sidecar_log(rollout_dir, shared_state, exploration_result, accepted_work_items, generated_ids, failures)
         return {shared_state.rollout_id: generated_ids}
+
+    def _prepare_shared_state(self, shared_state: WorkflowSharedState) -> WorkflowSharedState:
+        if self.include_app_tutorials:
+            return shared_state
+        return replace(shared_state, app_tutorials={})
 
     def _generate_and_select(
         self,
@@ -317,6 +326,7 @@ class InstructionGenerationWorkflow:
             "complexity": task_draft.get("complexity"),
             "estimated_steps": task_draft.get("estimated_steps"),
             "category": task_draft.get("category"),
+            "features": task_draft.get("feature_tags", []),
             "dependency_chain": task_draft.get("dependency_chain", []),
             "critic_scores": task_draft.get("critic_scores", {}),
             "evaluator": self.build_evaluator_from_task_fn(task_draft),

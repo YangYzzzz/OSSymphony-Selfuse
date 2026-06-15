@@ -15,9 +15,9 @@ class ProposalCritiqueAgent(WorkflowLLMAgent):
         engine_params: Dict[str, Any],
         cost_tracker: WorkflowCostTracker,
         platform: str = "linux",
-        rationality_threshold: float = 4.0,
-        success_criteria_threshold: float = 4.0,
-        instruction_leakage_threshold: float = 4.0,
+        rationality_threshold: float = 3.0,
+        success_criteria_threshold: float = 3.0,
+        instruction_leakage_threshold: float = 3.0,
     ):
         super().__init__(name, engine_params, cost_tracker, platform)
         self.rationality_threshold = rationality_threshold
