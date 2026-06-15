@@ -3,10 +3,12 @@ import copy
 import json
 import logging
 import re
+import subprocess
 import textwrap
 import time
 from io import BytesIO
-from typing import Dict, List, Tuple, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 import httpx
 import backoff
 import openai
@@ -22,8 +24,9 @@ from mm_agents.utils.qwen_vl_utils import (
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
 )
-from mm_agents.base import ComputerUseBaseAgent
 from mm_agents.anthropic.utils import SYSTEM_PROMPT_ORM
+from mm_agents.base import ComputerUseBaseAgent
+from mm_agents.os_symphony2.utils import build_qwen_sft_sample_for_ossymphony
 
 
 logger = logging.getLogger("desktopenv.agent")
@@ -32,29 +35,35 @@ MAX_RETRY_TIMES = 5
 EMPTY_TOOL_CALL_RETRY_TIMES = 5
 
 
-def encode_image(image_content):
+def encode_image(image_content, input_width: Optional[int] = None, input_height: Optional[int] = None):
+    if input_width is not None and input_height is not None:
+        image = Image.open(BytesIO(image_content))
+        image = image.resize((input_width, input_height))
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        image_content = buffer.getvalue()
     return base64.b64encode(image_content).decode("utf-8")
 
 
-def process_image(image_bytes):
-    """Process an image for Qwen VL models."""
-    image = Image.open(BytesIO(image_bytes))
-    width, height = image.size
+# def process_image(image_bytes):
+#     """Process an image for Qwen VL models."""
+#     image = Image.open(BytesIO(image_bytes))
+#     width, height = image.size
 
-    resized_height, resized_width = smart_resize(
-        height=height,
-        width=width,
-        factor=32,
-        max_pixels=16 * 16 * 4 * 1280,
-    )
+#     resized_height, resized_width = smart_resize(
+#         height=height,
+#         width=width,
+#         factor=32,
+#         max_pixels=16 * 16 * 4 * 1280,
+#     )
 
-    image = image.resize((resized_width, resized_height))
+#     image = image.resize((resized_width, resized_height))
 
-    buffer = BytesIO()
-    image.save(buffer, format="PNG")
-    processed_bytes = buffer.getvalue()
+#     buffer = BytesIO()
+#     image.save(buffer, format="PNG")
+#     processed_bytes = buffer.getvalue()
 
-    return base64.b64encode(processed_bytes).decode("utf-8")
+#     return base64.b64encode(processed_bytes).decode("utf-8")
 
 
 class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
@@ -65,7 +74,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         model: str = "qwen3-vl",
         base_url: str = "",
         api_key: str = "",
-        max_tokens: int = 1500,
+        max_tokens: int = 15000,
         top_p: float = 0.9,
         temperature: float = 0.0,
         action_space: str = "pyautogui",
@@ -77,8 +86,11 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         keep_all_text: bool = True, # 是否保留全部步数的模型输出（False 退化为 last k）
         keep_cot: bool = True, # 模型输出是否仅保留action/cot+action
         use_thinking: bool = False,
-        enable_code_tool: bool = True,
-        benchmark: str = "osworld"
+        enable_code_tool: bool = False,
+        benchmark: str = "osworld",
+        input_screen_size: tuple = (1920, 1080),
+        collect_qwen_sft: bool = False,
+        collect_qwen_sft_image_dir: str = "",
     ):
         self.platform = platform
         self.model = model
@@ -96,6 +108,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.coordinate_type = coordinate_type
         self.use_thinking = use_thinking
         self.keep_all_text = keep_all_text
+        self.input_screen_size = input_screen_size
         assert action_space in ["pyautogui"], "Invalid action space"
         assert observation_type in ["screenshot"], "Invalid observation type"
 
@@ -114,6 +127,10 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         self.enable_code_tool = enable_code_tool
 
+        self.collect_qwen_sft = collect_qwen_sft
+        self.qwen_sft_image_hash_map: Dict[str, str] = {}
+        self.collect_qwen_sft_image_dir = Path(collect_qwen_sft_image_dir) if collect_qwen_sft_image_dir else Path("qwen3vl_sft_dataset/image")
+
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
 
@@ -123,12 +140,12 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         """
         screenshot_bytes = obs["screenshot"]
 
+        # width 一定等于 1920, height 一定等于 1080
         image = Image.open(BytesIO(screenshot_bytes))
         width, height = image.size
 
-        processed_image = process_image(screenshot_bytes)
-        processed_img = Image.open(BytesIO(base64.b64decode(processed_image)))
-        processed_width, processed_height = processed_img.size
+        # Resize 到指定分辨率
+        processed_image = encode_image(screenshot_bytes, input_width=self.input_screen_size[0], input_height=self.input_screen_size[1])
 
         # feed tool result for previous tool_calls
         result_text = ""
@@ -226,9 +243,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             response_message,
             response_str,
             width,
-            height,
-            processed_width,
-            processed_height,
+            height
         )
 
         if not pyautogui_code:
@@ -248,6 +263,17 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
         # self.debug_print_messages()
+
+        if self.collect_qwen_sft and meta_data:
+            try:
+                sample, self.qwen_sft_image_hash_map = build_qwen_sft_sample_for_ossymphony(
+                    messages=self.messages,
+                    image_hash_map=self.qwen_sft_image_hash_map,
+                    image_root_dir=self.collect_qwen_sft_image_dir,
+                )
+                meta_data[0]["agent_sft"] = sample
+            except Exception as e:
+                logger.error(f"build_qwen_sft_sample error: {e}")
 
         return meta_data, pyautogui_code
 
@@ -345,8 +371,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         thought: str,
         original_width: int = None,
         original_height: int = None,
-        processed_width: int = None,
-        processed_height: int = None,
     ) -> Tuple[List[Dict], List[str]]:
         """Parse LLM response (dict with tool_calls) and convert it to metadata and pyautogui code.
 
@@ -362,14 +386,6 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             return meta_data, pyautogui_code
 
         def adjust_coordinates(x: float, y: float) -> Tuple[int, int]:
-            if not (original_width and original_height):
-                return int(x), int(y)
-            if self.coordinate_type == "absolute":
-                if processed_width and processed_height:
-                    x_scale = original_width / processed_width
-                    y_scale = original_height / processed_height
-                    return int(x * x_scale), int(y * y_scale)
-                return int(x), int(y)
             x_scale = original_width / 999
             y_scale = original_height / 999
             return int(x * x_scale), int(y * y_scale)
@@ -516,6 +532,9 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 status = args.get("status", "success") # success / failure
                 step_code = "DONE" if status == "success" else "FAIL"
 
+            elif action == "answer":
+                step_code = "DONE"
+
             elif action == "mouse_move":
                 if "coordinate" in args:
                     x, y = args["coordinate"]
@@ -606,7 +625,11 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
             content_parts = []
             if obs and obs.get("screenshot"):
-                processed_image = process_image(obs["screenshot"])
+                processed_image = encode_image(
+                    obs["screenshot"],
+                    input_width=self.input_screen_size[0],
+                    input_height=self.input_screen_size[1],
+                )
                 content_parts.append(
                     {
                         "type": "image_url",
@@ -699,8 +722,8 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                     model=model,
                     messages=messages,
                     max_tokens=payload.get("max_tokens", self.max_tokens),
-                    temperature=payload.get("temperature", self.temperature),
-                    top_p=payload.get("top_p", self.top_p),
+                    temperature=payload.get("temperature", 0),
+                    # top_p=payload.get("top_p", self.top_p),
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}
                     }
@@ -732,6 +755,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             "mouse_move",
             "left_click_drag",
             "code",
+            "answer" # = DONE
         }
 
         def parse_tool_calls_from_content(content: str) -> tuple[list, str]:
@@ -743,10 +767,85 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             pattern = r'<tool_call>\s*(.*?)\s*</tool_call>'
             matches = re.findall(pattern, content, re.DOTALL)
 
+            def validate_code_action(language: str, code: str) -> bool:
+                try:
+                    if language == "python":
+                        compile(code, "<fallback_execute_code>", "exec")
+                        return True
+                    if language == "bash":
+                        proc = subprocess.run(
+                            ["bash", "-n"],
+                            input=code,
+                            text=True,
+                            capture_output=True,
+                        )
+                        return proc.returncode == 0
+                except Exception:
+                    return False
+                return False
+
+            def recover_code_tool_call(raw: str, idx: int) -> Optional[Dict[str, Any]]:
+                if '"action"' not in raw or '"code"' not in raw or '"execute_code"' not in raw:
+                    return None
+
+                function_name = "custom_computer_use"
+                function_match = re.search(r'"name"\s*:\s*"([^"]+)"', raw)
+                if function_match:
+                    function_name = function_match.group(1)
+
+                action_match = re.search(r'"action"\s*:\s*"code"', raw)
+                language_match = re.search(r'"language"\s*:\s*"(python|bash)"', raw)
+                execute_match = re.search(r'"execute_code"\s*:\s*"', raw)
+                if not action_match or not language_match or not execute_match:
+                    return None
+
+                language = language_match.group(1)
+                start = execute_match.end()
+                tail = raw[start:]
+                terminator_match = re.search(r'"\s*}[\s}]*$', tail, re.DOTALL)
+                if not terminator_match:
+                    terminator_match = re.search(r'"\s*,\s*"[^"]+"\s*:', tail, re.DOTALL)
+                if not terminator_match:
+                    return None
+
+                code = tail[:terminator_match.start()]
+                if not validate_code_action(language, code):
+                    logger.info(
+                        "Can't recovered code tool_call via regex fallback on block %s with language=%s",
+                        idx,
+                        language,
+                    )
+                    return None
+
+                logger.info(
+                    "Recovered code tool_call via regex fallback on block %s with language=%s",
+                    idx,
+                    language,
+                )
+                return {
+                    "id": f"fallback-tool-call-{idx}",
+                    "type": "function",
+                    "function": {
+                        "name": function_name,
+                        "arguments": json.dumps(
+                            {
+                                "action": "code",
+                                "language": language,
+                                "execute_code": code,
+                            },
+                            ensure_ascii=False,
+                        ),
+                    },
+                }
+
             for idx, match in enumerate(matches):
                 try:
                     parsed = json.loads(match)
                 except json.JSONDecodeError as e:
+                    recovered_tool_call = recover_code_tool_call(match, idx)
+                    if recovered_tool_call is not None:
+                        tool_calls.append(recovered_tool_call)
+                        continue
                     logger.warning(f"Failed to decode fallback tool_call block: {e}; raw={match}")
                     continue
 
@@ -854,6 +953,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                         f"Fallback parser recovered tool_call(s), but none were supported on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}"
                     )
 
+            # Log 检索此部分
             logger.warning(
                 f"LLM response missing supported tool_calls on attempt {attempt + 1}/{EMPTY_TOOL_CALL_RETRY_TIMES}: {response_message}"
             )
@@ -923,6 +1023,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.last_code_result = None
         self.messages = []
         self.pending_tool_calls = []
+        self.qwen_sft_image_hash_map = {}
 
     def debug_print_messages(self):
         """优雅地打印 messages 列表，自动截断 Base64 图片以方便检查装填逻辑。"""

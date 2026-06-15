@@ -1,0 +1,415 @@
+{
+  "app": "chrome",
+  "covered_features": {
+    "Default search engine setting": 0,
+    "Cookie deletion by domain": 0,
+    "Reopen closed tab": 0,
+    "Print page to PDF with margin settings": 0,
+    "Create desktop shortcut for website": 0,
+    "Bookmark bar folder management": 0,
+    "Bookmark bar website URL saving": 0,
+    "Browsing history deletion by domain/keyword": 0,
+    "Chrome profile name/username editing": 0,
+    "Chrome flags/experiments management (chrome://flags)": 0,
+    "Default font size setting": 0,
+    "Auto-delete browsing data on browser close": 0,
+    "Password manager navigation (chrome://password-manager)": 0,
+    "Load unpacked extension (developer mode)": 0,
+    "Appearance mode (light/dark/system) setting": 0,
+    "Startup page / on-startup behavior setting": 0,
+    "Do Not Track setting": 0,
+    "Safe Browsing setting": 0,
+    "Flight search (origin/destination airports and date)": 0,
+    "Web navigation to specific URL (active tab verification)": 0,
+    "Car rental search (location, category, sort, date range)": 0,
+    "Web-based appointment booking form (service type, date/time, personal details)": 0,
+    "Flight filter by purchase type (Miles vs. cash)": 0,
+    "Hotel search (city, check-in/out dates, guests, sort by price)": 0,
+    "Product listing filter navigation (category, brand, price range, gender)": 0,
+    "Car search filter by fuel type, price, distance, and zip code": 0,
+    "Recreation.gov campsite availability search (Next Available dates)": 0,
+    "Product comparison via URL query parameters (multi-model selection)": 0,
+    "Steam store cart management (add DLC/items to cart)": 0,
+    "Weather forecast search (monthly, by city/region)": 0,
+    "Open URL in new Chrome tab": 0,
+    "Open local HTML file in Chrome tab (file:// URL)": 0,
+    "Web search via address bar (Google search query in active tab)": 0,
+    "howlongtoread.com book reading pace lookup": 0,
+    "Web-based extension project scaffolding tool (generate and download extension boilerplate)": 0,
+    "Git repository cloning via browser (navigating to GitHub URL to clone a repo)": 0,
+    "Conda initialization in shell config (via web search/instructions)": 0,
+    "PDF download from web URL": 0,
+    "Web navigation to professor homepage for contact info extraction": 0,
+    "Google Maps business info lookup (address, website, phone) via web search": 0,
+    "Web navigation to arxiv daily paper list (Hugging Face Papers or similar aggregator)": 0,
+    "YAML config file editing (key-value fields via web search/instructions)": 0,
+    "Chrome extension installation from Web Store": 0,
+    "Web search for factual/reference data lookup (conference locations, historical facts)": 0,
+    "Print/save open tabs to PDF with title-based filename to specific directory": 0,
+    "Web search for configuration/tutorial lookup (Vim settings, editor config)": 0,
+    "Save web page content to local .docx file": 0,
+    "Web scraping/lookup of IMDB Top N list via browser": 0,
+    "Web scraping researcher profile data from Google Scholar": 0,
+    "Web search for location/address lookup (Chinese government services)": 0,
+    "Web scraping Python code extraction from Colab/Jupyter notebooks": 0,
+    "Web search for image/landmark identification (reverse image search or visual search)": 0,
+    "LibreOffice extension installation via browser (download and install .oxt)": 0,
+    "GNOME theme installation and application via web (gnome-look.org)": 0,
+    "GitHub repository file download to local directory": 0,
+    "Open multiple specific URLs in Chrome tabs": 0,
+    "Web-based TXT to EPUB conversion tool usage": 0,
+    "DBLP BibTeX export via web search/navigation": 0,
+    "Web search for academic award/paper metadata lookup (ACL Anthology)": 0,
+    "Navigate to a specific URL in the active tab": 0,
+    "Save web page results to local file": 0
+  },
+  "recent_tasks": [],
+  "verification_experience": {
+    "Default search engine setting": [
+      "Read Chrome's Preferences JSON file (path varies by OS/architecture) and inspect `default_search_provider_data.template_url_data.short_name` to verify the active default search engine; use `match_in_list` against accepted name variants since the stored name may differ slightly (e.g., 'Bing' vs 'Microsoft Bing')."
+    ],
+    "Cookie deletion by domain": [
+      "Chrome stores cookies in a SQLite file at a platform-specific path (Linux: ~/.config/google-chrome/Default/Cookies, Windows: LOCALAPPDATA/Google/Chrome/User Data/Default/Cookies, Darwin: ~/Library/Application Support/Google/Chrome/Default/Cookies); query the 'cookies' table and check the host_key column (index 1) to verify domain-specific cookies are absent.",
+      "Use sqlite3 to connect to the Cookies file and SELECT all rows; compare host_key values against target domains using URL/domain comparison helpers to confirm deletion rather than exact string match, since subdomains and leading dots may vary.",
+      "After clearing cookies via Chrome's UI or settings, relaunch Chrome with remote debugging before reading the Cookies file to ensure the SQLite file is flushed and not locked."
+    ],
+    "Reopen closed tab": [
+      "Use CDP via Playwright to enumerate all open tabs across browser contexts; compare the ordered list of tab URLs against expected URLs using a URL-normalizing comparator (e.g., strip trailing slashes, normalize schemes) rather than exact string equality",
+      "The getter connects to Chrome's remote debugging port and collects page.url for every page in every context; verify tab count and URL order both match, since the evaluator uses an ordered list equality check",
+      "When checking 'reopen last closed tab', the restored tab should appear in the open tabs list at the correct position; use are_lists_equal-style ordered comparison rather than set membership"
+    ],
+    "Print page to PDF with margin settings": [
+      "Use PyMuPDF (fitz) to extract text from both the saved PDF and a reference PDF generated from the same URL via Playwright's page.pdf(); compare with fuzz.ratio for fuzzy text similarity rather than exact match.",
+      "The reference PDF is generated with default Playwright margins, so a 'none' margin PDF will have more content per page; text content similarity (fuzz.ratio) is more robust than page count or layout comparison for this feature.",
+      "Check that the output PDF file exists at the expected Desktop path with the browser-default filename (derived from page title); filename correctness is implicitly verified by the vm_file getter succeeding.",
+      "fitz.open() on the result PDF should not raise; an empty or corrupt PDF (e.g., placeholder '%PDF-1.4\\n%EOF') will yield near-zero fuzz similarity score."
+    ],
+    "Create desktop shortcut for website": [
+      "Desktop shortcuts on Linux are .desktop files; parse their 'Name=' field for site name matching (exact, contained-in, or contains checks all count as valid)",
+      "The getter scans the VM desktop path for files with the platform-appropriate extension (.desktop/.lnk/.webloc) and returns their text content keyed by filename",
+      "Matching is case-insensitive and bidirectional (expected in actual, or actual in expected), so evaluators should apply the same flexible substring logic rather than strict equality"
+    ],
+    "Bookmark bar folder management": [
+      "Parse the Chrome Bookmarks JSON file (platform-specific path: ~/.config/google-chrome/Default/Bookmarks on Linux, LOCALAPPDATA on Windows, ~/Library/Application Support/Google/Chrome/Default/Bookmarks on macOS); the 'roots.bookmark_bar.children' list contains entries with 'type' ('folder'/'url') and 'name'/'url' fields — filter by type=='folder' to enumerate bar folders",
+      "To verify folder existence/set equality on the bookmark bar, collect all folder names from bookmark_bar.children where type=='folder' and compare as sets against expected names",
+      "For nested folder contents (URLs inside a named folder), find the folder entry in bookmark_bar.children by name, then inspect its 'children' list for type=='url' entries and their 'url' fields",
+      "Read the Chrome Bookmarks JSON file (OS-specific path) and parse 'roots.bookmark_bar.children' to find folders by type=='folder' and name match.",
+      "Use itertools.product when multiple acceptable URLs exist per slot to check all combinations against the set of bookmarked URLs inside a folder."
+    ],
+    "Bookmark bar website URL saving": [
+      "Parse the Chrome Bookmarks JSON file (at platform-specific paths: Linux ~/.config/google-chrome/Default/Bookmarks, Darwin ~/Library/Application Support/Google/Chrome/Default/Bookmarks, Windows %LOCALAPPDATA%/Google/Chrome/User Data/Default/Bookmarks) and inspect data['roots']['bookmark_bar']['children'] for entries with type=='url', comparing their 'url' fields against expected URLs.",
+      "Use set comparison on collected URLs from bookmark_bar children to handle ordering differences; the bookmark_bar_websites_urls rule pattern checks exact set equality.",
+      "After Chrome actions, relaunch Chrome with --remote-debugging-port before reading the Bookmarks file to ensure the profile is flushed to disk.",
+      "Collect 'url' entries from a folder's 'children' list and compare as a set against expected URLs; the Bookmarks file is plain JSON and can be fetched directly from the VM."
+    ],
+    "Browsing history deletion by domain/keyword": [
+      "Chrome history is stored in a SQLite file at platform-specific paths (Linux: ~/.config/google-chrome/Default/History, Darwin: ~/Library/Application Support/Google/Chrome/Default/History, Windows: USERPROFILE/AppData/Local/Google/Chrome/User Data/Default/History); copy it before querying to avoid lock issues.",
+      "Query the 'urls' table (columns: url, title, last_visit_time) to retrieve history entries; check that no remaining URL contains the target domain keyword to confirm deletion.",
+      "Use keyword-based matching against the url field (not just domain) since Chrome stores full URLs; partial string containment checks are sufficient for domain-level filtering."
+    ],
+    "Chrome profile name/username editing": [
+      "Read the Chrome Preferences JSON file (platform-specific path: ~/.config/google-chrome/Default/Preferences on Linux, LOCALAPPDATA/Google/Chrome/User Data/Default/Preferences on Windows, ~/Library/Application Support/Google/Chrome/Default/Preferences on macOS) and check data['profile']['name'] for the updated value."
+    ],
+    "Chrome flags/experiments management (chrome://flags)": [
+      "Read 'browser.enabled_labs_experiments' from Chrome's 'Local State' JSON file (OS-specific path) to check which flags are enabled/disabled; entries are formatted as 'flag-name@value' so split on '@' to get the flag name",
+      "To verify a flag is disabled (set to Disabled), its name with the disabled variant (e.g., '@2' suffix) should appear in enabled_labs_experiments; absence of a flag means it is at default, not explicitly disabled",
+      "Use the enabled_labs_experiments list comparison carefully: order may matter when using exact equality checks, so prefer membership/subset checks unless order is explicitly required"
+    ],
+    "Default font size setting": [
+      "Read the Chrome Preferences JSON file (path varies by OS/architecture) and inspect `webkit.webprefs.default_font_size`; use a range check (value > 16) rather than an exact value to confirm 'largest' setting was applied",
+      "The Preferences file may not contain the `webkit` key at all if the user never changed font settings, so use nested `.get()` with defaults when parsing",
+      "Font size is stored as an integer under `webkit > webprefs > default_font_size`; related keys `default_fixed_font_size` and `minimum_font_size` are siblings and should not be confused with the target key"
+    ],
+    "Auto-delete browsing data on browser close": [
+      "Read the Chrome Preferences JSON file (platform-specific path) and check for the presence of `profile.default_content_setting_values` key; its existence indicates the auto-delete-on-close setting is enabled.",
+      "Use `json.loads` on the raw Preferences file content and navigate nested keys like `profile` → `default_content_setting_values` to verify content-setting state rather than inspecting UI."
+    ],
+    "Password manager navigation (chrome://password-manager)": [
+      "Use the active URL getter from the accessibility tree (Address and search bar entry) and compare against the chrome://password-manager/passwords URL, stripping query parameters before comparison."
+    ],
+    "Load unpacked extension (developer mode)": [
+      "Read the Chrome Preferences JSON file (path varies by OS/architecture: Linux uses ~/.config/google-chrome/Default/Preferences or snap/chromium/common/chromium/Default/Preferences) and inspect extensions.settings.<id>.path for each installed extension to verify an unpacked extension's source directory is registered.",
+      "The extensions.settings dict in Preferences covers both packed and unpacked extensions; filter by path value rather than extension ID when the target is an unpacked load from a known directory.",
+      "Use json.loads on the raw Preferences file content and iterate all keys under extensions.settings, collecting the 'path' field — then check membership of the expected directory path in that list.",
+      "Parse Chrome's Preferences JSON file (platform-specific path: Linux ~/.config/google-chrome/Default/Preferences, macOS ~/Library/Application Support/Google/Chrome/Default/Preferences, Windows %LOCALAPPDATA%/Google/Chrome/User Data/Default/Preferences) and check extensions.settings.<id>.path for each installed extension to verify the unpacked extension's source directory is present in the list."
+    ],
+    "Appearance mode (light/dark/system) setting": [
+      "Use the `chrome_appearance_mode_ui` getter which navigates to chrome://settings/appearance via CDP and probes shadow DOM prefs/selected controls; it returns 'light', 'dark', or 'system' — prefer this over file-based color scheme checks when the settings page is accessible.",
+      "The pref paths to watch are `prefs.browser.theme.color_scheme` (values: 0=system, 1=light, 2=dark) and `prefs.extensions.theme.system_theme` (0=light, 1=dark); scanning shadow roots for selected/checked elements with inferrable text is a useful fallback.",
+      "Verify both the resulting mode value (match against an allowed set) and that the active tab URL matches chrome://settings/appearance to confirm the user landed on the correct settings page."
+    ],
+    "Startup page / on-startup behavior setting": [
+      "Read the Chrome Preferences JSON file (path varies by OS/platform); check the 'session.restore_on_startup' integer field — value 5 means 'open a specific page or set of pages' (new tab page startup); absence of the 'session' key also indicates a clean/new-tab startup state.",
+      "Use json.loads on the Preferences file content and navigate nested keys with .get() to safely retrieve 'session' → 'restore_on_startup'; compare against known Chrome startup mode codes (e.g., 1=restore last session, 4=new tab, 5=specific pages).",
+      "The Preferences file location is OS-dependent: LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Preferences on Windows, ~/Library/Application Support/Google/Chrome/Default/Preferences on macOS, ~/.config/google-chrome/Default/Preferences on Linux (or snap path on ARM Linux)."
+    ],
+    "Do Not Track setting": [
+      "Read the Chrome Preferences JSON file (platform-specific path) and check the top-level boolean key 'enable_do_not_track'; it is absent or false by default and set to true when enabled."
+    ],
+    "Safe Browsing setting": [
+      "Read the Chrome Preferences JSON file (platform-specific path) and inspect the 'safebrowsing' object; check 'enabled' (standard protection) and/or 'enhanced' (enhanced protection) boolean keys — either being true satisfies the feature being on."
+    ],
+    "Flight search (origin/destination airports and date)": [
+      "Parse the active tab's HTML using CSS class selectors to extract flight search context fields (origin airport code, destination airport code, and selected date); use class-based text extraction via Playwright's query_selector_all for both single-element and direct-text-node (child) patterns",
+      "For date verification, compute the absolute date from a relative label (e.g., 'tomorrow') using the VM's local datetime, then format it with a pattern like '{DoW}, {Month} {Day0D}, {Year}' before comparing against the extracted date string",
+      "Airport codes are extracted as direct text nodes inside separator-containing elements; use childNode TEXT_NODE filtering in Playwright evaluate() to isolate codes from surrounding markup",
+      "Use rule_relativeTime expected getter combined with check_direct_json_object to validate that origin, destination, and formatted date all match simultaneously",
+      "Parse active tab URL query parameters (e.g., fromStation, toStation, departing/date keys) to verify airport codes and date values; use urlparse+parse_qs pattern",
+      "For relative date targets like 'next Monday', compute the expected date dynamically from the VM's current datetime using weekday arithmetic rather than hardcoding; the evaluator uses (6 - now.weekday()) + 1 days for next Monday",
+      "Airport codes may accept multiple valid values (e.g., a city code like STO and a specific airport code like ARN for the same city); use expect_in_result list membership check",
+      "Date format in URL params is typically YYYY-MM-DD; verify zero-padded month and day fields",
+      "Use Playwright to query CSS class selectors on the active tab to extract flight context info such as origin/destination airport codes and selected date; compare extracted values against dynamically computed absolute dates derived from relative time expressions (e.g., '5th next month') using the VM's local datetime",
+      "For date verification, apply time-format templates like '{DoW}, {Month} {Day0D}, {Year}' to the computed absolute date and compare against the rendered date string in the page",
+      "Airport codes appear as direct text nodes inside separator-containing elements; use childNode TEXT_NODE filtering via Playwright's element.evaluate() to extract them cleanly without picking up child element text",
+      "Parse active tab URL query parameters (e.g., originIata, destinationIata, tpStartDate, isReturn, tpAdults) using urlparse+parse_qs to verify flight search submissions.",
+      "For relative date assertions (e.g., '10th next month'), resolve the absolute date at evaluation time using VM local datetime, then compare against the URL's date parameter formatted as YYYY-MM-DD.",
+      "One-way vs. round-trip is encoded as a boolean-string URL parameter (e.g., isReturn=false); check this alongside passenger counts (tpAdults, tpTeens, tpChildren)."
+    ],
+    "Web navigation to specific URL (active tab verification)": [
+      "Use get_active_tab_info with CDP/Playwright to retrieve the current active tab URL, then compare with compare_urls for flexible URL matching (handles trailing slashes, query params, etc.)",
+      "The active tab URL is obtained from the accessibility tree first, then the page is reloaded via Playwright for content/title extraction — be aware redirects or login walls can change the final URL",
+      "For URL-match tasks, the is_expected_active_tab evaluator with rule type 'url' is sufficient; no need to inspect page content unless the task requires verifying on-page state",
+      "Use `get_active_url_from_accessTree` or `get_active_tab_info` to retrieve the current tab's URL, then apply `re.search` with one or more pattern strings against the URL; all patterns must match for a passing score",
+      "The active tab URL getter may reload the page via Playwright CDP connection, so verify the target URL does not redirect or require auth that would change the final URL",
+      "Use `is_expected_url_pattern_match` with a list of regex pattern strings in `rules['expected']`; every pattern in the list must match (AND logic) for score 1.0",
+      "Use active_tab_info getter with Playwright CDP connection to retrieve the final URL after navigation; apply regex pattern matching against the active tab's URL field to confirm the correct page was reached",
+      "The active_tab_info getter reloads the URL found in the accessibility tree, so verify the reloaded URL matches expected patterns rather than relying on page title or content alone",
+      "Use is_expected_url_pattern_match with a list of regex substrings that must all appear in the final URL; this handles redirects and URL normalization automatically",
+      "Use the accessibility tree to extract the active tab URL from the Address and search bar entry node; compare with expected URL using a URL comparison utility that handles trailing slashes and minor normalization differences",
+      "The goto_prefix config key prepends a scheme to the partial URL read from the accessibility tree, so ensure the prefix matches the expected URL scheme when constructing the full URL for comparison",
+      "Use get_active_url_from_accessTree with a goto_prefix to reconstruct the full URL from the accessibility tree's Address-and-search-bar entry, then apply regex pattern matching against expected URL patterns to verify the active tab landed on the correct page.",
+      "Use get_active_url_from_accessTree with a goto_prefix to reconstruct the full URL from the accessibility tree's address bar entry; prepend the prefix since the raw text lacks the scheme.",
+      "Apply is_expected_url_pattern_match with regex patterns to validate the active tab URL; supports multiple acceptable URL variants (e.g., different page sections via anchors) combined with 'or' conjunction.",
+      "When multiple valid destination URLs exist (e.g., a drug info page with a #side-effects anchor vs. a dedicated side-effects subpage), enumerate all acceptable regex patterns and treat any single match as success.",
+      "Use the accessibility tree to extract the active tab URL from the Chrome address bar entry node; prepend the appropriate prefix (https://www.) before comparison",
+      "When multiple valid destination URLs are acceptable, use a disjunctive (OR) check across all expected URLs with compare_urls for prefix/trailing-slash normalization",
+      "Use get_active_url_from_accessTree with a goto_prefix to reconstruct the full URL from the accessibility tree's Address-and-search-bar entry, then apply regex pattern matching against expected URL substrings (e.g., query parameters) via is_expected_url_pattern_match",
+      "When verifying navigation to filtered/faceted pages, match against URL query parameter patterns rather than exact full URLs, since base domains and path prefixes may vary",
+      "Use the accessibility tree to extract the active tab URL from the Address and search bar entry element; compare with expected URL using compare_urls for normalization",
+      "The goto_prefix config key prepends the scheme to the URL text extracted from the accessibility tree, since the tree omits the scheme",
+      "is_expected_active_tab with match_type 'url' returns 1.0 only on exact URL match after normalization; partial path matches score 0",
+      "Use Chrome's accessibility tree or window title to confirm the active tab URL matches the target domain after navigation."
+    ],
+    "Car rental search (location, category, sort, date range)": [
+      "Parse active tab URL query parameters using urlparse+parse_qs; car rental sites encode location, car category, sort order, and pickup/dropoff dates as separate query params.",
+      "For relative date ranges (e.g., next Monday to next Friday), compute absolute dates using weekday arithmetic in the evaluator's timezone (e.g., Europe/Zurich) and compare split day/month/year params individually.",
+      "Car category and sort-order values are typically uppercase or lowercase enum strings in the URL (e.g., 'large', 'PRICE'); exact string match is required.",
+      "Location names may use locale-specific characters (e.g., 'Zürich' not 'Zurich'); verify the URL-decoded value matches the accented form.",
+      "Verify the active tab URL contains the expected path fragment (e.g., reservation#/vehicles) using regex pattern matching on the URL string from the accessibility tree",
+      "Extract pickup/dropoff location and date/time fields from the results page using CSS class selectors (class_multiObject) to get ordered text content of location-info and day-time-info elements",
+      "Verify sort order selection by extracting the active sort control's text via XPath and comparing to the expected sort label string",
+      "Date fields use relative time resolution (e.g., '10th next month', '11th next month') — the evaluator converts these to absolute dates at runtime using VM local time, then formats them with patterns like '{DoW}, {Month} {Day0D}, 12:00 PM' before comparison",
+      "Location text content may include significant whitespace/newlines from the DOM; use substring/contains matching rather than exact equality when the expected value includes trailing whitespace or nested element text"
+    ],
+    "Web-based appointment booking form (service type, date/time, personal details)": [
+      "Use active_tab_info + is_expected_url_pattern_match to confirm the browser is on the correct booking page URL before inspecting form state.",
+      "Use active_tab_html_parse with category='class' and class_multiObject_only_child to extract selected service type and appointment time slot text from DOM elements by CSS class name and child h3 tag.",
+      "Use active_tab_html_parse with category='input' and inputObject (full XPath → field key) to read current values of text input fields (e.g., name, email); input_value() is used rather than text_content() for form inputs.",
+      "For relative date verification (e.g., 'first Monday N months later'), the evaluator computes the absolute date at runtime using VM local time; the expected time string uses format tokens like {MonthFull} {Day0D} that are resolved before comparison—verify the formatted string matches exactly including AM/PM and zero-padded day.",
+      "check_direct_json_object performs exact string equality by default; ensure extracted input values are stripped of whitespace before comparison."
+    ],
+    "Flight filter by purchase type (Miles vs. cash)": [
+      "The active tab's currently selected filter/tab can be read via a CSS class that marks the active tab element (e.g., a class suffix like '--active'); extract its text content and compare against the expected filter label such as 'Miles'",
+      "Use class-based Playwright selectors to find the active tab among a tab group; the text content of the active tab element directly reflects the selected purchase-type filter"
+    ],
+    "Hotel search (city, check-in/out dates, guests, sort by price)": [
+      "Use xpath-based active_tab_html_parse to extract check-in/check-out button text, destination header, rooms/guests button text, and sort button label from the hotel search results page",
+      "Date fields require relative-time resolution (rule_relativeTime with timezone) before comparison; the formatted date string pattern uses DoW/Month/Day0D tokens",
+      "Guest count and room count are embedded in a single button's text content; extract and compare as a combined string",
+      "Sort order is verified by checking the aria-label of the active sort button and the visible label text within it",
+      "The evaluator uses 'or' conjunction across two xpathObject variants to handle different DOM structures across site versions"
+    ],
+    "Product listing filter navigation (category, brand, price range, gender)": [
+      "Use the 'class&url' category in active_tab_html_parse to simultaneously verify active filter chips/labels via CSS class text content and confirm filter parameters are encoded in the active tab URL; both checks must pass together.",
+      "When verifying multi-filter pages, use class_multiObject with a list of expected filter label strings and check is_other_exist=false to ensure no unexpected filters are applied.",
+      "URL-based filter verification is case-insensitive; the getter lowercases both the URL and the expected keys before comparison, so filter terms like 'over $60' or 'Nike' should be checked in lowercase form.",
+      "Filter label elements often use a specific CSS class (e.g., 'filter-selector-link'); inspect the page DOM to identify the correct class name for active filter badges before writing the config.",
+      "Use active_tab_url_parse to verify search query parameters (e.g., 'q') contain expected product keywords",
+      "Use active_tab_html_parse with class_multiObject_search_exist to verify that specific filter chip/badge elements (by CSS class) contain exactly the expected filter labels and no unexpected extras; the 'is_other_exist' flag checks for absence of additional filter values not in the expected set",
+      "CSS class names for active filter chips on shopping/search result pages can be identified via browser DevTools and used as selectors in class_multiObject_search_exist",
+      "When verifying filters are applied, check both that expected filter labels are present (True) and that no other filters are active (is_other_exist: false) to ensure precision",
+      "Use url_path_parse / get_macys_product_url_parse getter to extract structured filter keys from the active tab URL; compare parsed key-value pairs against expected filter state using check_direct_json_object",
+      "URL-encoded filter parameters (e.g., size, discount range, sleeve type, category) are parsed into a flat JSON object; verify boolean presence flags and string-valued filters like size codes or discount thresholds separately",
+      "Discount/sale filters are typically encoded as percentage-range strings in the URL path; check the exact token format (e.g., '50_PERCENT_ off & more') rather than numeric comparison",
+      "Size filters for clothing may use separate keys for regular vs. plus sizing; confirm the correct size-dimension key is populated when verifying a size selection",
+      "Use Playwright's class-based selectors to extract breadcrumb/filter chip text and sort-selector text from the active tab; verify both DOM element content and URL query parameters reflect the applied filters",
+      "For sort-order verification, check both the selected sort UI element text (e.g., via a dropdown class) and URL parameters (e.g., S=4 for price-low-high) as dual confirmation strategies",
+      "The 'class&url' category getter combines CSS class text extraction with URL substring matching; breadcrumb items are extracted via li elements under a breadcrumb class, and sort selection via a selector class",
+      "When checking that no unexpected filter categories are active, use the is_other_exist pattern: collect all rendered filter/breadcrumb texts and flag any not in the expected list"
+    ],
+    "Car search filter by fuel type, price, distance, and zip code": [
+      "Parse active tab URL query parameters using urlparse+parse_qs to extract filter keys like price max, distance, zip, and fuel type slug; compare extracted string values against expected filter values.",
+      "URL-encoded array parameters (e.g., 'fuel_slugs[]') are extracted as single string values via parse_qs with [0] indexing; verify the slug value matches the fuel type identifier used by the site (e.g., 'electric')."
+    ],
+    "Recreation.gov campsite availability search (Next Available dates)": [
+      "Use Playwright to navigate to recreation.gov, search for a campground by name, open its detail page, click the 'next-available' button, then extract text from elements with class 'camp-sortable-column-header' by index to verify the correct availability column header is displayed.",
+      "The expected value is dynamically fetched by a reference getter that performs the same navigation flow, so comparison is between two live extractions rather than a hardcoded string — handle '__EVALUATION_FAILED__' sentinel values as evaluation failure (score 0).",
+      "When querying elements by CSS class on recreation.gov pages, use query_selector_all with the dot-prefixed class name and access by integer index; the page may require waiting for dynamic content to load after clicking navigation buttons."
+    ],
+    "Product comparison via URL query parameters (multi-model selection)": [
+      "Parse the active tab URL's query parameters using urlparse+parse_qs; comma-separated list values in a single query param can be split and compared as an order-independent set against expected model slugs.",
+      "Use active_tab_url_parse getter with split_list=true and ignore_list_order=true when verifying multi-item comparison selections encoded as comma-delimited query parameter values."
+    ],
+    "Steam store cart management (add DLC/items to cart)": [
+      "Navigate directly to the Steam cart URL and check page HTML content for expected item name strings; presence in raw content is sufficient since Steam cart renders item names in the DOM.",
+      "Use Playwright's `page.goto` with `wait_until='networkidle'` when loading Steam cart pages to ensure dynamic cart content is fully rendered before reading `page.content()`.",
+      "Steam DLC items appear as named entries in the cart page content; substring search on the full HTML is a reliable check without needing to parse specific DOM elements."
+    ],
+    "Weather forecast search (monthly, by city/region)": [
+      "Verify the active tab URL contains the target city name as a path segment using regex search on the accessibility-tree-derived URL.",
+      "Extract a dash-separated URL path segment (e.g., the second-to-last segment) and compare it against a time-derived pattern like '{month}-weather', where the month is computed from the current VM datetime using relative-time resolution."
+    ],
+    "Open URL in new Chrome tab": [
+      "Use Playwright's connect_over_cdp to attach to the running Chrome instance and enumerate all pages across all browser contexts; compare each page's url property against expected URLs using a URL-normalizing comparator (e.g., strip trailing slashes, normalize scheme) rather than exact string equality",
+      "When checking that a specific URL is open in a new tab (not just the existing tab), verify the full list of open tab URLs matches the expected ordered or unordered set, so both the presence of the new tab and the absence of unexpected tabs can be confirmed",
+      "The get_open_tabs_info pattern—connecting via CDP, iterating context.pages, collecting title+url—is the standard getter; pair it with is_expected_tabs using match_type='url' and an expected urls list for straightforward tab-set assertions"
+    ],
+    "Open local HTML file in Chrome tab (file:// URL)": [
+      "Use Playwright CDP connection to enumerate open tabs and check that a tab with a file:// URL matching the expected local path is present; compare tab URLs with a URL-normalizing comparator to handle encoding differences.",
+      "When verifying a locally opened HTML file, retrieve the file from the VM and compare it element-by-element against a reference HTML using BeautifulSoup's recursive child generator; check tag names, stripped text content, and attributes (optionally ignoring specific attributes like 'sdnum' that vary by export tool).",
+      "The compare_htmls pattern (BeautifulSoup + lxml parser, recursive child traversal) is the right strategy for structural HTML equality; attribute-level diffs are the most common failure mode for spreadsheet-exported HTML."
+    ],
+    "Web search via address bar (Google search query in active tab)": [
+      "Use active_tab_info getter and match the active tab URL against a Google search pattern (google.com/search?q=...) with a regex; the URL must contain the expected query term as the q parameter value."
+    ],
+    "howlongtoread.com book reading pace lookup": [
+      "When verifying results derived from howlongtoread.com, compare the final docx text content against a gold docx using python-docx paragraph extraction; use fuzz.ratio or exact string match after collapsing whitespace."
+    ],
+    "Web-based extension project scaffolding tool (generate and download extension boilerplate)": [
+      "Use check_json on the manifest.json to verify nested keys like background.scripts, browser_action.default_popup, browser_action.default_icon, browser_action.default_title, name, and version using eq method rules.",
+      "Use diff_text_file with difflib.SequenceMatcher to compare generated JS/HTML/CSS scaffold files against reference cloud files; a ratio close to 1.0 indicates correct boilerplate generation.",
+      "Verify the unzipped directory structure exists at the expected filesystem path by checking for the presence of subdirectories (e.g., browserAction/) and files within them."
+    ],
+    "Git repository cloning via browser (navigating to GitHub URL to clone a repo)": [
+      "Verify cloned repo contents by running `ls -R` on the cloned directory and comparing the file/directory tree against a known-good reference using text file comparison; `compare_text_file` does exact string matching so whitespace and ordering matter.",
+      "Use postconfig shell commands to capture filesystem state into a log file, then compare against a cloud-hosted gold file — this pattern works for any task where the result is a directory structure rather than a UI state.",
+      "Use vm_command_error getter to run a Python import or CLI command that exercises the installed package/repo; success is indicated by absence of 'Error:' in stderr rather than checking stdout content.",
+      "When verifying environment setup tasks (pip install, git clone + install), run the actual import or entry-point command via execute endpoint and check that the error output is empty or lacks error keywords."
+    ],
+    "Conda initialization in shell config (via web search/instructions)": [
+      "Check ~/.bashrc (or ~/.bash_profile) for the presence of a 'conda initialize' block using grep; vm_command_line getter with a grep command returning 1/0 is the standard pattern for verifying shell config modifications."
+    ],
+    "PDF download from web URL": [
+      "Use fitz (PyMuPDF) to extract text from both the result and reference PDFs, then apply fuzz.ratio for similarity scoring — exact byte comparison is unreliable for PDFs from different download paths.",
+      "compare_pdfs extracts full text across all pages and uses fuzzy string ratio, so partial downloads or re-encoded PDFs still score proportionally rather than failing outright.",
+      "Use compare_archive with file_type='pdf' and compare_pdfs to verify downloaded PDFs match expected files; filenames must match exactly (sorted list comparison), so preserve original filenames from the source website",
+      "compare_pdfs is the core comparison function for PDF content equivalence; it handles binary/structural comparison of PDF files within archive directories",
+      "When verifying a batch of downloaded files, the evaluator checks both filename set equality and per-file content equality, so both correct filenames and correct content are required for full score"
+    ],
+    "Web navigation to professor homepage for contact info extraction": [
+      "Use openpyxl/pandas to load the result xlsx and compare sheet data cell-by-cell against a gold xlsx; the compare_table 'sheet_data' rule with pd.DataFrame.equals() is the primary metric",
+      "When verifying scraped/extracted text (e.g., email addresses) entered into spreadsheet cells, load both result and expected xlsx with pandas and compare the relevant column values directly",
+      "Email addresses found on professor homepages may appear in various HTML elements; verify the extracted value matches expected format (user@domain) rather than checking DOM structure",
+      "Personal academic homepages often have multiple valid URLs (institutional, personal domain, LinkedIn, Wikipedia); store all acceptable variants as a list and use set-intersection or product-combination matching rather than exact single-URL equality."
+    ],
+    "Google Maps business info lookup (address, website, phone) via web search": [
+      "Use openpyxl/pandas to read the result xlsx and compare cell ranges against a gold file; address fields benefit from fuzzy_match (fuzz.ratio) with street abbreviation normalization (e.g., Rd→Road, St→Street) and ignore_case; phone fields benefit from an 'includes' check after stripping leading characters like '+' and ignoring punctuation chars like spaces, dashes, and parentheses; exact_match is appropriate for stable fields like restaurant names.",
+      "When verifying phone numbers scraped from Maps, strip all non-digit characters from both result and expected before comparing, as formatting varies widely (country code presence, separators).",
+      "For address fuzzy matching, normalize common abbreviations before scoring to avoid false negatives from equivalent representations."
+    ],
+    "Web navigation to arxiv daily paper list (Hugging Face Papers or similar aggregator)": [
+      "Use compare_table with sheet_fuzzy rules: exact_match for URL/arXiv-ID columns and fuzzy_match (threshold ~90, ignore_case) for paper title columns to tolerate minor OCR/copy differences.",
+      "When checking scraped paper metadata entered into a spreadsheet, read cell values via openpyxl or pandas and compare against a gold xlsx downloaded from a cloud URL; fuzz.ratio is useful for title strings that may have minor whitespace or punctuation differences.",
+      "Use python-docx Document() to extract paragraph texts from .docx files; compare_docx_files supports ignore_blanks, ignore_case, ignore_order options — normalize whitespace with re.sub before equality checks",
+      "When verifying scraped paper metadata in .docx, download the gold reference file from a cloud URL and compare paragraph-level text; fuzz.ratio can handle minor formatting differences if fuzzy_match is enabled",
+      "The ignore_order=True option sorts both paragraph lists before comparison, so entry order in the document does not matter — useful when scraping lists where order may vary"
+    ],
+    "YAML config file editing (key-value fields via web search/instructions)": [
+      "Use yaml.safe_load to parse the edited YAML file and traverse nested keys (e.g., top-level key vs. nested dict like author.name) to verify values; check_json with is_yaml=True supports both flat and nested key paths via a list of keys."
+    ],
+    "Chrome extension installation from Web Store": [
+      "Installed extensions are recorded in the Chrome Preferences JSON file under extensions.settings.<id>.manifest.name; read this file to enumerate all installed extension names without needing UI inspection.",
+      "When comparing expected vs. installed extension names, account for alias/variant names (e.g., 'Zoom Chrome Extension' vs. 'Zoom for Google Chrome') by canonicalizing before set comparison.",
+      "Use a subset check (expected ⊆ installed) rather than exact equality, since other extensions may already be present on the system."
+    ],
+    "Web search for factual/reference data lookup (conference locations, historical facts)": [
+      "When verifying web-searched factual data filled into a spreadsheet, load the workbook with openpyxl and read the target cell range; compare each cell value using substring/containment checks rather than exact equality to handle alternate city name spellings or accents (e.g., Montreal vs Montréal)",
+      "Use a list-of-accepted-alternatives per entry when a location has multiple valid names (e.g., city vs metro area vs abbreviation), and check that at least one alternative is a substring of the actual cell value",
+      "Iterate cells in order and short-circuit on first mismatch to pinpoint which row/conference year is wrong"
+    ],
+    "Print/save open tabs to PDF with title-based filename to specific directory": [
+      "Use PyMuPDF (fitz) to verify PDF files exist in the target directory and check their content/metadata; the script checks for presence of correctly-named PDF files derived from page titles of open tabs.",
+      "PDF filename correctness can be verified by opening each file with fitz and inspecting metadata or text content, or simply checking os.path.exists for expected title-derived filenames in the target folder.",
+      "When verifying multiple PDFs (one per open tab), the evaluator script typically returns a list of booleans (one per expected file), so check that all entries are 1."
+    ],
+    "Web search for configuration/tutorial lookup (Vim settings, editor config)": [
+      "Verify the resulting config file (e.g., ~/.vimrc) contains the relevant setting directive by running a shell command on the VM and checking its output string; use vm_command_line result getter with a shell script that greps or inspects the file and emits a known sentinel string on success."
+    ],
+    "Save web page content to local .docx file": [
+      "Use `compare_docx_files` with `fuzzy_match=True` to tolerate minor formatting differences when comparing paragraph text extracted via `python-docx` Document.paragraphs.",
+      "Paragraph text is extracted as plain strings; whitespace normalization (collapsing runs of whitespace) is applied before fuzzy ratio comparison via `fuzz.ratio`.",
+      "When evaluating partial-page content capture (e.g., a specific section range), check that the docx paragraphs collectively cover the expected section text without including out-of-scope sections like 'resources'.",
+      "The `need_rule_judge` flag signals that LLM/rule-based judgment may supplement metric scoring for borderline similarity scores."
+    ],
+    "Web scraping/lookup of IMDB Top N list via browser": [
+      "Use openpyxl/pandas to load the result xlsx and check that a named sheet (e.g. 'unseen_movies') exists with the correct headers matching the source sheet; compare sheet data with pd.DataFrame.equals() against a gold file",
+      "When verifying ranked/filtered sheet data, use the 'sheet_data' rule with sheet name indexing (RN<name> / EN<name>) to compare result vs expected DataFrames including row order",
+      "Cross-referencing web-scraped data (IMDB rankings) against a local spreadsheet requires verifying both correct filtering (release year < threshold, not in watched list) and correct sort order (rank high to low)"
+    ],
+    "Web scraping researcher profile data from Google Scholar": [
+      "Use CSS selectors on Google Scholar profile pages to extract name (#gsc_prf_in), citation stats (#gsc_rsb_st rows), top paper title (#gsc_a_b tr:nth-child(1) .gsc_a_t a), and paper URL (click through to #gsc_oci_title_gg a href); these selectors are stable across profiles",
+      "When verifying scraped data written to xlsx, read the file with pandas, extract the last row as a list of strings, and compare element-wise against live-fetched or backup values using case-insensitive string matching",
+      "Citation counts and h-index/i10-index values on Google Scholar change over time; prefer comparing against dynamically fetched values rather than hardcoded constants, or accept backup values as fallback",
+      "The 'click_and_attribute' pattern (click a paper link then extract href from the resulting page) is needed to get the canonical PDF/paper URL, which differs from the Google Scholar internal link"
+    ],
+    "Web search for location/address lookup (Chinese government services)": [
+      "Use python-docx Document().paragraphs to extract all text, splitting on whitespace to get individual tokens; apply fuzzy string matching (e.g., fuzz.ratio) against a list of known valid address strings rather than exact equality, since scraped addresses may vary slightly in prefix (with or without city/district prefix)",
+      "The fuzzy_place_math metric scores by summing per-token max fuzzy scores divided by the expected count (5); evaluators should check that at least 5 sufficiently matching address tokens appear in the document",
+      "Address variants with and without city/district prefix (e.g., '深圳市福田区...' vs '福田区...') should both be accepted; build expected lists covering both forms",
+      "When verifying Chinese-language address content saved to .docx, use fuzz.ratio threshold ~0.2 to filter noise tokens, and ensure the document paragraphs are not empty after stripping whitespace"
+    ],
+    "Web scraping Python code extraction from Colab/Jupyter notebooks": [
+      "Use compare_python_pure_text-style normalization: expand tabs to 4 spaces, strip trailing whitespace, remove empty lines, skip only shebang/encoding headers at file start — then compare full text equality against a gold file.",
+      "When extracting code cells from notebooks, include all Python statements and # comments but exclude triple-quoted markdown docstrings and notebook-level metadata/file headers; the distinction between # comments (keep) and \"\"\"...\"\"\" markdown strings (exclude) is the key correctness criterion.",
+      "Fetch the gold reference from a cloud URL and compare normalized content; exact line-by-line equality after normalization is required (score 1.0 or 0.0, no partial credit)."
+    ],
+    "Web search for image/landmark identification (reverse image search or visual search)": [
+      "Evaluate by running a script that hashes files in the target directory and checks that each hash maps to an accepted name from a predefined allowlist; use hashlib (e.g., SHA-256) on file contents to identify which original image got which new name regardless of filename order",
+      "The evaluator script returns a JSON object keyed by file content hash with the current filename as value; use check_direct_json_object with expect_in_result=true and a list of accepted name variants per hash",
+      "Accept multiple valid name forms (common name, full name, local name, with/without extension, mixed case) by providing all variants as a list for each hash key"
+    ],
+    "LibreOffice extension installation via browser (download and install .oxt)": [
+      "Verify the .oxt file appears under the LibreOffice uno_packages cache directory by grepping recursively for the extension identifier pattern (e.g., the .oxt filename) in ~/.config/libreoffice/4/user/uno_packages/cache/uno_packages/",
+      "Check system package installation of Java (openjdk jre/jdk) via 'apt list --installed' output, since some LibreOffice extensions require a JRE; use regex like openjdk-\\d+-(jre|jdk) to match any version",
+      "Use check_list with regex-based expect rules against command stdout captured to cache files; this handles both directory grep output and apt list output uniformly"
+    ],
+    "GNOME theme installation and application via web (gnome-look.org)": [
+      "Use `gsettings get org.gnome.desktop.interface gtk-theme` to verify the active GTK theme; check its stdout for the expected theme name string using regex matching."
+    ],
+    "GitHub repository file download to local directory": [
+      "Use diff_text_file (difflib.SequenceMatcher ratio) to compare the downloaded file against a reference; a ratio near 1.0 indicates correct content.",
+      "Check that the file exists at the expected VM path (specific subdirectory of Documents or similar collection folder) using vm_file getter before content comparison.",
+      "When the task involves identifying the 'next' file not yet downloaded, verify by inspecting existing files in the target directory and matching against the repository's file listing order."
+    ],
+    "Open multiple specific URLs in Chrome tabs": [
+      "Use `is_expected_tabs` with `open_tabs_info` getter; it checks exact URL list equality via `compare_urls`, so tab order and count both matter — verify the full ordered list matches expected URLs."
+    ],
+    "Web-based TXT to EPUB conversion tool usage": [
+      "Use compare_epub / process_epub + diff_text_file pattern: unzip both result and reference .epub files, extract text content from each chapter/item in the spine, and compute a similarity score averaged across matched files — a score near 1.0 indicates correct content conversion.",
+      "Accept case/underscore variants of the output filename (e.g., 'Title.epub', 'Title_.epub', 'title_.epub') by checking multiple candidate paths with an OR conjunction.",
+      "EPUB files are ZIP archives; use Python's zipfile module to inspect internal structure (OPF manifest, spine order, HTML/XHTML content files) when verifying chapter count or ordering beyond plain text diff."
+    ],
+    "DBLP BibTeX export via web search/navigation": [
+      "Use compare_text_file with ignore_blanks=True to normalize whitespace differences; exact BibTeX field order and values must match the gold file after collapsing all whitespace runs",
+      "When the task requires preferring published-venue BibTeX over arXiv versions, verify that @article/@inproceedings entries are used instead of @misc with eprint fields for papers that have a published venue on DBLP",
+      "Parse .bib files with a BibTeX parser (e.g., bibtexparser) to compare entry keys, entry types, and field values structurally rather than relying solely on string equality, which helps diagnose partial matches",
+      "DBLP search URLs follow the pattern https://dblp.org/search?q=<title>; BibTeX download links are available per-entry; verify the correct venue entry is selected when multiple versions (arXiv vs. conference/journal) exist"
+    ],
+    "Web search for academic award/paper metadata lookup (ACL Anthology)": [
+      "Use openpyxl/pandas to load the result xlsx and compare sheet data cell-by-cell against a gold xlsx; the compare_table metric with sheet_data rule does a DataFrame.equals() check, so exact string matching of titles, author lists, URLs, and year values is required.",
+      "ACL Anthology PDF links follow a predictable URL pattern (aclanthology.org/<paper-id>.pdf); verify that stored URLs are aclanthology.org-based, not arxiv or other mirrors.",
+      "Author lists must be comma-separated with no extra delimiters; check the author cell string format directly rather than splitting and comparing sets, since order and separator matter for exact match.",
+      "Row ordering is part of the data comparison—years must be in descending order; verify by reading the year column values sequentially from the DataFrame."
+    ],
+    "Navigate to a specific URL in the active tab": [
+      "Use the accessibility tree to extract the active tab's URL from the Address and search bar entry node; the getter returns a string URL that can be checked with regex pattern matching against expected substrings.",
+      "When verifying URL correctness, apply re.search for each required substring/pattern independently so partial URL matches (query params, path segments) can be validated separately."
+    ],
+    "Save web page results to local file": [
+      "Use file_contains-style checks: read the saved text file and verify that expected metric label strings (e.g., category names or headings scraped from the page) are present; no need to validate exact numeric values.",
+      "Check that the output file exists at the specified path on the VM using get_vm_file; a None return indicates the file was not created or the directory was missing.",
+      "For structured text output (metric name + value per line), verify format by splitting lines and checking that each non-empty line contains at least two whitespace-separated tokens."
+    ]
+  },
+  "co_use_counts": {}
+}

@@ -2,7 +2,7 @@ import gradio as gr
 import json
 import os
 import math
-from PIL import Image
+from PIL import Image, ImageDraw
 from transformers import AutoTokenizer
 
 # 全局 tokenizer，延迟加载
@@ -68,6 +68,88 @@ def count_text_tokens(messages):
     except Exception as e:
         print(f"Token counting error: {e}")
         return 0
+
+
+def count_image_refs(content):
+    if isinstance(content, str):
+        return content.count("<image>")
+    if isinstance(content, list):
+        total = 0
+        for item in content:
+            if isinstance(item, dict):
+                item_type = item.get("type")
+                if item_type in ["image", "image_url"]:
+                    total += 1
+                text = item.get("text", "")
+                if isinstance(text, str):
+                    total += text.count("<image>")
+            elif isinstance(item, str):
+                total += item.count("<image>")
+        return total
+    return 0
+
+def find_coordinate(obj):
+    if isinstance(obj, dict):
+        coord = obj.get("coordinate")
+        if isinstance(coord, (list, tuple)) and len(coord) >= 2:
+            try:
+                return float(coord[0]), float(coord[1])
+            except (TypeError, ValueError):
+                return None
+        for value in obj.values():
+            found = find_coordinate(value)
+            if found is not None:
+                return found
+    elif isinstance(obj, list):
+        for item in obj:
+            found = find_coordinate(item)
+            if found is not None:
+                return found
+    return None
+
+def extract_tool_call_coordinate(content):
+    if isinstance(content, str):
+        try:
+            content = json.loads(content)
+        except json.JSONDecodeError:
+            return None
+    return find_coordinate(content)
+
+def get_coordinates_by_image(conversations, image_count):
+    coordinates_by_image = {i: [] for i in range(image_count)}
+    current_image_idx = -1
+
+    for step in conversations:
+        role = step.get("from", step.get("role", "unknown"))
+        content = step.get("value", step.get("content", ""))
+
+        image_refs = count_image_refs(content)
+        if image_refs:
+            current_image_idx = min(image_count - 1, current_image_idx + image_refs)
+
+        if role == "tool_call" and 0 <= current_image_idx < image_count:
+            coordinate = extract_tool_call_coordinate(content)
+            if coordinate is not None:
+                coordinates_by_image[current_image_idx].append(coordinate)
+
+    return coordinates_by_image
+
+def draw_coordinate_crosses(image_path, coordinates):
+    with Image.open(image_path) as img:
+        marked = img.convert("RGB")
+
+    draw = ImageDraw.Draw(marked)
+    width, height = marked.size
+    size = max(8, min(width, height) // 50)
+    line_width = max(3, size // 4)
+
+    for x_norm, y_norm in coordinates:
+        x = round(max(0, min(1000, x_norm)) / 1000 * (width - 1))
+        y = round(max(0, min(1000, y_norm)) / 1000 * (height - 1))
+        draw.line((x - size, y - size, x + size, y + size), fill="red", width=line_width)
+        draw.line((x - size, y + size, x + size, y - size), fill="red", width=line_width)
+
+    return marked
 
 def load_data(file_path):
     if not file_path or not os.path.exists(file_path):
@@ -139,6 +221,19 @@ def format_sample(sample_idx, data):
         if os.path.exists(path):
             images.append(path)
             
+    conversations = sample.get("conversations", [])
+    if not conversations and "messages" in sample:
+        conversations = sample["messages"]
+
+    coordinates_by_image = get_coordinates_by_image(conversations, len(images))
+    display_images = []
+    for idx, path in enumerate(images):
+        coordinates = coordinates_by_image.get(idx, [])
+        if coordinates:
+            display_images.append(draw_coordinate_crosses(path, coordinates))
+        else:
+            display_images.append(path)
+
     # 计算图片 token
     try:
         image_token_count = 0
@@ -161,10 +256,6 @@ def format_sample(sample_idx, data):
 
     # 格式化对话
     conv_html = "<div style='display: flex; flex-direction: column; gap: 15px;'>"
-
-    conversations = sample.get("conversations", [])
-    if not conversations and "messages" in sample:
-        conversations = sample["messages"]
 
     # 计算 Token
     text_token_count = count_text_tokens(conversations)
@@ -218,7 +309,7 @@ def format_sample(sample_idx, data):
 
     conv_html += "</div>"
 
-    return conv_html, images, token_count, text_token_count, image_token_count
+    return conv_html, display_images, token_count, text_token_count, image_token_count
 
 def update_view(file_path, sample_idx):
     data, msg = load_data(file_path)

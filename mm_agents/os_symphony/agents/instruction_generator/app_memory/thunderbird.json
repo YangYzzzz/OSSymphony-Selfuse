@@ -1,0 +1,156 @@
+{
+  "app": "thunderbird",
+  "covered_features": {
+    "Open hyperlink from email in browser": 0,
+    "Export contacts to CSV": 0,
+    "Extract email metadata (sender, subject, CC, attachments) from a mail folder": 0,
+    "Open local HTML file in browser tab": 0,
+    "HTML file structure comparison": 0,
+    "Add recipients to email To field (compose window)": 0,
+    "Extract email attachment (PDF) to filesystem": 0,
+    "Append record to spreadsheet (LibreOffice Calc / xlsx)": 0,
+    "Extract image from email attachment (docx/doc file)": 0,
+    "Set desktop wallpaper/background image": 0,
+    "Extract email content (answer key/data) and populate spreadsheet": 0,
+    "Remove/delete email account": 0,
+    "Add/configure email account (IMAP setup wizard)": 0,
+    "Open about:profiles tab in Thunderbird tabmail": 0,
+    "Export/backup inbox emails as individual .eml files": 0,
+    "Set plain text email signature": 0,
+    "Create local mail folder": 0,
+    "Create message filter (subject-based auto-move rule)": 0,
+    "Star/flag emails in a mail folder": 0,
+    "Attach file to email (compose window)": 0,
+    "Enable unified/smart inbox (folder tree mode)": 0,
+    "Configure reply quoting settings (auto_quote / indentation style)": 0,
+    "Enable dark theme/mode (extensions.activeThemeID)": 0,
+    "Configure automatic message filters for IMAP subfolders (applyIncomingFilters / use_status_for_biff)": 0
+  },
+  "recent_tasks": [],
+  "verification_experience": {
+    "Open hyperlink from email in browser": [
+      "Use Chrome DevTools Protocol (via Playwright connect_over_cdp) to enumerate open tabs and compare their URLs against expected URLs; use URL normalization/comparison helpers to handle trailing slashes and redirects.",
+      "The evaluator checks the ordered list of open tab URLs matches an expected list exactly, so tab order matters; verify both count and URL equality.",
+      "Email links may redirect, so compare final resolved URLs rather than raw href values when possible."
+    ],
+    "Export contacts to CSV": [
+      "Use compare_csv (line-by-line equality) to verify the exported CSV; the metric is strict by default so field order and header names must match exactly.",
+      "Thunderbird exports address book contacts via Tools > Export, producing a CSV with specific column headers; verify the header row and contact rows match a reference file."
+    ],
+    "Extract email metadata (sender, subject, CC, attachments) from a mail folder": [
+      "Use openpyxl or pandas to load the result xlsx and compare sheet data cell-by-cell against a gold xlsx; the sheet_data rule does DataFrame.equals() after rounding, so string columns must match exactly including whitespace and encoding.",
+      "When reading email metadata programmatically (e.g., via Thunderbird profile mbox/maildir or python-based mail parsers), sender_name and sender_address must be split correctly from the From header; CC may be empty string or None and must be stored consistently with the gold file.",
+      "Attachment count should reflect the number of MIME parts with Content-Disposition: attachment (or inline parts that are not text/html or text/plain); verify the integer type is preserved in the xlsx cell (not stored as string).",
+      "Row ordering matters: emails must be sorted from earliest to most recent by date/time; use the Date header parsed to a datetime for reliable ordering rather than folder sequence.",
+      "Column headers in the output sheet must match the gold file exactly (case-sensitive) since DataFrame.equals() compares both index/column labels and values."
+    ],
+    "Open local HTML file in browser tab": [
+      "Use Playwright's connect_over_cdp to enumerate open tabs and compare each tab's URL against expected URLs using a URL-normalizing comparator; file:// URLs need exact path matching.",
+      "When checking tab sets, order matters — compare full ordered lists of URLs, not just membership."
+    ],
+    "HTML file structure comparison": [
+      "Use BeautifulSoup with lxml to parse both HTMLs, then walk recursiveChildGenerator() in parallel, comparing tag names, stripped text content, and attributes; the sdnum attribute (LibreOffice-specific number format) can be safely ignored via an ignore_sdnum option.",
+      "Attribute comparison should strip implementation-specific attributes (e.g., sdnum) that vary across export runs but don't affect rendered content.",
+      "compare_htmls returns 0.0/1.0 float; a full structural match requires every element pair to match, so even minor attribute differences cause failure unless explicitly ignored."
+    ],
+    "Add recipients to email To field (compose window)": [
+      "Use the accessibility tree to verify recipient address pills in the compose window: look for address-pill elements under MsgHeadersToolbar's To label, each containing a pill-label with the expected email address substring.",
+      "CSS selectors on the accessibility tree can target `tool-bar[attr|id=MsgHeadersToolbar]` descendants to find address pills; use `name*=` substring matching to check email addresses without requiring exact display-name formatting.",
+      "check_accessibility_tree with selector-based rules returns 0.0 if any required recipient pill is missing, making it suitable for multi-recipient presence checks."
+    ],
+    "Extract email attachment (PDF) to filesystem": [
+      "Use a binary diff (e.g., shell `diff` or Python filecmp/hashlib) between the extracted file and a reference copy to confirm the attachment was saved correctly and completely.",
+      "The `check_list` metric with `unexpect: ['.+']` on a diff output file is the standard pattern: a passing result means the diff file is empty, i.e., the extracted file is byte-identical to the reference."
+    ],
+    "Append record to spreadsheet (LibreOffice Calc / xlsx)": [
+      "Use `openpyxl` or `pandas` to load both result and ground-truth xlsx files and compare sheet data with `DataFrame.equals()` after rounding numeric columns; the `compare_table` metric with `sheet_data` rule type is the standard evaluator pattern.",
+      "When verifying appended rows, load the first sheet by index (sheet_idx 0) and compare against a ground-truth sheet; row count and cell values must match exactly.",
+      "Ensure the file is saved before retrieval — postconfig steps often trigger Ctrl+S via pyautogui; if writing evaluators, account for the file needing to be flushed/closed before reading."
+    ],
+    "Extract image from email attachment (docx/doc file)": [
+      "Use python-docx or similar to parse .docx attachments and extract embedded images; verify image content via SSIM comparison against a reference after resizing both to the same dimensions.",
+      "When extracting the 'first' image from a doc, order matters — python-docx exposes inline shapes/relationships in document order; ensure the correct image is selected by index."
+    ],
+    "Set desktop wallpaper/background image": [
+      "Use env.controller.get_vm_wallpaper() to retrieve the current wallpaper as bytes, save to a file, then compare with a reference image using SSIM (grayscale, resized to the smaller of the two sizes); a base_score threshold is often used so only meaningful similarity above a baseline counts.",
+      "SSIM-based image comparison resizes both images to the minimum of their sizes before comparing — account for resolution differences between the set wallpaper and the reference when writing evaluators.",
+      "Empty or None wallpaper bytes indicate the wallpaper was not set; always guard against this before running pixel-level comparisons."
+    ],
+    "Extract email content (answer key/data) and populate spreadsheet": [
+      "Use openpyxl or pandas to load the result xlsx and compare sheet data cell-by-cell against a gold reference using DataFrame.equals() or sheet_data rule; round numeric values to a fixed precision before comparison to avoid floating-point mismatches.",
+      "When verifying tabular scoring data written to a spreadsheet, load both result and expected files with pd.ExcelFile and compare the target sheet by index or name; ensure the sheet index/name mapping is resolved correctly when sheets may be reordered.",
+      "For tasks that read structured data from an email (e.g., answer keys in message body or attachment) and write derived values to a spreadsheet, verify the output spreadsheet's cell values rather than intermediate parsing; the compare_table 'sheet_data' rule with openpyxl+pandas is the standard approach."
+    ],
+    "Remove/delete email account": [
+      "Account existence is verified by decrypting the Thunderbird profile's stored credentials (using a firefox_decrypt-style tool) and exporting to CSV; check that the removed account's URL+username pair no longer appears in any CSV row",
+      "Use csv.DictReader to parse the exported credentials CSV and apply expect/unexpect row-matching logic; an account is considered removed when no row matches both the IMAP server URL and the username fields simultaneously",
+      "The profile directory (~/.thunderbird) stores account credentials that persist until explicitly removed; verify removal by checking the decrypted credential store, not just UI state or prefs.js"
+    ],
+    "Add/configure email account (IMAP setup wizard)": [
+      "Use the accessibility tree to verify that account setup fields (display name, email address, password, protocol type) are populated and visible in Thunderbird's account wizard UI.",
+      "XPath queries on the accessibility tree can check for presence of text/name attributes containing the email address, display name, password field label, and protocol (IMAP/POP3) simultaneously.",
+      "check_accessibility_tree with multiple xpath rules (AND-logic via multiplicative scoring) is effective for confirming multi-field form state without submitting the form.",
+      "Protocol selection (IMAP vs POP3) is detectable as a named element or text node in the accessibility tree on the account setup page."
+    ],
+    "Open about:profiles tab in Thunderbird tabmail": [
+      "Use the accessibility tree to check for a page-tab element with name 'About Profiles' inside the tabmail-tabs page-tab-list; CSS selectors on the AT XML work well for this (e.g., application[name=Thunderbird] page-tab-list[attr|id='tabmail-tabs']>page-tab[name='About Profiles'])",
+      "The check_accessibility_tree evaluator with CSS selectors on AT XML is the right tool for verifying tab presence; no text content check is needed, just element existence"
+    ],
+    "Export/backup inbox emails as individual .eml files": [
+      "Use `ls -R` on the backup directory and apply regex pattern matching against filenames; verify each expected email subject appears as a `.eml` file using `check_list`-style regex rules (subject string + `\\.eml` suffix).",
+      "The evaluator reads a cached `ls -R` output file and checks each line against expect/unexpect regex patterns — useful pattern for verifying file exports without inspecting file contents.",
+      "Email subject strings may contain non-ASCII (e.g., CJK) characters; ensure regex patterns and file reading handle UTF-8 encoding correctly."
+    ],
+    "Set plain text email signature": [
+      "Thunderbird stores signature text in prefs.js under keys like mail.identity.idN.htmlSigText; parse prefs.js with a regex matching user_pref(\"key\", value) lines and JSON-decode the value to compare against expected multiline signature content.",
+      "Use re.S (DOTALL) flag or equivalent when matching multiline signature strings, since newlines are embedded as \\n literals in the JSON-encoded pref value.",
+      "Check mail.identity.idN.useremail or related identity keys to confirm the signature is attached to the correct account when multiple identities exist."
+    ],
+    "Create local mail folder": [
+      "Local folders appear in the msgFilterRules.dat actionValue as mailbox://nobody@Local%20Folders/<FolderName>; verify folder existence indirectly by checking this URI in filter rules rather than filesystem paths",
+      "Local folders in Thunderbird are stored under the Mail/Local Folders directory; verify creation by checking for both a folder file/directory (without .msf extension) and its companion .msf index file using regex patterns on `ls -R` output",
+      "Use check_list with expect regex patterns that match the folder name both with and without the .msf suffix to confirm both the mailbox data and index file exist",
+      "The .msf file alone is insufficient — confirm the actual folder entry (directory or mbox file) also exists alongside it"
+    ],
+    "Create message filter (subject-based auto-move rule)": [
+      "Parse msgFilterRules.dat from the IMAP account directory; each filter block has name/enabled/type/action/actionValue/condition fields — use regex or line-by-line parsing to extract structured filter dicts",
+      "Condition strings follow the pattern 'AND (field,operator,value)' — use regex like _condition_pattern.findall() to extract individual condition tuples for comparison",
+      "actionValue for move-to-local-folder rules uses URL-encoded mailbox URI: mailbox://nobody@Local%20Folders/<FolderName>",
+      "Check both 'enabled' field (yes/no) and 'action' field ('Move to folder') when validating a filter rule",
+      "The filter file is located under the IMAP account subdirectory (e.g., ImapMail/<server>/msgFilterRules.dat), not under Local Folders",
+      "Parse msgFilterRules.dat line-by-line: lines starting with 'name=', 'enabled=', 'type=', 'action=', 'actionValue=', 'condition=' define each filter; condition= line requires regex extraction of individual condition tokens",
+      "Check filter fields: 'enabled' (yes/no), 'action' (e.g. 'Forward', 'Move to folder'), 'actionValue' (destination address or folder URI), 'condition' (list of condition strings or ['ALL'] for match-all)",
+      "The dat file is per-account and lives under ImapMail/<server>/ — verify the correct account's dat file when multiple accounts exist",
+      "For forward-all filters, condition list should contain 'ALL'; match logic should check subset/presence rather than exact equality to allow extra filters coexisting"
+    ],
+    "Star/flag emails in a mail folder": [
+      "Thunderbird stores message flags in the global-messages-db.sqlite file; starring a message sets a row in messageAttributes with attributeID=58 and value=1 linked to the message's ID in the messages table — query this table to verify star status rather than inspecting UI state.",
+      "Use sqlite3 queries joining messages (folderID) and messageAttributes (attributeID, value) to check that all messages in a target folder have the expected attribute set; aggregate with sum or count to confirm coverage across all messages, not just one.",
+      "The folderID in the messages table corresponds to a specific local folder; when writing evaluators, identify the correct folderID for the target folder by inspecting the folderLocations or folders table in the same SQLite database."
+    ],
+    "Attach file to email (compose window)": [
+      "Use a helper script (like show-thunderbird-attachments.py) that inspects the Thunderbird compose window's attachment list via accessibility tree or DOM; check that the target filename appears in the attachment pane of the correct draft/compose window identified by subject",
+      "The evaluator runs the helper script with the draft subject and expected filename as arguments, writing output to a cache file; check_list then regex-matches that output for a success token like 'Attachment added!'",
+      "The helper script relies on cssselect or similar libraries to parse Thunderbird's UI state — ensure dependencies are installed before running",
+      "Verify the compose window is still open (not sent/closed) as part of the attachment check, since the task requires the draft to remain open"
+    ],
+    "Enable unified/smart inbox (folder tree mode)": [
+      "Thunderbird stores the active folder-tree view mode in the profile's xulstore.json under the key path [\"chrome://messenger/content/messenger.xhtml\"][\"folderTree\"][\"mode\"]; check that this value matches \"smart\" to confirm the unified inbox is enabled.",
+      "Use check_json with a regex or exact-match rule on the nested key path in xulstore.json rather than inspecting the live UI, since the file is reliably written when the user switches folder modes."
+    ],
+    "Configure reply quoting settings (auto_quote / indentation style)": [
+      "Parse prefs.js line-by-line with a regex matching `user_pref(\"key\", value)` and use `json.loads` on the captured value group to correctly handle booleans/strings; check keys like `mail.identity.idN.auto_quote`, `mail.identity.idN.reply_on_top`, and related quoting prefs.",
+      "The `check_thunderbird_prefs` pattern supports both `expect` and `unexpect` rule sets, so verifiers can assert a pref equals a value OR assert a pref does NOT equal a value — useful when the desired state is the absence/falsehood of a setting."
+    ],
+    "Enable dark theme/mode (extensions.activeThemeID)": [
+      "Parse prefs.js with a regex matching `user_pref(\"key\", value)` lines; check `extensions.activeThemeID` value contains 'dark' (regex match) to confirm a dark theme is active.",
+      "Use `check_thunderbird_prefs`-style logic: read prefs.js line-by-line, extract key/value pairs via pattern, then apply method-based matching (exact, regex, etc.) against expected pref keys — this generalises to any Thunderbird preference verification task."
+    ],
+    "Configure automatic message filters for IMAP subfolders (applyIncomingFilters / use_status_for_biff)": [
+      "Check prefs.js for mail.server.default.applyIncomingFilters=true and mail.imap.use_status_for_biff=false using the check_thunderbird_prefs pattern; parse with a regex matching user_pref(\"key\", value) lines and json.loads the value.",
+      "Use unexpect rules to ensure mail.server.default.autosync_offline_stores is not explicitly set to false, since that would disable offline sync needed for subfolder filtering.",
+      "The check_thunderbird_prefs evaluator supports both 'expect' and 'unexpect' rule dicts; unexpect passes when the key is absent OR its value does not match the ref, so absence of a key counts as passing the unexpect check."
+    ]
+  },
+  "co_use_counts": {}
+}

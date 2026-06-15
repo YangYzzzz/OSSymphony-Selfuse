@@ -1,25 +1,23 @@
-from ast import Pass
 import base64
+import copy
 import json
 import logging
+import textwrap
 import time
-import copy
 from io import BytesIO
-from typing import Dict, List, Tuple, Any, Optional
-import httpx
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import backoff
+import httpx
 import openai
 from openai import OpenAI
 from PIL import Image
 from requests.exceptions import SSLError
-from mm_agents.utils.qwen_vl_utils import smart_resize
-from mm_agents.uitars15_v2 import IMAGE_FACTOR
+
 from mm_agents.base import ComputerUseBaseAgent
-from mm_agents.utils.qwen_vl_utils import (
-    smart_resize,
-)
-import json
-import textwrap
+from mm_agents.kimi.utils import build_qwen_sft_sample_for_kimi
+from mm_agents.utils.qwen_vl_utils import QWEN3VL_COMPUTER_USE_TOOL_SCHEMA, smart_resize
 
 
 SYSTEM_PROMPT = """
@@ -196,6 +194,8 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         coordinate_type: str = "relative",
         keep_first_image: bool = True,
         use_thinking: bool = False,
+        collect_qwen_sft: bool = False,
+        collect_qwen_sft_image_dir: str = "",
     ):
         self.platform = platform
         self.model = model
@@ -228,6 +228,9 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
 
         self.system_prompt = SYSTEM_PROMPT + '\n' + OUTPUT_FORMAT_PROMPT
         self.use_thinking = use_thinking
+        self.collect_qwen_sft = collect_qwen_sft
+        self.qwen_sft_image_hash_map: Dict[str, str] = {}
+        self.collect_qwen_sft_image_dir = Path(collect_qwen_sft_image_dir) if collect_qwen_sft_image_dir else Path("qwen3vl_sft_dataset/image")
 
 
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
@@ -319,7 +322,10 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
 
         logger.info(f"Qwen3VL Output: {response}")
 
-        # Update History
+        response_message = self._build_assistant_message(response)
+        self.messages.append(copy.deepcopy(response_message))
+        self.pending_tool_calls = list(response_message.get("tool_calls") or [])
+
         self.responses.append(response)
 
         low_level_instuction, pyautogui_code, coordinates = self.parse_response(
@@ -331,8 +337,102 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         )
 
         logger.info(f"Pyautogui code: {pyautogui_code}")
-        return [{"raw_response": response, "coordinates": coordinates, 'reflection': result_text}], pyautogui_code
+
+        response_payload = {"raw_response": response, "coordinates": coordinates, 'reflection': result_text}
+        if self.collect_qwen_sft:
+            try:
+                sample, self.qwen_sft_image_hash_map = build_qwen_sft_sample_for_kimi(
+                    messages=self.messages,
+                    screen_size=(width, height),
+                    image_hash_map=self.qwen_sft_image_hash_map,
+                    image_root_dir=self.collect_qwen_sft_image_dir,
+                )
+                response_payload["agent_sft"] = sample
+            except Exception as e:
+                logger.error(f"build_qwen_sft_sample error: {e}")
+
+        return [response_payload], pyautogui_code
     
+    def _extract_tool_calls(self, response: str) -> List[Dict[str, Any]]:
+        tool_calls: List[Dict[str, Any]] = []
+        if not response:
+            return tool_calls
+
+        lines = response.split("\n")
+        inside_tool_call = False
+        current_tool_call: List[str] = []
+
+        def append_tool_call(json_str: str) -> None:
+            try:
+                tool_call = json.loads(json_str)
+            except json.JSONDecodeError:
+                return
+            if not isinstance(tool_call, dict):
+                return
+            name = tool_call.get("name")
+            arguments = tool_call.get("arguments", {})
+            if not name:
+                return
+            if isinstance(arguments, dict):
+                arguments = json.dumps(arguments, ensure_ascii=False)
+            elif not isinstance(arguments, str):
+                arguments = json.dumps({}, ensure_ascii=False)
+            tool_calls.append(
+                {
+                    "id": f"tool_call_{len(tool_calls)}",
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "arguments": arguments,
+                    },
+                }
+            )
+
+        for raw_line in lines:
+            line = raw_line.strip()
+            if not line:
+                continue
+            if line.startswith("<tool_call>"):
+                inside_tool_call = True
+                continue
+            if line.startswith("</tool_call>"):
+                if current_tool_call:
+                    append_tool_call("\n".join(current_tool_call))
+                    current_tool_call = []
+                inside_tool_call = False
+                continue
+            if inside_tool_call:
+                current_tool_call.append(line)
+                continue
+            if line.startswith("{") and line.endswith("}"):
+                append_tool_call(line)
+
+        if current_tool_call:
+            append_tool_call("\n".join(current_tool_call))
+
+        return tool_calls
+
+    def _build_assistant_message(self, response: str) -> Dict[str, Any]:
+        assistant_text_parts: List[str] = []
+        for line in response.split("\n"):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("<tool_call>") or stripped.startswith("</tool_call>"):
+                continue
+            if stripped.startswith("{") and stripped.endswith("}"):
+                try:
+                    payload = json.loads(stripped)
+                    if isinstance(payload, dict) and {"name", "arguments"}.issubset(payload.keys()):
+                        continue
+                except json.JSONDecodeError:
+                    pass
+            assistant_text_parts.append(line)
+
+        return {
+            "role": "assistant",
+            "content": "\n".join(assistant_text_parts).strip(),
+            "tool_calls": self._extract_tool_calls(response),
+        }
+
     def _cleanup_old_screenshots(self):
         """
         在 self.messages 上清理超出配额的截图。
@@ -672,6 +772,7 @@ class OSSymphony2Agent(ComputerUseBaseAgent):
         self.last_code_result = None
         self.messages = []
         self.pending_tool_calls = []
+        self.qwen_sft_image_hash_map = {}
 
     def evaluate(self, task_instruction: str, obs: Dict) -> Dict[str, Any]:
         """Self-judge function.

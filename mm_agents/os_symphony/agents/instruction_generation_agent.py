@@ -43,6 +43,9 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Are fully specified and unambiguous (no hidden assumptions about files or settings).
     - Are automatically verifiable by another program based on rules or VLMs.
     - Must explicitly write all evaluator-critical constraints directly into the task description, including any target object identity, ordering relation, destination, date/time, quantity, formatting, or scope constraints that determine success or failure.
+    - Must feel like meaningful real-world requests instead of bare operation commands.
+    - MUST assume a plausible user persona, job, or situational context for every task so the request has a concrete purpose.
+    - SHOULD briefly include why the task matters in that scenario, such as a work objective, reporting need, review need, or follow-up action.
 
     Each task must be represented as a JSON object with the following fields:
 
@@ -52,7 +55,7 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
         - **CRITICAL PATH REQUIREMENT:** If the task involves opening, reading, editing, or saving any file, you MUST explicitly write the exact absolute path (starting with `~`) directly inside this `description` string. NEVER use vague terms like "the document", "the image", or just the filename.
         - **CRITICAL IN-PLACE EDITING:** If a task requires modifying an existing file from `launch_paths`, you MUST assume the modifications are saved in-place and do NOT instruct the user to "Save As" or save the file to a new location.
         - **CRITICAL MULTI-APP BINDING:** For tasks involving multiple apps or representations, the description MUST explicitly anchor the full relation chain needed for evaluation (for example: which source object, under what qualifier such as latest/first/highest, what derived artifact from it, and where that artifact must end up). Avoid descriptions where key links in this chain are left implicit.
-    - "complexity" (string): One of "simple"(10-30 gui steps, single-file workflows or small configuration changes), "medium"(30-50 gui steps, between simple and complex), or "complex"(>50 gui steps, longer workflows involved multi-apps or multi-files).
+    - "complexity" (string): One of "simple"(10-20 gui steps, single-file workflows or small configuration changes), "medium"(20-30 gui steps, between simple and complex), or "complex"(30-50 gui steps, longer workflows involved multi-apps or multi-files).
     - "category" (string): One of:
         - "file_only": The task primarily manipulates file contents (creating, editing, organizing files) using the application(s).
         - "app_only": The task primarily changes application settings, preferences, themes, layouts, or built-in tools, without relying on pre-existing files.
@@ -193,14 +196,6 @@ INSTRUCTION_SYSTEM_PROMPT_TEMPLATE = textwrap.dedent("""
     - Vary the difficulty: Include a spread of "simple", "medium", and "complex" tasks.
     - Vary the functional coverage: Use different features or workflows of the application.
     - Avoid generating multiple tasks that are essentially the same goal with only superficial wording changes.
-
-    ## Use of application tutorials (if provided)
-    If you are given an application-specific markdown tutorial, you may use it to:
-        - Discover realistic features and workflows.
-        - Ensure tasks align with what the application actually supports.
-    You MUST NOT:
-        - Copy sentences verbatim from the tutorial.
-        - Refer directly to the tutorial in the tasks.
 
     ## Final output requirements
     Produce a single JSON object with the following shape:
@@ -417,6 +412,7 @@ class InstructionGenerationAgent:
         app_tutorial_md: str | None = None,
         allowed_apps: List[str] | None = None,
         golden_paths: List[str] | None = None,
+        extra_requirements: str | None = None,
     ) -> List[Dict[str, Any]]:
         """Generate coarse-grained task list.
 
@@ -455,6 +451,9 @@ class InstructionGenerationAgent:
                     f"{app_tutorial_md}\n"
                 )
                 system_prompt = system_prompt + tutorial_block
+
+            if extra_requirements:
+                system_prompt = system_prompt + "\n\n[IMPORTANT] Generation requirements from seed task:\n" + extra_requirements.strip() + "\n"
 
             # 3) User message: screenshot + known launch paths + golden paths
             launch_paths_text = "" if not launch_paths else "\n".join(launch_paths)

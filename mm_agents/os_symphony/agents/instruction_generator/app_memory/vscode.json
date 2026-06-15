@@ -1,0 +1,149 @@
+{
+  "app": "vscode",
+  "covered_features": {
+    "Code editing to fix bugs in Python source files": 0,
+    "Writing Python scripts for image processing tasks": 0,
+    "VS Code extension installation": 0,
+    "Writing Python scripts for data analysis tasks": 0,
+    "Writing Python scripts for file merging and document creation tasks": 0,
+    "Open folder/project from terminal using 'code' command": 0,
+    "Active workspace/project detection": 0,
+    "Python script editing and execution (code completion + run)": 0,
+    "Python package installation via terminal": 0,
+    "YAML/config file editing": 0,
+    "Find and Replace in file": 0,
+    "Extension installation": 0,
+    "Color theme configuration": 0,
+    "Python diagnostics/analysis settings configuration": 0,
+    "Debug settings configuration": 0,
+    "Keyboard shortcut customization (keybindings.json)": 0,
+    "Editor word wrap column configuration": 0,
+    "Editor tab wrap configuration": 0,
+    "Save workspace file (.code-workspace)": 0,
+    "Text indentation editing (indent/outdent lines)": 0,
+    "Auto-save configuration (files.autoSave and files.autoSaveDelay)": 0,
+    "New file creation and save": 0,
+    "File/folder exclude patterns configuration (files.exclude)": 0,
+    "Multi-root workspace management": 0,
+    "NumPy array visualization in editor": 0
+  },
+  "recent_tasks": [],
+  "verification_experience": {
+    "Code editing to fix bugs in Python source files": [
+      "Use check_python_file_by_test_suite pattern: retrieve modified source files from VM, run a downloaded test suite against them by dynamically loading the test module and calling its test() function, returning a float score.",
+      "When verifying multi-file Python projects, ensure all related source files are fetched together and placed in the same working directory before running tests, since modules import each other by relative name.",
+      "The test suite is fetched from a cloud URL and executed in the same directory as the source files; sys.path and sys.modules must be cleaned up between evaluations to prevent module cache contamination across tasks.",
+      "Return value from the test function can be bool, int, or float; normalize to 0.0–1.0 range for scoring.",
+      "Use a downloaded test suite (check_python_file_by_test_suite pattern) that imports the edited source files and runs functional assertions; the metric loads files via importlib, so ensure module-level side effects (e.g., pygame.init) are guarded or mocked in the test suite",
+      "When verifying multi-file Python projects, the evaluator changes cwd to the test file's directory and inserts it into sys.path, so relative imports among project files must remain intact after edits",
+      "The metric normalizes return values: bool True→1.0, numeric clamped to [0,1], truthy non-numeric→1.0; write test functions that return a float proportion of passing sub-checks for partial credit",
+      "sys.modules cleanup is performed after each evaluation run to prevent module cache contamination across sequential tasks; avoid relying on cached module state between evaluator calls"
+    ],
+    "Writing Python scripts for image processing tasks": [
+      "Use SSIM (skimage.metrics.structural_similarity) with channel_axis=2 to compare output images against a reference; resize mismatched dimensions before comparison rather than failing outright",
+      "When verifying script-generated image output, check both that the output file exists and that its visual content matches a gold reference using structural similarity metrics rather than exact pixel equality",
+      "For image extraction/cropping scripts, verify the output image mode (e.g., RGBA for transparency) and that non-background regions are preserved correctly by comparing against a reference with a tolerance threshold around 0.85",
+      "Verify output image dimensions using PIL Image.open; check width and height attributes directly; optionally use getbbox on alpha channel when ignore_transparent is needed."
+    ],
+    "VS Code extension installation": [
+      "Use `code --list-extensions` shell command output to verify an extension is installed; check for the extension's publisher.name identifier string using a contains check."
+    ],
+    "Writing Python scripts for data analysis tasks": [
+      "When the output is a numeric result file, compare as float with a small tolerance (e.g., 1e-4); also accept cases where the expected number appears as a substring of the actual content (e.g., result prefixed with a natural-language description).",
+      "Use compare_result_files-style logic: strip whitespace, attempt float conversion for numeric comparison, fall back to exact string equality for non-numeric content.",
+      "For median/statistical computation tasks, verify the script handles missing/empty values by imputing with the column mean before computing the statistic, and that the final scalar is written to the output file."
+    ],
+    "Writing Python scripts for file merging and document creation tasks": [
+      "Use python-docx's Document and paragraph APIs to compare paragraph text content between result and reference .docx files; the compare_docx_files metric normalizes whitespace and compares joined paragraph text, so focus on content equality rather than exact paragraph boundaries.",
+      "Font size in .docx is stored per-run (run.font.size) and per-paragraph style; when verifying document-wide font size, iterate over all runs across all paragraphs and check the size attribute (in Pt units).",
+      "When merging text files into a docx, paragraph ordering and whitespace normalization matter; the evaluator collapses all whitespace with re.sub before comparing, so extra blank lines between merged sections are tolerated."
+    ],
+    "Open folder/project from terminal using 'code' command": [
+      "Check bash history via vm_command_line for presence of 'code ' invocation to confirm terminal was used rather than GUI",
+      "Use vscode_config getter with an 'OpenProject'-style extension command that writes the currently open project/folder name to a file, then compare_config with substring/containment check against the expected folder name"
+    ],
+    "Active workspace/project detection": [
+      "The vscode_config getter triggers a command-palette extension command that dumps the open project path to a temp file on the VM; read that file and check for the expected folder name using substring containment rather than exact match, since full paths vary",
+      "Use the 'OpenProject' vscode_extension_command via the command palette (Ctrl+Shift+P) to trigger a custom extension that writes the current open project/folder name to a file, then read that file and check for substring containment of the expected project name."
+    ],
+    "Python script editing and execution (code completion + run)": [
+      "Use compare_text_file metric to validate script output saved to a file; fetch the result file from the VM and compare stripped text against a gold reference.",
+      "When need_rule_judge is true, exact string equality may not be required; consider whitespace normalization options (ignore_blanks, ignore_case) when writing evaluators for similar tasks.",
+      "To verify the script was completed and run correctly, check that the output file exists on the VM at the expected path and its content matches the expected program output.",
+      "Use compare_text_file metric to validate script output files; fetch VM file and compare stripped text against a gold reference downloaded from cloud storage.",
+      "When a script reads instructions from an external document (e.g., docx) and writes results to a text file, verify the output file content exactly matches the expected output using string equality after stripping whitespace.",
+      "For algorithm implementation tasks, the output text file captures printed results of running the completed function; ensure the evaluator checks the VM-side output file path, not the source .py file."
+    ],
+    "Python package installation via terminal": [
+      "Use vm_command_error getter by running a Python import of the target package; success is indicated by absence of 'Error:' in stderr output.",
+      "check_include_exclude on stderr is the standard pattern: include=[] and exclude=['Error:'] confirms a clean import with no ModuleNotFoundError or ImportError.",
+      "Package availability can be verified purely via Python import execution without needing to inspect pip list or site-packages directly."
+    ],
+    "YAML/config file editing": [
+      "Use yaml.safe_load to parse the saved file and traverse nested keys (e.g., top-level keys and nested dict keys like author.name, author.email) to verify edited values.",
+      "check_json with is_yaml=True supports both flat and nested key paths via a list of keys, so verify both top-level and nested fields independently.",
+      "When a YAML file has duplicate or aliased keys (common in config templates), safe_load picks the last occurrence; ensure the correct key path is targeted.",
+      "File must be saved before retrieval; postconfig Ctrl+S automation is commonly used, so evaluators should account for save timing when reading the file."
+    ],
+    "Find and Replace in file": [
+      "Use compare_text_file (exact string equality after strip) against a gold file to verify all occurrences were replaced; fetch the saved file from the VM path after triggering Ctrl+S in postconfig.",
+      "When verifying bulk text replacement, read both actual and expected files as plain text and compare full content; no special parser needed — Python open() suffices.",
+      "The evaluator saves the file via Ctrl+S in postconfig before fetching, so verification must account for the file being saved post-action; ensure the VM file path matches the edited document's save location."
+    ],
+    "Extension installation": [
+      "Use `code --list-extensions` via vm_command_line to enumerate installed extensions; check for the extension's publisher.name identifier (e.g., ms-python.python) using a 'contain' rule on the output string.",
+      "Use `code --list-extensions` via VM command line to verify an extension is installed; check that the output contains the expected publisher.extensionName identifier string.",
+      "Use `code --list-extensions` via vm_command_line to verify an extension is installed; check that the output contains the expected publisher.extensionname identifier string."
+    ],
+    "Color theme configuration": [
+      "Check `workbench.colorTheme` key in `/home/user/.config/Code/User/settings.json` using JSON subset/containment comparison; the `compare_config` metric with `containment_ok=True` parses both JSONs and verifies the expected key-value is present as a subset of the actual config."
+    ],
+    "Python diagnostics/analysis settings configuration": [
+      "VS Code settings are stored as JSON at ~/.config/Code/User/settings.json; use json.load to parse and check nested dict keys like python.analysis.diagnosticSeverityOverrides for exact key-value matches",
+      "When verifying nested settings objects, check both the top-level key presence and the inner dict value equality, since a missing sub-key or wrong severity string both yield failure"
+    ],
+    "Debug settings configuration": [
+      "Parse settings.json as JSON and check for the presence and value of debug-related keys (e.g., debug.*) directly in the top-level object; use json.load and key lookup rather than string matching."
+    ],
+    "Keyboard shortcut customization (keybindings.json)": [
+      "Read /home/user/.config/Code/User/keybindings.json; handle both standard JSON and files with a leading comment line (skip first line and re-parse if direct json.load fails)",
+      "The file contains a JSON array of binding objects; check for presence of a specific dict entry with keys like 'key', 'command', and optionally 'when' — a command prefixed with '-' means removal/unbinding of that shortcut",
+      "Use direct list membership check (entry in data) rather than iterating, since dict equality in Python matches all key-value pairs exactly",
+      "Read keybindings.json from the VS Code user config path; handle both valid JSON arrays and files with a leading comment line (skip first line then parse)",
+      "Check that the keybindings list contains an exact dict entry with the expected 'key', 'command', and optional 'when' fields — use direct membership test (entry in list) rather than substring search",
+      "The 'when' clause is a plain string field in the keybinding object; verify its presence and value when context-conditional shortcuts are required (e.g., terminalFocus, editorTextFocus)"
+    ],
+    "Editor word wrap column configuration": [
+      "Check `editor.wordWrapColumn` key in `/home/user/.config/Code/User/settings.json` using `json.load`; verify the integer value matches the requested column width.",
+      "Use `check_json_settings`-style subset matching: iterate expected key-value pairs and confirm each exists with the exact value in the parsed settings dict."
+    ],
+    "Editor tab wrap configuration": [
+      "Check settings.json (typically at ~/.config/Code/User/settings.json) by parsing it as JSON and verifying the target workbench/editor key has the expected value; use json.load and direct key lookup."
+    ],
+    "Save workspace file (.code-workspace)": [
+      "Check for the existence of a `.code-workspace` file at the expected path using a directory listing or file-existence command; the `contain` rule on `ls` output is sufficient since VSCode workspace files have a predictable naming pattern (`<name>.code-workspace`).",
+      "Parse the .code-workspace JSON file and check the 'folders' array for expected path entries; paths are stored as relative or absolute strings under the 'path' key in each folder object",
+      "Use json.load on the .code-workspace file; the top-level 'folders' key holds a list of dicts—verify both membership and order if required",
+      "When folders are added via UI or command palette, paths may be stored relative to the workspace file location, so normalize/compare accordingly"
+    ],
+    "Text indentation editing (indent/outdent lines)": [
+      "Use compare_text_file (exact string match) to verify indentation changes; read both files and compare stripped content, preserving tab/space characters since indentation is whitespace-sensitive.",
+      "When verifying indentation, avoid ignore_blanks mode as it strips tabs and newlines, which would mask indentation errors; use exact comparison instead.",
+      "To check indentation programmatically, split file content by lines and inspect leading whitespace characters (tabs vs spaces) per line for the affected range."
+    ],
+    "Auto-save configuration (files.autoSave and files.autoSaveDelay)": [
+      "Check settings.json (typically at ~/.config/Code/User/settings.json) by parsing it as JSON and verifying both the autoSave mode key (e.g., 'afterDelay') and the numeric autoSaveDelay key are present with correct types — the delay must be an integer, not a string."
+    ],
+    "New file creation and save": [
+      "Use vm_command_line with 'ls' on the target directory and check for filename presence; the 'contain' rule on ls output is sufficient for file existence checks."
+    ],
+    "File/folder exclude patterns configuration (files.exclude)": [
+      "Parse settings.json as JSON and check that the target key (e.g., 'files.exclude') exists and its value is an object containing the expected glob-pattern keys mapped to boolean true; use json.load and direct dict comparison for nested values."
+    ],
+    "Multi-root workspace management": [
+      "To verify multi-root workspace state, inspect the .code-workspace JSON file's 'folders' array or use the accessibility tree to check open editor groups/workspace titles"
+    ],
+    "NumPy array visualization in editor": []
+  },
+  "co_use_counts": {}
+}

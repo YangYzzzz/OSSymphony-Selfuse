@@ -6,6 +6,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import random
 import shutil
+import subprocess
+import sys
 import matplotlib.pyplot as plt
 from collections import Counter
 import re
@@ -295,24 +297,21 @@ def process_code_agent_output(code_agent_output):
     返回提取的数据和可见性标志。
     """
     if not code_agent_output or not isinstance(code_agent_output, dict):
-        # 如果没有数据，返回空值和 False（不可见）
         return "N/A", "N/A", "N/A", "[]", False
 
     task_instruction = code_agent_output.get("task_instruction", "N/A")
     completion_reason = code_agent_output.get("completion_reason", "N/A")
     summary = code_agent_output.get("summary", "N/A")
-    
+
     exec_history = code_agent_output.get("execution_history", [])
     result_history = code_agent_output.get("execution_result_history", [])
 
-    # 为了高效合并，创建一个以 step 为键的结果字典
     results_map = {item.get('step'): item.get('result') for item in result_history if 'step' in item}
 
     combined_history = []
     if isinstance(exec_history, list):
         for step_action in exec_history:
             step_num = step_action.get("step")
-            # 将 action 和 result 合并到同一个对象中
             combined_step = {
                 "step": step_num,
                 "thoughts": step_action.get("thoughts", "N/A"),
@@ -320,12 +319,57 @@ def process_code_agent_output(code_agent_output):
                 "result": results_map.get(step_num, "Result not found for this step.")
             }
             combined_history.append(combined_step)
-    
-    # 将合并后的列表转换为格式化的JSON字符串
-    history_json = json.dumps(combined_history, indent=2)
 
-    # 返回所有处理好的数据和 True（可见）
+    history_json = json.dumps(combined_history, indent=2)
     return task_instruction, completion_reason, summary, history_json, True
+
+
+def _extract_coordinate(step_data):
+    response = step_data.get("response", {})
+    if isinstance(response, list) and response:
+        response = response[0]
+    if not isinstance(response, dict):
+        response = {}
+
+    candidates = [
+        step_data.get("coordinate"),
+        response.get("coordinate"),
+        response.get("meta_action", {}).get("coordinate") if isinstance(response.get("meta_action"), dict) else None,
+    ]
+    for coordinate in candidates:
+        if isinstance(coordinate, (list, tuple)) and len(coordinate) >= 2:
+            x, y = coordinate[0], coordinate[1]
+            if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                return float(x), float(y)
+    return None
+
+
+def _draw_coordinate_cross(image_path, coordinate):
+    if coordinate is None or not image_path.exists():
+        return None
+
+    with Image.open(image_path).convert("RGB") as image:
+        draw = ImageDraw.Draw(image)
+        x, y = coordinate
+        width, height = image.size
+        x = int(round(x / 1000 * width))
+        y = int(round(y / 1000 * height))
+        x = max(0, min(width - 1, x))
+        y = max(0, min(height - 1, y))
+
+        arm = max(12, min(width, height) // 30)
+        line_width = max(3, arm // 4)
+        color = (255, 0, 0)
+        outline = (255, 255, 255)
+
+        draw.line((x - arm, y - arm, x + arm, y + arm), fill=outline, width=line_width + 2)
+        draw.line((x - arm, y + arm, x + arm, y - arm), fill=outline, width=line_width + 2)
+        draw.line((x - arm, y - arm, x + arm, y + arm), fill=color, width=line_width)
+        draw.line((x - arm, y + arm, x + arm, y - arm), fill=color, width=line_width)
+
+        generated_path = image_path.with_name(f"{image_path.stem}_coord_cross.png")
+        image.save(generated_path)
+    return generated_path
 
 def create_gradio_app(root_dir):
     """创建并返回Gradio应用"""
@@ -674,27 +718,35 @@ def create_gradio_app(root_dir):
             response = step_data.get("response", {})
             base_path = Path(root_dir) / domain / task
             filename = step_data.get("screenshot_file", "")
-            
+
             img_path = base_path / filename
             annotated_img_path = base_path / (filename[:-4] + "_draw_0.png")
             milestone_img_path = base_path / (filename[:-4] + "_milestone.png")
-            
+            coordinate = _extract_coordinate(step_data)
+
             if annotated_img_path.exists():
                 img_path = annotated_img_path
             elif milestone_img_path.exists():
                 img_path = milestone_img_path
-            
+            elif img_path.exists() and coordinate is not None:
+                generated_img_path = _draw_coordinate_cross(img_path, coordinate)
+                if generated_img_path is not None:
+                    img_path = generated_img_path
+
             is_milestone = "milestone" in str(img_path)
             new_label = "Milestone!" if is_milestone else "步骤截图"
             new_classes = ["milestone"] if is_milestone else []
 
-            response = response[0]
-            # print(response)
+            if isinstance(response, list) and response:
+                response = response[0]
+            if not isinstance(response, dict):
+                response = {}
+
             updates = {
                 step_counter: gr.update(value=f"步骤 {index + 1} / {len(steps)}"),
                 screenshot_img: gr.update(value=str(img_path) if img_path.exists() else None, label=new_label, elem_classes=new_classes),
                 plan_text: gr.update(value=response.get("plan", response.get("thought", "N/A"))),
-                plan_code_text: gr.update(value="\n".join(step_data.get("action"))),
+                plan_code_text: gr.update(value="\n".join(step_data.get("action", []))),
                 reflection_text: gr.update(value=step_data.get("code_result", "N/A")),
                 prev_step_btn: gr.update(interactive=index > 0),
                 next_step_btn: gr.update(interactive=index < len(steps) - 1),
@@ -1103,6 +1155,20 @@ def plot_token_usage_stacked(stats_data, title, save_path):
         print(f"An unexpected error occurred while generating stacked token usage plot for '{title}': {e}")
         import traceback
         traceback.print_exc()
+
+
+def run_post_analysis_checks(root_dir):
+    script_paths = [
+        Path(__file__).resolve().parent.parent / "scripts" / "miscs" / "check_non_python_bash_code_actions.py",
+        Path(__file__).resolve().parent.parent / "scripts" / "miscs" / "count_infinite_cot_failures.py",
+    ]
+
+    for script_path in script_paths:
+        print(f"\nRunning post-analysis check: {script_path} {root_dir}")
+        try:
+            subprocess.run([sys.executable, str(script_path), str(root_dir)], check=False)
+        except Exception as e:
+            print(f"Failed to run post-analysis check {script_path}: {e}")
 
 
 def get_result(target_dir):
@@ -1636,6 +1702,7 @@ def get_result(target_dir):
         plot_confusion_heatmap(stats, f"Domain: {domain}", os.path.join(target_dir, f"error_analysis_heatmap_{domain}.png"))
 
     print("\nAnalysis complete.")
+    run_post_analysis_checks(target_dir)
     return all_result
 
 

@@ -273,6 +273,8 @@ class KimiAgent:
             thinking: bool = True, # Whether to use thinking mode
             base_url: str = "",
             api_key: str = "",
+            collect_qwen_sft: bool = False,
+            collect_qwen_sft_image_dir: str = "",
             **kwargs
     ):
         assert coordinate_type in ["relative", "absolute", "qwen25"]
@@ -306,6 +308,9 @@ class KimiAgent:
         self.observations = []
         self.cots = []
 
+        self.collect_qwen_sft = collect_qwen_sft
+        self.collect_qwen_sft_image_dir = collect_qwen_sft_image_dir
+        
     def reset(self, _logger=None):
         global logger
         logger = _logger if _logger is not None else logging.getLogger("desktopenv.agent")

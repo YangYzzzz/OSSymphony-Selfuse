@@ -43,7 +43,7 @@ class AnthropicAgentWithCode:
                 only_n_most_recent_images: Optional[int] = 10,
                 action_space: str = "claude_computer_use",
                 screen_size: tuple[int, int] = (1920, 1080),
-                input_screen_size: tuple[int, int] = (1280, 720), # 感觉主要也是为了节省token
+                input_screen_size: tuple[int, int] = (1280, 720), # 主要也是为了节省token
                 no_thinking: bool = False,
                 use_isp: bool = False,
                 temperature: Optional[float] = None,
@@ -777,6 +777,17 @@ class AnthropicAgentWithCode:
                 # ===== Qwen3VL SFT 收集（可选）=====
                 if self.collect_qwen_sft and not screenshot_flag:
                     try:
+                        # 增加 tool call
+                        if len(actions) == 1 and actions[0]["command"] in ["FAIL", "DONE"]:
+                            terminate_block = {
+                                "type": "tool_use",
+                                "name": "terminate",
+                                "input": {
+                                    "status": "success" if actions[0]["command"] == "DONE" else "failure"
+                                }
+                            }
+                            self.messages[-1]["content"].append(terminate_block)
+
                         sample, self.qwen_sft_image_hash_map = build_qwen_sft_sample(
                             messages=self.messages, # 包含所有历史信息与当前步模型的输出, 但不包含 System
                             screen_size=(self.input_screen_width, self.input_screen_height), # 需要注意坐标是缩放过的

@@ -203,7 +203,8 @@ def run_env_tasks(
                 keep_all_text=args.keep_all_text,
                 use_thinking=args.use_thinking,
                 benchmark=args.benchmark,
-                enable_code_tool=not args.disable_code_tool
+                enable_code_tool=not args.disable_code_tool,
+                input_screen_size=(args.input_screen_width, args.input_screen_height)
             )
         # else:
         #     agent = OSSymphony2Agent(
@@ -233,10 +234,8 @@ def run_env_tasks(
                 with open(config_file, "r", encoding="utf-8") as f:
                     example = json.load(f)
 
-                if args.enable_rewrite_instruction and "rewritten_instruction" in example:
-                    instruction = example["rewritten_instruction"]
-                else:
-                    instruction = example["instruction"]
+
+                instruction = example["instruction"]
                 
                 example_result_dir = os.path.join(
                     args.result_dir,
@@ -368,6 +367,8 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument("--screen_width", type=int, default=1920, help="Main environment's width")
     parser.add_argument("--screen_height", type=int, default=1080, help="Main environment's height")
+    parser.add_argument("--input_screen_width", type=int, default=1920, help="Model Image width")
+    parser.add_argument("--input_screen_height", type=int, default=1080, help="Model Image height")
     parser.add_argument("--max_steps", type=int, default=15)
 
     parser.add_argument("--benchmark", type=str, default="osworld", help="osworld / waa / macos")
@@ -395,7 +396,6 @@ def config() -> argparse.Namespace:
     )
 
     parser.add_argument("--max_trajectory_length", type=int, default=8, help="最大图片数量")
-    parser.add_argument("--enable_rewrite_instruction", action="store_true", default=False)
 
     # generator model config
     parser.add_argument("--model", type=str, default="gpt-4o")
@@ -426,6 +426,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--keep_first_image", action="store_true", default=False, help="Whether keep the first image(first state) in the orchestrator agent")
     parser.add_argument("--keep_all_text", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
+    parser.add_argument("--save_image", action="store_true", default=False, help="Whether keep the all text content in the orchestrator agent")
     parser.add_argument("--remove_cot", action="store_true", default=False, help="是否在历史信息内清除历史cot")
     parser.add_argument("--use_tool_call", action="store_true", default=False, help="是否使用vllm自带的tool call来调用llm, 默认关闭（qwen3vl官方的parse response逻辑）")
     parser.add_argument("--disable_code_tool", action="store_true", default=False, help="是否禁用code工具")

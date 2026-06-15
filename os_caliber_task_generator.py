@@ -146,8 +146,6 @@ class OSCaliberTaskGenerator:
         self.env_file_base_dir = ENV_FILE_BASE_DIR
         self.env = env
         self.agent = agent
-        # Cache for auto-generated evaluator functions from coarse agent.
-        # Maps function_name -> code string.
         self.generated_evaluators: Dict[str, str] = {}
 
     def _load_app_tutorial_md(self, app_name: str) -> str:
@@ -221,7 +219,7 @@ class OSCaliberTaskGenerator:
 
         return main_app, apps_for_group
 
-    def _generate_config(self, app_name: str) -> Tuple[List[Dict[str, Any]], List[str], List[str]]:
+    def _generate_config(self, app_name: str, always_need_path: bool = False) -> Tuple[List[Dict[str, Any]], List[str], List[str]]:
         """根据 APP_SETUP_DICT 生成标准的 config 列表，同时返回实际使用的 PATH 列表。
 
         commands 结构说明：
@@ -233,7 +231,7 @@ class OSCaliberTaskGenerator:
         """
         app_info = APP_SETUP_DICT.get(app_name, {})
         if not app_info:
-            return [], []
+            return [], [], []
 
         config_list: List[Dict[str, Any]] = []
         used_paths: List[str] = []
@@ -243,15 +241,23 @@ class OSCaliberTaskGenerator:
         # 取出所有 setup 变体（三层结构），根据 random 字段加权随机选择一个变体
         all_setups = app_info.get("commands", []) or []
         if not all_setups:
-            return [], []
+            return [], [], []
 
-        weights = app_info.get("random")
-        if isinstance(weights, list) and len(weights) == len(all_setups):
-            chosen_setup = random.choices(all_setups, weights=weights, k=1)[0]
+        if not always_need_path:
+            weights = app_info.get("random")
+            if isinstance(weights, list) and len(weights) == len(all_setups):
+                chosen_setup = random.choices(all_setups, weights=weights, k=1)[0]
+            else:
+                # 兼容旧配置或 random 配置不匹配时，退回到均匀随机
+                chosen_setup = random.choice(all_setups)
         else:
-            # 兼容旧配置或 random 配置不匹配时，退回到均匀随机
-            chosen_setup = random.choice(all_setups)
-
+            # always need a file path
+            chosen_setup = all_setups[0]
+            for set_up in all_setups:
+                if "PATH" in set_up:
+                    chosen_setup = set_up
+                    break
+            
         # 深拷贝，避免修改原配置
         raw_commands: List[List[str]] = copy.deepcopy(chosen_setup)
 
@@ -292,7 +298,7 @@ class OSCaliberTaskGenerator:
             config_list.append({"type": "launch", "parameters": {"command": cleaned_cmd}})
 
             # 如果该命令使用了 PATH，则为其对应文件追加一条黄金文件拷贝 config
-            if has_path and selected_file_for_cmd:
+            if has_path and selected_file_for_cmd and app_name != "chrome":
                 golden_path = build_golden_path(selected_file_for_cmd)
                 golden_paths.append(golden_path)
                 cp_cmd = copy.deepcopy(GOLD_CP_CONFIG)
@@ -485,7 +491,7 @@ class OSCaliberTaskGenerator:
             observation=obs,
             task_nums=task_nums,
             launch_paths=launch_paths,
-            app_tutorial_md=app_tutorial_md,
+            app_tutorial_md=None,
             allowed_apps=allowed_apps,
             golden_paths=golden_paths,
         )
@@ -499,7 +505,7 @@ class OSCaliberTaskGenerator:
 
             # 每个 task 可以返回自己使用到的 related_apps, 若缺失则默认仅主 APP
             task_related_apps = task.get("related_apps") or [main_app]
-            task_related_apps_version = [APP_SET_CONFIG_DICT[a].get("version", a) for a in task_related_apps]
+            task_related_apps_version = [APP_SET_CONFIG_DICT.get(a, {"version": a}).get("version") for a in task_related_apps]
             task_config = {
                 "id": task_id,
                 "snapshot": main_app,
@@ -518,14 +524,131 @@ class OSCaliberTaskGenerator:
                 json.dump(task_config, f, indent=4, ensure_ascii=False)
 
             # 记录初始化截图
-            # with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
-            #     _f.write(obs['screenshot'])
+            with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
+                _f.write(obs['screenshot'])
 
             if main_app not in test_file_list:
                 test_file_list[main_app] = []
             test_file_list[main_app].append(task_id)
 
         return test_file_list
+
+
+# class SeedTaskExpansionGenerator(OSCaliberTaskGenerator):
+#     def __init__(
+#         self,
+#         rollout_task_dir: str,
+#         env: DesktopEnv,
+#         agent: InstructionGenerationAgent,
+#         seed_meta_path: str,
+#         seed_examples_base_dir: str,
+#     ) -> None:
+#         super().__init__(rollout_task_dir=rollout_task_dir, env=env, agent=agent)
+#         self.seed_records = OSWorldSeedTaskLibrary(
+#             examples_base_dir=seed_examples_base_dir,
+#             seed_meta_path=seed_meta_path,
+#         ).records()
+
+#     def _resolve_seed_main_app(self, seed_record: SeedTaskRecord) -> str:
+#         candidates = [
+#             seed_record.snapshot,
+#             DOMAIN_TO_APP.get(seed_record.domain, ""),
+#             *seed_record.related_apps,
+#         ]
+#         for app in candidates:
+#             if app in APP_SETUP_DICT:
+#                 return app
+#         return candidates[0] or seed_record.domain
+
+#     def generate_task(
+#         self,
+#         seed_record: SeedTaskRecord,
+#         task_nums: int = 10,
+#     ):
+#         main_app = self._resolve_seed_main_app(seed_record)
+#         apps_for_group = [app for app in seed_record.related_apps if app in APP_SETUP_DICT] or [main_app]
+#         logger.info(
+#             f"Generating seed-expanded tasks for {seed_record.domain}/{seed_record.task_id} "
+#             f"with init app {main_app} and app group: {apps_for_group}..."
+#         )
+
+#         domain_dir = os.path.join(self.rollout_task_dir, seed_record.domain)
+#         os.makedirs(domain_dir, exist_ok=True)
+#         image_base_dir = os.path.join(domain_dir, "image")
+#         os.makedirs(image_base_dir, exist_ok=True)
+        
+#         if main_app in APP_SETUP_DICT:
+#             task_setup_config, launch_paths, golden_paths = self._generate_config(main_app, always_need_path=True)
+#         else:
+#             task_setup_config, launch_paths, golden_paths = [], [], []
+            
+#         self.env.reset(
+#             task_config={
+#                 "config": task_setup_config,
+#                 "id": "init_id",
+#                 "instruction": "init_instruction",
+#             }
+#         )
+#         time.sleep(20)
+#         self.agent.reset()
+
+#         obs = self.env._get_obs()
+#         app_name = APP_SET_CONFIG_DICT.get(main_app, {}).get("version", main_app)
+#         allowed_apps = [APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in apps_for_group]
+#         extra_requirements = build_seed_expansion_requirements(
+#             seed_records=[seed_record],
+#             launch_paths=launch_paths,
+#             golden_paths=golden_paths,
+#             target_app=seed_record.domain,
+#         )
+#         logger.info(f"[Important Extra Seed]: {extra_requirements}")
+#         task_list = self.agent.generate(
+#             app_name=app_name,
+#             observation=obs,
+#             task_nums=task_nums,
+#             launch_paths=launch_paths,
+#             app_tutorial_md=None,
+#             allowed_apps=allowed_apps,
+#             golden_paths=golden_paths,
+#             extra_requirements=extra_requirements,
+#         )
+
+#         test_file_list: Dict[str, List[str]] = {}
+#         for task in task_list:
+#             task_id = str(uuid.uuid4())
+#             json_path = os.path.join(domain_dir, f"{task_id}.json")
+#             task_related_apps = task.get("related_apps") or seed_record.related_apps or [main_app]
+#             task_related_apps_version = [APP_SET_CONFIG_DICT.get(app, {}).get("version", app) for app in task_related_apps]
+#             task_config = {
+#                 "id": task_id,
+#                 "snapshot": main_app,
+#                 "related_apps": task_related_apps,
+#                 "related_apps_version": task_related_apps_version,
+#                 "related_task": {
+#                     "domain": seed_record.domain,
+#                     "task_id": seed_record.task_id,
+#                     "instruction": seed_record.instruction,
+#                 },
+#                 "instruction": task.get("description"),
+#                 "config": task_setup_config,
+#                 "complexity": task.get("complexity"),
+#                 "estimated_steps": task.get("estimated_steps"),
+#                 "category": task.get("category"),
+#                 "evaluator": self._build_evaluator_from_verification(task),
+#                 "setup_image": f"image/{task_id}.png", # Rel Path
+#                 "launch_paths": launch_paths,
+#             }
+#             with open(json_path, "w", encoding="utf-8") as f:
+#                 json.dump(task_config, f, indent=4, ensure_ascii=False)
+#             # 记录初始化截图
+#             with open(os.path.join(image_base_dir, f"{task_id}.png"), "wb") as _f:
+#                 _f.write(obs['screenshot'])
+
+#             if seed_record.domain not in test_file_list:
+#                 test_file_list[seed_record.domain] = []
+#             test_file_list[seed_record.domain].append(task_id)
+
+#         return test_file_list
 
 
 if __name__=="__main__":

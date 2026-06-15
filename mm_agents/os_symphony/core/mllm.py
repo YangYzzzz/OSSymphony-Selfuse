@@ -1,4 +1,6 @@
 import base64
+import json
+import re
 
 import numpy as np
 
@@ -306,3 +308,35 @@ class LMMAgent:
             max_new_tokens=max_new_tokens,
             **kwargs,
         )
+
+    def get_json_response(self, *args, **kwargs):
+        response = self.get_response(*args, **kwargs)
+        self.last_usage = None
+        if isinstance(response, tuple):
+            response, self.last_usage = response
+        raw_response = str(response or "")
+        return raw_response, self._load_json_response(raw_response)
+
+    def _load_json_response(self, raw_response):
+        try:
+            return json.loads(raw_response)
+        except json.JSONDecodeError as original_error:
+            match = re.search(r"```(?:json)?\s*(.*?)\s*```", raw_response, re.DOTALL | re.IGNORECASE)
+            if match:
+                return json.loads(match.group(1).strip())
+            extracted = self._extract_embedded_json(raw_response)
+            if extracted is not None:
+                return extracted
+            raise original_error
+
+    def _extract_embedded_json(self, raw_response):
+        decoder = json.JSONDecoder()
+        for idx, char in enumerate(raw_response):
+            if char not in "[{":
+                continue
+            try:
+                data, _ = decoder.raw_decode(raw_response[idx:])
+                return data
+            except json.JSONDecodeError:
+                continue
+        return None

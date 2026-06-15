@@ -1,0 +1,44 @@
+{
+  "app": "pdfarranger",
+  "covered_features": {
+    "PDF data extraction for spreadsheet entry": 0,
+    "PDF file organization/copying into folders": 0,
+    "PDF form filling from spreadsheet data": 0,
+    "PDF file naming based on data field values": 0,
+    "PDF author identification": 0,
+    "Image to PDF conversion": 0
+  },
+  "recent_tasks": [],
+  "verification_experience": {
+    "PDF data extraction for spreadsheet entry": [
+      "Use openpyxl/pandas to read the result xlsx and compare specific cell values (numeric) with approx tolerance via check_cell rules; the compare_table metric supports 'approx:N' method for floating-point amounts extracted from PDFs.",
+      "When verifying transaction amounts parsed from PDF receipts/invoices, use sheet_fuzzy exact_match for text fields (category, description) and check_cell approx match for numeric fields (amounts, running balances).",
+      "Running balance/cumulative columns can be verified by checking each row's cell value independently with approx tolerance rather than comparing full column ranges, since small extraction errors compound.",
+      "PDF text extraction tools (pdfplumber, PyMuPDF, pdfminer) vary in how they parse tables vs. free-form text; verify that currency symbols, negative signs, and decimal separators are correctly parsed before numeric comparison.",
+      "Use fitz (PyMuPDF) to extract text from each page via page.get_text() and compare with fuzz.ratio for fuzzy text similarity scoring"
+    ],
+    "PDF file organization/copying into folders": [
+      "Verify the correct PDF ends up at the target path by extracting and fuzzy-comparing its text content against a reference PDF; fitz.open + page.get_text() is the standard extraction approach, and fuzz.ratio >= threshold indicates a match"
+    ],
+    "PDF form filling from spreadsheet data": [
+      "Use PyMuPDF (fitz) to extract text from each page and compare against reference PDFs using fuzzy string matching (e.g., fuzz.ratio) averaged across multiple files.",
+      "When verifying checkbox/mark fields, extract raw text and check for presence of the specific mark character (e.g., √) in the correct positions relative to surrounding label text.",
+      "For multi-file batch output, iterate over all expected output files and average similarity scores; a missing file should contribute 0 to the score.",
+      "PDF text extraction via fitz page.get_text() captures both static text and filled form field values as a flat string, making fuzz.ratio a practical similarity metric for form content comparison."
+    ],
+    "PDF file naming based on data field values": [
+      "Check that output filenames exactly match the employee/entity name strings as they appear in the source data, including spaces and capitalization.",
+      "Use os.path.exists or directory listing to verify each expected filename is present before attempting content comparison."
+    ],
+    "PDF author identification": [
+      "Author order (first, last N) must be extracted from PDF metadata or rendered text; use PDF parsing libraries to read author lists from title pages or headers.",
+      "Verification relies on cross-referencing extracted author names against expected personal webpage URLs, so the checker must tolerate multiple valid URL aliases per author (use itertools.product over per-author URL sets and compare as sets)."
+    ],
+    "Image to PDF conversion": [
+      "Use fitz (PyMuPDF) to extract embedded images from each PDF page via page.get_images() and pdf_document.extract_image(); compare extracted images between result and reference using perceptual hashing (e.g., imagehash.phash) with a small hash-difference threshold to tolerate minor encoding differences",
+      "Check that the number of embedded images across all pages matches between result and reference PDF before doing content comparison",
+      "When a PDF is created by embedding an image, the image may be re-encoded (JPEG, PNG, etc.); perceptual hash comparison is more robust than pixel-exact or byte-exact comparison for this feature class"
+    ]
+  },
+  "co_use_counts": {}
+}

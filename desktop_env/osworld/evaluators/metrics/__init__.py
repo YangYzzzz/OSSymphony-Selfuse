@@ -5,6 +5,7 @@ from .basic_os import (
     check_moved_jpgs,
     is_in_vm_clickboard
 )
+from .cua_gym import parse_cua_gym_reward
 from .chrome import (
     is_expected_tabs,
     is_expected_bookmarks,
