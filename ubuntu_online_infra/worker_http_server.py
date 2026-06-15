@@ -44,10 +44,11 @@ def run_cmd(cmd: List[str]) -> CmdResult:
 
 @app.post("/start", response_model=CmdResult)
 def start_workers(req: StartRequest):
+    print(f'Request: {req}')
     num_envs = req.NUM_ENVS or 1
     worker_url = req.WORKER_URL
     worker_id = req.WORKER_ID
-
+    
     if num_envs <= 0:
         raise HTTPException(status_code=400, detail="NUM_ENVS must be positive")
 

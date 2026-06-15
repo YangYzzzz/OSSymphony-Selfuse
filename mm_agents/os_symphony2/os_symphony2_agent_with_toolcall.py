@@ -32,7 +32,7 @@ from mm_agents.os_symphony2.utils import build_qwen_sft_sample_for_ossymphony
 logger = logging.getLogger("desktopenv.agent")
 
 MAX_RETRY_TIMES = 5
-EMPTY_TOOL_CALL_RETRY_TIMES = 10
+EMPTY_TOOL_CALL_RETRY_TIMES = 5
 
 
 def encode_image(image_content, input_width: Optional[int] = None, input_height: Optional[int] = None):
