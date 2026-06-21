@@ -131,6 +131,10 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.qwen_sft_image_hash_map: Dict[str, str] = {}
         self.collect_qwen_sft_image_dir = Path(collect_qwen_sft_image_dir) if collect_qwen_sft_image_dir else Path("qwen3vl_sft_dataset/image")
 
+    @staticmethod
+    def _py_string(text: str) -> str:
+        return json.dumps("" if text is None else str(text), ensure_ascii=False)
+    
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
 

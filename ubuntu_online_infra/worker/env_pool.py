@@ -193,6 +193,7 @@ class EnvPool:
         total = len(self._slots)
         healthy_ids: List[int] = []
         unhealthy_ids: List[int] = []
+        recovered_ids: List[int] = []
 
         for slot in self._slots:
             env = slot.env
@@ -207,8 +208,12 @@ class EnvPool:
                     slot.state = EnvState.acquired # Anyway, wait for cleanup expired
                 healthy_ids.append(slot.local_env_id)
             else: # Current Logic：Even state is Error, env still work.
-                slot.state = EnvState.error
-                unhealthy_ids.append(slot.local_env_id)
+                if slot.state == EnvState.idle and self._restart_idle_env(slot):
+                    recovered_ids.append(slot.local_env_id)
+                    healthy_ids.append(slot.local_env_id)
+                else:
+                    slot.state = EnvState.error
+                    unhealthy_ids.append(slot.local_env_id)
 
         if total == 0:
             summary = "no env slots configured"
@@ -231,6 +236,8 @@ class EnvPool:
                 healthy_ids,
                 unhealthy_ids,
             )
+        if recovered_ids:
+            logger.info("EnvPool health_check recovered idle envs: %s", recovered_ids)
         return summary
         
     def get_free_count(self) -> int:
@@ -273,6 +280,43 @@ class EnvPool:
             if slot.local_env_id == local_env_id:
                 return slot
         return None
+
+    def _restart_idle_env(self, slot: EnvSlot) -> bool:
+        """Restart an idle env after a failed health check."""
+        with self._pool_lock:
+            with slot.lock:
+                if slot.state != EnvState.idle:
+                    return False
+                slot.state = EnvState.busy
+                slot.last_activity = time.time()
+
+        logger.warning(
+            "Restarting idle env %d after failed health check",
+            slot.local_env_id,
+        )
+        try:
+            slot.env.provider.stop_emulator(slot.env.path_to_vm)
+        except Exception:
+            logger.warning(
+                "Error stopping unhealthy idle env %d before restart",
+                slot.local_env_id,
+                exc_info=True,
+            )
+
+        try:
+            slot.env._start_emulator()
+            slot.vnc_port = self._extract_vnc_port(slot.env)
+            with slot.lock:
+                slot.state = EnvState.idle
+                slot.last_activity = time.time()
+            logger.info("Restarted idle env %d", slot.local_env_id)
+            return True
+        except Exception:
+            logger.exception("Failed to restart idle env %d", slot.local_env_id)
+            with slot.lock:
+                slot.state = EnvState.error
+                slot.last_activity = time.time()
+            return False
 
     @staticmethod
     def _extract_vnc_port(env: Any) -> int:

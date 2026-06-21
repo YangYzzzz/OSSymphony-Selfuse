@@ -3,8 +3,10 @@ import logging
 import os
 import os.path
 import platform
+import re
 import shutil
 import sqlite3
+import tarfile
 import tempfile
 import time
 import traceback
@@ -12,6 +14,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Union, Optional
 from typing import Dict, List
+from shlex import quote as shlex_quote
 
 import requests
 from playwright.sync_api import sync_playwright, TimeoutError
@@ -54,6 +57,58 @@ class SetupController:
 
     def reset_cache_dir(self, cache_dir: str):
         self.cache_dir = cache_dir
+
+    def upload_text(self, text: str, path: str) -> None:
+        """Upload UTF-8 text to a path inside the VM."""
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as tmp:
+            tmp.write(text)
+            tmp_path = tmp.name
+        try:
+            self._upload_file_setup([{"local_path": tmp_path, "path": path}])
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    def upload_directory(self, local_dir: str, remote_dir: str, timeout: int = 900) -> None:
+        """Tar a local directory and extract it into remote_dir inside the VM."""
+        if not os.path.isdir(local_dir):
+            return
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+            tar_path = tmp.name
+        try:
+            with tarfile.open(tar_path, "w:gz") as tar:
+                for child in sorted(os.listdir(local_dir)):
+                    tar.add(os.path.join(local_dir, child), arcname=child)
+            remote_tar = f"/tmp/weavebench_upload_{uuid.uuid4().hex[:8]}.tar.gz"
+            self._upload_file_setup([{"local_path": tar_path, "path": remote_tar}])
+            script = (
+                "set -e\n"
+                f"mkdir -p {shlex_quote(remote_dir)}\n"
+                f"tar xzf {shlex_quote(remote_tar)} -C {shlex_quote(remote_dir)}\n"
+                f"rm -f {shlex_quote(remote_tar)}\n"
+            )
+            result = self.run_bash_script(script, timeout=timeout)
+            if int(result.get("returncode", 1)) != 0:
+                raise RuntimeError(f"extract directory failed: {result}")
+        finally:
+            try:
+                os.unlink(tar_path)
+            except OSError:
+                pass
+
+    def run_bash_script(self, script: str, timeout: int = 900, working_dir: Optional[str] = None) -> Dict[str, Any]:
+        payload = json.dumps({"script": script, "timeout": timeout, "working_dir": working_dir})
+        response = requests.post(
+            self.http_server + "/run_bash_script",
+            headers={"Content-Type": "application/json"},
+            data=payload,
+            timeout=timeout + 10,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"run_bash_script failed: {response.status_code} {response.text}")
+        return response.json()
 
     def setup(self, config: List[Dict[str, Any]], use_proxy: bool = False)-> bool:
         """
@@ -255,6 +310,63 @@ class SetupController:
 
             if last_error is not None:
                 raise last_error
+
+    def _weavebench_setup(
+        self,
+        workspace_path: str,
+        env: str = "",
+        warmup: str = "",
+        remote_root: str = "/tmp_workspace",
+        timeout: int = 1800,
+    ):
+        """Stage a WeaveBench workspace and run its warmup.
+
+        Mirrors WeaveBench's setup convention:
+        - workspace/exec/* -> /tmp_workspace/*
+        - workspace/tmp/*  -> /tmp_workspace/tmp/*
+        - workspace/gt is intentionally not uploaded until evaluation time.
+        """
+        workspace_path = os.path.abspath(os.path.expanduser(workspace_path))
+        password = self.client_password or "password"
+        bootstrap = (
+            "set -e\n"
+            f"echo {shlex_quote(password)} | sudo -S -p '' rm -rf {shlex_quote(remote_root)}\n"
+            f"mkdir -p {shlex_quote(remote_root)} {shlex_quote(remote_root + '/tmp')} /opt/eval\n"
+            f"echo {shlex_quote(password)} | sudo -S -p '' chown -R user:user {shlex_quote(remote_root)} /opt/eval || true\n"
+        )
+        self.run_bash_script(bootstrap, timeout=120)
+
+        self.upload_directory(os.path.join(workspace_path, "exec"), remote_root, timeout=timeout)
+        self.upload_directory(os.path.join(workspace_path, "tmp"), f"{remote_root}/tmp", timeout=timeout)
+
+        env_lines = ["#!/bin/bash", "# weavebench task env, auto-generated"]
+        for raw in (env or "").splitlines():
+            key = raw.strip()
+            if not key or key.startswith("#"):
+                continue
+            if "=" in key:
+                lhs = key.split("=", 1)[0].strip()
+                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", lhs):
+                    env_lines.append(f"export {key}")
+            elif re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                val = os.environ.get(key, "").replace("'", "'\\''")
+                env_lines.append(f"export {key}='{val}'")
+        self.upload_text("\n".join(env_lines) + "\n", "/tmp/openclaw_task_env.sh")
+        self.run_bash_script("chmod +x /tmp/openclaw_task_env.sh", timeout=30)
+
+        if warmup and warmup.strip():
+            warmup_inner = f"cd {remote_root}\n{warmup}"
+            warmup_script = (
+                "set -e\n"
+                "if [ -f /tmp/openclaw_task_env.sh ]; then set -a; . /tmp/openclaw_task_env.sh; set +a; fi\n"
+                f"cd {shlex_quote(remote_root)}\n"
+                f"echo {shlex_quote(password)} | sudo -S -p '' "
+                "env DEBIAN_FRONTEND=noninteractive PATH=\"$PATH\" HOME=/root "
+                f"bash -c {shlex_quote(warmup_inner)}\n"
+            )
+            result = self.run_bash_script(warmup_script, timeout=timeout)
+            if int(result.get("returncode", 1)) != 0:
+                raise RuntimeError(f"WeaveBench warmup failed: {result}")
 
     def _change_wallpaper_setup(self, path: str):
         if not path:
