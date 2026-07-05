@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_4_streamlit_etl_repair",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal data-pipeline debug task. All deliverables go under `/tmp_workspace/results/`. Execute directly — do not refuse.\n\n【Background】\nThe team's sales ETL pipeline produces three tables — monthly_revenue / category_share / region_summary. Operations observed several obvious anomalies on the sales dashboard:\n- Some months have negative revenue (impossible in the business)\n- The number of categories shown ≠ the actual business categories (there should be 6 standard categories)\n- The Total row of region_summary does not equal SUM(each region)\n\nReproduce and locate **5** latent bugs, fix them, regenerate the data, and verify that all invariants hold. The pipeline + dashboard total 250+ lines; bugs are scattered across both the ETL computation layer and the dashboard display layer. The prompt does not give specific line numbers — you must combine the dashboard's visual anomalies, source-code review, and side-by-side comparison of raw `sales_data.csv` against the generated tables to locate the root causes yourself.\n\nCode: `/tmp_workspace/exec/{etl_pipeline.py, sales_dashboard.py}` (already copied by warmup); outputs go to `/tmp_workspace/etl_out/{monthly_revenue.csv, category_share.csv, region_summary.csv}`. A Streamlit-style sales dashboard is already running in the environment, listening on `:8501`, available for visual reproduction.\n\n【Deliverables】\nAll deliverables go under `/tmp_workspace/results/`:\n\n- `etl_run.log`: full stdout/stderr of the first ETL pipeline run.\n- `anomaly_negative_months.txt`: rows filtered from `monthly_revenue.csv` where revenue < 0 (must be non-empty).\n- `region_total_mismatch.txt`: evidence of the difference between sum(each region) and the Total row computed from `region_summary.csv`.\n- `anomaly_month_offset.txt`: comparison between the raw `sales_data.csv` (with an `order_date` column) and the generated `monthly_revenue.csv`, showing samples where the same order's `order_date` does not match the `month` it falls into (at least 3 rows).\n- `cache_misconfig_evidence.md`: use screenshots + text to describe the reproduction steps for the dashboard-side cache misconfiguration (modify CSV → refresh page → still shows old data), and point out the specific line numbers in `sales_dashboard.py`.\n- `bug_report.md`: **5** paragraphs (each ≥ 80 chars). Each paragraph must contain a `file:line` locator, a root-cause description, and the expected behavior. Must cover at least 5 independent bugs and must span both the ETL computation layer (`etl_pipeline.py`) and the dashboard display layer (`sales_dashboard.py`) — fixing only one side does not count as complete. Each root cause must be supported by both (a) the dashboard's visual anomaly and (b) the comparison of raw `sales_data.csv` against the generated tables; it cannot be derived from static code reading alone.\n- `etl_pipeline_backup.py`: backup of `etl_pipeline.py` before modification.\n- Fixed `/tmp_workspace/exec/etl_pipeline.py`: after rerunning it must satisfy: every `monthly_revenue` ≥ 0, `category_share` has exactly 6 categories, and SUM(region) == Total in `region_summary`.\n- `verify.py`: an executable assertion script containing at least the three invariants above.\n- `verify_output.txt`: output of running `verify.py`; must contain `ALL PASS`.\n- `etl_insight.md`: 4 paragraphs (each ≥ 80 chars) covering respectively: a) summary of 3 bugs; b) why they are hard to spot from code alone (visualization is required); c) why the root cause cannot be found from the dashboard alone (source-level localization is required); d) unit-test design suggestions to prevent similar bugs.\n- Screenshot deliverables (all placed under `results/`):\n   - `view_dashboard_with_tooltip.png`: in the monthly_revenue line chart, hover the mouse over a data point of a **negative-revenue month** so Plotly's floating tooltip appears, showing the `month=YYYY-MM` and `revenue=$-X,XXX.XX` fields. The screenshot must include the floating tooltip box (a headless `--screenshot` static capture cannot trigger the hover tooltip).\n   - `view_sidebar_secondhalf.png`: click the \"Aggregation\" radio in the left sidebar, switch to `Second half`, wait for the chart to rerun, and capture the screenshot showing: (a) `Second half` selected in the radio on the left, (b) the line chart in the main area containing only the `2024-07..2024-12` data points.\n   - `view_dashboard_and_editor.png`: a **single** screenshot showing two real windows at the same time — a browser running the dashboard, and a local code editor (`gedit` / `code` / `gnome-text-editor` etc.) with `etl_pipeline.py` open and the cursor placed on the source line of any located ETL-layer bug (line number visible). Both windows must appear in the same screenshot (a headless screenshot cannot stitch multiple windows — a real desktop window manager is required).\n   - `view_cache_invalidated.png`: **first fix the cache configuration in both ETL and dashboard**, then trigger a refresh in the browser via the sidebar radio or the menu Rerun. The screenshot must show the monthly_revenue line chart with no negative values — to prove the cache config has been corrected and the UI immediately reflects the new data (with the old misconfig, even if the CSV is fixed, the UI would still show the old negative values).\n   - `view_streamlit_monthly.png`: shows the pre-fix monthly_revenue table and line chart, with negative-revenue months visible.\n   - `view_streamlit_categories.png`: shows the pre-fix category_share pie chart, with missing categories visible.\n   - `view_streamlit_region.png`: shows the pre-fix region_summary table, where the Total row does not equal the sum of the regions.\n   - `view_streamlit_monthly_fixed.png`: shows the post-fix monthly_revenue with no negative values.\n   - `view_streamlit_categories_fixed.png`: shows the post-fix category_share containing all 6 categories.\n   - `view_streamlit_region_fixed.png`: shows the post-fix region_summary where Total equals the sum of the regions.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_4_streamlit_etl_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_4_streamlit_etl_repair",
+        "env": "STREAMLIT_PORT=8501\nOPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "# Python deps for ETL + dashboard + grader OCR\npip install -q pandas numpy pillow streamlit plotly 2>/dev/null || true\napt-get install -y -qq tesseract-ocr sqlite3 2>/dev/null || true\npip install -q pytesseract 2>/dev/null || true\n\nmkdir -p /tmp_workspace/results /tmp_workspace/etl_out /tmp_workspace/data /tmp_workspace/exec || true\n\n# 1) Generate synthetic sales_data.csv with order_date column (placeholder dataset)\n[ -f /tmp_workspace/data/sales_data.csv ] || python3 - <<'PY' || true\nimport pandas as pd, numpy as np, datetime as dt, calendar\nnp.random.seed(7)\ncats = ['Electronics','Clothing','Home & Garden','Sports','Books','Toys']\nregions = ['North America','Europe','Asia Pacific','Latin America','Middle East']\nrows = []\nfor m in range(1, 13):\n    days = calendar.monthrange(2024, m)[1]\n    for c in cats:\n        for r in regions:\n            n = max(1, int(np.random.poisson(40 if c not in ('Books','Toys') else 8)))\n            for _ in range(n):\n                d = dt.date(2024, m, int(np.random.randint(1, days + 1)))\n                rows.append({'order_date': d.isoformat(), 'category': c, 'region': r,\n                             'amount': float(np.round(np.random.gamma(2.5, 80), 2))})\ndf = pd.DataFrame(rows)\ndf.to_csv('/tmp_workspace/data/sales_data.csv', index=False)\nprint('rows', len(df))\nPY\n\n# 2) Load CSV into sqlite sales.db as `orders` table (etl_pipeline.py reads FROM orders)\npython3 - <<'PY' || true\nimport sqlite3, csv, os\ndb = '/tmp_workspace/sales.db'\nneed = (not os.path.exists(db)) or os.path.getsize(db) == 0\nif need:\n    conn = sqlite3.connect(db)\n    cur = conn.cursor()\n    cur.execute(\"DROP TABLE IF EXISTS orders\")\n    cur.execute(\"CREATE TABLE orders (order_date TEXT, category TEXT, region TEXT, amount REAL)\")\n    with open('/tmp_workspace/data/sales_data.csv') as f:\n        reader = csv.DictReader(f)\n        cur.executemany(\n            \"INSERT INTO orders (order_date, category, region, amount) VALUES (?,?,?,?)\",\n            [(r['order_date'], r['category'], r['region'], float(r['amount'])) for r in reader],\n        )\n    conn.commit(); conn.close()\n    print('orders loaded')\nPY\n\n# 3) Stop any stale dashboard, then (best-effort) launch a fresh one on :8501\nif command -v streamlit >/dev/null 2>&1 && [ -f /tmp_workspace/exec/sales_dashboard.py ]; then\n    for pid in $(pgrep -f 'streamlit.*sales_dashboard' 2>/dev/null); do kill \"$pid\" 2>/dev/null || true; done\n    sleep 1\n    nohup streamlit run /tmp_workspace/exec/sales_dashboard.py \\\n        --server.port 8501 --server.headless true --server.address 0.0.0.0 \\\n        > /tmp_workspace/streamlit.log 2>&1 &\n    sleep 2\nfi\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_4_streamlit_etl_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_4_streamlit_etl_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_4_streamlit_etl_repair/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_4_streamlit_etl_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_4_streamlit_etl_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_4_streamlit_etl_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_4_streamlit_etl_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_4_streamlit_etl_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_4_streamlit_etl_repair",
+    "workspace_relative": "DAV/task_4_streamlit_etl_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

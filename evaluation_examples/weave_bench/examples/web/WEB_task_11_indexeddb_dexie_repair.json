@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_11_indexeddb_dexie_repair",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: The internal Acme Todo single-page app (Dexie + IndexedDB v3) started exhibiting a set of **vague** rendering symptoms after a failed migration: \"Today's high-priority items\" is missing one row; one row in the \"All todos by project\" table shows project name as `?`; one row's Due column displays `Invalid Date`. The HTML returned by `http://localhost:7110/` is purely a static shell — eyeballing the source reveals nothing — **all symptoms originate from dirty data the frontend reads out of IndexedDB**: the affected fields are the runtime JS type of values (`priority` should be a number but is stored as a string), the foreign key `projectId` pointing to a non-existent project, and a non-numeric `dueAt`. The \"actual JS types of values + the key tuples actually indexed by the compound index\" can only be seen when expanding the `AcmeTodoDB` tree in the browser storage viewer; HAR / HTML / `curl` carry no such semantic information.\n\nReady-to-use scene materials:\n- App under test: `http://localhost:7110/` (warmup auto-starts an Express server serving the static SPA + Dexie 4.0.7 library from `/tmp_workspace/app/`; `/healthz` for liveness probe).\n- IndexedDB database: `AcmeTodoDB`, containing the `todos` object store (12 rows, at least 3 rows exhibit more than two of the three aforementioned corruption classes), the `projects` object store (4 rows, id 1..4), and the `[projectId+priority]` compound index.\n- Frontend source: `/tmp_workspace/app/public/js/seed.js` + `app.js` (**modification forbidden** — this task is data-layer repair, not code repair; SHA-256 is compared against the original `setup/` image).\n- helper: `/tmp_workspace/app/playwright_dump.js`, which visits `http://127.0.0.1:7110/`, waits for seed completion, then uses `page.evaluate` to dump both tables fully to `/tmp_workspace/results/idb_dump_<tag>.json` (`tag` specified via call argument). The agent may reuse it directly or rewrite it.\n\nGoal: Locate ≥ 3 corrupted rows covering at least 2 corruption categories, **fix the data to the correct state by writing only to IndexedDB** (do not modify frontend source, do not delete and rebuild the database), and leave behind a forensic chain that a third party can independently audit. How you spin up the browser, expand the storage viewer, and drive the IndexedDB repair (Playwright / CDP / custom script — any approach works) is up to you.\n\nThe following deliverables must be produced under `/tmp_workspace/results/`:\n\n1. **Static SSR baseline** `page_static.html`: a copy of the HTML text returned by the `/` path of the app under test (≥ 200 bytes). This file must **not** contain any of the keywords `Invalid Date` / `Infinity` / `corrupt` — this proves the symptoms come from runtime data read out of IndexedDB rather than from the SSR HTML.\n\n2. **Pre-repair full IndexedDB snapshot** `idb_dump_before.json`:\n   ```json\n   {\n     \"todos\":    [{\"id\": <int>, \"title\": ..., \"priority\": ..., \"projectId\": ..., \"dueAt\": ..., ...}, ... 12 rows total ...],\n     \"projects\": [{\"id\": <int>, \"name\": ...}, ... ≥ 4 rows ...]\n   }\n   ```\n   Field values must preserve the original JS types of the source data — corrupt-class string `\"high\"`, `projectId` value `99`, string `\"Infinity\"`, etc., must appear as-is, so that all three corruption classes are detectable from the dump.\n\n3. **Corruption diagnosis** `corruption_report.json`:\n   ```json\n   {\n     \"corrupted_rows\": [\n       {\"id\": <int>, \"kind\": \"<kind>\", \"field\": \"<field>\", \"bad_value\": <as-is>},\n       ... ≥ 3 entries ...\n     ],\n     \"evidence_screenshots\": [\"<.png filename>\", ...]\n   }\n   ```\n   `kind` is drawn from the set `{priority_type, dangling_project, due_at_invalid}` and must **cover at least 2 kinds**; at least 3 `id`s must hit real corrupted rows.\n\n4. **Repair script** `repair.js`: ≥ 200 bytes of valid JS. Requirements:\n   - Must write IndexedDB in the same-origin context of an already-loaded page (via any of `page.evaluate` / `evaluateHandle` / direct use of Dexie's same-origin API);\n   - Must **never** contain `indexedDB.deleteDatabase` / `rm -rf` / invoking `rm` via `child_process`, or any other \"delete-and-rebuild\" or file-level destructive path;\n   - Repair semantics: every non-number `priority` is mapped to int (e.g. `\"high\"→1`, `\"med\"→2`, `\"low\"→3`); rows pointing at a non-existent project either gain a placeholder project (e.g. `{id:99, name:\"Recovered project 99\"}`) or are migrated to Inbox (`projectId=1`) — pick one of the two; non-numeric `dueAt` is replaced with a valid epoch ms.\n\n5. **Repair script run log** `repair.log`: the combined stdout/stderr log from running `repair.js`; must include a line with the marker `REPAIR_OK <number_of_rows_repaired>`.\n\n6. **Post-repair full IndexedDB snapshot** `idb_dump_after.json`: same schema as `idb_dump_before.json`. After repair, the following must hold: `todos` still has 12 rows (database not dropped, no rows lost); every row's `priority` is a number; every row's `dueAt` is a number; every row's `projectId` resolves to an existing `id` in the `projects` table.\n\n7. **Visual forensic screenshots** (each ≥ 4 KB, taken from the actual rendered state):\n   - `view_app_glitch.png`: pre-repair app page. Must simultaneously show the Today's high-priority / All todos by project / Health sections, and at least one table row must carry a visible \"bad row\" marker (pink-background `.bad` class highlight) or explicitly render `?` as the project name / `Invalid Date` as the Due value.\n   - `view_idb_todos_store.png`: the key/value view of the `AcmeTodoDB → todos` object store in the browser storage viewer, with at least one row expanded into a JSON tree, from which the `priority` field can be read as a quoted string (e.g. `\"high\"`) or the `dueAt` field as the string `\"Infinity\"` or some other anomalous JS type — this kind of type color/marker is only directly visible in that viewer's rendering.\n   - `view_idb_compound_index.png`: the `[projectId+priority]` compound index view of the same database. Multiple key tuple entries (e.g. `[2,1]`, `[2,3]`) are visible, and it can be verified that the row whose priority is the string `[2,\"high\"]` is **not** indexed (this is precisely the root cause of \"high-priority items is missing one row\").\n   - `view_idb_projects_store.png`: the `projects` object store view, from which the 4 rows with id 1..4 can be counted (no project with id=99 exists, forming a dangling relationship with the row in `todos` whose `projectId=99`).\n   - `view_app_after.png`: the app page after repair and refresh. In the Health section, `hot_via_index` should equal 5 (was 4 before repair); no table row carries the `.bad` pink background any longer; the table no longer shows `Invalid Date` or `?` project names.\n   - `view_idb_index_after.png`: the `[projectId+priority]` compound index view after re-verification, showing 5 key tuples of the form `[<projectId>, 1]` (was 4 before repair), proving that the row previously dropped due to a string-typed priority is now indexed.\n\n8. **Final report** `findings.json`:\n   ```json\n   {\n     \"rows_before\": 12,\n     \"rows_after\": 12,\n     \"corrupted_count_before\": <int>,\n     \"corrupted_count_after\": 0,\n     \"hot_via_index_before\": <int>,\n     \"hot_via_index_after\": 5,\n     \"kinds_seen\": [\"priority_type\", \"dangling_project\", \"due_at_invalid\"],\n     \"fix_strategy\": {\n       \"priority_type\":     \"string→int\",\n       \"dangling_project\":  \"create-placeholder | migrate-to-inbox\",\n       \"due_at_invalid\":    \"replace-with-epoch-ms\"\n     },\n     \"evidence_screenshots\": [\n       \"view_app_glitch.png\", \"view_idb_todos_store.png\", \"view_idb_compound_index.png\",\n       \"view_idb_projects_store.png\", \"view_app_after.png\", \"view_idb_index_after.png\"\n     ]\n   }\n   ```\n\nHard constraints:\n- The SHA-256 of `app/public/js/seed.js` and `app/public/js/app.js` must match the originals in `setup/` (any source-code change drops the fixture-integrity gate to 0).\n- The `todos` row count is strictly = 12 both before and after repair; bypassing repair via delete-and-rebuild is not allowed.\n- In the report, `hot_via_index_after` must be 5 and `corrupted_count_after` must be 0.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_11_indexeddb_dexie_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_11_indexeddb_dexie_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/web11_gt && chmod 777 /tmp_workspace/results /tmp_workspace/state\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/web11_gt/expected.json 2>/dev/null || cp /tmp_workspace/gt/expected.json /opt/web11_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/web11_gt 2>/dev/null || true\n  chmod 700 /opt/web11_gt 2>/dev/null || true\n  chmod 600 /opt/web11_gt/expected.json 2>/dev/null || true\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich curl || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing curl ca-certificates && break; sleep 5; done) || true\nwhich jq || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing jq && break; sleep 5; done) || true\nwhich node || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing nodejs npm && break; sleep 5; done) || true\nwhich tesseract || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tesseract-ocr fonts-noto-cjk && break; sleep 5; done) || true\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet pillow pytesseract requests playwright 2>/dev/null || pip3 install --quiet pillow pytesseract requests playwright || true\nPWB=\"chro\"\"mium\"\npython3 -m playwright install \"$PWB\" >/tmp/pw_install.log 2>&1 || true\ncd /tmp_workspace && timeout 240 npm install --silent --no-audit --no-fund express@4.19.2 playwright@1.44.1 || true\nmkdir -p /tmp_workspace/public/js\ntest -f /tmp_workspace/public/js/dexie.min.js || curl -fsSL --retry 5 --max-time 60 -o /tmp_workspace/public/js/dexie.min.js https://cdn.jsdelivr.net/npm/dexie@4.0.7/dist/dexie.min.js || true\ncd /tmp_workspace && nohup node server.js >/tmp/start.log 2>&1 & sleep 3; for i in $(seq 1 30); do curl -sf http://localhost:7110/healthz >/dev/null && break; sleep 1; done",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_11_indexeddb_dexie_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_11_indexeddb_dexie_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_11_indexeddb_dexie_repair/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_11_indexeddb_dexie_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_11_indexeddb_dexie_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_11_indexeddb_dexie_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_11_indexeddb_dexie_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_11_indexeddb_dexie_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_11_indexeddb_dexie_repair",
+    "workspace_relative": "WEB/task_11_indexeddb_dexie_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

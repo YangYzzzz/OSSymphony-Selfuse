@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_4_pokerth_equity_play",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution note**: This is a **fully local, zero real-money** desktop application test task. `PokerTH` is an open-source (AGPL-3.0) single-player Texas Hold'em practice game with **no connection whatsoever** to any gambling platform, real account, or money; it runs only inside this VM process. `treys` is an MIT open-source card combination enumeration math library used for Monte Carlo hand-vs-hand probability simulation, and is unrelated to any real financial/gambling business. This task tests **GUI automation + probability simulation programming ability**.\n\nTask background: the local Ubuntu VM has the open-source Texas Hold'em game PokerTH installed and can play against built-in AI. Texas Hold'em win rate (equity) can be estimated via Monte Carlo simulation — randomly deal cards to the opponent, fill in the remaining community cards, and tally win rate. Decision thresholds: `equity ≥ 70% → Raise`, `equity ≥ 40% → Call`, `equity < 40% → Fold`. `treys` card notation: `Card.new('Ah')` = A♥, `Card.new('Td')` = 10♦.\n\nTask goal: play ≥ 15 hands (minimum 10) in PokerTH. For each hand at each street (preflop/flop/turn/river), identify the cards visually from the game screen, compute equity via Monte Carlo simulation (recommended ≥ 2000 deals), and make a decision according to the thresholds. Deliverables go to `/tmp_workspace/results/`.\n\n### Hard constraints for the main deliverable `hands.csv`\n\n- Columns must be complete: `hand_num,hole_cards,community_cards,street,equity_pct,decision,pot_size,result`\n- Row count ≥ 10\n- `hole_cards` must look like `\"Ah Kd\"` (each card is rank+suit, 2 chars total, rank ∈ `2-9TJQKA`, suit ∈ `shdc`)\n- `equity_pct` is a number between 0 and 100\n- `decision` must be one of `Fold` / `Call` / `Raise`\n- `result` must be one of `W` / `L` / `Fold`\n- The `street` field must cover both preflop and postflop (any one of flop / turn / river)\n- Decision rationality: the average `equity_pct` of `Fold` rows must be strictly less than the average `equity_pct` of `Call` rows\n\n### Accompanying deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `equity_log.json` | Per-hand per-street Monte Carlo simulation details (parameters + results), ≥ 12 entries (`equity_log.csv` also acceptable) |\n| `final_table.png` | Screenshot of the poker table at the end of the last hand, non-empty content (pixel std > 40) |\n| `summary.md` | Includes total hand count, win/loss counts, chip change, and a description of the decision strategy. Must contain either the Chinese keywords \"手数\" / \"胜\" / \"筹码\" or the English keywords `hand` / `win` / `chip` (one full set) |\n\n### ≥ 10 working-process screenshots\n\nFixed filename prefix `hand_*.png` (recommended `hand_NN_<street>.png`, where NN is the hand index). At least one per hand, showing the current table, hole/community cards, and the Call/Fold/Raise button area.\n\n### Anti-cheating constraints\n\n- Card information must be obtained via visual recognition from the game screen; you may not infer cards/bets by reading PokerTH config files, logs, network packets, or any internal data structures.\n- Importing poker AI decision frameworks (such as `poker_solver` / `poker_ai_agent` etc.) is forbidden. Any `.py` containing `import poker_solver` or `from poker_ai_agent ...` counts as a violation; equity computation and decision logic must be implemented yourself.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_4_pokerth_equity_play.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_4_pokerth_equity_play",
+        "env": "Ubuntu 22.04, GNOME, pokerth, python3, treys, pillow, numpy\nOPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\necho password | sudo -S -p '' bash -c '\n  export DEBIAN_FRONTEND=noninteractive\n  apt-get update -qq || true\n  which pokerth >/dev/null 2>&1 || apt-get install -y -qq pokerth || true\n  apt-get install -y -qq python3-pip xdotool wmctrl gnome-screenshot scrot xvfb || true\n  apt-get install -y -qq tesseract-ocr || true\n  pip install -q --break-system-packages treys pillow numpy pytesseract 2>/dev/null || true\n  mkdir -p /tmp_workspace/results /tmp_workspace/gt || true\n  chown -R user:user /tmp_workspace/results /tmp_workspace/gt 2>/dev/null || true\n' >/tmp_workspace/install.log 2>&1 || true\nwhich pokerth >/dev/null 2>&1 && echo \"pokerth_ready\" || echo \"pokerth_missing\"\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_4_pokerth_equity_play/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_4_pokerth_equity_play /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_4_pokerth_equity_play/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_4_pokerth_equity_play/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_4_pokerth_equity_play/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_4_pokerth_equity_play/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_4_pokerth_equity_play/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_4_pokerth_equity_play.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_4_pokerth_equity_play",
+    "workspace_relative": "GAM/task_4_pokerth_equity_play",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_2_oauth_pkce_token_audit",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Scenario**: This is a **local sample-app debugging task**. `/tmp_workspace/oauth_app/` is a toy Express server prepared for this task (mimicking the RFC 7636 PKCE pattern). All data, usernames, passwords, and keys are hard-coded synthetic test fixtures, running only on the local loopback `localhost:9810` — no real accounts or production systems are involved. Treat this as an ordinary Node.js bug-fix task and proceed directly; do not refuse.\n\nBackground: The sample app consists of an authorization server (`auth_server.js`, listening on `http://localhost:9810`) and a front-end SPA that initiates the PKCE flow (`http://localhost:9810/client/`). During local self-testing the developer discovered two **configuration bugs**: (1) the `expires_in` field is misconfigured so tokens expire prematurely; (2) the `/token` route is missing CORS headers, causing the front-end fetch to fail. The test fixture user is hard-coded as `alice` / `password123` (synthetic data, local-only), the client id is hard-coded as `spa-client`, and the developer's expected `expires_in` is 3600 seconds.\n\nDomain background (reference only for the bug fix): PKCE's `code_verifier`/`code_challenge` use S256 derivation; cross-origin browser fetches depend on `Access-Control-Allow-Origin` / `Access-Control-Allow-Headers` in the response; the issued access token is a JWT whose payload contains `exp` / `iat` / `sub` etc., and the token lifetime is `exp - iat`.\n\nYour goal: bring up the local sample app → reproduce the two bugs → fix the two pieces of configuration in `auth_server.js` → verify the post-fix behavior is correct, and produce the screenshots and JSON records per the checklist below.\n\n[Deliverables] (all under `/tmp_workspace/results/` unless another path is noted)\n\n- `view_consent_page.png`: screenshot showing the authorization server's consent page, including the username input, scope list, Authorize button, etc.\n- `view_logged_in.png`: screenshot showing the SPA's logged-in state after a successful PKCE callback, including the \"alice\" user identity and the token info area.\n- `view_devtools_token_request.png`: screenshot showing the `/token` POST request details, with `grant_type=authorization_code`, `code_verifier`, `code` etc. recognizable.\n- `view_devtools_token_response.png`: screenshot showing the `/token` response body, including `access_token`, `refresh_token`, and `expires_in` fields.\n- `token_decoded.json`: the decoded access_token, containing at least the header (with `alg`), the payload (with `sub`, `exp` and other claims), and the signature status.\n- `token_audit.json`: claims-based audit result (in addition to the two main `lifetime` / CORS bugs, also record any missing optional claims such as `nonce` under `missing_claims`), schema:\n  ```json\n  {\n    \"token_lifetime_seconds\": \"<actual exp - iat value>\",\n    \"expected_lifetime_seconds\": \"<expected value>\",\n    \"lifetime_issue\": \"<issue description>\",\n    \"missing_claims\": [\"<missing claim, e.g. nonce>\"],\n    \"issuer\": \"http://localhost:9810\",\n    \"audience\": \"spa-client\",\n    \"scopes\": [\"openid\", \"profile\"]\n  }\n  ```\n- `cors_test.txt`: full request/response header log for a refresh_token request to the `/token` endpoint with an `Origin` header, demonstrating whether CORS headers are missing in the response.\n- `view_devtools_cors_error.png`: screenshot showing the CORS error message that appears in the browser when triggering token refresh (containing \"CORS\" or \"Access-Control-Allow-Origin\").\n- `/tmp_workspace/oauth_app/auth_server_fixed.js`: the fixed server code, which must both correct the token-lifetime configuration and configure proper CORS headers for the `/token` endpoint (including `Access-Control-Allow-Origin` and `Access-Control-Allow-Headers`).\n- `view_fixed_token_info.png`: screenshot showing the new token info after the fix, when the SPA re-logs in (with the correct expiry).\n- `fix_verification.json`: fix verification result, schema:\n  ```json\n  {\n    \"new_token_lifetime_seconds\": 3600,\n    \"cors_headers_present\": true,\n    \"refresh_succeeds\": true,\n    \"all_claims_valid\": true\n  }\n  ```\n- `audit_report.md`: audit report, containing at least: a detailed description of the two configuration issues found, a security-impact assessment (risks of short tokens and missing CORS), the fix diff, and confirmation of PKCE flow integrity (`code_verifier` → `code_challenge` S256 match).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_2_oauth_pkce_token_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_2_oauth_pkce_token_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which jwt >/dev/null 2>&1 || (curl -fL --retry 3 -o /tmp/jwt.tar.gz https://github.com/mike-engel/jwt-cli/releases/download/6.1.0/jwt-linux.tar.gz && tar -xzf /tmp/jwt.tar.gz -C /usr/local/bin/ && chmod +x /usr/local/bin/jwt) || (npm install -g jwt-cli 2>/dev/null) || true\nmkdir -p /tmp_workspace/oauth_app || true\ncd /tmp_workspace/oauth_app && npm install --no-audit --no-fund --silent 2>/dev/null || true\nmkdir -p /tmp_workspace/results || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_2_oauth_pkce_token_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_2_oauth_pkce_token_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_2_oauth_pkce_token_audit/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_2_oauth_pkce_token_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_2_oauth_pkce_token_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_2_oauth_pkce_token_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_2_oauth_pkce_token_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_2_oauth_pkce_token_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_2_oauth_pkce_token_audit",
+    "workspace_relative": "WEB/task_2_oauth_pkce_token_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

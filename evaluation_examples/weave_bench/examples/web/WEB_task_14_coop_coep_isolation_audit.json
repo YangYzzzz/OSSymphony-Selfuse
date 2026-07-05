@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_14_coop_coep_isolation_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Background: You are taking over an internal demo page at `https://localhost:8443/`. The business wants to enable `SharedArrayBuffer` + `WebAssembly.threads`, but `self.crossOriginIsolated` is always `false`, the banner shows \"STATUS: NOT isolated\", and the Worker errors out. The runtime global `crossOriginIsolated === true` can only be observed when JS actually executes in a browser; the gate requires three sets of headers to be correct simultaneously: the main site needs COOP `same-origin` + COEP `require-corp|credentialless`; every resource returned by same-site sub-routes (`/widget`, `/static/*`) must carry CORP; and the cross-origin 3p resource (`http://localhost:9090/3p/badge.html`) must also carry a CORP value that allows cross-origin embedding. If any one of them is missing or wrong, the whole page's isolation will not flip to true.\n\nThe page is hosted by two services:\n- The main-site Caddy (`/tmp_workspace/exec/Caddyfile`, HTTPS `:8443`, `tls internal` self-signed cert) serves routes `/`, `/widget`, `/static/*` and is already started by warmup.\n- A third-party \"CDN\" Python http.server (`/tmp_workspace/exec/cdn/server.py`, HTTP `:9090`) hosts the embedded 3p iframe `http://localhost:9090/3p/badge.html`. Python's `http.server` does not read any external config file, so its `end_headers()` must be modified to send new headers.\n- `/tmp_workspace/coop_site/` is a mirror directory; keep it in sync when editing source files.\n\nGoal: Freely pick the browser, HTTP client, and service-restart approach. First collect evidence, then fix the three sets of headers at their real sources so that the runtime `self.crossOriginIsolated` flips from false to true, and deliver the full process to `/tmp_workspace/results/`.\n\n### Hard constraints on the primary deliverable `header_audit.json`\n- Must contain the four origin keys `main` / `widget` / `static` / `thirdp`, plus a `summary` field (1-2 sentences of natural-language conclusion).\n- Each origin object must contain a `needs_change` field that truthfully lists the missing/wrong header names on that origin: main must include at least `Cross-Origin-Opener-Policy`; widget / static / thirdp must each include at least `Cross-Origin-Resource-Policy`.\n- Header names are listed as plain strings (values are allowed but matching is done on the header-name prefix).\n\n### Companion deliverables (in `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `curl_main_before.txt` / `curl_widget_before.txt` / `curl_static_before.txt` / `curl_3p_before.txt` | Pre-fix full response headers for all 4 origins; must include the `HTTP/` start line and at least one `Cross-Origin-*` line |\n| `curl_main_after.txt` | Post-fix main-site response headers; must include `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` or `credentialless` |\n| `curl_widget_after.txt` | Must include `Cross-Origin-Resource-Policy:` with a same-origin / same-site valid value |\n| `curl_static_after.txt` | Must include `Cross-Origin-Resource-Policy:` with a same-origin / same-site valid value |\n| `curl_3p_after.txt` | Must include `Cross-Origin-Resource-Policy: cross-origin` |\n| `patch.diff` | A `diff -u` that covers both `Caddyfile` and `cdn/server.py` (including the `/tmp_workspace/coop_site/` mirror sync), ≥ 2 hunks, and hits at least 1 of the target files |\n| `report.md` | ≥ 30 lines + ≥ 3 `### ` subsections; for each spot, explain what each bug is missing, why it must be present, and how it is fixed, and quote the key hunks from `patch.diff`; cover the keywords COOP / COEP / CORP and the three kinds of origins |\n\n### 6 process screenshots (in `/tmp_workspace/results/`, fixed filenames)\n\n- `view_01_banner_before.png`: browser rendering of the target page, showing the NOT isolated banner and `crossOriginIsolated: false` status\n- `view_02_devtools_app_frames.png`: browser DevTools frame-tree view, containing the top-level frame + child frames, each frame annotated with isolation / COOP / COEP status\n- `view_03_devtools_console_sab_error.png`: browser console showing the red `SharedArrayBuffer` creation-failure error\n- `view_04_devtools_network_3p.png`: in the browser Network panel, the 3p request to `localhost:9090`, with the Response Headers section showing no `Cross-Origin-Resource-Policy`\n- `view_05_banner_after.png`: the main page after a hard reload, showing the isolated positive banner and `crossOriginIsolated: true`\n- `view_06_devtools_app_frames_after.png`: the frame tree opened again, with every frame showing Cross-Origin Isolated as Yes/true\n\nGeneral specs: native resolution ≥ 1280×800; browser / DevTools UI and text must be clearly legible; evaluation will run OCR.\n\nHard constraints:\n- The fix must land at the real source (`Caddyfile` and `cdn/server.py`); response headers must not be faked via browser extensions, client-side injection, proxy rewrites, etc.\n- After-screenshots must come from real browser rendering; pure text fabrication is not allowed.\n- Weakened policies (e.g. `'unsafe-inline'`-style) must not be used to \"bypass\" the isolation gate.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_14_coop_coep_isolation_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_14_coop_coep_isolation_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/web14_gt && chmod 777 /tmp_workspace/results /tmp_workspace/state\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/web14_gt/expected.json 2>/dev/null || cp /tmp_workspace/gt/expected.json /opt/web14_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/web14_gt 2>/dev/null || true\n  chmod 700 /opt/web14_gt 2>/dev/null || true\n  chmod 600 /opt/web14_gt/expected.json 2>/dev/null || true\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich curl || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing curl ca-certificates gnupg && break; sleep 5; done) || true\nwhich jq || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing jq && break; sleep 5; done) || true\nwhich python3 || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing python3 python3-pip && break; sleep 5; done) || true\nwhich tesseract || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tesseract-ocr fonts-noto-cjk && break; sleep 5; done) || true\nwhich caddy || (curl -fsSL --retry 5 --max-time 60 -o /tmp/caddy.tar.gz https://github.com/caddyserver/caddy/releases/download/v2.7.6/caddy_2.7.6_linux_amd64.tar.gz && tar xzf /tmp/caddy.tar.gz -C /usr/local/bin caddy && chmod +x /usr/local/bin/caddy) || true\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet pillow pytesseract requests httpx 2>/dev/null || pip3 install --quiet pillow pytesseract requests httpx || true\nchmod +x /tmp_workspace/start.sh 2>/dev/null || true\nnohup bash /tmp_workspace/start.sh >/tmp/start.log 2>&1 & sleep 3; for i in $(seq 1 30); do curl -ksf https://localhost:8443/ >/dev/null && break; sleep 1; done",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_14_coop_coep_isolation_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_14_coop_coep_isolation_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_14_coop_coep_isolation_audit/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_14_coop_coep_isolation_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_14_coop_coep_isolation_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_14_coop_coep_isolation_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_14_coop_coep_isolation_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_14_coop_coep_isolation_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_14_coop_coep_isolation_audit",
+    "workspace_relative": "WEB/task_14_coop_coep_isolation_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

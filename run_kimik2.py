@@ -234,7 +234,7 @@ def run_env_tasks(
         screen_size = (args.screen_width, args.screen_height)
         snapshot_name = "init_state"
         
-        if args.benchmark == "osworld":
+        if args.benchmark in {"osworld", "weave_bench"}:
             env = OSWorldDesktopEnv(
                 path_to_vm=args.path_to_vm,
                 action_space=args.action_space,

@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_17_jaeger_trace_root_cause_compare",
+  "snapshot": "weave_bench",
+  "instruction": "You are the on-call engineer for the checkout-api team. Last night PagerDuty fired with \"p95 latency jumped from 90 ms to 3 s\". RED metrics (QPS / error rate / duration histogram) can only prove \"things got slow\", but cannot prove \"which segment is slow\". The dev team has already pushed OpenTelemetry traces for every request to the local Jaeger (all-in-one). You need to locate the true bottleneck span from the trace dimension and produce a chain of evidence that a third party can review.\n\nEnvironment and materials (already provisioned; warmup has pre-seeded ≥ 60 traces):\n- The Jaeger service is exposed at `http://localhost:16686/` (Search, Trace timeline, Compare Traces, Deep dependency graph and all other panels are hosted here).\n- JSON HTTP endpoints: `http://localhost:16685/api/services`, `/api/operations?service=...`, `/api/traces?service=...&operation=...&limit=...&lookback=...`, `/api/traces/<traceID>`.\n- Jaeger's own admin / metrics port is at `http://localhost:14269/`.\n- The trace emitter is already pushing spans via OTLP/HTTP to the local collector port `:4318` (OTLP gRPC is on `:4317`).\n- The service name is fixed at `checkout-api`, the root operation name is `POST /checkout`; the bottleneck sits in the `payments.*` subtree (leaf span names shaped like `service.subsystem.protocol`), accompanied by an HTTP 5xx status code.\n\nTask objectives:\n- Quantify \"just how slow it actually is right now\" from the trace dimension — the long-tail distribution formed by root span p50/p95/p99 and trace counts.\n- Pin down the single leaf span (the full `service.subsystem.protocol` name) that is solely responsible for the long tail, its duration, its HTTP status code, its `otel.status_code=ERROR` tag, and its peer.service.\n- Use a diff between one slow trace and one fast trace to prove the structural difference (the bottleneck span only appears in the slow trace / its duration is significantly inflated).\n- Use network traffic on the OTLP collector port to prove that traces are actually being shipped in real time.\n- Write the hypothesis + a full root-cause report.\n\nThe following deliverables must be produced under `/tmp_workspace/results/`:\n\n1. **Service and operation listings**\n   - `jaeger_services.json`: the raw JSON of Jaeger's currently known service list; once parsed, `checkout-api` must be findable in it.\n   - `jaeger_operations.json`: the raw JSON of the operation list for `checkout-api`; once parsed, `POST /checkout` (or at least something containing the `checkout` substring) must be findable.\n\n2. **Bulk trace sample**\n   - `raw_traces.json`: a raw JSON batch of traces for `service=checkout-api & operation=POST /checkout` (Jaeger `/api/traces` return structure, with a top-level `data` array); the `data` array must have length ≥ 60.\n\n3. **Root-span latency distribution**\n   - `trace_durations.csv`: a CSV sorted by root span duration in descending order; the header must be `traceID,duration_us,span_count`; the row count must match the number of traces in `raw_traces.json` (tolerance ±10%).\n   - `duration_summary.json`: root-span latency summary, schema:\n     ```json\n     {\"p50_ms\": <float>, \"p95_ms\": <float>, \"p99_ms\": <float>, \"n\": <int>}\n     ```\n     `p95_ms` must be ≥ 2000 (this is the incident-detection threshold).\n\n4. **Full text of a single slow trace and the bottleneck leaf**\n   - `slow_trace.json`: the complete Jaeger trace JSON for the slowest trace picked from the top of `trace_durations.csv` (a single trace, including the `spans` array), with span count ≥ 5.\n   - `slow_span.json`: the \"deepest, longest\" leaf span dug out of `slow_trace.json` by reconstructing the parent-child chain along `references`, schema:\n     ```json\n     {\n       \"trace_id\": \"<hex>\",\n       \"span_name\": \"<full service.subsystem.protocol name; must contain payments.gateway.http>\",\n       \"duration_us\": <int>,\n       \"tags\": {\"http.status_code\": 504, \"otel.status_code\": \"ERROR\", \"peer.service\": \"...\"},\n       \"operation_path\": [\"<root op>\", \"...\", \"<leaf op>\"]\n     }\n     ```\n     `duration_us / 1000 ≥ 2400`; `tags` must contain both `504` and the `ERROR`/`status_code` wording.\n\n5. **Network-traffic evidence of OTLP upload**\n   - `otlp_capture.pcap`: a stretch of emitter traffic captured on the `:4318` (OTLP/HTTP collector) port (≥ 30 s or ≥ 60 packets), file ≥ 200 B; after `strings` extraction it must hit `POST /checkout` or `checkout-api`, serving as hard evidence that \"traces really are being fed in\".\n\n6. **Visual evidence** (each PNG ≥ 5 KB, from an actually rendered Jaeger UI; image stitching is not allowed)\n   - `view_jaeger_search.png`: the Jaeger Search page result under the conditions service=checkout-api, operation=POST /checkout — the image must simultaneously show the top duration-vs-time scatter plot (**two clusters**: dense fast traces at the lower left + isolated slow-trace cluster at the upper right) and the trace list entries below it.\n   - `view_trace_waterfall.png`: the Trace timeline waterfall after opening any one slow trace — the `payments` subtree must be expanded, and the image must contain a child span bar that is **noticeably** longer than its siblings (occupying the majority of the trace's width).\n   - `view_span_tags.png`: the expanded Tags / Logs drawer of the bottleneck span above — the image must clearly show the specific value of `http.status_code` (504) and error tags such as `otel.status_code = ERROR` (highlighted as a red chip).\n   - `view_trace_compare.png`: the Compare Traces diff view — showing the side-by-side structures of one fast trace and one slow trace simultaneously, with diff spans highlighted (color / border / label all acceptable) and shared spans de-emphasized.\n\n7. **Conclusion documents**\n   - `hypothesis.md`: a hypothesis writeup of ≥ 400 characters; must explicitly state the true bottleneck span's full name (in `service.subsystem.protocol` form), its HTTP status code, and its `peer.service` tag.\n   - `root_cause_report.md`: an incident report of ≥ 800 characters; suggested structure 1) symptoms → 2) what RED metrics showed / failed to show → 3) the true cause seen in the trace waterfall → 4) differences revealed by Compare Traces → 5) immediate mitigation (fail-fast / timeout / circuit breaker) → 6) long-term governance → 7) verification plan (write a query using Jaeger's native search to monitor future regressions).\n\nHard constraints:\n- All numbers must be genuinely exported from Jaeger / actual packet captures; hard-coding is not allowed. `slow_span.json` must be a real leaf computed from the parent-child chain in `slow_trace.json`.\n- `slow_span.json.span_name` must hit `payments.gateway.http` (the bottleneck leaf name), `duration_us / 1000 ≥ 2400`, and `tags` must contain both `504` and the `ERROR`/`status_code` wording.\n- `silence` does not apply to this task; the `pcap` must yield `POST /checkout` or `checkout-api` from `strings` (proof that the emitter is online).\n- Screenshots must come from actual rendering (PIL stitching / placeholder images are not accepted); they must genuinely show the various Jaeger UI panels.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_17_jaeger_trace_root_cause_compare.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_17_jaeger_trace_root_cause_compare",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /opt/dash17 /tmp_workspace/dash17 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/state/jaeger_badger /opt/dav17_gt\nwhich jq || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip wget curl tar tcpdump jq binutils)\npip3 install --break-system-packages --quiet opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http 2>/dev/null || pip3 install --quiet opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http\ncp -rn /tmp_workspace/exec/* /tmp_workspace/dash17/ 2>/dev/null || true\n[ -d /tmp_workspace/trace_emitter ] && cp -rn /tmp_workspace/trace_emitter /tmp_workspace/dash17/ 2>/dev/null\n[ -d /tmp_workspace/jaeger_data ] && cp -rn /tmp_workspace/jaeger_data /tmp_workspace/dash17/ 2>/dev/null\n# Move expected.json to a root-only path so the agent cannot read the\n# slow_span_name / status_code / peer_service / postmortem keyword\n# answer set as hints. Mirrors DAV_11/12/16 + DSK_16 pattern.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/dav17_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/dav17_gt 2>/dev/null || true\n  chmod 700 /opt/dav17_gt 2>/dev/null || true\n  chmod 600 /opt/dav17_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\ntest -x /opt/dash17/jaeger/jaeger-all-in-one || (for url in \"https://github.com/jaegertracing/jaeger/releases/download/v1.57.0/jaeger-1.57.0-linux-amd64.tar.gz\" \"https://ghproxy.net/https://github.com/jaegertracing/jaeger/releases/download/v1.57.0/jaeger-1.57.0-linux-amd64.tar.gz\" \"https://mirror.ghproxy.com/https://github.com/jaegertracing/jaeger/releases/download/v1.57.0/jaeger-1.57.0-linux-amd64.tar.gz\"; do curl -fL --retry 5 --retry-delay 3 --connect-timeout 30 -o /tmp_workspace/state/jaeger.tgz \"$url\" && break; done; tar -xzf /tmp_workspace/state/jaeger.tgz -C /opt/dash17 && mv /opt/dash17/jaeger-* /opt/dash17/jaeger)\ncurl -sf http://localhost:16686/ >/dev/null 2>&1 || SPAN_STORAGE_TYPE=badger BADGER_EPHEMERAL=false BADGER_DIRECTORY_VALUE=/tmp_workspace/state/jaeger_badger/data BADGER_DIRECTORY_KEY=/tmp_workspace/state/jaeger_badger/key COLLECTOR_OTLP_ENABLED=true nohup /opt/dash17/jaeger/jaeger-all-in-one --query.http-server.host-port=:16686 --query.grpc-server.host-port=:16685 --collector.otlp.http.host-port=:4318 --collector.otlp.grpc.host-port=:4317 --admin.http.host-port=:14269 >/tmp/jaeger.log 2>&1 &\nsleep 3\nfor i in $(seq 1 30); do curl -sf http://localhost:14269/ >/dev/null && break; sleep 2; done\nexisting=$(curl -sf \"http://localhost:16686/api/traces?service=checkout-api&limit=200&lookback=1h\" 2>/dev/null | jq -r '.data | length' 2>/dev/null || echo 0)\nif [ \"${existing:-0}\" -lt 30 ]; then EMIT_N=120 OTLP_ENDPOINT=http://localhost:4318/v1/traces nohup python3 /tmp_workspace/dash17/trace_emitter/emitter.py >/tmp/emitter17.log 2>&1 &\nsleep 8; fi\ncurl -s http://localhost:16686/api/services >/dev/null || echo WARN_jaeger_not_ready\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_17_jaeger_trace_root_cause_compare/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_17_jaeger_trace_root_cause_compare /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_17_jaeger_trace_root_cause_compare/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_17_jaeger_trace_root_cause_compare/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_17_jaeger_trace_root_cause_compare/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_17_jaeger_trace_root_cause_compare/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_17_jaeger_trace_root_cause_compare/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_17_jaeger_trace_root_cause_compare.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_17_jaeger_trace_root_cause_compare",
+    "workspace_relative": "DAV/task_17_jaeger_trace_root_cause_compare",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

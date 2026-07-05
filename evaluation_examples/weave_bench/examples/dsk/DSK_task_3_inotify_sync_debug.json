@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_3_inotify_sync_debug",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal filesystem-monitoring task. All deliverables go to `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: `/tmp_workspace/exec/sync.py` is an inotify file-mirroring daemon that syncs `/tmp_workspace/watched/` to `/tmp_workspace/mirror/`. Ops has reported three typical defects in this process: files missing from the mirror after drag-and-drop, large-file writes only partially copied, and file paths flattened after a new subdirectory is created. The warmup has already backed up the source to `/tmp_workspace/sync.py` for editing.\n\nGoal: trigger the various filesystem operations to reproduce the issues, identify at least 3 bugs, fix `sync.py`, and verify that `watched` ↔ `mirror` are fully consistent. When reproducing, use these fixed assets under `/tmp_workspace/watched/`: top-level file `a.txt`, subdirectory `subdir/`, and file `subdir/b.txt` inside the subdirectory.\n\n### Hard constraints on the main deliverable `bug_findings.md`\n- At least 3 paragraphs, each ≥ 80 characters, each must contain a reference in `file:line` form (e.g. `sync.py:42`)\n- The 3 defects must cover three independent dimensions (root cause to be diagnosed by you):\n  - Event-subscription completeness: the daemon does not react at all to a certain class of operation\n  - Path/hierarchy fidelity: after subdirectory operations the relative path on the mirror side differs from the source\n  - Write-timing consistency: with large files / fast writes, the size or checksum on the mirror side does not match\n- Line numbers must come from your actual diagnosis; do not preset them\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `sync.log` | stdout/stderr from the daemon while it ran pre-fix |\n| `inotify_events.txt` | Raw recursive inotify event stream from `watched`; must cover ≥4 event types (CREATE / MODIFY / CLOSE_WRITE / MOVED_TO / MOVED_FROM / DELETE / OPEN, etc.) |\n| `test1_partial_copy.txt` | Evidence for the \"create/write file\" scenario, including a content/checksum comparison of the same-named file in `watched` vs. `mirror` |\n| `test2_path_flatten.txt` | Evidence for the \"new subdirectory + file inside subdirectory\" scenario, showing the mirror path diverges from expectation |\n| `test3_moved_to_missing.txt` | Evidence for the \"file move / drag-and-drop\" scenario, showing the file is missing at the target location in the mirror |\n| `sync_backup.py` | Backup of the source before modification (>200 bytes) |\n| `verify_output.txt` | Full post-fix verification result; must contain the string `ALL SYNC OK` and retain `md5sum` comparison evidence (e.g. `md5sum OK` / `md5 match` / `ALL MATCH`) |\n| `sync_report.md` | ≥4 paragraphs, each ≥80 characters, covering respectively: a) summary of the 3 bugs and key fix points; b) why drag-and-drop is a necessary trigger scenario (event timing / cookie pairing); c) EVENT_MASK design checklist; d) production-deployment recommendations (debouncing / batched copy / fsync) |\n\n### 4 work-process screenshots (fixed file names, placed under `results/`)\n- `view_nautilus_create.png` — view of the `watched` directory after creating and saving a file\n- `view_nautilus_subdir.png` — view after creating a subdirectory and a file inside it\n- `view_nautilus_move.png` — directory view after drag-and-drop completes, showing the source/target location change\n- `view_nautilus_after_fix.png` — final directory state after re-running the three scenarios post-fix\n\nGeneral specs: PNG ≥ 5 KB, resolution ≥ 800×600, the 4 images must not duplicate each other (unique md5); the evaluator runs OCR and visual checks on the screenshots, so real UI elements such as the file-manager window, directory listing, and file names must be visible — do not fake it with plain-text or placeholder images.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_3_inotify_sync_debug.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_3_inotify_sync_debug",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo c2V0ICtlCiggZWNobyBwYXNzd29yZCB8IHN1ZG8gLVMgLXAgJycgYmFzaCAtYyAnZXhwb3J0IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZTsgd2hpY2ggaW5vdGlmeXdhaXQgPi9kZXYvbnVsbCAyPiYxIHx8IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgaW5vdGlmeS10b29scyB8fCB0cnVlOyB3aGljaCBuYXV0aWx1cyA+L2Rldi9udWxsIDI+JjEgfHwgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBuYXV0aWx1cyB8fCB0cnVlOyB3aGljaCB0ZXNzZXJhY3QgPi9kZXYvbnVsbCAyPiYxIHx8IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciB8fCB0cnVlOyBweXRob24zIC1tIHBpcCBpbnN0YWxsIC1xIHB5dGVzc2VyYWN0IHBpbGxvdyBudW1weSB8fCB0cnVlOyBta2RpciAtcCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIC90bXBfd29ya3NwYWNlL3dhdGNoZWQgL3RtcF93b3Jrc3BhY2UvbWlycm9yIHx8IHRydWU7IGNob3duIC1SIHVzZXI6dXNlciAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIC90bXBfd29ya3NwYWNlL3dhdGNoZWQgL3RtcF93b3Jrc3BhY2UvbWlycm9yIDI+L2Rldi9udWxsIHx8IHRydWU7IGNobW9kICt4IC90bXBfd29ya3NwYWNlL3N5bmMucHkgMj4vZGV2L251bGwgfHwgdHJ1ZTsgY2F0ID4gL3RtcF93b3Jrc3BhY2UvcmVzdWx0cy92ZXJpZnkuc2ggPDwiVkVSSUZZIgojIS9iaW4vYmFzaApvaz0xOyB3PS90bXBfd29ya3NwYWNlL3dhdGNoZWQ7IG09L3RtcF93b3Jrc3BhY2UvbWlycm9yCmZvciBmIGluICQoZmluZCAiJHciIC10eXBlIGYpOyBkbwogIHJlbD0ke2YjJHcvfQogIG1mPSIkbS8kcmVsIgogIGlmIFsgISAtZiAiJG1mIiBdOyB0aGVuIGVjaG8gIk1JU1NJTkc6ICRyZWwiOyBvaz0wOyBjb250aW51ZTsgZmkKICB3bT0kKG1kNXN1bSAiJGYiIHwgYXdrICJ7cHJpbnQgXCQxfSIpCiAgbW09JChtZDVzdW0gIiRtZiIgfCBhd2sgIntwcmludCBcJDF9IikKICBpZiBbICIkd20iICE9ICIkbW0iIF07IHRoZW4gZWNobyAiTUlTTUFUQ0g6ICRyZWwiOyBvaz0wOyBmaQpkb25lClsgJG9rIC1lcSAxIF0gJiYgZWNobyAiQUxMIFNZTkMgT0siClZFUklGWQpjaG1vZCAreCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzL3ZlcmlmeS5zaDsgY2hvd24gdXNlcjp1c2VyIC90bXBfd29ya3NwYWNlL3Jlc3VsdHMvdmVyaWZ5LnNoIDI+L2Rldi9udWxsIHx8IHRydWUnID4vdG1wX3dvcmtzcGFjZS9pbnN0YWxsLmxvZyAyPiYxICYgKSB8fCB0cnVlCnRydWUK | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_3_inotify_sync_debug/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_3_inotify_sync_debug /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_3_inotify_sync_debug/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_3_inotify_sync_debug/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_3_inotify_sync_debug/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_3_inotify_sync_debug/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_3_inotify_sync_debug/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_3_inotify_sync_debug.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_3_inotify_sync_debug",
+    "workspace_relative": "DSK/task_3_inotify_sync_debug",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

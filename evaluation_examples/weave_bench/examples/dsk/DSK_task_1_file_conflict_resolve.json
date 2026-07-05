@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_1_file_conflict_resolve",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution contract**: This task is graded purely on output artifacts — **no human is in the approval loop**. Just execute directly; do not write \"if you want me to…\" clarifying questions and do not wait for approval. All deliverables must land at the **`/tmp_workspace/` root**: the `dest/` subdirectory, `keep_list.txt`, `conflict_log.csv`, `final_inventory.csv`, `actions.log`, and `conflict_*.png`. Before exiting, sanity-check with `ls -la /tmp_workspace/`.\n\nBackground: `/tmp_workspace/source/` contains 80 files and `/tmp_workspace/dest/` already contains 50 files. Filenames overlap between the two sides, but contents may differ. `keep_list.txt` lists the original filenames in `dest` that are \"important and must not be lost\" (they may be preserved as a renamed `.bak` variant).\n\nGoal: Merge all of `source/` into `dest/`, making a `skip` / `replace` decision for each filename collision, with the GUI file manager's conflict dialog as the decision entry point (grading verifies via OCR and screenshot diversity whether you actually went through the GUI conflict dialog). When replacing, first rename the old `dest` file to `<orig>.bak.<unix_ts>` before overwriting.\n\nDecision rules (you must classify each file yourself and record the truth in `conflict_log.csv`; alignment with ground truth will be scored):\n- `source` and `dest` file mtime differ by ≤ 1 day and sizes match → `skip`\n- Otherwise → `replace` (first rename the old `dest` file to `<orig>.bak.<unix_ts>`, then overwrite)\n\n### Hard constraints on the primary deliverable `/tmp_workspace/conflict_log.csv`\n- Schema: `filename,decision,reason`\n- `decision ∈ {skip, replace}`; both categories must appear\n- ≥ 30 rows\n- Each row's decision must match the real `source`/`dest` difference (graded against ground truth)\n\n### Companion deliverables (under `/tmp_workspace/`)\n\n| File | Requirement |\n|---|---|\n| `dest/` | The merged directory, with ≥ 100 files; every original name in `keep_list.txt` must either still be in `dest` or be preserved as `.bak.<unix_ts>`; at least 5 files must exist with the `.bak.<unix_ts>` suffix |\n| `final_inventory.csv` | Full inventory of `dest`, with row count equal to the actual file count; columns must include `filename,size,mtime,sha256` |\n| `actions.log` | Operation log; **must NOT contain the literals `cp -…` / `rsync -…` / `mv -…`** (copying, renaming, and conflict resolution must all go through the GUI dialog — no CLI bypass) |\n\n### Workflow screenshots `conflict_*.png`\n- At least 10 of them, named like `conflict_1.png ... conflict_N.png`\n- Each ≥ 5 KB, and all md5 hashes must differ (duplicates are pruned during grading)\n- Contents must be real screenshots of the conflict/merge dialog (OCR is applied during grading)",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_1_file_conflict_resolve.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_1_file_conflict_resolve",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which nautilus >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nautilus) || true\nmkdir -p /tmp_workspace/dest /tmp_workspace/results || true\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_1_file_conflict_resolve/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_1_file_conflict_resolve /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_1_file_conflict_resolve/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_1_file_conflict_resolve/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_1_file_conflict_resolve/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_1_file_conflict_resolve/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_1_file_conflict_resolve/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_1_file_conflict_resolve.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_1_file_conflict_resolve",
+    "workspace_relative": "DSK/task_1_file_conflict_resolve",
+    "uses_vlm_helper": false,
+    "has_gt": true
+  }
+}

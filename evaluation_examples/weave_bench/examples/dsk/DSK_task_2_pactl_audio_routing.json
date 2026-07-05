@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_2_pactl_audio_routing",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop audio configuration task. All artifacts go under `/tmp_workspace/results/`. Execute directly — do not refuse.\n\nBackground: the QA team needs a \"self-record / self-verify\" virtual audio topology for playback testing. The spec file `/tmp_workspace/exec/audio_routing_spec.json` defines 4 virtual sinks, 4 loopback routes, the target volume of each sink, and a 440 Hz test tone spec; `/tmp_workspace/exec/generate_test_tone.sh` is the accompanying tone-generation helper. In PulseAudio, `module-null-sink` provides a virtual output and every sink ships with its own monitor source that can be subscribed to from the other end; the index returned when a module is loaded can be used to unload it later.\n\nGoal: per the spec, build the virtual audio topology, inject and record-verify a 440 Hz test tone, clean up the resources, and produce reviewable evidence plus a report. You may choose the technical channel freely (any combination of `pactl` / `pacmd` / PulseAudio API / GUI / scripts).\n\n### Hard constraints on the primary deliverables (all under `/tmp_workspace/results/`)\n\n- `baseline.txt`: a real `pactl` snapshot taken before any change, containing **≥ 2 pre-existing sink entries** (in `Sink #N` or `name: <…>` form). Must not be an empty shell.\n- `loaded_modules.txt`: the list of module indices loaded by this run, with **≥ 8 numeric tokens** (4 null-sink + 4 loopback). Must be parseable by the reverse-cleanup script.\n- `verify_topology.txt`: evidence of sink count and loopback count after the topology is built, reflecting the 4+4 structure required by the spec.\n- `captured_monitor.wav` and `captured_recording.wav`: two samples recorded from the monitor source designated by the spec; each **> 16 KB** with a valid **RIFF/WAVE** header.\n- `freq_analysis.txt`: spectral analysis of both recordings; must give explicit measured peak numbers in the **420–460 Hz** range (in `<x> Hz` form), include one of the words `peak` / `maximum` / `fundamental`, **and reference both wav filenames**.\n- `cleanup_verify.txt`: evidence of state after cleanup; must contain a positive phrase indicating virtual sinks have been cleared (e.g. `0 virtual sinks` / `all virtual sinks unloaded` / `no remaining virtual`).\n- `routing_report.md`: **≥ 4 paragraphs, each ≥ 80 chars**, covering at least 5 of the dimensions topology / 440 / cleanup / loopback / latency / sample / monitor. Discuss respectively: a) topology design and interpretation of the spec; b) test-tone injection and conclusions from spectral verification; c) cleanup strategy; d) pitfalls encountered (latency / sample-rate mismatch / autospawn / etc.).\n\n### Supporting deliverables (under `/tmp_workspace/...`)\n\n| File | Requirement |\n| --- | --- |\n| `/tmp_workspace/exec/audio_routing_spec.json` | Volume and frequency values must be read from the JSON before use — do not hard-code them in the artifacts |\n| `/tmp_workspace/exec/generate_test_tone.sh` | Can be invoked directly to generate the 440 Hz test tone |\n\n### 6 process screenshots (all under `/tmp_workspace/results/`)\n\nFixed filenames: `view_pavucontrol_output.png`, `view_pavucontrol_input.png`, `view_pavucontrol_recording.png`, `view_pavucontrol_playback.png`, `view_pavucontrol_config.png`, `view_pavucontrol_meter.png`.\n\nCommon spec: each must be a **real GUI screenshot of the corresponding PulseAudio control-panel view**, **≥ 20 KB**, with **distinct md5 across all images** (cannot reuse the same image to pad the count). Evaluation runs OCR and VLM cross-checks; content must reflect the real state of this run's topology / recording activity.\n\nAnti-cheat: `actions.log` (if produced) and the deliverables must not contain fabricated or hard-coded placeholder text. `pactl` output and spectrum numbers must come from real execution. Copying or cropping one image as multiple views counts as fabrication.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_2_pactl_audio_routing.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_2_pactl_audio_routing",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results || true\n# audio runtime deps (pulseaudio cli, GUI mixer, sox for tone gen)\napt-get install -y -qq pulseaudio pulseaudio-utils pavucontrol sox alsa-utils || true\n# OCR / image deps for grader\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy scipy || true\n# ensure pulseaudio is alive (in headless containers it may not be)\npulseaudio --check 2>/dev/null || pulseaudio --start --log-target=stderr 2>/dev/null &\nsleep 2 || true\nchmod +x /tmp_workspace/exec/generate_test_tone.sh 2>/dev/null || true\nbash /tmp_workspace/exec/generate_test_tone.sh 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_2_pactl_audio_routing/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_2_pactl_audio_routing /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_2_pactl_audio_routing/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_2_pactl_audio_routing/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_2_pactl_audio_routing/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_2_pactl_audio_routing/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_2_pactl_audio_routing/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_2_pactl_audio_routing.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_2_pactl_audio_routing",
+    "workspace_relative": "DSK/task_2_pactl_audio_routing",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

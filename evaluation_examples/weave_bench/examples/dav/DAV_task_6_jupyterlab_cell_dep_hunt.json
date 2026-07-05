@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_6_jupyterlab_cell_dep_hunt",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution conventions**: This is a legitimate desktop + terminal test task. All deliverables go to `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: a colleague handed off a research notebook `/tmp_workspace/notebook/analysis.ipynb`.\nIt produces figures on their machine, but end-to-end reproduction fails outright.\nExperience tells you this is the classic **out-of-order execution + hidden kernel state** anti-pattern\n(i.e., the cell execution order recorded at save time is not 1, 2, 3..., and the notebook depends on\n**multiple** identifiers that were assigned during some manual exploration but are **never explicitly\ndefined by any cell** after saving; the colleague also mutated some global pandas/matplotlib display\nstate interactively, and those \"implicit conventions\" are lost after a kernel restart).\n\nA JupyterLab server is already running, reachable at `http://localhost:8888/lab` (no token; configured\nwith `c.ServerApp.token=''`), and the Variable Inspector plugin is installed. You need to:\n(a) list **every** hidden dependency (not just the first one found), (b) reorder and repair the notebook,\n(c) independently verify the fix with real test assertions (not merely \"no errors\").\n\nNotes:\n- This notebook has **more than one orphan symbol**. There are actually ≥ 3 identifiers that are read\n  but never defined anywhere in the notebook; missing any of them does not count as fixed.\n- In addition to orphan symbols, there is at least 1 case of **global mutable-state pollution**: the\n  original author mutated some **module-level or global configuration** in pandas / matplotlib / numpy\n  (not any local variable already identified as an orphan) during interactive exploration; this is lost\n  after a kernel restart and the behavior will diverge from the original author's machine. Locate this\n  yourself by scanning the notebook source and output rendering style, and explicitly restore it in the fix.\n- Do not simply rewrite the `execution_count` field in `analysis.ipynb` to `[1,2,3,...]` — that only\n  edits metadata; the actual source order between cells is still wrong, and the validator will detect it.\n- Do not stub orphan variables as empty `dict` / `0`. Their values must let subsequent cells genuinely\n  produce the figures and pass unit-test assertions (see the `pytest_outputs` requirement below).\n- `nbconvert --execute` defaults to 60 s per cell; bump it up if necessary.\n- The repaired notebook must pass 100% under **Restart Kernel + Run All**, with no reliance on\n  any residual session state.\n\n[Deliverables]\nAll deliverables go to `/tmp_workspace/results/` (unless otherwise noted):\n\n- `nbconvert_failure.log`: full stderr/stdout from an end-to-end execution reproduction of the original\n  `analysis.ipynb`; must contain \"Error\" / \"Traceback\" / \"NameError\".\n- `cell_meta.tsv`: metadata for every code cell in the original notebook, tab-separated, with a header;\n  columns must include at least `cell_index, execution_count, source_first_line, has_output`; at least\n  5 rows; must reflect the out-of-order pattern in `execution_count`.\n- `orphan_candidates.json`: identifier candidates that are \"read but never defined anywhere in the\n  notebook\", from static source analysis:\n   ```json\n   {\"orphans\": [\"<symbol_a>\", \"<symbol_b>\", \"<symbol_c>\"]}\n   ```\n   `orphans` must contain **≥ 3** non-empty strings, names derived from real scanning (not guesses).\n- `hidden_state.json`: beyond undefined symbols, which **global mutable state / side effects** (the kind\n  lost after a kernel restart) does the original notebook depend on? Schema:\n   ```json\n   {\n     \"global_mutations\": [\n       {\"target\": \"<e.g. pd.options.display.float_format>\", \"evidence\": \"<output styling / cell behavior difference>\", \"fix_action\": \"<how to explicitly restore in a new cell>\"}\n     ]\n   }\n   ```\n   `global_mutations` must have at least 1 entry. `target` must be a real pandas/matplotlib/numpy\n   global or module-level state, not a local variable already identified as an orphan.\n- `probe_kernel.py`: executable script that launches a fresh IPython kernel, executes `analysis.ipynb`\n  cell by cell in its current saved order, and tracks the evolution of `globals` (implementation is\n  your choice, e.g. `nbclient` or `jupyter_client`).\n- `kernel_probe.json`: globals forensics produced by the script:\n   ```json\n   {\"defined_at_crash\": [\"<sym>\", \"<sym>\"], \"missing_referenced\": [\"<orphan>\"]}\n   ```\n   `missing_referenced` must be non-empty and must overlap with `orphan_candidates.json`.\n- `/tmp_workspace/notebook/analysis_fixed.ipynb`: the repaired notebook, requirements:\n   - All cells reorganized into a top-to-bottom executable order.\n   - **Before** the first cell that uses an orphan symbol, insert a new markdown + code cell pair\n     giving a reasonable definition (e.g. derived from `sales_2024.csv`, or an annotated constant).\n   - The markdown header of the inserted cell contains `# repaired: defines <symbol>`.\n   - Total cell count must not be less than the original notebook.\n- `analysis_fixed_run.ipynb` (located in the original notebook directory): the artifact produced by\n  end-to-end execution of `analysis_fixed.ipynb`.\n- `nbconvert_success.log`: full stderr/stdout from executing `analysis_fixed.ipynb`; file must exist\n  and must not contain `Traceback` / `NameError`.\n- `analysis_fixed.html`: HTML rendered by re-executing `analysis_fixed.ipynb` via\n  `jupyter nbconvert --to html --execute`. File must exist, be ≥ 8 KB, and contain at least one\n  `<img` tag (embedded matplotlib figure) plus the keyword \"Per-region\".\n- `test_fixed_notebook.py`: a pytest file that imports `nbclient` and runs `analysis_fixed.ipynb` in\n  a clean kernel, asserting:\n   a) `df` is a DataFrame with `len(df) > 0`.\n   b) `monthly` is a DataFrame with at least 2 columns.\n   c) `totals` is a Series sorted in descending order.\n   d) **Every** orphan symbol you reported in `orphan_candidates.json` is explicitly defined in the new\n      kernel (type-checked per its semantics via `isinstance(...)`, e.g. dict/Series/scalar threshold);\n      covering only one of them is not acceptable.\n   At least 4 `def test_*` functions total.\n- `pytest_outputs.json`: structured results from the pytest run above, schema:\n   ```json\n   {\"passed\": <int>, \"failed\": 0, \"tests\": [{\"name\": \"<test_xxx>\", \"outcome\": \"passed\"}, ...]}\n   ```\n   `passed >= 4`, `failed == 0`.\n- `validate.py`: an nbgrader-style validator that takes a .ipynb path as `argv[1]`, performs the\n  following checks, and prints PASS/FAIL:\n   a) Every code cell's `execution_count` is strictly ascending and starts at 1.\n   b) No cell's outputs contain `ename ∈ {\"NameError\",\"KeyError\",\"ImportError\"}`.\n   c) At least 1 cell outputs `image/png` (matplotlib figure rendered successfully).\n- `validate.log`: output of running `validate.py` against `analysis_fixed_run.ipynb`; must contain `PASS`.\n- `tooltip_samples.json`: at least 1 sample of LSP type/shape hints obtained by hovering over a variable\n  name in the notebook; both `symbol` and `hint_text` must be non-empty:\n   ```json\n   {\"hover_samples\": [\n       {\"symbol\": \"<name>\", \"hint_text\": \"<text from tooltip>\", \"screenshot\": \"view_hover_tooltip.png\"}\n   ]}\n   ```\n   The hint content must come from a real tooltip captured during interactive rendering; it must not\n   be inferred from static DOM.\n- `dependency_report.json`: dependency forensics report:\n   ```json\n   {\n     \"out_of_order_cells\": [{\"cell_index\": \"<i>\", \"execution_count\": \"<n>\"}],\n     \"orphan_symbols\": [\"<sym>\"],\n     \"fix_summary\": \"<one paragraph>\"\n   }\n   ```\n   `out_of_order_cells` ≥ 3 entries; `orphan_symbols` non-empty; `fix_summary` ≥ 50 characters.\n- `summary.md`: containing\n   - The root cause (1 paragraph; must include the keyword `execution order` or `hidden state`).\n   - A before-vs-after cell-order comparison table (markdown table).\n   - ≥ 3 practical recommendations on \"how to avoid this when reviewing notebooks in the future\"\n     (each ≥ 30 characters).\n- Screenshot deliverables (all placed under `results/`):\n   - `view_lab_open.png`: the entire Lab workspace after opening `analysis.ipynb`; the left-hand file\n     tree and the notebook title must be visible.\n   - `view_exec_gutter.png`: the `[N]:` execution-count gutters to the left of every code cell on the\n     notebook's first screen, clearly showing the out-of-order execution pattern.\n   - `view_var_inspector.png`: the Variable Inspector panel open with at least 1 variable row visible;\n     orphan symbols are absent in the fresh kernel, demonstrating the \"depends on hidden session state\"\n     condition.\n   - `view_var_after_fix.png`: after restarting the kernel in `analysis_fixed.ipynb` and running the\n     repair cell in isolation, the orphan symbol appears as a row in the Variable Inspector panel.\n   - `view_run_all.png`: the notebook view after completing Restart Kernel and Run All on\n     `analysis_fixed.ipynb`; at least one matplotlib figure and an ascending `[1]:[2]:[3]:` gutter\n     must be visible.\n   - `view_hover_tooltip.png`: the LSP type/shape hint tooltip floating over some variable name on hover.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_6_jupyterlab_cell_dep_hunt.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_6_jupyterlab_cell_dep_hunt",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo IyBJZGVtcG90ZW50IHdhcm11cC4gRWFjaCBsaW5lIHNob3VsZCBmaW5pc2ggaW4gPDVzIG9yIGJlIGJhY2tncm91bmRlZC4KbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAvdG1wX3dvcmtzcGFjZS9ndCAvdG1wX3dvcmtzcGFjZS9ub3RlYm9vawoKIyBTdGFnZSBleGVjIGFzc2V0cyBpbnRvIC90bXBfd29ya3NwYWNlLgpjcCAtciAvdG1wX3dvcmtzcGFjZS8uIC90bXBfd29ya3NwYWNlLyAyPi9kZXYvbnVsbCB8fCB0cnVlCgojIEhlYXZ5IGluc3RhbGwgKyBKdXB5dGVyTGFiIGxhdW5jaCBydW4gaW4gYSBiYWNrZ3JvdW5kIHN1YnNoZWxsIHNvIHdhcm11cCByZXR1cm5zIGZhc3QuCiggc2V0ICtlCiAgIyBJbnN0YWxsIGp1cHl0ZXJsYWIgKHNlcnZlcikgKyBub3RlYm9vayArIGRlcGVuZGVuY2llcy4gTm90ZToganVweXRlcmxhYiBpdHNlbGYgTVVTVCBiZSBpbnN0YWxsZWQsCiAgIyBub3QganVzdCB0aGUgdmFyaWFibGVpbnNwZWN0b3IgcGx1Z2luLgogIHBpcCBpbnN0YWxsIC1xIGp1cHl0ZXJsYWIgbm90ZWJvb2sgbmJmb3JtYXQgbmJjb252ZXJ0IG5iY2xpZW50IGlweWtlcm5lbCBqdXB5dGVybGFiLXZhcmlhYmxlaW5zcGVjdG9yIFwKICAgICAgcGFuZGFzIG51bXB5IG1hdHBsb3RsaWIgc2Npa2l0LWxlYXJuIHBpbGxvdyBmYWtlciAyPi90bXBfd29ya3NwYWNlL2luc3RhbGxfanVweXRlci5sb2cKICAjIFJlc29sdmUgYGp1cHl0ZXJgIGJpbmFyeSBwYXRoIGV2ZW4gaWYgUEFUSCB3YXNuJ3QgcmVmcmVzaGVkCiAgSlVQPSQoY29tbWFuZCAtdiBqdXB5dGVyIHx8IGxzIC91c3IvbG9jYWwvYmluL2p1cHl0ZXIgL2hvbWUvdXNlci8ubG9jYWwvYmluL2p1cHl0ZXIgMj4vZGV2L251bGwgfCBoZWFkIC0xKQogIGV4cG9ydCBQQVRIPSIvaG9tZS91c2VyLy5sb2NhbC9iaW46L3Vzci9sb2NhbC9iaW46JFBBVEgiCiAgaWYgISBwZ3JlcCAtZiAianVweXRlci1sYWIiID4vZGV2L251bGwgMj4mMTsgdGhlbgogICAgKCAke0pVUDotanVweXRlcn0gbGFiIC0taXA9MTI3LjAuMC4xIC0tcG9ydD04ODg4IC0tbm8tYnJvd3NlciBcCiAgICAgICAgLS1TZXJ2ZXJBcHAudG9rZW49JycgLS1TZXJ2ZXJBcHAucGFzc3dvcmQ9JycgXAogICAgICAgIC0tU2VydmVyQXBwLnJvb3RfZGlyPS90bXBfd29ya3NwYWNlIFwKICAgICAgICA+L3RtcF93b3Jrc3BhY2UvanVweXRlci5sb2cgMj4mMSAmICkKICBmaQogICMgV2FpdCBicmllZmx5IGZvciBwb3J0IDg4ODggdG8gY29tZSB1cCAoYmVzdC1lZmZvcnQsIGRvZXNuJ3QgYmxvY2sgd2FybXVwIHJldHVybikKICBmb3IgaSBpbiAkKHNlcSAxIDMwKTsgZG8KICAgIChlY2hvID4gL2Rldi90Y3AvMTI3LjAuMC4xLzg4ODgpIDI+L2Rldi9udWxsICYmIGJyZWFrCiAgICBzbGVlcCAyCiAgZG9uZQopICYKCiMgRW5zdXJlIE9DUiBkZXBzIGZvciBncmFkZXIncyBndWlfc2NyZWVuc2hvdHNfb2NyIGRpbWVuc2lvbi4Kd2hpY2ggdGVzc2VyYWN0ID4vZGV2L251bGwgMj4mMSB8fCBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIHRlc3NlcmFjdC1vY3IgfHwgdHJ1ZQpwaXAgaW5zdGFsbCAtcSBweXRlc3NlcmFjdCBwaWxsb3cgbnVtcHkgfHwgdHJ1ZQoKdHJ1ZQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_6_jupyterlab_cell_dep_hunt/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_6_jupyterlab_cell_dep_hunt /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_6_jupyterlab_cell_dep_hunt/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_6_jupyterlab_cell_dep_hunt/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_6_jupyterlab_cell_dep_hunt/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_6_jupyterlab_cell_dep_hunt/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_6_jupyterlab_cell_dep_hunt/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_6_jupyterlab_cell_dep_hunt.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_6_jupyterlab_cell_dep_hunt",
+    "workspace_relative": "DAV/task_6_jupyterlab_cell_dep_hunt",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

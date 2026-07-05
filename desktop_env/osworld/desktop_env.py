@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+import inspect
 import logging
 import os
 import time
@@ -20,6 +21,10 @@ Metric = Callable[[Any, Any], float]
 Getter = Callable[[gym.Env, Dict[str, Any]], Any]
 
 MAX_RETRIES = 5 # Maximum retries for environment setup
+
+
+class EnvironmentSetupError(RuntimeError):
+    """Raised when task setup fails after retries."""
             
 
 
@@ -258,6 +263,49 @@ class DesktopEnv(gym.Env):
         if self.provider:
             self.provider.stop_emulator(self.path_to_vm)
 
+    @staticmethod
+    def _task_get(task_config: Any, key: str, default: Any = None) -> Any:
+        if task_config is None:
+            return default
+        if hasattr(task_config, "get") and callable(getattr(task_config, "get")):
+            try:
+                return task_config.get(key, default)
+            except TypeError:
+                return task_config.get(key)
+        return getattr(task_config, key, default)
+
+    @staticmethod
+    def _has_custom_setup(task_config: Any) -> bool:
+        return hasattr(task_config, "setup") and callable(getattr(task_config, "setup"))
+
+    @staticmethod
+    def _has_custom_evaluate(task_config: Any) -> bool:
+        return hasattr(task_config, "evaluate") and callable(getattr(task_config, "evaluate"))
+
+    def _call_task_setup(self, task_config: Any, use_proxy: bool) -> None:
+        setup_fn = task_config.setup
+        try:
+            params = inspect.signature(setup_fn).parameters
+        except (TypeError, ValueError):
+            setup_fn(self.setup_controller, use_proxy)
+            return
+
+        accepts_kwargs = any(param.kind == param.VAR_KEYWORD for param in params.values())
+        if "use_proxy" in params or accepts_kwargs:
+            setup_fn(self.setup_controller, use_proxy=use_proxy)
+        else:
+            setup_fn(self.setup_controller)
+
+    def _call_task_evaluate(self, task_config: Any):
+        eval_fn = task_config.evaluate
+        try:
+            params = inspect.signature(eval_fn).parameters
+        except (TypeError, ValueError):
+            result = eval_fn(self)
+        else:
+            result = eval_fn(self) if params else eval_fn()
+        return result if isinstance(result, dict) else float(result)
+
     # 每次新任务时先执行该函数
     def reset(self, task_config: Optional[Dict[str, Any]] = None, seed=None, options=None) -> Dict[str, Any]:
         
@@ -276,8 +324,9 @@ class DesktopEnv(gym.Env):
             
             if task_config is not None:
                 # Only consider task proxy requirement if proxy is enabled at system level
-                task_use_proxy = task_config.get("proxy", False) and self.enable_proxy
-                if not self.enable_proxy and task_config.get("proxy", False):
+                task_proxy = self._task_get(task_config, "proxy", False)
+                task_use_proxy = task_proxy and self.enable_proxy
+                if not self.enable_proxy and task_proxy:
                     logger.info("Task requires proxy but proxy is disabled at system level, ignoring proxy requirement.")
                 
                 if task_use_proxy != self.current_use_proxy:
@@ -307,18 +356,26 @@ class DesktopEnv(gym.Env):
                 self.setup_controller._execute_setup(system_proxy_command)
 
             if task_config is not None:
-                if task_config.get("proxy", False) and self.enable_proxy:
+                use_proxy = self._task_get(task_config, "proxy", False) and self.enable_proxy
+                if use_proxy:
                     # If using proxy and proxy is enabled, set up the proxy configuration
                     # 下面这么设置代理没用
                     self.setup_controller._proxy_setup(self.client_password)
                 self._set_task_info(task_config)
                 self.setup_controller.reset_cache_dir(self.cache_dir)
                 logger.info("Setting up environment...")
-                success = self.setup_controller.setup(self.config, task_config.get("proxy", False) and self.enable_proxy)
+                if self._has_custom_setup(task_config):
+                    try:
+                        self._call_task_setup(task_config, use_proxy)
+                    except Exception as e:
+                        raise EnvironmentSetupError(f"Custom task setup failed: {e}") from e
+                    success = True
+                else:
+                    success = self.setup_controller.setup(self.config, use_proxy)
 
                 if success:
                     # Mark environment as used when setup is successfully executed
-                    if self.config:  # Only mark as used if there were actual setup operations
+                    if self.config or self._has_custom_setup(task_config):
                         self.is_environment_used = True
                     break
                 else:
@@ -359,11 +416,12 @@ class DesktopEnv(gym.Env):
 
     def _set_task_info(self, task_config: Dict[str, Any]):
         """Set task info (proxy logic is handled in reset method)"""
-        self.task_id: str = task_config["id"]
+        self.task_config = task_config
+        self.task_id: str = self._task_get(task_config, "id")
         self.cache_dir: str = os.path.join(self.cache_dir_base, self.task_id)
         os.makedirs(self.cache_dir, exist_ok=True)
-        self.instruction = task_config["instruction"]
-        self.config = task_config["config"] if "config" in task_config else []
+        self.instruction = self._task_get(task_config, "instruction")
+        self.config = self._task_get(task_config, "config", []) or []
         
         self._set_evaluator_info(task_config)
 
@@ -522,6 +580,9 @@ class DesktopEnv(gym.Env):
         """
         Evaluate whether the task is successfully completed.
         """
+        if getattr(self, "task_config", None) is not None and self._has_custom_evaluate(self.task_config):
+            return self._call_task_evaluate(self.task_config)
+
         if not self.metric:
             return 0
         

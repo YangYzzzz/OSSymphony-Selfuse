@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_2_pdf_form_fill",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This task is graded on deliverable files; **no one is approving anything**. Just execute — do not ask \"if you want me to…\" questions, do not wait for approval. All deliverables must land in the **`/tmp_workspace/` root**: `lease_signed.pdf`, `step_*.png`, `actions.log`. Input assets are in `/tmp_workspace/inputs/`. When done, run `ls -la /tmp_workspace/` as a self-check before exiting.\n\nBackground: `/tmp_workspace/lease_agreement.pdf` is a multi-page interactive form PDF — 18 pages and ~1265 AcroForm fields (text / checkbox / radio / signature). Tenant data is in `/tmp_workspace/inputs/tenant.json`; the signature image is `inputs/signature.png` and the initials image is `inputs/initials.png`.\n\nGoal: fill out this lease form, add the e-signature and initials images, and export `lease_signed.pdf`.\n\n### Hard constraints on `lease_signed.pdf`\n\n- File exists at `/tmp_workspace/lease_signed.pdf`, page count remains 18\n- **AcroForm structure must be preserved** (PDF root contains `/AcroForm`); must not be flattened into a static PDF\n- At least **50** text fields actually filled (the number of fields with a non-empty value via `pypdf.PdfReader.get_form_text_fields()` must be ≥ 50)\n- At least **5** button / checkbox / radio fields set (`/FT == /Btn` and `/V` is not `/Off`)\n- Page 4 has at least 1 radio / button field selected\n- The PDF contains at least **5** embedded images (`/Subtype /Image` appearing in the XObject of page resources) — used to carry the e-signature plus multiple initials stamps\n- At least a few field values from `tenant.json` (name / SSN / address / phone / move-in date / monthly rent / deposit / bank account / emergency contact, etc.) can be matched literally inside the PDF field values\n\n### Anti-cheat / action log\n\n- `/tmp_workspace/actions.log` is an action log (any text format) recording the steps used to fill the form\n- `actions.log` **must not contain** any of these literals: `pdftk fill_form`, `update_page_form_field_values`, `cli_fill` — the pure-CLI bulk-fill shortcut is not allowed\n- Use a PDF editor with form support (Master PDF Editor / Okular / LibreOffice Draw, etc.) to genuinely type values into the fields\n\n### 5 progress screenshots (located in `/tmp_workspace/`)\n\n- File naming: `step_*.png` (any name, at least 5)\n- Each ≥ 5 KB\n- All 5 md5 hashes distinct\n- Screenshots overall must show a genuine, readable PDF editor UI (an OCR check is performed):\n  - At least 1 screenshot showing a form editing panel such as field properties / Form Fields / Annotation\n  - At least 1 screenshot showing recognizable PDF editor UI (editor name / Insert Image / Stamp / Edit Form, etc.)",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_2_pdf_form_fill.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_2_pdf_form_fill",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which okular >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq okular okular-extra-backends) || true\nwhich masterpdfeditor5 >/dev/null 2>&1 || (curl -fsSLo /tmp/mpe.deb https://get.code-industry.net/public/master-pdf-editor-5.9.91-qt5.x86_64.deb && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /tmp/mpe.deb) || true\npip install -q pypdf pillow reportlab || true\npdfinfo /tmp_workspace/lease_agreement.pdf >/dev/null 2>&1 || true\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_2_pdf_form_fill/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_2_pdf_form_fill /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_2_pdf_form_fill/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_2_pdf_form_fill/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_2_pdf_form_fill/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_2_pdf_form_fill/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_2_pdf_form_fill/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_2_pdf_form_fill.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_2_pdf_form_fill",
+    "workspace_relative": "DOC/task_2_pdf_form_fill",
+    "uses_vlm_helper": false,
+    "has_gt": true
+  }
+}

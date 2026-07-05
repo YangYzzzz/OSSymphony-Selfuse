@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_2_process_leak_diagnose",
+  "snapshot": "weave_bench",
+  "instruction": "Task: The oncall channel got paged — \"this machine is swapping, find out who is leaking memory.\"\nSome Python service is slowly eating all the memory. You need to find it, produce visual evidence, and write a short report.\n\nConcrete outputs (place under `/tmp_workspace/results/`):\n\n1. `report.md`, which **must** contain:\n   - A line `pid: <number>` — the PID of the leaking process\n   - A line `growth_mb_per_sec: <number>` — the memory growth rate you **measured** (±20% tolerance allowed)\n   - A quoted snippet — the line copied out of `/var/log/photo_indexer/photo_indexer.log` that demonstrates the root cause\n   - A line of **remediation advice** (any short sentence, e.g. \"restart the service\", \"enable cache eviction\", etc.)\n\n2. `proof.png` — a screenshot showing you observed the actual memory state (htop / GNOME System Monitor / ps / top, etc., i.e. some memory or process monitoring UI). The leaking process and its high RSS should be visible in the image.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_2_process_leak_diagnose.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_2_process_leak_diagnose",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results || true\nmkdir -p /var/log/photo_indexer || true\n# Inject tuning + smoking-gun phrasing as env so the deployed source\n# (visible to the agent under /tmp_workspace/services/photo_indexer.py)\n# does NOT statically contain the answers. The agent must observe the\n# *running* process and *running* log to recover them.\nexport PI_BUF_BYTES_PER_SEC=12582912\nexport PI_CHUNK_BYTES=262144\nexport PI_PHRASE_A=\"thumbnail cache eviction disabled\"\nexport PI_PHRASE_B=\"cache size\"\nexport PI_PHRASE_C=\"growing\"\nexport PI_LOG_TEMPLATE=\"WARNING: {a}; {b} = {mb} MB and {c}\"\nbash /tmp_workspace/services/start_leaker.sh || true\nchown -R user:user /tmp_workspace || true\n# Disable openclaw's `image` tool so CLI-mode agents cannot use a\n# secondary VLM to describe images for them. The agent must see images\n# directly (GUI mode native CUA) or extract pixel data with PIL/numpy\n# (CLI mode); no proxying allowed.\n# Clear any stale openclaw session lock left over from VM image\n# bake or a previous crashed run.\nrm -f /home/user/.openclaw/agents/main/sessions/*.lock 2>/dev/null || true\nopenclaw config unset agents.defaults.imageModel >/dev/null 2>&1 || true\nopenclaw config set agents.defaults.sandbox.imageModel.primary \"\" >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_2_process_leak_diagnose/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_2_process_leak_diagnose /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_2_process_leak_diagnose/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_2_process_leak_diagnose/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_2_process_leak_diagnose/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_2_process_leak_diagnose/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_2_process_leak_diagnose/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_2_process_leak_diagnose.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_2_process_leak_diagnose",
+    "workspace_relative": "DAV/task_2_process_leak_diagnose",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

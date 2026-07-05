@@ -1,0 +1,85 @@
+{
+  "id": "DES_task_13_cmyk_softproof_gamut",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: A client has supplied a highly saturated sRGB photo that needs to be printed on an ISO Coated v2 / FOGRA39 press. **Problem**: about 12% of the pixels fall outside the CMYK printable gamut (electric-cyan sky, neon-magenta sticker, pure-orange flower); a direct sRGB→CMYK conversion would come out muddy and washed-out. Environment and assets (already prepared):\n\n- Source image: `/tmp_workspace/img/source_rgb.jpg` (2048×1536, sRGB; ≥ 12% of the pixels lie outside the FOGRA39 CMYK gamut)\n- ICC profile resources: an sRGB profile and one of the FOGRA39 / Coated / ISOcoated / GRACoL / JapanColor CMYK profiles can be found under `/usr/share/color/icc/` and `/usr/share/ghostscript/*/Resource/ColorSpace/` (you must scan and decide the exact paths)\n- The workstation has a full prepress / color-management toolchain installed (including an image editor that supports soft-proofing and gamut warning, an ICC-aware pixel converter, a Lab/ΔE computation engine, and a PostScript/PDF ICC verifier); you may choose freely among them\n\nTask objectives: First quantify the out-of-gamut pixel ratio; then use soft-proof + gamut warning visualization to locate the out-of-gamut regions; perform local desaturation on those regions so that, after conversion to FOGRA39 CMYK, the out-of-gamut pixel ratio is ≤ **1.5%**, ΔE76 p95 ≤ **4**, ΔE76 p99 ≤ **8**; perform a comparative OOG analysis across **3 print processes** (FOGRA39 coated / GRACoL_2013 / JapanColor_2011); also quantify 4 categories of prepress metrics — **screen frequency**, **ink density**, **total area coverage (TAC)**, and **registration shift tolerance**; finally produce a complete color-management + prepress-process audit report.\n\nDeliverables that must be produced under `/tmp_workspace/results/`:\n\n1. **ICC path resolution** `icc_paths.json`:\n   ```json\n   {\"rgb_icc\": \"<absolute path to sRGB icc>\",\n    \"cmyk_icc\": \"<absolute path to CMYK icc>\"}\n   ```\n   Both files must really exist; the filename or profile description of `cmyk_icc` must contain one of `FOGRA` / `Coated` / `ISOcoated` / `PSO`\n\n2. **Pre-correction out-of-gamut report** `oog_before.json`:\n   ```json\n   {\"oog_pixel_pct\": <float>, \"method\": \"<roundtrip|transicc|...>\",\n    \"intent\": \"RelativeColorimetric\", \"src_size\": [<w>,<h>]}\n   ```\n   Requires `oog_pixel_pct ≥ 12` (this is the characteristic value of this sample; a value that is too low indicates a wrong method)\n\n3. **Soft-proof view** `view_krita_softproof_on.png`: a visualization file (PNG, ≥ 5 KB) that must show the image editor main window with the source image open and soft-proofing enabled against the FOGRA39 / Coated profile (the colors must shift slightly compared to the normal view; the status bar / title must contain \"Soft Proof\" or the gamut name)\n\n4. **Gamut warning view** `view_krita_gamut_warning.png`: with soft-proof still on, gamut warning is also enabled; the view must show large continuous warning-color overlays covering the over-gamut zones such as sky / sticker / flower\n\n5. **Out-of-gamut zone list** `oog_zones.csv`, columns: `zone_id,x,y,w,h,reason`, with at least 3 rows; each row's `reason` field must be non-empty and ≥ 4 characters (recommended values: `sky_cyan` / `magenta_sticker` / `orange_flower`, or any free-form description)\n\n6. **Patched RGB image** `patched_rgb.png`: the image after locally desaturating the over-gamut regions with a brush in Saturation / Color blend mode (PNG, ≥ 800 px on the smaller side)\n\n7. **Brush correction view** `view_krita_brush_correction.png`: must show a brush stroke being applied (or just applied) on the canvas, plus the brush options panel on the top or left (with controls such as Opacity / Flow / Saturation / Color)\n\n8. **CMYK output TIFF** `final_cmyk.tif`: a CMYK TIFF converted from `patched_rgb.png` using RelativeColorimetric + black-point compensation; the colorspace must truly be `CMYK`\n\n9. **Post-correction out-of-gamut report** `oog_after.json`: same schema as `oog_before.json`, requires `oog_pixel_pct ≤ 1.5` and `intent` field equal to `RelativeColorimetric`\n\n10. **ΔE re-check** `delta_e.json`:\n    ```json\n    {\"delta_e_p50\": <float>, \"delta_e_p95\": <float>,\n     \"delta_e_p99\": <float>, \"delta_e_max\": <float>,\n     \"method\": \"DE76\"}\n    ```\n    Requires `delta_e_p50 ≤ 1.5`, `delta_e_p95 ≤ 4` and `delta_e_p99 ≤ 8`\n\n11. **PostScript/PDF engine ICC verification log** `gs_log.txt`: ≥ 50 bytes, text must contain the word `ICC`, proving that the PostScript/PDF engine actually loaded an ICC profile when processing final_cmyk.tif\n\n12. **Overall report** `manifest.json`:\n    ```json\n    {\n      \"rgb_icc\": \"<absolute path>\",\n      \"cmyk_icc\": \"<absolute path>\",\n      \"oog_before_pct\": <float>,\n      \"oog_after_pct\": <float>,\n      \"delta_e_p50\": <float>,\n      \"delta_e_p95\": <float>,\n      \"delta_e_p99\": <float>,\n      \"patched_zones\": <int>,\n      \"intent\": \"RelativeColorimetric\",\n      \"tac_pct_max\": <float>,\n      \"ink_density_summary\": {\"C\": <float>, \"M\": <float>, \"Y\": <float>, \"K\": <float>},\n      \"agent_notes\": \"<≥ 300 chars: describe which regions were over gamut / which intent you chose / why not Perceptual / why Saturation blend mode for the brush / differences between soft proof and final output / press acceptability / conclusion of the 3-process comparison / how screen frequency was chosen / how the TAC ceiling was picked / registration shift tolerance>\"\n    }\n    ```\n\n13. **Multi-process comparison** `process_compare.csv`, columns: `process,profile_path,oog_before_pct,oog_after_pct,delta_e_p95,delta_e_p99,recommended`, with **exactly 3 rows** (FOGRA39 / GRACoL_2013 / JapanColor_2011; if not all 3 CMYK profiles are available on the system, you may use `lcms2` / `colormath` or a fallback matrix to simulate, but the fallback rationale must be documented in `agent_notes`). All 3 rows must have `oog_after_pct ≤ 4` and at least 1 row must have `recommended == true`\n\n14. **Screen frequency + ink density report** `halftone_ink_density.json`:\n    ```json\n    {\n      \"screen_lpi\": <int>,\n      \"screen_angles\": {\"C\": 15, \"M\": 75, \"Y\": 0, \"K\": 45},\n      \"ink_density_avg\": {\"C\": <float>, \"M\": <float>, \"Y\": <float>, \"K\": <float>},\n      \"ink_density_p95\": {\"C\": <float>, \"M\": <float>, \"Y\": <float>, \"K\": <float>},\n      \"tac_pct_avg\": <float>,\n      \"tac_pct_p95\": <float>,\n      \"tac_pct_max\": <float>,\n      \"tac_violations_pct\": <float>\n    }\n    ```\n    Hard constraints: `screen_lpi ∈ [120, 175]`; all 4 `screen_angles` must be pairwise separated by ≥ 15°; `tac_pct_max ≤ 320`; `tac_violations_pct` (i.e. the percentage of pixels exceeding 300%) ≤ 3%\n\n15. **Registration shift tolerance check** `registration_tolerance.json`:\n    ```json\n    {\n      \"shift_px_x\": <float>, \"shift_px_y\": <float>,\n      \"shifted_render_path\": \"<absolute path>\",\n      \"delta_e_p95_after_shift\": <float>,\n      \"max_acceptable_shift_px\": <float>,\n      \"pass\": <bool>\n    }\n    ```\n    Simulate shifting the K channel by 1 pixel in both X and Y, then re-composite (save the rendered image to `shifted_render_path`); compared against the un-shifted reference, ΔE76 p95 ≤ **8** (tolerance passes) means `pass: true`\n\n16. **Plate separations** `separations/sep_C.tif` / `sep_M.tif` / `sep_Y.tif` / `sep_K.tif`: 4 single-color plates split out of `final_cmyk.tif` (each grayscale, same resolution as final_cmyk; file ≥ 80 KB); all-0 / all-255 placeholders are not allowed\n\n17. **Trap: Perceptual intent counter-example comparison** `perceptual_decoy.json`:\n    ```json\n    {\n      \"perceptual_oog_pct\": <float>, \"perceptual_delta_e_p95\": <float>,\n      \"relcol_oog_pct\": <float>,    \"relcol_delta_e_p95\": <float>,\n      \"winner\": \"RelativeColorimetric\",\n      \"rationale\": \"<≥ 60 chars>\"\n    }\n    ```\n    You must explicitly run a Perceptual-intent conversion and compare it against the RelativeColorimetric result; requires `winner == \"RelativeColorimetric\"` (this is the correct choice for this image because only a small minority of pixels are over gamut; Perceptual would compress the saturation of the entire image — the agent must prove it really compared both paths rather than picking by intuition)\n\nHard constraints:\n- before OOG ≥ 12%, after OOG ≤ **1.5%**, ΔE p50 ≤ 1.5 / p95 ≤ **4** / p99 ≤ 8, final_cmyk colorspace == CMYK\n- intent must be RelativeColorimetric (not allowed to bypass via Perceptual full-image compression; but you must actually perform the Perceptual counter-example comparison)\n- not allowed at step 2 to simply run a CMYK profile on source_rgb and report 0% OOG\n- `agent_notes` ≥ 300 characters\n- process_compare must have at least 3 rows + 1 recommended, tac_pct_max ≤ 320, screen angles separated by ≥ 15°, registration ΔE p95 ≤ 8 after 1px K shift\n- separations: all 4 grayscale plate files present\n- the three visualization files must really show the image editor UI + the three states soft proof / gamut warning / brush correction (must really show the corresponding Krita modules)",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_13_cmyk_softproof_gamut.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_13_cmyk_softproof_gamut",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo \"${SUDO_PASSWORD:-password}\" | sudo -S -p '' bash -c '\nDEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null 2>&1 || true\nDEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\\n    krita ghostscript imagemagick liblcms2-utils icc-profiles-free \\\n    python3-pil tesseract-ocr \\\n    >/dev/null 2>&1 || true\n# IM policy: many Ubuntu IM ship with PDF/PS read disabled — that is OK; tif/png we need are fine.\n' || true\nmkdir -p /tmp_workspace/img /tmp_workspace/results /tmp_workspace/gt\npython3 - <<'PY'\nfrom PIL import Image, ImageDraw, ImageFilter\nimport random\nrandom.seed(20260429)\nW, H = 2048, 1536\nim = Image.new(\"RGB\", (W, H), (140, 175, 210))  # slightly bluish base\ndr = ImageDraw.Draw(im)\n# Out-of-gamut electric cyan sky band (top 1/3) — wider band to push past 12%\nfor y in range(0, int(H*0.42)):\n    t = y / max(1, int(H*0.42))\n    r = int(20 + 30*t); g = int(220 + 20*t); b = int(255 - 10*t)\n    dr.line([(0,y),(W,y)], fill=(r,g,b))\n# Neon magenta sticker (rectangle) — larger\ndr.rectangle([1200, 280, 1780, 660], fill=(255, 30, 220))\ndr.rectangle([1230, 310, 1750, 630], fill=(255, 0, 255))\n# Pure orange flower (cluster of circles) — bigger\ncx, cy = 600, 1000\nfor ang in range(0, 360, 30):\n    import math\n    px = cx + int(220*math.cos(math.radians(ang)))\n    py = cy + int(220*math.sin(math.radians(ang)))\n    dr.ellipse([px-110, py-110, px+110, py+110], fill=(255, 130, 0))\ndr.ellipse([cx-110, cy-110, cx+110, cy+110], fill=(255, 220, 0))\n# Add some natural-looking texture\nfor _ in range(8000):\n    x = random.randrange(W); y = random.randrange(H)\n    rr,gg,bb = im.getpixel((x,y))\n    j = random.randint(-15,15)\n    dr.point((x,y), fill=(max(0,min(255,rr+j)), max(0,min(255,gg+j)), max(0,min(255,bb+j))))\nim = im.filter(ImageFilter.GaussianBlur(radius=0.5))\nim.save(\"/tmp_workspace/img/source_rgb.jpg\", quality=92, subsampling=1)\nprint(\"[warmup] source_rgb.jpg size:\", im.size)\nPY\n# Probe ICC availability so the agent knows what is here (no GT info)\nls /usr/share/color/icc 2>/dev/null | head -20 || true\nls /usr/share/ghostscript/*/Resource/ColorSpace 2>/dev/null | head -20 || true\necho -n \"des13-warmup-ok\" | base64 > /tmp_workspace/.warmup_des13\nbase64 -d /tmp_workspace/.warmup_des13 >/dev/null && echo \"[warmup] base64 idempotent ok\"\nls -la /tmp_workspace/img/",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "des"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DES_task_13_cmyk_softproof_gamut/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DES_task_13_cmyk_softproof_gamut /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_13_cmyk_softproof_gamut/reward.py",
+              "path": "/opt/eval/weave_bench/DES_task_13_cmyk_softproof_gamut/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_13_cmyk_softproof_gamut/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DES_task_13_cmyk_softproof_gamut/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DES_task_13_cmyk_softproof_gamut/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_13_cmyk_softproof_gamut.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_13_cmyk_softproof_gamut",
+    "workspace_relative": "DES/task_13_cmyk_softproof_gamut",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

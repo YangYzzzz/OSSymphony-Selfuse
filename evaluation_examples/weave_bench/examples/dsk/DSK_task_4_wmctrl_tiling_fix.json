@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_4_wmctrl_tiling_fix",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: this is a legitimate desktop window management task. All artifacts must be written to `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: `/tmp_workspace/exec/tile.sh` is the team's 4-window 2x2 tiling script. It is supposed to follow `/tmp_workspace/exec/layout.json` and place Terminal / gedit / Nautilus / Firefox into top_left / top_right / bottom_left / bottom_right respectively. The current implementation has several defects: some windows end up off-screen, dialogs are mishandled, and the coordinate reference point is wrong. The agent must read and reproduce the contents and runtime output of both `layout.json` and `tile.sh` itself.\n\nGoal: reproduce the broken state and collect evidence → locate at least 3 mutually independent bugs → modify the script → re-run and verify that all 4 windows land cleanly inside the expected quadrants with no overlap and no off-screen pixels. All artifacts go to `/tmp_workspace/results/`.\n\nDomain notes (for reference, do not hardcode): whether X11 window geometry includes decorations, `_NET_FRAME_EXTENTS`, distinguishing normal windows from dialogs via `_NET_WM_WINDOW_TYPE`, and the reference-point semantics of wmctrl `-G` / `-e` gravity.\n\n### Hard constraints on the primary deliverable `verify_output.txt`\n\n- The text must contain all three of: `overlap=0`, `windows_in_quadrant=4`, and `ALL OK` (exact character match).\n- This file represents the real verdict from the post-fix run; it must not be fabricated.\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `screen_geom.txt` | Snapshot of screen resolution / workarea geometry |\n| `tile_run.log` | Full run log of the first (pre-fix) `tile.sh` invocation |\n| `wmctrl_after_tile.txt` | Window geometry snapshot before the fix |\n| `wmctrl_after_fix.txt` | Window geometry snapshot after the fix. Must have ≥ 4 lines in `wmctrl -lG` format (`WID DESK X Y W H HOST TITLE`); the 4 window centers, split by the x/y medians, must fall into 4 distinct quadrants, with Terminal / gedit / Nautilus (or Files) / Firefox each in one quadrant matching the assignment in `layout.json` |\n| `window_types.txt` | EWMH property dump (e.g. `_NET_WM_WINDOW_TYPE`) for the relevant windows, showing the basis for distinguishing normal windows from dialogs |\n| `tile_backup.sh` | Backup of `tile.sh` before any modification |\n| `check_layout.py` | Script that reads the window-geometry snapshot and compares it against `layout.json`, emitting a violations list (> 50 bytes) |\n| `layout_violations.json` | Pre-fix violation list; the `violations` array (or top-level array) must contain ≥ 3 items covering at least one of each: off-screen, overlap, and quadrant mismatch |\n| `bug_findings.md` | ≥ 3 paragraphs, each ≥ 80 chars and containing a citation of the form `xxx.sh:<line>`, each pinpointing one independent bug. Coverage must include: windows escaping the screen, legitimate windows being wrongly closed/skipped/hidden, and geometry being applied relative to a reference point instead of absolute coordinates |\n| `tiling_report.md` | ≥ 4 paragraphs, each ≥ 80 chars, covering: bug summary, general handling of decoration height, gravity / reference-point choice, and the correct way to filter via `_NET_WM_WINDOW_TYPE` |\n| `fixed_tile.sh` or `tile_fixed.sh` or `tile.sh.fixed` or `patch.diff` | Any one of these is acceptable; > 100 bytes; must independently reproduce the fixed result (simply reverting `tile.sh` in place does not count) |\n\n### 3 process screenshots (all under `/tmp_workspace/results/`, fixed filenames)\n\n- `view_screen_broken.png`: pre-fix full screen, showing the 4 misplaced / off-screen windows.\n- `view_screen_fixed.png`: post-fix full screen, the final clean 2x2 tile with no overlap.\n- `view_terminal_wmctrl.png`: terminal view showing the window geometry listing as evidence.\n\nGeneral spec: each PNG ≥ 5 KB; the 3 images must be distinct (different md5); resolution and font size must allow OCR to read window titles and terminal text. Evaluation includes OCR plus a VLM rubric (broken vs fixed comparison, whether the layout is a real 2x2, presence of off-screen pixels or overlap).\n\nAnti-cheat: all artifacts must come from genuinely running `tile.sh` and the wmctrl/xprop tools; fabricated geometry or screenshots are not allowed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_4_wmctrl_tiling_fix.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_4_wmctrl_tiling_fix",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results || true\nchmod +x /tmp_workspace/exec/tile.sh 2>/dev/null || true\n\n# GUI / X11 工具兜底(VM 缺包时安装)\nfor pkg in wmctrl xdotool x11-utils gedit nautilus firefox-esr; do\n  which ${pkg%-esr} >/dev/null 2>&1 || apt-get install -y -qq \"$pkg\" || true\ndone\n\n# OCR 通用依赖\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_4_wmctrl_tiling_fix/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_4_wmctrl_tiling_fix /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_4_wmctrl_tiling_fix/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_4_wmctrl_tiling_fix/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_4_wmctrl_tiling_fix/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_4_wmctrl_tiling_fix/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_4_wmctrl_tiling_fix/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_4_wmctrl_tiling_fix.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_4_wmctrl_tiling_fix",
+    "workspace_relative": "DSK/task_4_wmctrl_tiling_fix",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

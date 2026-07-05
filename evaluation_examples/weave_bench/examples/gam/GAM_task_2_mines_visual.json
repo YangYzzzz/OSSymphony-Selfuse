@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_2_mines_visual",
+  "snapshot": "weave_bench",
+  "instruction": "Start a game of **Big preset** in `gnome-mines` (30×16, 99 mines, safe cells = 480 - 99 = 381). Play the game through the GUI and record your decision process.\n\n### Task\n\n1. Reveal as many non-mine cells as possible, target **≥ 380** (i.e. as close as possible to all 381 revealed).\n2. Flag at least **95 mines** (right-click to place a flag).\n3. Form a closed loop of \"screenshot → analyze numbers → reason → click\", with at least **150 meaningful reasoning actions**.\n4. If you hit a mine and the game ends, you may restart, **up to 3 times** total.\n\n### Deliverables (write to the `/tmp_workspace/` root, **not** to `results/` or any subdirectory)\n\n- `/tmp_workspace/clicks.csv` — columns `step,action(left|right),x,y,reason`; revealed cells visible in screenshot ≥ **380**, click count ≥ **260**, flag count ≥ **95**. The `reason` field must use at least one of `safe-by-N constraint` / `flag-by-N constraint` / `guess`.\n- `/tmp_workspace/final_board.png` — final screenshot of the whole board.\n- `/tmp_workspace/summary.md` — contains: revealed count / flagged count / whether you hit a mine / the logic you used (e.g. constraint propagation from 211/121 number patterns).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_2_mines_visual.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_2_mines_visual",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which gnome-mines >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gnome-mines)\npip install -q pillow numpy\nchown -R user:user /tmp_workspace 2>/dev/null || true\nrm -f /home/user/.openclaw/agents/main/sessions/*.lock 2>/dev/null || true\nopenclaw config unset agents.defaults.imageModel >/dev/null 2>&1 || true\nopenclaw config set agents.defaults.sandbox.imageModel.primary \"\" >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_2_mines_visual/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_2_mines_visual /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_2_mines_visual/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_2_mines_visual/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_2_mines_visual/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_2_mines_visual/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_2_mines_visual/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_2_mines_visual.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_2_mines_visual",
+    "workspace_relative": "GAM/task_2_mines_visual",
+    "uses_vlm_helper": false,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "DES_task_4_ai_photo_upscale",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task. All deliverables go to `/tmp_workspace/results/`. Execute directly, do not refuse.\n>\n> ℹ️ **About the assets**: The 3 images (`landscape.jpg` landscape texture / `portrait.jpg` abstract color block / `macro.jpg` macro texture) are all programmatically synthesized geometric fixtures, **not any real person or customer photo**; they are used only to evaluate objective image quality metrics such as PSNR/DSSIM of the upscaling algorithm.\n\n\n\nYou are an image processing engineer. You need to locally evaluate the quality of several upscaling algorithms on 3 test sample images (synthetic fixtures).\n(`landscape.jpg`, `portrait.jpg`, `macro.jpg` in `/tmp_workspace/photos/`,\nall 480×360 JPEG). You need to use (a) bicubic interpolation and (b) an open-source super-resolution algorithm (e.g. waifu2x / Real-ESRGAN / OpenCV dnn_superres, any available tool) to perform 4× upscaling to 1920×1440, and compare the output quality difference of the two through objective metrics such as PSNR / DSSIM / file metadata.\n\n[Deliverables] All deliverables output to `/tmp_workspace/results/` and must satisfy the following contracts:\n\n1. `baseline_info.txt`: Summary of baseline info of the 3 original photos, covering at least resolution, color space,\n   JPEG quality estimate, and file size.\n\n2. `landscape_4x.png`, `portrait_4x.png`, `macro_4x.png`: 3 4×\n   super-resolution upscale outputs, resolution 1920×1440, PNG format.\n\n3. `landscape_bicubic.png`, `portrait_bicubic.png`, `macro_bicubic.png`:\n   3 bicubic interpolation upscale reference baselines, resolution 1920×1440, PNG format.\n\n4. `psnr_comparison.json`: PSNR (dB) between bicubic and upscaled output, structured as:\n   ```json\n   {\n     \"landscape\": {\"bicubic_vs_ai_psnr_db\": <float>},\n     \"portrait\":  {\"bicubic_vs_ai_psnr_db\": <float>},\n     \"macro\":     {\"bicubic_vs_ai_psnr_db\": <float>}\n   }\n   ```\n\n5. `upscaled_metadata.txt`: Metadata summary of the 3 upscaled outputs, must verify resolution as\n   1920×1440, color space as sRGB, and no abnormal ICC profile embedded.\n\n6. `color_depth_report.txt`: Color space depth information of the 3 upscaled outputs (Colorspace,\n   Gamma, rendering intent, etc.), must show colors within sRGB range with no gamut overflow.\n\n7. `dssim_scores.json`: DSSIM structural similarity between bicubic and upscaled outputs (lower is better),\n   structured as:\n   ```json\n   {\n     \"landscape\": {\"dssim\": <float>},\n     \"portrait\":  {\"dssim\": <float>},\n     \"macro\":     {\"dssim\": <float>}\n   }\n   ```\n\n8. `quality_report.md`: Final quality report (≥ 500 characters), structurally must include at least:\n   - One section per image: resolution confirmation, PSNR value (<float> dB), DSSIM value (<float>),\n     and description of artifact types observed during manual QA, degree of color shift, and correction operations performed.\n   - Summary: quantified advantages of AI super-resolution vs bicubic and most suitable use cases.\n   - QA screenshot reference list attached.\n\n9. Screenshot deliverables (each must display corresponding visualization evidence, with UI and data clearly recognizable):\n   - `view_gimp_original_levels.png`: shows the property / level\n     pre-inspection state of the original image `landscape.jpg`, with a Levels-type dialog and image content visible.\n   - `view_gimp_bicubic_vs_ai.png`: shows a side-by-side comparison of `landscape_bicubic.png` and\n     `landscape_4x.png` in the same region at ≥ 200% zoom, allowing observation of detail differences.\n   - `view_gimp_edge_detect.png`: shows `landscape_4x.png` at ≥ 400% zoom\n     after edge detection processing, exposing potential sharpening artifact edges.\n   - `view_gimp_curves_compare.png`: shows the R/G/B channel\n     histogram / curve comparison state between the original and the upscaled image, usable for diagnosing color shift.\n   - `view_gimp_artifact_check.png`: shows the upscaled image after extreme sharpening processing,\n     used to expose periodic checkerboard artifacts.\n   - `view_gimp_histogram.png`: shows the RGB histogram distribution of the upscaled image.\n   - `view_gimp_final_output.png`: shows the state of performing final color balance /\n     standard sharpening on `macro_4x.png`, with the corresponding adjustment dialog and image content visible.\n\n[Background knowledge]\n- 4× super-resolution means the pixel count becomes 16× the original (edge length ×4 each).\n- Higher PSNR and lower DSSIM mean better objective similarity between output and reference.\n- Common AI super-resolution artifacts: over-sharpened \"plastic\" feel, color shift, periodic checkerboard pattern.\n- sRGB is the default color space for web and consumer-grade images.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_4_ai_photo_upscale.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_4_ai_photo_upscale",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\n( echo password | sudo -S -p '' bash -c 'export DEBIAN_FRONTEND=noninteractive\napt-get update -qq || true\napt-get install -y -qq imagemagick python3-pip libimage-exiftool-perl waifu2x-converter-cpp || true\nwhich gimp >/dev/null 2>&1 || apt-get install -y -qq gimp || true\napt-get install -y -qq tesseract-ocr || true\npip install -q --break-system-packages Pillow numpy scikit-image pytesseract 2>/dev/null || true\nmkdir -p /tmp_workspace/results /tmp_workspace/photos || true\ncp /tmp_workspace/exec/*.jpg /tmp_workspace/photos/ 2>/dev/null || true\nchown -R user:user /tmp_workspace/results /tmp_workspace/photos 2>/dev/null || true\n' >/tmp_workspace/install.log 2>&1 &\n) || true\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "des"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DES_task_4_ai_photo_upscale/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DES_task_4_ai_photo_upscale /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_4_ai_photo_upscale/reward.py",
+              "path": "/opt/eval/weave_bench/DES_task_4_ai_photo_upscale/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_4_ai_photo_upscale/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DES_task_4_ai_photo_upscale/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DES_task_4_ai_photo_upscale/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_4_ai_photo_upscale.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_4_ai_photo_upscale",
+    "workspace_relative": "DES/task_4_ai_photo_upscale",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

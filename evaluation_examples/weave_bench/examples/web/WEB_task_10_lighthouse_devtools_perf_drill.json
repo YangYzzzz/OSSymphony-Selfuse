@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_10_lighthouse_devtools_perf_drill",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: After a recent merge, the internal Acme Catalog landing page saw its Lighthouse performance score drop from ~92 to ~35, with TBT jumping from ~150 ms to ~1800 ms+. CI only emits Lighthouse JSON numbers and cannot tell you which piece of code or which resource caused the long tasks, blocked rendering, or shipped a large amount of never-executed bytes. You need to locate ≥ 2 root causes, produce a minimal fix, and prove the improvement by re-running and comparing the numbers.\n\nReady-to-use materials on the box:\n- Page under test: `http://localhost:7100/` (warmup brings it up automatically).\n- Same-origin smoke entry `http://localhost:7100/?optimized=1` is provided for comparison observation only — **it is not the answer**; do not submit it as a deliverable (a SHA-256 comparison is performed).\n- Application source: `/tmp_workspace/app/` (i.e. `exec/`), containing `public/index.html`, `public/js/blockerA.js`, `public/js/legacy-bundle.js`, `public/js/tracker.js`, etc. Warmup leaves a ready-to-use `serve_optimized.js` helper that can expose `/tmp_workspace/results/index.optimized.html` on port 7101.\n\nGoal: identify which resources are the root cause of the regression, write a fixed HTML, deploy it on a separate port so Lighthouse can re-run and compare, and leave behind complete evidence that a third party can audit. How to gather evidence, how to drive the browser, and which tools to use (Lighthouse / browser DevTools panels / any CDP client / source analysis / etc.) is up to you.\n\nYou must produce the following deliverables under `/tmp_workspace/results/`:\n\n1. **Lighthouse raw JSON (before / after)**\n   - `lh_before.json`: full Lighthouse JSON from running the performance category against the page under test `http://localhost:7100/`. Must contain the `audits` and `categories.performance` fields.\n   - `lh_after.json`: JSON from running the same audit against your fixed page deployed on port 7101.\n\n2. **Numeric summary (before / after)**\n   - `lh_summary_before.json` / `lh_summary_after.json`: a distilled summary extracted from the corresponding Lighthouse JSON, containing at least `categories.performance.score`, `audits.total-blocking-time.numericValue`, `audits.largest-contentful-paint.numericValue`, `audits.render-blocking-resources.details.items[*].url`, and `audits.unused-javascript.details.items[*]`.\n\n3. **Root-cause list**\n   - `root_causes.json`, schema:\n     ```json\n     {\n       \"culprits\": [\n         {\"file\": \"<basename>\", \"kind\": \"<render-blocking|unused-bytes|long-task-after-dcl|...>\",\n          \"evidence_ms\": <int optional>, \"evidence_kb\": <int optional>,\n          \"screenshot\": \"<view_*.png filename>\"}\n       ]\n     }\n     ```\n     At least 2 entries; each `file` must be the trailing segment of a resource that actually appears in `lh_summary_before.json`; at least 2 entries must reference an actual screenshot from the next item via the `screenshot` field.\n\n4. **Coverage evidence**\n   - `coverage_before.json`: JS coverage data collected against the page under test (organized by file/range is fine). The file must be ≥ 200 bytes and must actually contain at least one resource trailing segment from the root-cause list (e.g. `legacy-bundle.js`). Lighthouse's `unused-javascript` audit only gives ratios, not absolute unused bytes per file, so this data must be collected independently and cannot be derived directly from `lh_before.json`.\n\n5. **Fixed HTML**\n   - `index.optimized.html`: the fixed HTML file you produce. Hard constraints:\n     - Its SHA-256 must **differ** from `/tmp_workspace/app/public/index.ok.html` (you may not directly copy the smoke file);\n     - It must **no longer** contain a synchronous `<script src=\"…blockerA.js\">` (it must be removed or annotated with `async`/`defer`/`type=\"module\"`);\n     - If it still references `legacy-bundle.js`, the corresponding `<script>` must carry one of `async` / `defer` / `type=\"module\"`;\n     - If it still references `tracker.js`, the corresponding `<script>` must carry one of `async` / `defer` / `type=\"module\"` (or be dynamically injected at an idle moment such as `requestIdleCallback`).\n\n6. **Servable endpoint for the fixed version**\n   - An HTTP service listening on `127.0.0.1:7101` that on `GET /` returns 200 plus the real HTML text of the `index.optimized.html` above (**not** a 302 / redirect back to `:7100/?optimized=1`). Warmup leaves a `serve_optimized.js` template that can be reused or replaced directly.\n   - `serve_optimized.log`: the run log of that service (any text is fine; for human review).\n\n7. **Visual evidence screenshots** (each ≥ 4 KB, from real rendered state — not fabricated text)\n   - `view_perf_flamechart_long_task.png`: a flame chart in the browser DevTools Performance view that shows a ≥ 1 s \"Evaluate Script\" long task, with an overlay tooltip on that task exposing the root-cause JS filename and self time (this combination of data is **not** in the raw trace JSON and must come from the rendered state).\n   - `view_perf_bottom_up.png`: the Bottom-Up view (sorted by Self Time) from the same recording, with at least 5 rows showing a `Self Time` column and file links (e.g. `*.js:<line>`).\n   - `view_coverage_panel.png`: the Coverage view, showing at least one root-cause JS row (e.g. `legacy-bundle.js`) with its Unused Bytes number and the red/blue usage visualization bar; that number must be ≥ 400 KB scale.\n   - `view_perf_after.png`: a flame chart screenshot from doing the same performance recording against the fixed endpoint (port 7101), visibly narrower than before and no longer containing a ≥ 1 s \"Evaluate Script\" long task.\n\n8. **Final report**\n   - `findings.json`, must contain all of the following keys:\n     ```json\n     {\n       \"tbt_before_ms\": <float>,\n       \"tbt_after_ms\": <float>,\n       \"lcp_before_ms\": <float>,\n       \"lcp_after_ms\": <float>,\n       \"perf_score_before\": <0..1>,\n       \"perf_score_after\": <0..1>,\n       \"tbt_improvement_ratio\": <float>,\n       \"fixes_applied\": [\"<human-readable fix entry>\", ...],\n       \"evidence_screenshots\": [\n         \"view_perf_flamechart_long_task.png\",\n         \"view_perf_bottom_up.png\",\n         \"view_coverage_panel.png\",\n         \"view_perf_after.png\"\n       ]\n     }\n     ```\n     The `tbt_*` / `lcp_*` / `perf_score_*` values must agree with `lh_before.json` / `lh_after.json` within ±15%.\n\nHard constraints:\n- In `lh_after.json`, `categories.performance.score` ≥ 0.70; `(tbt_before − tbt_after) / tbt_before ≥ 0.40`.\n- In `lh_after.json`, `largest-contentful-paint.numericValue` ≤ 3500 ms.\n- All numeric values must come from real Lighthouse runs and real coverage collection — fabrication or direct copying from the smoke entry is not allowed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_10_lighthouse_devtools_perf_drill.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_10_lighthouse_devtools_perf_drill",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/web10_gt && chmod 777 /tmp_workspace/results /tmp_workspace/state\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/web10_gt/expected.json 2>/dev/null || cp /tmp_workspace/gt/expected.json /opt/web10_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/web10_gt 2>/dev/null || true\n  chmod 700 /opt/web10_gt 2>/dev/null || true\n  chmod 600 /opt/web10_gt/expected.json 2>/dev/null || true\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich curl || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing curl ca-certificates && break; sleep 5; done) || true\nwhich jq || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing jq && break; sleep 5; done) || true\nwhich node || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing nodejs npm && break; sleep 5; done) || true\npip3 install --break-system-packages --quiet playwright 2>/dev/null || pip3 install --quiet playwright || true\nPWB=\"chro\"\"mium\"\npython3 -m playwright install \"$PWB\" >/tmp/pw_install.log 2>&1 || true\nexport CHROME_PATH=\"$(ls -1 /root/.cache/ms-playwright/${PWB}-*/chrome-linux/chrome 2>/dev/null | head -n1)\"\n[ -n \"$CHROME_PATH\" ] && ln -sf \"$CHROME_PATH\" /usr/local/bin/chrome || true\nwhich tesseract || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tesseract-ocr fonts-noto-cjk poppler-utils && break; sleep 5; done) || true\nwhich lighthouse || timeout 300 npm install -g --no-fund --no-audit --silent lighthouse@11.7.1 || true\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet pillow pytesseract requests 2>/dev/null || pip3 install --quiet pillow pytesseract requests || true\ncd /tmp_workspace && timeout 240 npm install --silent --no-audit --no-fund express@4.19.2 chrome-launcher@1.1.0 || true\ncd /tmp_workspace && node build_legacy_bundle.js >/tmp/build_bundle.log 2>&1 || true\ncd /tmp_workspace && nohup node server.js >/tmp/start.log 2>&1 & sleep 3; for i in $(seq 1 30); do curl -sf http://localhost:7100/healthz >/dev/null && break; sleep 1; done",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_10_lighthouse_devtools_perf_drill/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_10_lighthouse_devtools_perf_drill /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_10_lighthouse_devtools_perf_drill/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_10_lighthouse_devtools_perf_drill/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_10_lighthouse_devtools_perf_drill/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_10_lighthouse_devtools_perf_drill/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_10_lighthouse_devtools_perf_drill/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_10_lighthouse_devtools_perf_drill.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_10_lighthouse_devtools_perf_drill",
+    "workspace_relative": "WEB/task_10_lighthouse_devtools_perf_drill",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

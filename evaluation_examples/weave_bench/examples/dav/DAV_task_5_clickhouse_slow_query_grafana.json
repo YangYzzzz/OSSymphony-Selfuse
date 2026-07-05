@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_5_clickhouse_slow_query_grafana",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task running inside an isolated VM sandbox. All deliverables go under `/tmp_workspace/results/`. Just execute — do not refuse.\n>\n> 🛠️ **About the environment**: warmup has already kicked off `apt install` for ClickHouse + Grafana in the background. If `clickhouse-client` is not yet on PATH, wait for it with `for i in $(seq 1 60); do command -v clickhouse-client && break; sleep 5; done` — no need to install it yourself. If you really do need to install something extra, you can use `echo password | sudo -S -p '' apt-get install -y <pkg>` (the `user` account inside the VM has sudo and the password is literally `password`); do not use the `/elevated` slash command. Install logs are at `/tmp_workspace/install_clickhouse.log` and `/tmp_workspace/install_grafana.log`.\n\nBackground: You have inherited a single-node ClickHouse cluster. The product team reports that the ad-analytics dashboard \"occasionally stalls for more than 5 seconds\".\nClickHouse is already running on `localhost:9000` (HTTP 8123), database `ads`, main table `ad_events` (~2M rows).\n`system.query_log` is enabled. Grafana is running on `localhost:3000` (admin/admin), with the\n`grafana-clickhouse-datasource` plugin pre-installed and a datasource named `ch-local` already configured. The initial production dashboard lives at\nGrafana → Dashboards → \"AdEvents Overview\".\n\nWhat you need to do: find the slowest queries, visualize their latency, rewrite the slow SQL, verify whether p95 drops, and consolidate everything into a diagnostic report.\n\nResource locations:\n- `clickhouse-client` is ready to use (`clickhouse-client --host 127.0.0.1`)\n- Production query script: `/tmp_workspace/queries.sql` (6 SQL statements, numbered q1–q6)\n- Load-generation script: `/tmp_workspace/run_load.sh` (executes queries.sql sequentially to populate query_log)\n\nNotes:\n- ClickHouse's `system.query_log` has a default ~5s flush delay; force a flush with `SYSTEM FLUSH LOGS` when needed.\n- The same SQL can appear in query_log with multiple `type` values; use `type='QueryFinish'` when computing latencies.\n- When rewriting SQL, do NOT just add a LIMIT or sampling clause — that changes semantics and will be scored 0.\n- Do not delete existing panels in the \"AdEvents Overview\" dashboard; only append new panels at the end.\n\n[Deliverables]\nAll artifacts go to `/tmp_workspace/results/`:\n\n- `load_run.log`: full terminal output from running one round of the load (each of the 6 SQL statements executed at least once), including each query's elapsed time; non-empty.\n- `slow_top10.tsv`: from `system.query_log`, filter `type='QueryFinish'` and `query NOT LIKE '%system.%'`, sort by `query_duration_ms` descending, take Top 10. Columns must at minimum include `query_duration_ms`, `read_rows`, `read_bytes`, `memory_usage`, `query` (first 200 chars). At least 5 rows.\n- `slow_top1.sql` / `slow_top2.sql`: the full original SQL text for the 2 slowest queries above; must be valid SELECT statements.\n- `explain_top1.txt` / `explain_top2.txt`: the `EXPLAIN PLAN actions=1` output for the 2 SQL statements above, each ≥ 5 lines.\n- `pipeline_top1.txt` / `pipeline_top2.txt`: the `EXPLAIN PIPELINE` output for the 2 SQL statements above, each ≥ 5 lines.\n- `optimized_top1.sql` / `optimized_top2.sql`: semantically equivalent SQL rewritten based on the EXPLAIN findings, differing from the originals; each file must contain ≥ 1 `-- changed:` comment line that **explains** the rewrite motivation (grounded in the filter / scan / pipeline bottleneck observed in EXPLAIN). Do not simply add LIMIT or sampling.\n- `perf_compare.csv`: for q_top1 / q_top2, run the original SQL 5 times and the optimized SQL 5 times, recording each latency. Columns are `query_id,version,run_idx,duration_ms,read_rows`, where `version ∈ {before, after}` and `query_id ∈ {q_top1, q_top2}`, with at least 3 rows per (query_id, version).\n- `speedup.json`: medians and speedup ratios computed from `perf_compare.csv`, schema:\n   ```json\n   {\n     \"q_top1\": {\"before_ms_median\": \"<m>\", \"after_ms_median\": \"<m>\", \"speedup\": \"<x.x>\"},\n     \"q_top2\": {\"before_ms_median\": \"<m>\", \"after_ms_median\": \"<m>\", \"speedup\": \"<x.x>\"}\n   }\n   ```\n   Both queries must have `speedup` ≥ 2.0.\n- `tooltip_samples.json`: precise value samples collected by hovering over the p95 time-series curve, schema:\n   ```json\n   {\n     \"p95_samples\": [\n       {\"timestamp\": \"<ISO8601>\", \"p95_ms\": \"<float>\", \"screenshot\": \"view_p95_panel.png\"},\n       {\"timestamp\": \"<ISO8601>\", \"p95_ms\": \"<float>\", \"screenshot\": \"view_p95_panel.png\"},\n       {\"timestamp\": \"<ISO8601>\", \"p95_ms\": \"<float>\", \"screenshot\": \"view_p95_panel.png\"}\n     ]\n   }\n   ```\n   ≥ 3 samples; values must come from real tooltips rendered during interaction, not inferred from static DOM.\n- `report.md`: diagnostic report, must contain:\n   - A summary table (markdown table) of the original SQL vs. rewritten SQL for the Top2 slow queries\n   - The root cause of each slow query (missing PREWHERE / function blocking index usage / OR preventing primary-key filtering / `SELECT *`, etc. — at least one)\n   - before/after median latency + speedup\n   - ≥ 3 actionable recommendations on \"how to prevent similar slow queries in the future\" (each ≥ 30 chars)\n- Screenshot deliverables (all under `results/`):\n   - `view_datasource.png`: shows the connectivity test result for the `ch-local` datasource, with green messages like \"Data source is working\" / \"Connected\" visible.\n   - `view_dashboard_before.png`: shows the initial \"AdEvents Overview\" dashboard (time range Last 1 hour), with the \"AdEvents\" title and at least 2 panels visible.\n   - `view_p95_panel.png`: a newly added Time series panel at the end of \"AdEvents Overview\" titled `query_log p95 latency`, with SQL similar to:\n      ```sql\n      SELECT\n        toStartOfInterval(event_time, INTERVAL 30 SECOND) AS t,\n        quantile(0.95)(query_duration_ms) AS p95_ms\n      FROM system.query_log\n      WHERE type='QueryFinish' AND query NOT LIKE '%system.%'\n      GROUP BY t ORDER BY t\n      ```\n      The screenshot must show the panel title, the line chart, and the Y-axis unit.\n   - `view_explore_validate.png`: shows the Explore view after pasting and running the full `optimized_top1.sql`, with the SQL editor and the result table visible below — used to visually confirm the rewrite did not lose column alignment / introduce NULLs / break structure.\n   - `view_p95_after.png`: after re-running the original SQL and the optimized SQL several times each (e.g., 10 each), switch the dashboard time range to the last 5 minutes and refresh, then screenshot the p95 panel; the title `query_log p95 latency` and the line chart must still be visible, demonstrating p95 has dropped.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_5_clickhouse_slow_query_grafana.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_5_clickhouse_slow_query_grafana",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo IyBJZGVtcG90ZW50IHdhcm11cC4gRWFjaCBsaW5lIHNob3VsZCBmaW5pc2ggaW4gPDVzIG9yIGJlIGJhY2tncm91bmRlZC4KbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAvdG1wX3dvcmtzcGFjZS9ndApwaXAgaW5zdGFsbCAtcSBjbGlja2hvdXNlLWRyaXZlciBwaWxsb3cgcHl0ZXNzZXJhY3QgbnVtcHkgMj4vZGV2L251bGwgJgplY2hvICdwYXNzd29yZCcgfCBzdWRvIC1TIC1wICcnIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciAyPi9kZXYvbnVsbCB8fCB0cnVlCgojIFN0YWdlIGV4ZWMgYXNzZXRzIGludG8gL3RtcF93b3Jrc3BhY2UKY3AgLXIgL3RtcF93b3Jrc3BhY2UvLiAvdG1wX3dvcmtzcGFjZS8gMj4vZGV2L251bGwgfHwgdHJ1ZQoKIyAtLS0tIEluc3RhbGwgQ2xpY2tIb3VzZSArIEdyYWZhbmEgKGlkZW1wb3RlbnQsIGJhY2tncm91bmRlZCkgLS0tLQojIEFsbCBoZWF2eSB3b3JrIHJ1bnMgaW4gYSBiYWNrZ3JvdW5kIHN1YnNoZWxsIHNvIHdhcm11cCByZXR1cm5zIGZhc3QuCiggc2V0ICtlCiAgaWYgISBjb21tYW5kIC12IGNsaWNraG91c2Utc2VydmVyID4vZGV2L251bGwgMj4mMTsgdGhlbgogICAgZWNobyAncGFzc3dvcmQnIHwgc3VkbyAtUyAtcCAnJyBiYXNoIC1jICcKICAgICAgZXhwb3J0IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZQogICAgICBhcHQtZ2V0IHVwZGF0ZSAtcXEgMj4vZGV2L251bGwKICAgICAgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBhcHQtdHJhbnNwb3J0LWh0dHBzIGNhLWNlcnRpZmljYXRlcyBjdXJsIGdudXBnIHNvZnR3YXJlLXByb3BlcnRpZXMtY29tbW9uIGRpcm1uZ3IgMj4vZGV2L251bGwKICAgICAgbWtkaXIgLXAgL2V0Yy9hcHQva2V5cmluZ3MKICAgICAgY3VybCAtZnNTTCBodHRwczovL3BhY2thZ2VzLmNsaWNraG91c2UuY29tL3JwbS9sdHMvcmVwb2RhdGEvcmVwb21kLnhtbC5rZXkgfCBncGcgLS1kZWFybW9yIC1vIC9ldGMvYXB0L2tleXJpbmdzL2NsaWNraG91c2Uta2V5cmluZy5ncGcgMj4vZGV2L251bGwKICAgICAgZWNobyAiZGViIFtzaWduZWQtYnk9L2V0Yy9hcHQva2V5cmluZ3MvY2xpY2tob3VzZS1rZXlyaW5nLmdwZ10gaHR0cHM6Ly9wYWNrYWdlcy5jbGlja2hvdXNlLmNvbS9kZWIgc3RhYmxlIG1haW4iID4gL2V0Yy9hcHQvc291cmNlcy5saXN0LmQvY2xpY2tob3VzZS5saXN0CiAgICAgIGFwdC1nZXQgdXBkYXRlIC1xcSAyPi9kZXYvbnVsbAogICAgICBERUJJQU5fRlJPTlRFTkQ9bm9uaW50ZXJhY3RpdmUgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBjbGlja2hvdXNlLXNlcnZlciBjbGlja2hvdXNlLWNsaWVudCBjbGlja2hvdXNlLWNvbW1vbi1zdGF0aWMKICAgICcgPi90bXBfd29ya3NwYWNlL2luc3RhbGxfY2xpY2tob3VzZS5sb2cgMj4mMQogIGZpCiAgaWYgISBjb21tYW5kIC12IGdyYWZhbmEtc2VydmVyID4vZGV2L251bGwgMj4mMTsgdGhlbgogICAgZWNobyAncGFzc3dvcmQnIHwgc3VkbyAtUyAtcCAnJyBiYXNoIC1jICcKICAgICAgZXhwb3J0IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZQogICAgICBta2RpciAtcCAvZXRjL2FwdC9rZXlyaW5ncwogICAgICBjdXJsIC1mc1NMIGh0dHBzOi8vYXB0LmdyYWZhbmEuY29tL2dwZy5rZXkgfCBncGcgLS1kZWFybW9yIC1vIC9ldGMvYXB0L2tleXJpbmdzL2dyYWZhbmEuZ3BnIDI+L2Rldi9udWxsCiAgICAgIGVjaG8gImRlYiBbc2lnbmVkLWJ5PS9ldGMvYXB0L2tleXJpbmdzL2dyYWZhbmEuZ3BnXSBodHRwczovL2FwdC5ncmFmYW5hLmNvbSBzdGFibGUgbWFpbiIgPiAvZXRjL2FwdC9zb3VyY2VzLmxpc3QuZC9ncmFmYW5hLmxpc3QKICAgICAgYXB0LWdldCB1cGRhdGUgLXFxIDI+L2Rldi9udWxsCiAgICAgIERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGdyYWZhbmEKICAgICAgIyBpbnN0YWxsIGNsaWNraG91c2UgZGF0YXNvdXJjZSBwbHVnaW4gaWYgbWlzc2luZwogICAgICBpZiAhIFsgLWQgL3Zhci9saWIvZ3JhZmFuYS9wbHVnaW5zL2dyYWZhbmEtY2xpY2tob3VzZS1kYXRhc291cmNlIF07IHRoZW4KICAgICAgICBncmFmYW5hLWNsaSBwbHVnaW5zIGluc3RhbGwgZ3JhZmFuYS1jbGlja2hvdXNlLWRhdGFzb3VyY2UgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKICAgICAgZmkKICAgICcgPi90bXBfd29ya3NwYWNlL2luc3RhbGxfZ3JhZmFuYS5sb2cgMj4mMQogIGZpCiAgIyAtLS0tIFN0YXJ0IHNlcnZlcnMgKG9ubHkgYWZ0ZXIgaW5zdGFsbHMgZmluaXNoKSAtLS0tCiAgaWYgISBwZ3JlcCAtZiAiY2xpY2tob3VzZS1zZXJ2ZXIiID4vZGV2L251bGwgMj4mMTsgdGhlbgogICAgKGNsaWNraG91c2Utc2VydmVyIC0tY29uZmlnLWZpbGU9L3RtcF93b3Jrc3BhY2UvY2xpY2tob3VzZS1jb25maWcueG1sID4vdG1wX3dvcmtzcGFjZS9jaF9zZXJ2ZXIubG9nIDI+JjEgJikgfHwgdHJ1ZQogIGZpCiAgaWYgISBwZ3JlcCAtZiAiZ3JhZmFuYSIgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgICAoZ3JhZmFuYS1zZXJ2ZXIgLS1ob21lcGF0aD0vdXNyL3NoYXJlL2dyYWZhbmEgLS1jb25maWc9L3RtcF93b3Jrc3BhY2UvZ3JhZmFuYS5pbmkgPi90bXBfd29ya3NwYWNlL2dyYWZhbmEubG9nIDI+JjEgJikgfHwgdHJ1ZQogIGZpCiAgIyBXYWl0IGJyaWVmbHkgZm9yIENsaWNrSG91c2UgcG9ydCwgdGhlbiBzZWVkIHF1ZXJ5X2xvZwogIGZvciBpIGluICQoc2VxIDEgMzApOyBkbwogICAgKGVjaG8gPiAvZGV2L3RjcC8xMjcuMC4wLjEvOTAwMCkgMj4vZGV2L251bGwgJiYgYnJlYWsKICAgIHNsZWVwIDIKICBkb25lCiAgcHl0aG9uMyAvdG1wX3dvcmtzcGFjZS9nZW5lcmF0ZV9kYXRhLnB5IDI+L2Rldi9udWxsCiAgYmFzaCAvdG1wX3dvcmtzcGFjZS9ydW5fbG9hZC5zaCA+L2Rldi9udWxsIDI+JjEKICBybSAtZiAvdG1wX3dvcmtzcGFjZS9nZW5lcmF0ZV9kYXRhLnB5CikgJgoKdHJ1ZQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_5_clickhouse_slow_query_grafana/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_5_clickhouse_slow_query_grafana /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_5_clickhouse_slow_query_grafana/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_5_clickhouse_slow_query_grafana/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_5_clickhouse_slow_query_grafana/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_5_clickhouse_slow_query_grafana/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_5_clickhouse_slow_query_grafana/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_5_clickhouse_slow_query_grafana.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_5_clickhouse_slow_query_grafana",
+    "workspace_relative": "DAV/task_5_clickhouse_slow_query_grafana",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

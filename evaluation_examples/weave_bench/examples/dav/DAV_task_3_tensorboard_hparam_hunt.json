@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_3_tensorboard_hparam_hunt",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution contract**: This is a legitimate desktop + terminal ML hyperparameter-tuning task. All deliverables go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\n[Background]\nThe team's image-classification baseline final val/acc has been stuck in the 78%–85% range for a long time. The current `config.yaml` hparams (lr=0.01 / batch_size=32 / weight_decay=0.001) are suspected of not being the sweet spot. You need to run a sweep over multiple mutually-exclusive hparam combinations, compare their training curves side by side, find the optimum, and retrain once with that combination to verify a final val/acc improvement of ≥ 0.04.\n\nData/scripts: `/tmp_workspace/exec/{config.yaml, train_sweep.py}` (already copied by warmup); logs are written to `/tmp_workspace/tb_logs/<run_name>/`. Note: the final acc of `train_sweep.py` is not a simple monotonic function of the hparams — you must actually run the sweep to find the best one; do not hardcode any \"known-optimal value\".\n\n[Deliverables]\nAll deliverables go under `/tmp_workspace/results/` (unless otherwise noted):\n\n- `sweep_plan.json`: 5 mutually-exclusive hparam combinations, each a dict containing fields such as `lr` / `batch_size` / `weight_decay`.\n- `/tmp_workspace/tb_logs/run_{1..5}/`: TFEvent logs for the 5 corresponding runs, each with at least 50 steps.\n- `loss_curves.csv`: columns `run,step,train_loss`, covering all 5 runs, with ≥ 50 rows per run.\n- `acc_curves.csv`: columns `run,step,val_acc`, covering all 5 runs, with ≥ 50 rows per run.\n- `best_run.json`: the best run selected based on measured final val/acc; schema:\n   ```py\n   {\n     \"best_run\": \"<run_name>\",\n     \"best_final_val_acc\": <float>,\n     \"best_hparams\": {\"lr\": ..., \"batch_size\": ..., \"weight_decay\": ...},\n     \"ranking\": [\"<rN>\", \"<rN-1>\", ...]\n   }\n   ```\n- `config_backup.yaml`: backup of the original `config.yaml`.\n- `/tmp_workspace/exec/config.yaml`: updated to use `best_hparams` with `epochs=80`.\n- `/tmp_workspace/tb_logs/rerun_best_extended/`: TFEvent log produced by retraining with the updated config; final val/acc should be higher than the original best (tolerance of -0.01 allowed).\n- `tooltip_samples.json`: ≥ 5 `(step, value, run)` samples collected by hovering over the val/acc curves. Values must come from the actual tooltip captured during interactive rendering, not inferred from static DOM.\n- `sweep_summary.md`: 4 paragraphs (≥ 80 characters each) covering, respectively: a) the sweep design rationale; b) a table mapping hparams → final acc for the 5 runs; c) the best run and the reasoning behind it; d) quantified rerun improvement and suggestions for future sweeps.\n- Screenshot deliverables (all under `results/`):\n   - `view_tb_scalars_loss.png`: shows the train/loss curves of all 5 runs, with all 5 run names visible in the legend.\n   - `view_tb_scalars_acc.png`: shows the val/acc curves of all 5 runs.\n   - `view_tb_smoothing.png`: shows the Scalars view after raising the smoothing factor (e.g. to 0.6) so that the curves become noticeably smoother.\n   - `view_tb_hparams_parallel.png`: shows the HParams Parallel Coordinates view, with 5 lines connecting each hparam dimension through to final val/acc.\n   - `view_tb_rerun_verification.png`: shows `rerun_best_extended` overlaid on top of the original 5 curves, with its final val/acc above the previous best.\n\n[Tips]\n- The values in `best_run.json` and the curve CSVs must be exported from actual training logs; do not hardcode.\n- Precise tooltip values typically only exist during interactive rendering — do not infer them from static DOM.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_3_tensorboard_hparam_hunt.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_3_tensorboard_hparam_hunt",
+        "env": "TB_PORT=6006\nOPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo d2hpY2ggY2hyb21pdW0tYnJvd3NlciA+L2Rldi9udWxsIDI+JjEgfHwgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBjaHJvbWl1bS1icm93c2VyIHx8IHRydWUKd2hpY2ggdGVzc2VyYWN0ID4vZGV2L251bGwgMj4mMSB8fCBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIHRlc3NlcmFjdC1vY3IgfHwgdHJ1ZQpwaXAgaW5zdGFsbCAtcSB0b3JjaCBweXlhbWwgbnVtcHkgcGlsbG93IHRlbnNvcmJvYXJkIHB5dGVzc2VyYWN0IDI+L2Rldi9udWxsIHx8IHRydWUKbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAvdG1wX3dvcmtzcGFjZS90Yl9sb2dzIHx8IHRydWUKWyAtZiAvdG1wX3dvcmtzcGFjZS8udGJfa2VybmVsLm5weiBdIHx8IHB5dGhvbjMgLWMgImltcG9ydCBudW1weSBhcyBucDsgbnAucmFuZG9tLnNlZWQoMjAyNik7IHcgPSBucC5hcnJheShbMi41LCAtMS4yLCAwLjQsIC0wLjYsIDEuMSwgLTAuOCwgMS4zXSk7IGIgPSAtMS41OyBucC5zYXZleignL3RtcF93b3Jrc3BhY2UvLnRiX2tlcm5lbC5ucHonLCB3PXcsIGI9YikiCnBraWxsIC1mICd0ZW5zb3Jib2FyZC4qNjAwNicgMj4vZGV2L251bGwgfHwgdHJ1ZQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_3_tensorboard_hparam_hunt/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_3_tensorboard_hparam_hunt /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_3_tensorboard_hparam_hunt/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_3_tensorboard_hparam_hunt/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_3_tensorboard_hparam_hunt/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_3_tensorboard_hparam_hunt/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_3_tensorboard_hparam_hunt/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_3_tensorboard_hparam_hunt.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_3_tensorboard_hparam_hunt",
+    "workspace_relative": "DAV/task_3_tensorboard_hparam_hunt",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

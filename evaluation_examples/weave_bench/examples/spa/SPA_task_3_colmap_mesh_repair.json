@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_3_colmap_mesh_repair",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task. All artifacts go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nTask: You are given a set of multi-view photos of a building (`/tmp_workspace/images/`). Complete a Structure-from-Motion\nreconstruction: feature extraction / matching → sparse reconstruction → dense reconstruction → meshing → mesh repair → clean OBJ export,\nand write all intermediate artifacts into `/tmp_workspace/results/` (`mkdir -p` any missing directories yourself).\n\n[Domain background]\n- An SfM pipeline typically contains: feature extraction & matching, sparse point-cloud triangulation, dense MVS reconstruction, and Poisson meshing.\n- The initial mesh produced by photogrammetry usually has common defects: non-manifold edges, isolated small fragments, surface noise, and holes / non-watertightness.\n- Common mesh repair strategies: removing isolated small fragments, merging duplicate vertices, Laplacian smoothing, etc.; vertex / face counts and topology metrics change noticeably before vs. after these operations.\n- Concrete numeric values for the dataset and intermediate artifacts (image count, keypoint count, sparse point count, mesh vertex / face count, etc.) are determined by actual computation; the prompt does not hardcode them.\n\n[Deliverables] Files to write under `/tmp_workspace/results/`:\n\nStatistics / JSON files (values come from actual computation, must not be hardcoded):\n- `db_stats.json` — `{\"num_images\": <int>, \"num_keypoints_total\": <int>, \"num_matches_total\": <int>}`, reflecting the database state after feature extraction + matching.\n- `sparse_stats.json` — Sparse reconstruction statistics, including at least `Registered images`, `Points`, and `Mean reprojection error`.\n- `dense_stats.json` — Statistics of the fused dense point cloud, including at least `num_points`.\n- `mesh_before.json` — Statistics of the initial Poisson mesh:\n  ```json\n  {\"vertices\": <int>, \"faces\": <int>, \"is_watertight\": <bool>, \"euler_number\": <int>}\n  ```\n- `topology_before.json` — Geometric / topological metrics of the initial mesh (quantifiable fields such as surface_area, boundary edges, non-manifold edges, etc.).\n- `mesh_after.json` — Statistics of the repaired mesh (same schema as `mesh_before.json`, plus an additional `surface_area`).\n- `measurements.json` — `{\"feature\": \"<name>\", \"value_units\": <float>, \"unit\": \"<scene_units>\"}`, recording a distance measured on some architectural feature (door / window / corner, etc.) on the repaired mesh.\n\nModel / report / rendering artifacts:\n- `repaired.obj` (with matching `.mtl`) — The final clean mesh OBJ after repair and export.\n- `repair_report.md` — A repair report of ≥ 150 characters comparing `mesh_before.json` with `mesh_after.json`, describing: which categories of defects were fixed (e.g. non-manifold edges / isolated fragments / noise), the change in vertex / face counts, and whether the mesh is closer to watertight.\n\nVisual evidence screenshots (description of the state each screenshot should show; the specific tool is not prescribed):\n- `view_01_match_matrix.png` — Main UI of the reconstruction tool, showing the pairwise image match-matrix heatmap or match-pair list.\n- `view_02_sparse_cloud.png` — 3D view of the sparse point cloud, showing the overall cloud and toolbar.\n- `view_03_dense_pointcloud.png` — 3D view of the fused dense point cloud, showing point-cloud morphology.\n- `view_04_initial_mesh.png` — Panoramic view of the initial Poisson mesh, showing polygonal face structure.\n- `view_05_nonmanifold.png` — View of the initial mesh with non-manifold edges highlighted / annotated (red or another contrasting color).\n- `view_06_repaired.png` — View of the mesh after repair + smoothing; compared against `view_04`, fragments should be gone and the surface smoother.\n- `view_07_measurement.png` — View showing a distance measurement on an architectural feature on the mesh, with the measurement line and numeric value visible.\n- `view_08_final_render.png` — Overall render of the final repaired mesh (any mature rendering method is acceptable).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_3_colmap_mesh_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_3_colmap_mesh_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo ZWNobyAnQWNxdWlyZTo6aHR0cDo6UHJveHkgImh0dHA6Ly8xMC4xNjAuMTk5LjIzMDoxNzg5MCI7IEFjcXVpcmU6Omh0dHBzOjpQcm94eSAiaHR0cDovLzEwLjE2MC4xOTkuMjMwOjE3ODkwIjsnIHwgdGVlIC9ldGMvYXB0L2FwdC5jb25mLmQvOTlwcm94eSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQphcHQtZ2V0IHVwZGF0ZSAtcXEgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKd2hpY2ggc3FsaXRlMyA+L2Rldi9udWxsIDI+JjEgfHwgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgc3FsaXRlMyA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBjb252ZXJ0ID4vZGV2L251bGwgMj4mMSB8fCBERUJJQU5fRlJPTlRFTkQ9bm9uaW50ZXJhY3RpdmUgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBpbWFnZW1hZ2ljayA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBjb2xtYXAgPi9kZXYvbnVsbCAyPiYxIHx8IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGNvbG1hcCA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBtZXNobGFiID4vZGV2L251bGwgMj4mMSB8fCBERUJJQU5fRlJPTlRFTkQ9bm9uaW50ZXJhY3RpdmUgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBtZXNobGFiID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCndoaWNoIHRlc3NlcmFjdCA+L2Rldi9udWxsIDI+JjEgfHwgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQpwaXAgaW5zdGFsbCAtcSAtLWJyZWFrLXN5c3RlbS1wYWNrYWdlcyB0cmltZXNoIHBpbGxvdyBudW1weSBweW1lc2hsYWIgcHl0ZXNzZXJhY3QgMj4vZGV2L251bGwgfHwgcGlwIGluc3RhbGwgLXEgdHJpbWVzaCBwaWxsb3cgbnVtcHkgcHltZXNobGFiIHB5dGVzc2VyYWN0IDI+L2Rldi9udWxsIHx8IHRydWUKbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvY29sbWFwX3dzIC90bXBfd29ya3NwYWNlL3Jlc3VsdHMgL3RtcF93b3Jrc3BhY2UvZ3QgL3RtcF93b3Jrc3BhY2UvaW1hZ2VzIHx8IHRydWUKaWYgWyAteiAiJChscyAtQSAvdG1wX3dvcmtzcGFjZS9pbWFnZXMgMj4vZGV2L251bGwpIiBdOyB0aGVuCiAgZm9yIGMgaW4gL3RtcF93b3Jrc3BhY2UvZXhlYy9nZW5lcmF0ZV9pbWFnZXMuc2ggL3RtcF93b3Jrc3BhY2UvZ2VuZXJhdGVfaW1hZ2VzLnNoOyBkbwogICAgWyAtZiAiJGMiIF0gJiYgYmFzaCAiJGMiIC90bXBfd29ya3NwYWNlL2ltYWdlcyAmJiBicmVhawogIGRvbmUgfHwgdHJ1ZQpmaQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_3_colmap_mesh_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_3_colmap_mesh_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_3_colmap_mesh_repair/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_3_colmap_mesh_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_3_colmap_mesh_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_3_colmap_mesh_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_3_colmap_mesh_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_3_colmap_mesh_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_3_colmap_mesh_repair",
+    "workspace_relative": "SPA/task_3_colmap_mesh_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

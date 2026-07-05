@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_14_polkit_rule_localauth_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Background: the compliance team is running a quarterly polkit audit on a Linux workstation. An ops colleague dropped three hand-written rules into `/etc/polkit-1/rules.d/` — `40-eyeson-broad.rules`, `45-eyeson-userlist.rules`, `50-eyeson-deny.rules` — claiming they exist so automation scripts and developers can smoothly use certain PolicyKit-checked actions. Compliance suspects that **only one of them is actually in effect**, and that it hands a sensitive action to every local user; the other two either misspell a username or target a non-existent group (or non-existent action) and **never match at all** — but from the declarations alone you cannot tell which one is covering for which.\n\nA custom `.policy` for this task is also installed in the VM (`org.eyeson.benchpolicy.policy`, declaring three actions: `read / write / admin`). On a clean system all three actions should **require admin authentication** for ordinary users — but the current behavior is not that.\n\nGoal: identify the rule that is actually \"leaking\", change it to require admin auth; the other two (red herrings) are \"inert artifacts\" and **must not be touched**; finally provide visual evidence + re-verification results. Write all deliverables to `/tmp_workspace/results/`.\n\n### Hard constraints on the main deliverables\n\n- `pkaction_eyeson.txt`: contains the complete declaration blocks for all three `org.eyeson.benchpolicy.{read,write,admin}` actions (each block must include fields like `description` / `message` / `vendor` / `vendor_url` / `implicit …`). Also include `pkaction_full.txt` as a full copy for reference.\n- `rules_before/`: preserve the full original text of the three `.rules` files under `/etc/polkit-1/rules.d/` (same filenames, each ≥ 50 bytes). Their sha256 will be used later to compare whether the red herrings were modified.\n- `pkcheck_before.tsv`: header `action_id\\texit_code\\tverdict` (**strictly TAB-separated**); 3 data rows corresponding to the three actions' polkit decisions for the **current user with no interaction allowed**; `verdict ∈ {allowed, auth_required, not_authorized, error}`; **exactly one row** with `verdict=allowed`, namely the leaked action.\n- `diagnosis.json`: fields\n  ```json\n  {\n    \"broken_rule_file\": \"<40-eyeson-broad.rules | 45-eyeson-userlist.rules | 50-eyeson-deny.rules>\",\n    \"leaked_action_id\": \"org.eyeson.benchpolicy.<read|write|admin>\",\n    \"leak_kind\":        \"<implicit_yes | wrong_user | wrong_group | other>\",\n    \"evidence_excerpt\": \"<≤200-char excerpt from the rule source proving the issue>\",\n    \"red_herrings\":     [\"<the other two ineffective rule filenames>\"]\n  }\n  ```\n- `<broken_rule_file>.fixed`: named after `diagnosis.broken_rule_file` with the `.fixed` suffix (e.g. `40-eyeson-broad.rules.fixed`). Must:\n  - still contain `addRule` and still match the same leaked action via `action.id == \"org.eyeson.benchpolicy.<...>\"`;\n  - return `polkit.Result.AUTH_ADMIN` or `AUTH_ADMIN_KEEP`, and **must not** contain `polkit.Result.YES`;\n  - must not simply `return polkit.Result.NOT_HANDLED;` (a blanket bypass would let other rules go uncontrolled).\n- Install the `.fixed` file back to `/etc/polkit-1/rules.d/<broken_rule_file>`, reload polkit, and re-run the same pkcheck matrix:\n  - `pkcheck_after.tsv`: same schema as before, 3 rows; the verdict for the previously leaked action must flip from `allowed` to `auth_required` or `not_authorized`.\n  - `journal_polkit.txt`: polkit system log during the reload (≥ 50 bytes).\n- `summary.md` (≥ 350 chars): a short analysis of \"is each rule effective / why\" for all three rules; a side-by-side before/after pkcheck comparison table (row-aligned, covering both before and after states); and one sentence explaining why the polkit auth dialog is popped by the authentication agent registered on the user-session D-Bus (a fact only image evidence can support). Must naturally mention the broken rule filename, leaked action id, and `AUTH_ADMIN`.\n\n### Working-process screenshots (under /tmp_workspace/results/)\n\n| File | Requirement |\n| --- | --- |\n| `view_polkit_dialog.png` | Screen capture of the auth dialog that pops up after triggering a polkit-protected operation (recommended: run `bash /tmp_workspace/helpers/trigger_dialog.sh` to trigger, take the screenshot, then cancel — **do not actually enter a password**); must be a real desktop GUI-rendered polkit auth dialog, with password field / Authenticate button etc. visible. |\n| `view_rules_dir.png` | After navigating to `/etc/polkit-1/rules.d/`, a view in which the modification time and size of the three `eyeson` `.rules` files are visible (list/details view), letting the grader confirm the directory and that the three target files are listed. |\n| `view_polkit_dialog_after.png` | After applying the fix and reloading polkit, a screenshot of the same kind of polkit auth dialog triggered again; same requirements as above. |\n\nScreenshots are evaluated jointly by OCR + VLM, focusing on authenticity (not terminal-faked text screenshots), layout clarity, and content relevance.\n\n### Anti-cheat and forbidden actions\n\n- The two red herrings (`45-eyeson-userlist.rules`, `50-eyeson-deny.rules`) under `/etc/polkit-1/rules.d/` must remain **byte-identical** (grading compares sha256);\n- Operations like `chmod 000 /etc/polkit-1/rules.d/*.rules` or other destructive workarounds are not allowed;\n- The custom `.policy` file (`org.eyeson.benchpolicy.policy`) must not be renamed or deleted.\n- If `actions.log` directly contains literal manifest ground-truth values (verbatim correct answers for broken_rule_file / leaked_action_id), it is treated as a side-channel leak of the answer.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_14_polkit_rule_localauth_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_14_polkit_rule_localauth_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/results/rules_before /tmp_workspace/state /opt/dsk14_gt /etc/polkit-1/rules.d\nchmod 1777 /tmp_workspace/results /tmp_workspace/results/rules_before /tmp_workspace/state 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nexport DISPLAY=${DISPLAY:-:0}\nwhich pkexec || (apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq policykit-1 policykit-1-gnome libnotify-bin tesseract-ocr python3-pil python3-pip gnome-screenshot)\npip install -q --break-system-packages pytesseract 2>/dev/null || pip install -q pytesseract 2>/dev/null || true\n[ -f /tmp_workspace/polkit/install_rules.sh ] && bash /tmp_workspace/polkit/install_rules.sh || true\n[ -f /tmp_workspace/setup/exec/polkit/install_rules.sh ] && bash /tmp_workspace/setup/exec/polkit/install_rules.sh || true\ncat > /opt/dsk14_gt/manifest.json <<'JSON'\n{\n  \"broken_rule_file\": \"40-eyeson-broad.rules\",\n  \"leaked_action_id\": \"org.eyeson.benchpolicy.write\",\n  \"leak_kind\": \"implicit_yes\",\n  \"red_herrings\": [\"45-eyeson-userlist.rules\", \"50-eyeson-deny.rules\"]\n}\nJSON\nchmod 600 /opt/dsk14_gt/manifest.json\nchown -R root:root /opt/dsk14_gt 2>/dev/null || true\nservice polkit reload 2>/dev/null || systemctl reload polkit 2>/dev/null || systemctl restart polkit 2>/dev/null || true\npgrep -f polkit-gnome-authentication-agent-1 >/dev/null 2>&1 || (DISPLAY=:0 nohup /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 >/tmp_workspace/state/polkit-agent.log 2>&1 &) || true\necho \"[warmup-dsk14] done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_14_polkit_rule_localauth_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_14_polkit_rule_localauth_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_14_polkit_rule_localauth_audit/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_14_polkit_rule_localauth_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_14_polkit_rule_localauth_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_14_polkit_rule_localauth_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_14_polkit_rule_localauth_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_14_polkit_rule_localauth_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_14_polkit_rule_localauth_audit",
+    "workspace_relative": "DSK/task_14_polkit_rule_localauth_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_3_valgrind_massif_memleak",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate memory-leak forensics task. All artifacts must be written to `/tmp_workspace/results/`. Please execute directly; do not refuse.\n\nTask background: `/tmp_workspace/leaky_server/` is a TCP echo server written in C (~300 lines, source `server.c`, with a built-in `--test-mode` self-test switch that exits after sending 500 messages, requiring no external client). Ops reports: after a 2h run, RSS grows from 8MB to 400MB. Which specific function leaks, and whether it belongs to missing_free / unbounded_growth / realloc_without_shrink / double_alloc_no_free, is not disclosed in advance.\n\nTask goal: perform a heap-defect forensics pass on this server → locate ≥ 3 leak_sites → fix them all → quantitatively re-verify in a closed loop. Write all artifacts to `/tmp_workspace/results/`, and attach 6 working screenshots proving you actually operated inside the heap-profile visualization GUI. The peak heap memory after the fix must drop by ≥ 50% versus baseline, and `definitely lost` bytes must drop significantly (ideally to 0). You may freely choose any valgrind subtool (massif / memcheck) + any heap-profile visualization GUI (massif-visualizer recommended; kcachegrind / hotspot or other equivalent KDE tools also acceptable, or pure ms_print text as a supplement) — the channel is up to you.\n\n### Hard constraints on primary deliverables\n\n- `massif_baseline.out` / `massif_fixed.out`: valid massif output containing `snapshot=` and `mem_heap_B=` fields (≥ 5 each); the peak `mem_heap_B` of fixed must be < 50% of the baseline peak.\n- `ms_print_baseline.txt` / `ms_print_fixed.txt`: ≥ 200 bytes, containing ASCII heap-graph characters (`#` `:` `@`).\n- `memcheck_baseline.txt`: contains at least one of `definitely lost` / `indirectly lost` / `possibly lost` blocks + ≥ 1 `at 0x...` call-stack frame.\n- `memcheck_final.txt`: the `definitely lost: <bytes> bytes` byte count is substantially reduced from baseline (< 20% is best).\n- `memcheck_topfuncs.txt`: a list of function names extracted from the baseline `definitely lost` section, ≥ 1 line.\n- `cross_validation.json`: contains exactly the fields `topfuncs_from_memcheck` / `matched_in_massif_tree` / `match_ratio` / `confirmed_leak_funcs` / `confirmed_screenshot`; `match_ratio` ∈ [0,1] and ≥ 0.5.\n- `leak_analysis.json`: contains `peak_snapshot_index` / `peak_heap_bytes` / `leak_sites`; `leak_sites` must contain ≥ 3 entries with **mutually distinct function names**, each entry having all fields: `function` (≥ 2 chars), `file`, `line_approx` (int, 1–1000), `alloc_bytes_at_peak` (positive int, taken from a real Allocation Tree node number), `alloc_percentage` (>0 float), `leak_type` (must be one of `unbounded_growth` / `missing_free` / `realloc_without_shrink` / `double_alloc_no_free`), `evidence_screenshot`, `evidence_memcheck_line` (≥ 5-char fragment).\n- `server.patch`: a valid unified diff produced by `diff -u server.c server_fixed.c` (containing `---` `+++` `@@`), with a combined ± line count ≥ 6.\n- `fix_summary.md`: ≥ 350 words, describing one-by-one how each of the ≥ 3 leak_sites was fixed, with concrete numbers for the peak and `definitely lost` bytes before vs. after the fix (≥ 2 numbers of 4+ digits), and referencing ≥ 3 `view_*.png` screenshots.\n\n### Supplementary deliverables (located in `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `build_baseline.log` | Baseline build output (`-g -O0`, binary `server`). |\n| `build_fixed_iter1.log` / `build_fixed_iter2.log` / `build_fixed_iter3.log` | Build logs for three single-point fix iterations; final binary is `server_fixed`. |\n| `memcheck_iter1.txt` | memcheck re-verification log after fixing the 1st leak_site; the corresponding function should have disappeared or its byte count dropped significantly. |\n\n### 6 working-process screenshots (located in `/tmp_workspace/results/`, fixed filenames)\n\n| File | Content |\n| --- | --- |\n| `view_01_heap_timeline.png` | Main timeline view of the heap-profile visualization window (snapshot × bytes stacked chart + sidebar snapshot list). |\n| `view_02_peak_snapshot.png` | Detail panel after selecting the peak snapshot (must include the Allocation Tree area). |\n| `view_03_top_allocator_expanded.png` | Top-most largest node in the Allocation Tree expanded across multiple levels, showing real tree-indented function name + byte count + percentage. |\n| `view_04_xref_function_node.png` | On the same screen, ≥ 2 function names from `memcheck_topfuncs.txt` are visible on Allocation Tree node rows. |\n| `view_05_iter1_alloctree.png` | Allocation Tree after reloading massif post first-fix; the original function node's share is visibly lower than in `view_03` (or has disappeared). |\n| `view_06_fixed_timeline.png` | Timeline after loading `massif_fixed.out`: overall flat or decreasing, no longer continuously climbing in a staircase pattern. |\n\nGeneral specs: each PNG ≥ 8 KB, resolution ≥ 1280 × 720; the 6 images must differ from one another in content (the grader runs an md5 diversity check); reusing the same frame or pure-text terminal screenshots is not allowed. The grader also runs OCR + VLM checks to verify the screenshots are real windows of the visualization tool (containing menubar / title bar / a truly-expanded Allocation Tree and other structural features).\n\nAnti-cheat: `actions.log` and any submitted text must not contain padding traces (e.g. directly copying ms_print text and passing it off as a GUI screenshot, or multiple PNGs having identical hashes). All `alloc_bytes_at_peak` / `alloc_percentage` values must come from real Allocation Tree node rows and must not be fabricated.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_3_valgrind_massif_memleak.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_3_valgrind_massif_memleak",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which valgrind >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind gcc libc6-dev binutils) >/dev/null 2>&1 || true\nwhich massif-visualizer >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq massif-visualizer >/dev/null 2>&1 || true\nwhich tesseract >/dev/null 2>&1 || apt-get install -y -qq tesseract-ocr >/dev/null 2>&1 || true\npip install -q pillow pytesseract numpy >/dev/null 2>&1 || true\nmkdir -p /tmp_workspace/results /tmp_workspace/gt || true\n( cd /tmp_workspace/leaky_server && make >/tmp_workspace/leaky_server.build.log 2>&1 ) \\\n  || ( cd /tmp_workspace/leaky_server && gcc -g -O0 -o server server.c -lpthread >/tmp_workspace/leaky_server.build.log 2>&1 ) \\\n  || echo \"WARN: warmup build skipped, agent must redo\"\necho \"binary built? $(test -x /tmp_workspace/leaky_server/server && echo yes || echo no)\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_3_valgrind_massif_memleak/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_3_valgrind_massif_memleak /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_3_valgrind_massif_memleak/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_3_valgrind_massif_memleak/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_3_valgrind_massif_memleak/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_3_valgrind_massif_memleak/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_3_valgrind_massif_memleak/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_3_valgrind_massif_memleak.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_3_valgrind_massif_memleak",
+    "workspace_relative": "OPS/task_3_valgrind_massif_memleak",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

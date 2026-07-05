@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_10_btrfs_subvol_snapshot_diff",
+  "snapshot": "weave_bench",
+  "instruction": "Background: an ops ticket reports that the Btrfs lab volume mounted at `/mnt/btrfs_lab` **appears** to consume about 64 MiB more after the latest snapshot, while block-level usage only grew by about 30 MiB. The suspicion is that someone used a reflink/COW clone, producing a gap between the inode-level \"apparent\" size and the extent-level real footprint. Please produce a snapshot diff audit report.\n\nEnvironment (already prepared by warmup):\n- `/mnt/btrfs_lab` is a 1 GiB Btrfs filesystem (mounted on a loop device)\n- Subvolume topology: `data_a` / `data_b` / `data_c` / `snapshots` (the latter contains `snap1` and `snap2`, both read-only)\n- `snap1` captures an earlier state of `data_a`; `snap2` was taken later, with unknown topology changes\n- Passwordless sudo available; `btrfs-progs` already installed\n\nDeliverables to produce under `/tmp_workspace/results/`:\n\n1. **Subvolume and snapshot inventory**\n   - `subvolume_list.txt`: list every subvolume on the volume (with path / id / parent); the five entries `data_a`, `data_b`, `data_c`, `snap1`, `snap2` must all be visible.\n   - `subvolume_show_snap1.txt` / `subvolume_show_snap2.txt`: metadata for snap1 / snap2 respectively, content must include the `UUID` and `Generation` fields.\n\n2. **Extent-level real accounting**\n   - `fs_usage.txt`: physical usage breakdown for the whole volume, must contain the `Device size` and `Data,single` fields.\n   - `fs_du_snap2.txt`: extent-level usage for `snapshots/snap2`. A line must contain the three column headers `Total` / `Exclusive` / `Set shared` **simultaneously**, and a row for `payload_alpha_clone.bin` must be visible (its Exclusive byte count is 0, Set shared is non-zero).\n\n3. **Precise change stream between snapshots**\n   - `send_dump.txt`: human-readable dump of the incremental send stream from `snap1 → snap2` (≥ 500 bytes). The format should include entries such as `clone offset=... len=...`, `mkfile path=...`, `truncate path=... size=...`, `utimes path=...`. `clone` lines represent reflink reuse; `write` / `update_extent` / `truncate` lines represent genuinely new writes.\n   - `send_stderr.log`: stderr of the same process, for troubleshooting.\n\n4. **Visual evidence of `payload_alpha_clone.bin`'s attributes** (any resolution, all ≥ 4 KB, rendered in a real working environment, no synthetic images)\n   - `view_nautilus_snap1.png`: browse the \"Properties\" detail panel of any file under `/mnt/btrfs_lab/snapshots/snap1/`. The text must show the word `Properties` or `Size`, and must relate to the snap1 path or a payload name.\n   - `view_nautilus_snap2.png`: browse the Properties panel of `/mnt/btrfs_lab/snapshots/snap2/payload_alpha_clone.bin`, with `Properties` or `Size` visible and the clone filename identifiable.\n   - `view_terminal_du.png`: image showing the extent-level usage listing. The text must **simultaneously** show the three column headers `Total` / `Exclusive` / `Set shared` and the literal `alpha_clone`.\n\n5. **Structured conclusions JSON** — `results/changes.json`, strict schema:\n   ```json\n   {\n     \"subvolumes\":      [\"data_a\",\"data_b\",\"data_c\",\"snapshots/snap1\",\"snapshots/snap2\"],\n     \"added\":           [\"payload_alpha_clone.bin\",\"logs/run6.log\"],\n     \"modified\":        [\"NOTES.txt\",\"payload_beta.bin\"],\n     \"removed\":         [\"logs/run5.log\"],\n     \"reflink_pairs\":   [[\"payload_alpha.bin\",\"payload_alpha_clone.bin\"]],\n     \"snap2_apparent_bytes\":  <int, inode-level total of snap2>,\n     \"snap2_exclusive_bytes\": <int, bytes exclusively owned by snap2 at extent level>,\n     \"snap2_shared_bytes\":    <int, bytes of extents shared between snap2 and others>,\n     \"evidence\": {\n        \"cli\":  [\"subvolume_list.txt\",\"fs_du_snap2.txt\",\"send_dump.txt\"],\n        \"gui\":  [\"view_nautilus_snap1.png\",\"view_nautilus_snap2.png\",\"view_terminal_du.png\"]\n     }\n   }\n   ```\n   Hard constraints: `snap2_apparent_bytes > snap2_exclusive_bytes > 0` and `snap2_shared_bytes > 0` (otherwise the reflink saving was not captured); `reflink_pairs` must include `(payload_alpha.bin, payload_alpha_clone.bin)`.\n\n6. **Narrative report** — `results/report.md` (≥ 400 characters, Markdown):\n   - Explain why `payload_alpha_clone.bin` appears to \"occupy several MiB\" from the inode/apparent perspective but adds almost no new physical footprint from the extent perspective;\n   - Provide a lower-bound estimate of the real new-write bytes from `snap1 → snap2` (the size of the incremental send stream can serve as a reference);\n   - Cover at least 4 of the keywords: `reflink` / `extent` / `exclusive` / `shared` / `apparent` / `snapshot`.\n\nHard constraints:\n- The `snap1` / `snap2` read-only snapshots must not be deleted or unmounted; they must remain readable at the original mount points.\n- No fabricating data or hard-coding answers into the JSON — all numbers must come from the actual lab volume.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_10_btrfs_subvol_snapshot_diff.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_10_btrfs_subvol_snapshot_diff",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec /opt/dsk10_gt\nchmod 1777 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec 2>/dev/null || true\nchmod 700 /opt/dsk10_gt 2>/dev/null || true\ncat > /opt/dsk10_gt/expected.json <<'JSON'\n{\n  \"subvolumes_expected\": [\"data_a\", \"data_b\", \"data_c\", \"snapshots/snap1\", \"snapshots/snap2\"],\n  \"snap1_files\": [\"NOTES.txt\",\"payload_alpha.bin\",\"payload_beta.bin\",\"logs/run1.log\",\"logs/run2.log\",\"logs/run3.log\",\"logs/run4.log\",\"logs/run5.log\"],\n  \"snap2_files\": [\"NOTES.txt\",\"payload_alpha.bin\",\"payload_beta.bin\",\"payload_alpha_clone.bin\",\"logs/run1.log\",\"logs/run2.log\",\"logs/run3.log\",\"logs/run4.log\",\"logs/run6.log\"],\n  \"changes_snap1_to_snap2\": {\n    \"added\":    [\"payload_alpha_clone.bin\", \"logs/run6.log\"],\n    \"modified\": [\"NOTES.txt\", \"payload_beta.bin\"],\n    \"removed\":  [\"logs/run5.log\"]\n  },\n  \"reflink_pairs\": [[\"payload_alpha.bin\", \"payload_alpha_clone.bin\"]],\n  \"expected_apparent_bytes_snap2_min\": 100000000,\n  \"expected_exclusive_bytes_snap2_max\": 80000000,\n  \"expected_shared_bytes_snap2_min\":    30000000,\n  \"send_stream_min_bytes\": 30000000\n}\nJSON\nchmod 600 /opt/dsk10_gt/expected.json 2>/dev/null || true\nchown -R root:root /opt/dsk10_gt 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nwhich btrfs || (apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq btrfs-progs poppler-utils tesseract-ocr python3-pip util-linux) || true\npip install -q --break-system-packages pytesseract Pillow 2>/dev/null || pip install -q pytesseract Pillow 2>/dev/null || true\n[ -f /tmp_workspace/setup/btrfs_setup.sh ] && cp -f /tmp_workspace/setup/btrfs_setup.sh /tmp_workspace/exec/btrfs_setup.sh || true\nchmod +x /tmp_workspace/exec/btrfs_setup.sh 2>/dev/null || true\nmodprobe btrfs 2>/dev/null || true\nbash /tmp_workspace/exec/btrfs_setup.sh >/tmp_workspace/state/btrfs_setup.log 2>&1 || true\nmount | grep btrfs_lab || echo WARN_btrfs_not_mounted\nbtrfs subvolume list /mnt/btrfs_lab 2>/dev/null | head -20 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_10_btrfs_subvol_snapshot_diff/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_10_btrfs_subvol_snapshot_diff /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_10_btrfs_subvol_snapshot_diff/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_10_btrfs_subvol_snapshot_diff/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_10_btrfs_subvol_snapshot_diff/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_10_btrfs_subvol_snapshot_diff/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_10_btrfs_subvol_snapshot_diff/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_10_btrfs_subvol_snapshot_diff.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_10_btrfs_subvol_snapshot_diff",
+    "workspace_relative": "DSK/task_10_btrfs_subvol_snapshot_diff",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

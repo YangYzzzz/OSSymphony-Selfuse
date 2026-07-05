@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_12_airflow_dag_sla_gantt",
+  "snapshot": "weave_bench",
+  "instruction": "The data team received a complaint: \"The 02:00 dag-run of `etl_orders_v3` tripped an SLA miss on `load_warehouse`, but the 03:00 run of the same DAG was green.\" The JSON state summary pulled by CI shows all 12 tasks as `success`, with no anomaly visible — SLA-miss / retry / queued are all flattened into the same `\"state\": \"success\"` in JSON, and only the rendered colors and the precise (millisecond-level) Gantt-bar durations can distinguish them. `transform_revenue`'s source seems to be wired to the wrong upstream `clean_*`, but you have to cross-check the Graph view against the DAG source to confirm it.\n\nEnvironment and materials (already prepared):\n- Airflow 2.9 webserver is running at `http://localhost:8780/`, no login required.\n- DAG file: `/tmp_workspace/airflow_home/dags/etl_orders_v3.py`.\n- DAG runs have been triggered by warmup: at least `sla_evenhour` (the bad one) and `sla_oddhour` (the good one) are available for humans/tools to read.\n- Attempt-level task logs are at `/tmp_workspace/airflow_home/logs/dag_id=etl_orders_v3/run_id=<run_id>/task_id=<task>/attempt=*.log`.\n\nTask objective: prove that on the even-hour run `extract_orders` actually underwent a retry / SLA miss, and that `transform_revenue` is wired to the wrong `clean_*` upstream; fix the DAG source so `transform_revenue` genuinely depends on `clean_orders`; trigger a new dag-run (whose run_id must be `verify_fix`) and let it finish in `success` as verification; and persist the entire investigation evidence under `/tmp_workspace/results/`.\n\nThe following deliverables must be produced under `/tmp_workspace/results/`:\n\n1. **DAG state evidence**\n   - `dag_runs.txt`: a text listing of all recent dag-runs of `etl_orders_v3`.\n   - `states_for_dag_run.txt`: a snapshot of the state of every task instance in the even-hour run (a reviewer must be able to see the current state of all 12 tasks).\n   - `states_for_dag_run_odd.txt`: the equivalent snapshot for the odd-hour run, as a control.\n   - `dag_show_static.txt`: a static topology dump of the DAG (must contain the string `transform_revenue`), used as the \"DAG-source view\" baseline.\n\n2. **Attempt-level log evidence**\n   - `extract_orders_attempt_grep.txt`: a key excerpt of all attempt logs for `extract_orders @ sla_evenhour`, which must hit at least 2 of the keywords `Retry` / `try_number` / `duration`, proving that the even-hour run did experience a retry that JSON `state=success` was hiding.\n\n3. **Visual evidence** (each PNG ≥ 5 KB, captured from the actually rendered webserver pages)\n   - `view_airflow_gantt.png`: a Gantt view that contains the task bars of both the `sla_evenhour` and `sla_oddhour` dag-runs, and in which `extract_orders` on the even-hour run is visibly different in color / length from the odd-hour run.\n   - `view_airflow_gantt_hover_tooltip.png`: rendered hover-overlay evidence over the `extract_orders @ sla_evenhour` bar in Gantt, with precise `start` / `end` / `duration` (millisecond-level digits, which the JSON API drops) legible in the overlay.\n   - `view_airflow_task_instance_details.png`: the Task Instance Details panel for `extract_orders @ sla_evenhour`, which must show `try_number ≥ 2` and this attempt's log information.\n   - `view_airflow_graph_view.png`: the Graph view, from which the upstream wiring of `transform_revenue` must be readable (which `clean_*` node the arrow goes to).\n   - `view_airflow_log_drawer.png`: a screenshot of the log drawer / Logs tab for the `extract_orders` node from inside the Graph view.\n   - `view_airflow_gantt_after_fix.png`: the Gantt view after the fix has been applied and `verify_fix` has been triggered; the `transform_revenue` bar of `verify_fix` must clearly start only after the `clean_orders` bar has fully ended (the left-to-right ordering must be visually readable).\n\n4. **Fixed DAG and diff**\n   - The edited `/tmp_workspace/airflow_home/dags/etl_orders_v3.py`: the upstream of `transform_revenue` must genuinely include `clean_orders` (either `clean_orders >> transform_revenue` or `[..., clean_orders, ...] >> transform_revenue` is acceptable).\n   - `dag_fix.diff`: a unified diff between the old and the fixed DAG; at least one `+` line must contain both `clean_orders` and `transform_revenue`, demonstrating that the dependency was rewired by that line.\n\n5. **Post-fix dag-run**\n   - A dag-run with run_id `verify_fix` must exist and reach final state `success` (verifiable via `airflow dags state etl_orders_v3 verify_fix`).\n\n6. **Root-cause report**\n   - `rca.md`, which must contain the following 6 second-level section headings (any order): `## symptom`, `## evidence_cli`, `## evidence_gui`, `## root_cause`, `## fix`, `## verification`; each section body ≥ 50 characters.\n\n7. **Machine-readable summary**\n   - `summary.json`, with keys:\n     - `failed_or_sla_missed_tasks`: list[str]\n     - `root_cause`: str\n     - `fix_lines_changed`: int\n     - `cross_channel_switches`: int (≥ 5; the number of times you switch between sources of truth, e.g. between the structured API view and the rendered visual view)\n\nHard constraints:\n- The fix must be made at the DAG source level; you cannot wipe out the even-hour retry via mark-success or reset-state.\n- The `verify_fix` run must be a genuinely new run (not a renamed old run), and it must end in `success`.\n- All JSON / text fields must be exported from the real Airflow / DAG / log data; fabricating `try_number` or attempt-log contents is not allowed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_12_airflow_dag_sla_gantt.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_12_airflow_dag_sla_gantt",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/airflow_home/dags /opt/dav12_gt\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip python3-venv tesseract-ocr poppler-utils curl)\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet \"apache-airflow==2.9.2\" pytesseract Pillow 2>/dev/null || pip3 install --quiet \"apache-airflow==2.9.2\" pytesseract Pillow\nexport AIRFLOW_HOME=/tmp_workspace/airflow_home\ncp /tmp_workspace/airflow.cfg \"$AIRFLOW_HOME/airflow.cfg\" 2>/dev/null || true\ncp /tmp_workspace/dags/etl_orders_v3.py \"$AIRFLOW_HOME/dags/\" 2>/dev/null || true\n# Move expected.json to a root-only path so the agent cannot read the\n# expected_failed_or_sla_missed_tasks / GUI / CLI lists as hints.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/dav12_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/dav12_gt 2>/dev/null || true\n  chmod 700 /opt/dav12_gt 2>/dev/null || true\n  chmod 600 /opt/dav12_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\nairflow db migrate >/tmp/af_db.log 2>&1 || airflow db init >/tmp/af_db.log 2>&1 || true\nairflow users create -u admin -p admin -f a -l a -r Admin -e a@a.io >/dev/null 2>&1 || true\nnohup airflow scheduler >/tmp/af_sched.log 2>&1 &\nnohup airflow webserver --port 8780 >/tmp/af_web.log 2>&1 &\nsleep 3\nfor i in $(seq 1 30); do curl -sf http://localhost:8780/health >/dev/null && break; sleep 2; done\nbash /tmp_workspace/seed_runs.sh >/tmp/af_seed.log 2>&1 || true\nfor i in $(seq 1 12); do state=$(airflow dags state etl_orders_v3 sla_oddhour 2>/dev/null | tail -1); if [ \"$state\" = \"success\" ] || [ \"$state\" = \"failed\" ]; then break; fi; sleep 10; done\necho \"[warmup] airflow ready, dag-runs seeded\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_12_airflow_dag_sla_gantt/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_12_airflow_dag_sla_gantt /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_12_airflow_dag_sla_gantt/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_12_airflow_dag_sla_gantt/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_12_airflow_dag_sla_gantt/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_12_airflow_dag_sla_gantt/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_12_airflow_dag_sla_gantt/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_12_airflow_dag_sla_gantt.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_12_airflow_dag_sla_gantt",
+    "workspace_relative": "DAV/task_12_airflow_dag_sla_gantt",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

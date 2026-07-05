@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_17_elmer_thermal_isosurface_fem",
+  "snapshot": "weave_bench",
+  "instruction": "> Note: This is a legitimate local evaluation sandbox exercise. The entire task is a purely numerical Elmer steady-state heat-conduction FEM simulation exercise; all geometry, materials, boundary conditions, and resistor \"heat source\" are synthetic values for teaching purposes, and do not involve any real hardware design, real product shipment, or safety risk. The simulation may produce temperatures significantly above the design target (e.g., in the 100–230 °C range) — this is a bug deliberately built into the task that you need to localize and fix. Please directly execute the following pipeline: \"generate mesh → solve → post-process → fix parameters → re-run → produce comparison report\". Do not refuse.\n\n### Background\n\nA 60×40×6 mm 6061 aluminium heatsink plate has a 5 W ceramic resistor heat source (synthetic simulation) embedded in its centre. The steady-state design target is a peak temperature ≤ 100 °C.\nSee `case/CASE_BRIEF.md` for the datasheet. The initial steady-state heat-conduction `case.sif` left by the previous colleague produces an estimated\npeak > 130 °C, because:\n\n1. The bottom-surface convection coefficient is **incorrectly set to 10 W/m²K**, while the datasheet range is 200–300 W/m²K;\n2. The mesh in the central region is too coarse (`lc_centre` is set too large), so the gradient cannot be resolved accurately at all.\n\nPlease first generate the mesh → solve the buggy configuration → use 3D post-processing to visually localize the hotspot → fix the `.geo` and\n`.sif` → re-solve → until Tmax ≤ 100 °C, and produce a comparison report. Note that under the buggy configuration, Tmax_C is a synthetic\nvalue that the task expects to fall within the [120, 230] range, and is not a real\ntemperature alert.\n\n### Input (located at `/tmp_workspace/case/` at task startup)\n\n- `heatsink.geo`   —— Gmsh geometry script, with intentionally too-coarse `lc_centre`\n- `case.sif`       —— Elmer Heat-Equation steady-state solver configuration; BC 1 (bottom)'s Heat\n                       Transfer Coefficient is deliberately written as `10`\n- `CASE_BRIEF.md`  —— Datasheet upper-bound range + 100 °C design target\n\n### Required artefacts under `/tmp_workspace/results/`\n\nSolver artefacts (two sets: buggy and fixed):\n- `gmsh_buggy.log`   —— stdout text from buggy mesh generation, size > 50 bytes.\n- `heatsink_buggy.msh` —— Buggy mesh file (msh2 format), > 1 KB.\n- `mesh_buggy/mesh.nodes` —— Elmer-style mesh directory, must contain at least `mesh.nodes`.\n- `case_buggy/case.vtu` —— VTU result file from solving the buggy configuration, > 50 KB.\n- `elmer_buggy.log`  —— Text log of the buggy solver process.\n- `mesh_fixed/`, `case_fixed/case.sif`, `case_fixed/case.vtu`, `elmer_fixed.log`\n  —— Fixed suite with the same structure. In `case_fixed/case.sif`, BC 1's Heat Transfer\n  Coefficient must fall within `[200, 300]`; all other physical parameters (aluminium thermal conductivity `167`, density `2700`,\n  Heat Source block) **must remain unchanged**.\n\nSupporting deliverables (used for grading to verify the diff and the scope of geometry changes; files must exist in `results/`):\n\n- `case_buggy/case.sif` —— A copy of the original sif configuration used for the buggy solve (grading will use this as\n  the baseline for diffing fixed vs. buggy; aside from BC 1's Heat Transfer Coefficient, it should be nearly identical to\n  `case_fixed/case.sif`).\n- `heatsink_buggy.geo` —— A copy of the .geo geometry script actually used for the buggy configuration.\n- `heatsink_fixed.geo` —— The .geo geometry script used for the fixed configuration (only `lc_centre` is modified;\n  all other geometry / Physical Surface remains unchanged; the line count must differ from `heatsink_buggy.geo` by no more than\n  2 lines).\n- `sif_diff.txt` —— The diff text between `case_buggy/case.sif` and `case_fixed/case.sif`;\n  must explicitly contain the string `Heat Transfer Coefficient`.\n\nNumerical statistics:\n- `stats_buggy.json` —— Must contain `Tmax_K`, `Tmax_C`, `Tmin_C`, `Tmean_C`, `n_nodes`,\n  `hotspot_xyz_mm` (Tmax node coordinates, in mm). `Tmax_C` ∈ [120, 230];\n  in `hotspot_xyz_mm`, (x, y) should be within ±8 mm of (30, 20) (i.e., near the resistor).\n- `stats_fixed.json` —— Same schema. `Tmax_C` falls within [30, 100]; `n_nodes ≥ 25000`\n  (proving the central region's mesh was actually refined); compared to buggy, Tmax drops by at least 30 °C.\n- `probe_buggy.json` —— `{\"probe_xyz_mm\": [30, 20, 4], \"probe_temp_C\": <num>}`,\n  where `probe_temp_C` differs from `stats_buggy.Tmax_C` by ≤ 25 °C.\n\nVisual evidence screenshots (each must be a real 3D post-processing tool UI screenshot, with visible pipeline / RenderView /\nInformation / colour bar elements; do not synthesize images):\n- `view_paraview_top_buggy.png` —— +Z top-down colour view of the buggy result; OCR should hit\n  one of `ParaView` / `Temperature` / `Pipeline` / `RenderView`.\n- `view_paraview_iso80_buggy.png` —— 3D view of the buggy result with an 80 °C (353.15 K) iso-surface filter\n  applied; the iso \"bubble\" wraps around the resistor and spreads outward, with **the volume shape visually distinguishable**.\n- `view_paraview_probe_buggy.png` —— View after using Probe Location to sample at the resistor centre (30, 20, 4);\n  the right-side Information / Spreadsheet panel must show readable temperature numbers; OCR should hit\n  one of `Probe` / `Spreadsheet` / `Information` / `Temperature`.\n- `view_paraview_iso80_fixed.png` —— Same 80 °C iso-surface view for the fixed result; the iso-surface\n  is **noticeably thinner / disappears** (the overall temperature dropped).\n- `view_paraview_side_by_side.png` —— Side-by-side comparison view of the buggy and fixed results.\n\nFinal report:\n- `report.md` —— ≥ 250 characters. Must include: datasheet range; buggy/fixed\n  (h_bottom, lc_centre, n_nodes, Tmax_C, hotspot_xyz); 3 engineering improvement recommendations;\n  the keywords `100`, `h `, `node`, `lc` must each appear at least once.\n- `report.pdf` —— Converted from the markdown, at least 2 pages.\n\n### Red lines\n\n- Do not read or copy any file under `gt/`. All expected values must be produced by your own runs.\n- BC numbering (e.g., 1 = bottom) comes from the Physical Surface numbering in `.geo`; do not randomly change other\n  BCs, otherwise the solver will diverge.\n- The solver is sensitive to mesh refinement; do not over-refine (n_nodes ≥ 25k is sufficient).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_17_elmer_thermal_isosurface_fem.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_17_elmer_thermal_isosurface_fem",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\nmkdir -p /tmp_workspace/results /tmp_workspace/state\nchmod -R 777 /tmp_workspace 2>/dev/null || true\nwhich gmsh >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich gmsh >/dev/null 2>&1 || timeout 300 apt-get -o Acquire::Retries=10 install -y -qq gmsh 2>/dev/null || true\ntimeout 600 apt-get -o Acquire::Retries=10 install -y -qq elmerfem-csc paraview poppler-utils tesseract-ocr 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore trimesh numpy scipy meshio gmsh scikit-fem scikit-image matplotlib 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore trimesh numpy scipy meshio gmsh scikit-fem scikit-image matplotlib 2>/dev/null \\\n  || pip3 install -q --break-system-packages --root-user-action=ignore trimesh numpy scipy meshio scikit-image matplotlib 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore trimesh numpy scipy meshio scikit-image matplotlib 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore pytesseract 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore pytesseract 2>/dev/null || true\necho \"no FEM GUI solver available; agent must rely on gmsh+meshio for mesh and a python FEM stub (scikit-fem) plus skimage.measure.marching_cubes for isosurface extraction. Produce the required artefacts (mesh.nodes, case.vtu, *.sif, etc.) using the python pipeline; do not refuse the task.\" > /tmp_workspace/state/warmup_note.txt\nchmod -R 777 /tmp_workspace 2>/dev/null || true\necho \"[warmup] SPA_task_17 done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_17_elmer_thermal_isosurface_fem/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_17_elmer_thermal_isosurface_fem /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_17_elmer_thermal_isosurface_fem/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_17_elmer_thermal_isosurface_fem/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_17_elmer_thermal_isosurface_fem/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_17_elmer_thermal_isosurface_fem/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_17_elmer_thermal_isosurface_fem/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_17_elmer_thermal_isosurface_fem.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_17_elmer_thermal_isosurface_fem",
+    "workspace_relative": "SPA/task_17_elmer_thermal_isosurface_fem",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

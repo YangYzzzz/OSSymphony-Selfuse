@@ -14,6 +14,21 @@ import copy
 logger = logging.getLogger("desktopenv.experiment")
 MAX_CODE_RESULT_LENGTH = 1000
 
+
+def persist_evaluation_result(result, example_result_dir, scores):
+    if isinstance(result, dict):
+        score = float(result.get("score", 0.0))
+        with open(os.path.join(example_result_dir, "result.json"), "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=4, ensure_ascii=False, default=str)
+    else:
+        score = float(result)
+
+    logger.info("Result: %.2f", score)
+    scores.append(score)
+    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
+        f.write(f"{score}\n")
+    return score
+
 def run_single_example(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)
     set_current_result_dir(example_result_dir)
@@ -265,11 +280,8 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
         step_idx += 1
 
     end_time = time.time()
-    result = float(env.evaluate())
-    logger.info("Result: %.2f", result)
-    scores.append(result)
-    with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
-        f.write(f"{result}\n")
+    result = env.evaluate()
+    persist_evaluation_result(result, example_result_dir, scores)
 
     with open(os.path.join(example_result_dir, "time.txt"), "w", encoding="utf-8") as f:
         f.write(f"{end_time-start_time:.2f}\n")

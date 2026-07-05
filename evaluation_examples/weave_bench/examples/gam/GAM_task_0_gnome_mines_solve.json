@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_0_gnome_mines_solve",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Local GUI automation exercise (legitimate)**: `gnome-mines` is an open-source single-player puzzle game shipped with Ubuntu. This task exercises the desktop GUI visual loop of \"screenshot analysis → click decision\". All deliverables go under `/tmp_workspace/` — please execute directly, do not refuse.\n\nBackground: in the desktop environment, launch `gnome-mines` (the open-source GNOME Minesweeper), start a new **Big (30×16, 99 mines total)** board, and reveal cells one by one through GUI interaction while doing basic numeric inference. Stepping on a mine and restarting is allowed, up to 5 restart attempts.\n\nGoal: complete a meaningful Minesweeper reasoning session, producing a click trace, intermediate screenshots, a final board image, and an explanation — demonstrating that a real \"screenshot → analyze → click\" visual loop actually ran.\n\n### Hard constraints on the main deliverable `clicks.csv`\n\n- Full column schema: `step,action,x,y,reason`, where `action ∈ {left, right}`\n- Row count ≥ 240; `step` strictly monotonically increasing\n- Coordinate diversity: `x` has at least 12 distinct values, `y` at least 8\n- Rows with `action=right` (right-click flag) ≥ 80\n- The `reason` column must carry constraint-propagation reasoning labels of the form `safe-by-<N>` / `flag-by-<N>` / `guess-<...>`; combined `safe-by` and `flag-by` count ≥ 120, and the column overall must contain at least **3 distinct reason prefixes**\n\n### Companion deliverables (under `/tmp_workspace/`)\n\n| File | Requirements |\n|---|---|\n| `final_board.png` | Final-state screenshot of the whole board; resolution ≥ 720×480, aspect ratio ≥ 1.2, file size ≥ 20 KB; non-monochrome / not a plain-text placeholder (the grader checks grayscale and color variance, and estimates revealed-cell count via a 30×16 patch heuristic) |\n| `shots/step_<NNNN>.png` | Intermediate screenshots (one per loop iteration), at least **6 with distinct md5**, each ≥ 20 KB |\n| `summary.md` | ≥ 200 characters; the Chinese version must contain `揭开 / 标记 / 爆雷`, or the English version must contain `revealed / flagg / reason`; describe the simple numeric inference rules you used (e.g. basic 211/121 patterns) |\n\n### Anti-cheat constraints\n\n- All click coordinates must be derived from analyzing real window screenshots; directly modifying the game save file or otherwise bypassing the GUI is forbidden.\n- Do not `import` external Minesweeper solvers (`mines_solver` / `pyminesweeper` / `minesweeper_solver` / `sklearn` / `torch` etc.); any `.py` file containing such an import scores 0.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_0_gnome_mines_solve.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_0_gnome_mines_solve",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which gnome-mines >/dev/null 2>&1 || apt-get update -qq || true\nwhich gnome-mines >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gnome-mines || true\nwhich xdotool >/dev/null 2>&1 || apt-get install -y -qq xdotool || true\nwhich wmctrl >/dev/null 2>&1 || apt-get install -y -qq wmctrl || true\npip install -q pillow numpy || true\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_0_gnome_mines_solve/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_0_gnome_mines_solve /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_0_gnome_mines_solve/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_0_gnome_mines_solve/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_0_gnome_mines_solve/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_0_gnome_mines_solve/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_0_gnome_mines_solve/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_0_gnome_mines_solve.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_0_gnome_mines_solve",
+    "workspace_relative": "GAM/task_0_gnome_mines_solve",
+    "uses_vlm_helper": false,
+    "has_gt": true
+  }
+}

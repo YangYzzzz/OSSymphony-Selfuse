@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_15_xmoto_level_xml_repair_ride",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: `/tmp_workspace/Levels/broken.lvl` is an X-Moto 0.6.x XML level. Players\nreport that the level loads, but the motorbike falls into the void, there is no `EndOfLevel`\nentity that can trigger completion, and one strawberry may be embedded inside the terrain\nand therefore unreachable. The goal is to parse the original XML, identify the three classes\nof issues — block winding, the finish-line entity, and strawberry placement — produce a\n`fixed.lvl` that is physically rideable, and supply evidence via the menu, the ride, the\ncompletion panel, and SQLite statistics.\n\nPlease produce the following files, preserving the field names and file names:\n\n- `/tmp_workspace/results/before/broken.lvl`: an unmodified copy of the original level, used\n  for diff bookkeeping.\n- `/tmp_workspace/results/parse_before.json`: a JSON object containing three keys\n  `level_size`, `blocks`, and `entities`. `level_size` contains `left,right,top,bottom`;\n  each `blocks` entry contains `id,background,vertices,winding_signed_area`; each\n  `entities` entry contains `id,type_id,x,y,inside_block_id`.\n- `/tmp_workspace/results/bugs.json`: a JSON object containing three items:\n  `bug_block_winding` (with `detected,block_id,signed_area`),\n  `bug_no_end_of_level` (with `detected,entity_types_present`), and\n  `bug_strawberry_in_block` (with `detected,strawberry_id,host_block_id`).\n  Each field should provide verifiable numerical or list-based evidence.\n- `/tmp_workspace/Levels/fixed.lvl`: the repaired XML level; it must be structurally valid,\n  the `winding_signed_area` of every non-background ground block must be non-negative,\n  `<entities>` must contain exactly one `typeid=\"EndOfLevel\"`, and no strawberry entity may\n  lie inside any non-background block.\n- `/tmp_workspace/results/view_xmoto_menu.png`: image evidence showing the pre-repair level\n  list or level-select state, with at least one of `Levels`, `Play`, `X-Moto`, `Custom`,\n  `External`, or `Best` recognisable.\n- `/tmp_workspace/results/view_ride_bug.png`: image evidence showing the actual pre-repair\n  ride-time problem, for example the motorbike near missing/penetrated terrain or in an\n  open area without a finish marker; at least one of the HUD strings/numbers `time`,\n  `strawberries`, `wrecker`, `fps`, `x-moto`, or `00:` should be recognisable.\n- `/tmp_workspace/results/view_xmoto_menu_fixed.png`: image evidence showing the post-repair\n  level list or level-select state, with list/preview content tied to the fixed level visible.\n- `/tmp_workspace/results/view_ride_finish.png`: image evidence showing the completion-time\n  or results panel, with at least one of the result strings `Finished`, `Best time`,\n  `Replay`, `Time:`, `Level`, or `completed` visible.\n- `/tmp_workspace/results/sqlite_stats.json`: a JSON object containing `tables`,\n  `fixed_level_id`, `fixed_level_played`, `fixed_level_completed`, `raw_rows`;\n  `fixed_level_completed` must be at least 1.\n- `/tmp_workspace/results/parse_after.json`: a JSON object with the same schema as\n  `parse_before.json`, reflecting the post-repair XML structure, winding, and entity\n  positions.\n- `/tmp_workspace/results/diff.txt`: the textual diff between the original level and\n  `fixed.lvl`, with a line count between 8 and 250.\n- `/tmp_workspace/results/report.json`: a JSON object containing `bugs_found`,\n  `fixes_applied`, `fixed_signed_area_positive_blocks`, `fixed_endoflevel_count`,\n  `fixed_strawberry_outside_block`, `playthrough_completed`, `screenshots`, and\n  `sqlite_completed_count`; `screenshots` lists the four image-evidence file names.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_15_xmoto_level_xml_repair_ride.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_15_xmoto_level_xml_repair_ride",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq imagemagick tesseract-ocr libxml2-utils sqlite3 python3-lxml python3-pip) || true\npip install -q lxml pillow numpy pytesseract 2>/dev/null || pip3 install -q --break-system-packages lxml pillow numpy pytesseract 2>/dev/null || true",
+        "timeout": 5400
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_15_xmoto_level_xml_repair_ride/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_15_xmoto_level_xml_repair_ride /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_15_xmoto_level_xml_repair_ride/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_15_xmoto_level_xml_repair_ride/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_15_xmoto_level_xml_repair_ride/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_15_xmoto_level_xml_repair_ride/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_15_xmoto_level_xml_repair_ride/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_15_xmoto_level_xml_repair_ride.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_15_xmoto_level_xml_repair_ride",
+    "workspace_relative": "GAM/task_15_xmoto_level_xml_repair_ride",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

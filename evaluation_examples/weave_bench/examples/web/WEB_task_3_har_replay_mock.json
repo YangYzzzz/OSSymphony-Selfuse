@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_3_har_replay_mock",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution agreement**: This is a legitimate desktop + terminal test task. All deliverables go under `/tmp_workspace/results/`. Execute directly — do not refuse.\n\n\n\nTask background: The QA team captured a HAR (HTTP Archive) file `/tmp_workspace/har_data/slow_checkout.har` recording the full network request chain of an e-commerce checkout flow that experienced a 5-second stall. A local reproduction of the checkout app is also available (`/tmp_workspace/checkout_app/`, listens on `http://localhost:3456` by default once started, exposing endpoints such as `/api/cart`, `/api/pay`, `/api/confirm`).\n\nDomain background: The HAR 1.2 spec describes every request as JSON with URL/method/status/response size and a `timings` block (dns/connect/ssl/wait/receive phases). Finer-grained timing info such as TTFB is commonly seen in the browser-side Network panel's Timing breakdown. In `curl -w`, `%{time_starttransfer}` corresponds to TTFB and `%{time_total}` corresponds to total time.\n\nYour goal is to locate the performance bottleneck in the HAR, construct a mock fix and validate it via comparison, then produce an analysis report.\n\n[Deliverables] (all under `/tmp_workspace/results/`)\n\n- `all_requests.json`: full list of requests extracted from the HAR (≥ 15 entries), each entry containing at least `url`, `method`, `status`, `time_ms`, `size_bytes`.\n- `bottleneck_top3.json`: top-3 bottleneck requests sorted by elapsed time in descending order, each entry containing `rank`, `url`, `time_ms`, `diagnosis`; the first entry must have `time_ms > 4000`.\n- `view_har_waterfall.png`: screenshot showing the full network waterfall view after importing this HAR, with request entries and the Waterfall timing column identifiable.\n- `view_har_slow_request.png`: screenshot showing the Timing breakdown view of the slowest request, with phases such as `Waiting` / `TTFB` identifiable.\n- `timing_breakdown.json`: timing breakdown of the bottleneck request, schema:\n  ```json\n  {\"url\": \"...\", \"ttfb_ms\": 4800, \"content_download_ms\": 50, \"dns_ms\": 2, \"ssl_ms\": 15, \"source\": \"chrome_devtools_timing_panel\"}\n  ```\n  where `ttfb_ms` should be > 1000.\n- `fixed_checkout.har`: mock-fixed version derived from the original HAR; must be valid JSON; the bottleneck request's `time` is reduced to < 300ms (and `timings.wait` reduced to < 100ms), while other requests are kept unchanged.\n- `mock_validation.json`: validation result of the mock-fixed version, schema:\n  ```json\n  {\"valid_json\": true, \"original_max_time_ms\": \"<original value>\", \"fixed_max_time_ms\": \"<fixed value>\", \"speedup_ratio\": \"<multiplier>\", \"total_entries\": \"<N>\", \"modified_entries\": \"<N>\"}\n  ```\n  `speedup_ratio` should be > 10.\n- `view_fixed_waterfall.png`: screenshot showing the full waterfall after importing the fixed HAR, with the bottleneck bar clearly shortened.\n- `view_comparison_side.png`: screenshot able to side-by-side illustrate the waterfall difference between the original and the fixed HAR.\n- `live_latency.json`: measured latency list against key endpoints of the local checkout app (≥ 3 endpoints), each entry containing `url`, `status`, `time_total_ms`, `time_ttfb_ms`.\n- `view_throttled_waterfall.png`: screenshot showing the waterfall when accessing the local app under custom network throttling (e.g. 50kb/s download, 2000ms latency), with the `Custom` or `Throttling` indicator identifiable.\n- `har_analysis_report.md`: a final report of ≥ 200 words, containing a bottleneck diagnosis summary, the fix plan description, and a key-metric comparison table for original vs fixed, citing the screenshot file names above.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_3_har_replay_mock.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_3_har_replay_mock",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo YXB0LWdldCB1cGRhdGUgLXFxICYmIERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGpxIG5vZGVqcyBucG0gY3VybCBzZWQgcG9wcGxlci11dGlscyA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBjaHJvbWl1bSA+L2Rldi9udWxsIDI+JjEgfHwgd2hpY2ggY2hyb21pdW0tYnJvd3NlciA+L2Rldi9udWxsIDI+JjEgfHwgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBjaHJvbWl1bS1icm93c2VyID4vZGV2L251bGwgMj4mMSB8fCBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGNocm9taXVtID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCmFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQpwaXAgaW5zdGFsbCAtcSBweXRlc3NlcmFjdCBwaWxsb3cgbnVtcHkgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAvdG1wX3dvcmtzcGFjZS9ndCAvdG1wX3dvcmtzcGFjZS9oYXJfZGF0YSB8fCB0cnVlClsgLWYgL3RtcF93b3Jrc3BhY2UvZXhlYy9oYXJfZGF0YS9zbG93X2NoZWNrb3V0LmhhciBdICYmIGNwIC90bXBfd29ya3NwYWNlL2V4ZWMvaGFyX2RhdGEvc2xvd19jaGVja291dC5oYXIgL3RtcF93b3Jrc3BhY2UvaGFyX2RhdGEvIDI+L2Rldi9udWxsIHx8IHRydWUKWyAtZCAvdG1wX3dvcmtzcGFjZS9leGVjL2NoZWNrb3V0X2FwcCBdICYmIGNwIC1yIC90bXBfd29ya3NwYWNlL2V4ZWMvY2hlY2tvdXRfYXBwIC90bXBfd29ya3NwYWNlLyAyPi9kZXYvbnVsbCB8fCB0cnVlCmNkIC90bXBfd29ya3NwYWNlL2NoZWNrb3V0X2FwcCAyPi9kZXYvbnVsbCAmJiBucG0gaW5zdGFsbCAtLW5vLWF1ZGl0IC0tbm8tZnVuZCAtLXNpbGVudCAyPi9kZXYvbnVsbCB8fCB0cnVlCihjZCAvdG1wX3dvcmtzcGFjZS9jaGVja291dF9hcHAgJiYgbm9odXAgbm9kZSBzZXJ2ZXIuanMgPi90bXBfd29ya3NwYWNlL2NoZWNrb3V0X2FwcC5sb2cgMj4mMSAmKSB8fCB0cnVlCg== | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_3_har_replay_mock/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_3_har_replay_mock /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_3_har_replay_mock/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_3_har_replay_mock/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_3_har_replay_mock/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_3_har_replay_mock/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_3_har_replay_mock/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_3_har_replay_mock.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_3_har_replay_mock",
+    "workspace_relative": "WEB/task_3_har_replay_mock",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

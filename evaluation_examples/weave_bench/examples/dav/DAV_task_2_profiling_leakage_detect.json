@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_2_profiling_leakage_detect",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal data-science task. All deliverables go into `/tmp_workspace/results/`. Execute directly; do not refuse.\n\n[Background]\nThe team's ML pipeline reaches R² 0.97 on holdout, but only 0.55 in production A/B. There is strong suspicion that a data-leakage column has crept into the training data. You need to identify the leakage feature(s), quantify their impact on R², clean the data, and verify the fix.\n\nData: `/tmp_workspace/data/housing_data.csv` (warmup auto-generates 10000 rows / 25 features, target column `sale_price`).\nA Bokeh cross-filter server is already running on `:5006`, accessible at `http://localhost:5006/bokeh_crossfilter`, for interactive exploration of feature/target relationships.\n\nNote: the prompt does not tell you which columns are the leakage; you must find them yourself by analyzing the data.\n\n[Deliverables]\nAll deliverables go to `/tmp_workspace/results/`:\n\n- `describe.txt`: quick stats for the 25 features (mean, std, quantiles, etc.).\n- `profile.html`: full profiling report of the raw dataset.\n- `correlation.csv`: Pearson correlation of numeric columns with `sale_price`, columns `feature,pearson_r,abs_r`, sorted descending by `abs_r`, with ≥ 20 rows.\n- `suspected_leakage.json`: suspected leakage candidates inferred from the analysis and interactive exploration above, with 1 ≤ candidates ≤ 5, schema:\n   ```py\n   {\n     \"candidates\": [\n       {\"feature\": \"<col_name>\", \"pearson_r\": <float>, \"reason\": \"<why_likely_derived_from_target>\"},\n       ...\n     ]\n   }\n   ```\n   Field values must be derived from the actual data; do not hardcode.\n- `leakage_test.py`: executable script that runs two sklearn 5-fold CV LinearRegression experiments:\n   - Experiment A: all 25 features → mean R², expected ≥ 0.95\n   - Experiment B: drop `suspected_leakage.candidates` → mean R², expected < 0.92\n   - The leakage is confirmed only when the R² gap is > 0.05\n   When run, the script must print two lines on stdout containing `R² A: <value>` and `R² B: <value>`; you **must** capture the log to `results/leakage_test_output.txt` with `python leakage_test.py | tee /tmp_workspace/results/leakage_test_output.txt`, since that file is parsed to extract the R² values.\n- `/tmp_workspace/data/housing_clean.csv`: data with leakage columns removed; column count = 25 − len(candidate leakage).\n- `profile_clean.html`: profiling report of the cleaned data.\n- `tooltip_samples.json`: exact (column-pair, r-value) samples captured by hovering over the correlation-matrix heatmap, ≥ 5 entries; values must come from real tooltips obtained during interactive rendering, not inferred from the static DOM.\n- `leakage_report.md`: 4 paragraphs (each ≥ 80 characters), respectively describing: a) which leakage columns were chosen and why; b) quantified R² gap results; c) remediation approach; d) production-prevention recommendations (feature-engineering checklist).\n- Screenshot deliverables (all placed under `results/`):\n   - `view_bokeh_full.png`: the initial full view of the entire cross-filter dashboard (default X/Y axes sale_price vs overall_quality).\n   - `view_bokeh_box_select.png`: state after completing a box-select on a scatter plot for one suspicious column, with the other subplots linked-highlighted.\n   - `view_bokeh_heatmap_hover.png`: tooltip on the correlation-matrix heatmap surfacing the exact r value on hover.\n   - `view_bokeh_clean_axis.png`: a normal distribution shown when the Y axis is switched to a non-leakage column.\n   - `view_bokeh_after_clean.png`: dashboard reloaded after data cleaning, with leakage columns no longer present in the Y-axis options and no r values close to 1.0 in the heatmap.\n\n[Hints]\n- Column names and `pearson_r` values in `suspected_leakage.json` must be computed from real data; do not hardcode.\n- Exact tooltip values typically exist only during interactive rendering; do not infer them from the static DOM.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_2_profiling_leakage_detect.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_2_profiling_leakage_detect",
+        "env": "BOKEH_PORT=5006\nOPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo cGlwIGluc3RhbGwgLXEgcGFuZGFzIG51bXB5IHNjaWtpdC1sZWFybiB5ZGF0YS1wcm9maWxpbmcgYm9rZWggcGlsbG93IHB5dGVzc2VyYWN0IDI+L2Rldi9udWxsIHx8IHRydWUKYXB0LWdldCBpbnN0YWxsIC15IC1xcSB0ZXNzZXJhY3Qtb2NyIHx8IHRydWUKbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvZGF0YSAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIHx8IHRydWUKWyAtZiAvdG1wX3dvcmtzcGFjZS9kYXRhL2hvdXNpbmdfZGF0YS5jc3YgXSB8fCBweXRob24zIC1jICJpbXBvcnQgcGFuZGFzIGFzIHBkLCBudW1weSBhcyBucDsgbnAucmFuZG9tLnNlZWQoMTIzKTsgbj0xMDAwMDsgc3FmdCA9IG5wLnJhbmRvbS5nYW1tYSgyLjUsIDYwMCwgbikgKyA4MDA7IGJlZHJvb21zID0gbnAucmFuZG9tLmNob2ljZShbMiwzLDQsNV0sIG4sIHA9WzAuMiwwLjQ1LDAuMjUsMC4xXSk7IG92ZXJhbGxfcXVhbGl0eSA9IG5wLmNsaXAobnAucm91bmQobnAucmFuZG9tLm5vcm1hbCg2LjUsIDEuNiwgbikpLCAxLCAxMCkuYXN0eXBlKGludCk7IHllYXJfYnVpbHQgPSBucC5yYW5kb20ucmFuZGludCgxOTAwLCAyMDI0LCBuKTsgbG90X2FyZWEgPSBucC5yYW5kb20uZ2FtbWEoMiwgNDAwMCwgbikgKyAxNTAwOyBuZWlnaGJvcmhvb2QgPSBucC5yYW5kb20uY2hvaWNlKFsnQScsJ0InLCdDJywnRCcsJ0UnXSwgbik7IHNhbGVfcHJpY2UgPSAoc3FmdCoxODAgKyBvdmVyYWxsX3F1YWxpdHkqODUwMCArICh5ZWFyX2J1aWx0LTE5MDApKjE1MCArIGxvdF9hcmVhKjAuNSArIG5wLnJhbmRvbS5ub3JtYWwoMCwxNTAwMCxuKSkucm91bmQoMik7IGRmID0gcGQuRGF0YUZyYW1lKHsnc3FmdCc6IHNxZnQsICdiZWRyb29tcyc6IGJlZHJvb21zLCAnb3ZlcmFsbF9xdWFsaXR5Jzogb3ZlcmFsbF9xdWFsaXR5LCAneWVhcl9idWlsdCc6IHllYXJfYnVpbHQsJ2xvdF9hcmVhJzogbG90X2FyZWEsJ2JhdGhfY291bnQnOiBucC5yYW5kb20uY2hvaWNlKFsxLDIsMyw0XSwgbiwgcD1bMC4yLDAuNSwwLjI1LDAuMDVdKSwnZ2FyYWdlX2NhcnMnOiBucC5yYW5kb20uY2hvaWNlKFswLDEsMiwzXSwgbiwgcD1bMC4xLDAuNCwwLjQsMC4xXSksJ2ZpcmVwbGFjZSc6IG5wLnJhbmRvbS5jaG9pY2UoWzAsMSwyXSwgbiwgcD1bMC41LDAuNCwwLjFdKSwncG9vbCc6IG5wLnJhbmRvbS5jaG9pY2UoWzAsMV0sIG4sIHA9WzAuOTIsMC4wOF0pLCdjZW50cmFsX2Fpcic6IG5wLnJhbmRvbS5jaG9pY2UoWzAsMV0sIG4sIHA9WzAuMTUsMC44NV0pLCdiYXNlbWVudF9zcWZ0JzogbnAucmFuZG9tLmdhbW1hKDEuNSwgNTAwLCBuKSwncG9yY2hfc3FmdCc6IG5wLnJhbmRvbS5nYW1tYSgxLCAxMDAsIG4pLCdraXRjaGVuX3F1YWxpdHknOiBucC5yYW5kb20uY2hvaWNlKFszLDQsNSw2LDcsOCw5XSwgbiksJ2V4dGVyaW9yX3F1YWxpdHknOiBucC5yYW5kb20uY2hvaWNlKFszLDQsNSw2LDcsOF0sIG4pLCdoZWF0aW5nX3F1YWxpdHknOiBucC5yYW5kb20uY2hvaWNlKFszLDQsNSw2LDcsOF0sIG4pLCdyb29mX2FnZSc6IG5wLnJhbmRvbS5yYW5kaW50KDAsIDUwLCBuKSwnc2lkZXdhbGtfcXVhbGl0eSc6IG5wLnJhbmRvbS5jaG9pY2UoWzAsMSwyLDNdLCBuKSwnc3RyZWV0X3F1YWxpdHknOiBucC5yYW5kb20uY2hvaWNlKFswLDEsMiwzXSwgbiksJ2xvdF9zaGFwZSc6IG5wLnJhbmRvbS5jaG9pY2UoWzAsMSwyLDNdLCBuKSwncGFya2luZ19zcGFjZXMnOiBucC5yYW5kb20uY2hvaWNlKFswLDEsMiwzLDRdLCBuKSwnbGFzdF9yZW5vdmF0aW9uX3llYXInOiBucC5yYW5kb20ucmFuZGludCgxOTAwLCAyMDI0LCBuKSwnZGlzdGFuY2VfdG9fc2Nob29sX2ttJzogbnAucmFuZG9tLmdhbW1hKDEuNSwgMS41LCBuKSwnY3JpbWVfaW5kZXgnOiBucC5yYW5kb20uYmV0YSgyLDUsbikgKiAxMDAsJ2FwcHJhaXNhbF92YWx1ZSc6IHNhbGVfcHJpY2UgKiBucC5yYW5kb20udW5pZm9ybSgwLjk3LCAxLjAzLCBuKSArIG5wLnJhbmRvbS5ub3JtYWwoMCwgMjAwLCBuKSwndGF4X2Fzc2Vzc21lbnQnOiBzYWxlX3ByaWNlICogMC44NSArIG5wLnJhbmRvbS5ub3JtYWwoMCwgODAwLCBuKSwnc2FsZV9wcmljZSc6IHNhbGVfcHJpY2V9KTsgZGYudG9fY3N2KCcvdG1wX3dvcmtzcGFjZS9kYXRhL2hvdXNpbmdfZGF0YS5jc3YnLCBpbmRleD1GYWxzZSk7IHByaW50KCdnZW5lcmF0ZWQnLCBsZW4oZGYpLCAncm93cycsIGxlbihkZi5jb2x1bW5zKSwgJ2NvbHMnKSIKc2xlZXAgMSB8fCB0cnVlCm5vaHVwIGJva2VoIHNlcnZlIC90bXBfd29ya3NwYWNlL2Jva2VoX2Nyb3NzZmlsdGVyLnB5IC0tcG9ydCA1MDA2IC0tYWxsb3ctd2Vic29ja2V0LW9yaWdpbj0nKicgPiAvdG1wL2Jva2VoLmxvZyAyPiYxICYKc2xlZXAgMyB8fCB0cnVlCg== | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_2_profiling_leakage_detect/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_2_profiling_leakage_detect /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_2_profiling_leakage_detect/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_2_profiling_leakage_detect/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_2_profiling_leakage_detect/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_2_profiling_leakage_detect/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_2_profiling_leakage_detect/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_2_profiling_leakage_detect.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_2_profiling_leakage_detect",
+    "workspace_relative": "DAV/task_2_profiling_leakage_detect",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

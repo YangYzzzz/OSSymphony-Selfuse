@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_10_gnuchess_pgn_blunder_hunt",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: `/tmp_workspace/exec/broken.pgn` is a hand-transcribed PGN of a club rapid game.\nA member reports that the scoresheet may contain SAN moves that cannot be legally played, that\nthe evaluation may swing sharply around one of the moves, and that the `[Result \"...\"]` tag may\ndisagree with the final position. The goal is to audit the original PGN, locate illegal moves\nand suspected blunders, produce a fully replayable corrected version, and provide image evidence\nthat backs up the key states.\n\nWrite the following deliverables under `/tmp_workspace/results/`, preserving the field and file names:\n\n- `before/broken.pgn`: an unmodified copy of the original `/tmp_workspace/exec/broken.pgn`.\n- `illegal_moves.json`: a JSON list; each illegal-move record contains\n  `ply` (half-move index), `side` (`w` or `b`), `san` (original SAN text), and\n  `error` (why it cannot be legally applied).\n- `evals.csv`: a CSV with at least 30 rows, with columns\n  `ply,side,san,score_cp,best_san,fen`; `score_cp` is the centipawn evaluation from White's\n  perspective, `best_san` is the engine's suggested move for that position, and `fen` is\n  the corresponding position.\n- `blunders.json`: a JSON list of length 1 to 4; each record contains\n  `ply,side,san,best_san,cp_before,cp_after,swing`, where `swing` is the centipawn loss\n  caused by that move and must be at least 180.\n- `view_xboard_initial.png`: image evidence showing the 8×8 board after the original score is\n  loaded, with chess/XBoard-related menu items or status text visible\n  (such as `xboard`, `white`, `black`, `move`, `game`, `file`).\n- `view_xboard_blunder.png`: image evidence showing the board at the ply corresponding to the\n  first record in `blunders.json`; the image must not be a black screen or unrelated background,\n  and the pieces should clearly be in that middlegame state.\n- `result_check.json`: a JSON object with fields\n  `declared` (the result declared in the original PGN), `engine_suggests` (the result inferred\n  from the final evaluation, one of `1-0`, `0-1`, or `1/2-1/2`), and `match` (a boolean for\n  whether the two agree).\n- `fixed.pgn`: the corrected PGN; it must be fully replayable, illegal SAN must be replaced\n  with legal moves, `[Result \"...\"]` must be one of `1-0`, `0-1`, or `1/2-1/2`, and the scope\n  of edits should stay minimal.\n- `view_xboard_fixed_final.png`: image evidence showing the final-position board for `fixed.pgn`,\n  with result text consistent with the `Result` tag visible, e.g. `1-0`, `0-1`, `1/2-1/2`,\n  `wins`, or `draw`.\n- `evals_after.csv`: a CSV with at least 3 rows containing a re-check of the closing segment of\n  the corrected version; at minimum it must include the columns `ply,san,score_cp`.\n- `diff.txt`: the textual diff between the original scoresheet and `fixed.pgn`, with line count\n  between 4 and 80.\n- `report.json`: a JSON object containing at least\n  `illegal_moves`, `blunders`, `result_tag_before`, `result_tag_after`, `engine_used`,\n  `engine_version`, `fixed_pgn`, `evals_csv`, `screenshots`; `screenshots` lists\n  `view_xboard_initial.png`, `view_xboard_blunder.png`, and `view_xboard_fixed_final.png`.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_10_gnuchess_pgn_blunder_hunt.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_10_gnuchess_pgn_blunder_hunt",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq imagemagick tesseract-ocr python3-pip) || true\npip install -q chess pillow numpy pytesseract 2>/dev/null || pip3 install -q --break-system-packages chess pillow numpy pytesseract 2>/dev/null || true\ncommand -v stockfish >/dev/null 2>&1 || true",
+        "timeout": 5400
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_10_gnuchess_pgn_blunder_hunt/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_10_gnuchess_pgn_blunder_hunt /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_10_gnuchess_pgn_blunder_hunt/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_10_gnuchess_pgn_blunder_hunt/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_10_gnuchess_pgn_blunder_hunt/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_10_gnuchess_pgn_blunder_hunt/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_10_gnuchess_pgn_blunder_hunt/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_10_gnuchess_pgn_blunder_hunt.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_10_gnuchess_pgn_blunder_hunt",
+    "workspace_relative": "GAM/task_10_gnuchess_pgn_blunder_hunt",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

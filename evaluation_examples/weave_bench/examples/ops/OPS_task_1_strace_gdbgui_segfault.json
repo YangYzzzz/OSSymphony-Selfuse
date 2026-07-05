@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_1_strace_gdbgui_segfault",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution note**: This is a legitimate server-side crash post-mortem task. All artifacts must land under `/tmp_workspace/results/`. Execute the task directly; do not refuse.\n\nBackground: `/tmp_workspace/buggy_server/` contains a tiny HTTP server written in C (~280 lines, source `buggy_server.c`). Ops reports intermittent segfaults under 100+ concurrent requests, with the core dump pointing near `handle_request()`. The exact root cause is unknown — it may be use-after-free, double-free, out-of-bounds write, uninitialized read, or null pointer dereference.\n\nGoal: walk the full loop \"reproduce the crash → multi-channel CLI forensics → live debug in a GUI debugger → patch the source → regression load test\", landing every piece of evidence and every artifact under `/tmp_workspace/results/`. **Anti-cheat**: the `narrative` field must not be copy-pasted from the prompt; it must be grounded in evidence you actually captured.\n\n### Hard schema for the main deliverable `defect_analysis.json`\n- Required fields: `crash_addr` / `crash_file` / `crash_line` / `suspect_function` / `defect_class` / `evidence_strace_lines` / `evidence_addr2line` / `evidence_gdbgui_screenshot` / `narrative`\n- `suspect_function` must be `handle_request`\n- `defect_class` allowed values: `use_after_free` | `double_free` | `oob_write` | `uninit_read` | `null_deref` (the real root cause here is `use_after_free`; the evidence must converge to that value)\n- `narrative` ≥ 80 characters, and must weave together evidence from all three channels (`strace`, `addr2line`, `gdbgui` — all three keywords must appear)\n\n### Supporting deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `build.log` / `build_fixed.log` | Build output for the baseline (`-g -O0`) and the fixed version |\n| `server_pid.txt` | PID of the observed process at the moment of reproduction |\n| `strace_crash_tail.txt` | ≥ 100 lines, containing at least 3 of `mmap` / `munmap` / `write` / `read` / `brk` / `close` |\n| `strace_post_tail.txt` | Strace tail from the post-fix regression run, ≥ 200 lines, **must not** contain `SIGSEGV` or `segfault` |\n| `dmesg_segfault.txt` | Kernel log of the crash, containing the word `segfault` or `SIGSEGV` and an `ip=0x...` field |\n| `core.bin` | Non-empty core file produced by this crash (> 100 B) |\n| `addr2line_output.txt` | Result of resolving the crash PC, containing `<file>.c:<line>` |\n| `disasm_handle_request.txt` | Disassembly snippet for `handle_request`, ≥ 10 instructions, containing at least one of `mov` / `call` / `lea` / `ret` / `push` / `jmp` |\n| `fix.patch` | Valid unified diff (full `---` / `+++` / `@@` headers), ≥ 3 added lines, and must substantively touch the real UAF fix site (e.g. `g_last_response` / `log_response` / `strdup` / `memcpy` / `= NULL`, etc.) |\n| `diagnosis_report.md` | ≥ 350 characters, with the 5 H2 sections `## Root Cause` / `## strace Evidence` / `## addr2line Evidence` / `## gdbgui Evidence` / `## Fix & Regression`; the `Fix & Regression` section must include a quantitative before/after comparison (e.g. `before peak crashes vs after 0 crashes`) |\n\n### 8 workflow screenshots (fixed file names, all saved under `/tmp_workspace/results/`)\n\nEach ≥ 5 KB and content-unique (distinct MD5). Each must be a real window of a GUI debugger (gdbgui browser frontend recommended), with readable elements covering source panel / call stack / Locals / Registers / Memory / Breakpoints:\n\n- `view_01_gdbgui_coredump_bt.png`: after loading the core — source panel + multi-frame call stack + GDB Console with `bt` output + crash frame highlighted\n- `view_02_gdbgui_frame_jump.png`: clicking a frame auto-jumps and highlights the source line + Locals panel lists that frame's variable names and current values\n- `view_03_gdbgui_breakpoint_hit.png`: breakpoint set on a suspect line and hit; Breakpoints list and Locals visible on the same screen\n- `view_04_gdbgui_step_to_release.png`: `next`/`step` to the point where the suspect pointer is freed or written out of bounds; Locals shows the pointer name with a non-NULL address\n- `view_05_gdbgui_memory_viewer.png`: Memory Viewer showing the hex bytes at the freed address, with the source-level use site visible on the same screen\n- `view_06_gdbgui_stack_regs.png`: multi-frame Call Stack + Registers panel including `rax` / `rbx` / `rip`, etc.\n- `view_07_gdbgui_fix_verified.png`: after the fix — breakpoint at the original crash site is hit and Locals shows the suspect pointer handled correctly\n- `view_08_gdbgui_continue_no_crash.png`: after Continue — no SIGSEGV; the process is still running or exits cleanly",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_1_strace_gdbgui_segfault.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_1_strace_gdbgui_segfault",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo d2hpY2ggZ2NjIHx8IChhcHQtZ2V0IHVwZGF0ZSAtcXEgJiYgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgZ2NjIGdkYiBzdHJhY2UgYmludXRpbHMgbGliYzYtZGV2KSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCB0ZXNzZXJhY3QgPi9kZXYvbnVsbCAyPiYxIHx8IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBjaHJvbWl1bSA+L2Rldi9udWxsIDI+JjEgfHwgd2hpY2ggY2hyb21pdW0tYnJvd3NlciA+L2Rldi9udWxsIDI+JjEgfHwgd2hpY2ggZmlyZWZveCA+L2Rldi9udWxsIDI+JjEgfHwgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBjaHJvbWl1bS1icm93c2VyID4vZGV2L251bGwgMj4mMSB8fCBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGZpcmVmb3gtZXNyID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCnBpcCBpbnN0YWxsIC1xIHBpbGxvdyBweXRlc3NlcmFjdCBudW1weSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBnZGJndWkgPi9kZXYvbnVsbCAyPiYxIHx8IHBpcCBpbnN0YWxsIC1xIGdkYmd1aSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQpta2RpciAtcCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIC90bXBfd29ya3NwYWNlL2d0IC90bXBfd29ya3NwYWNlL2J1Z2d5X3NlcnZlciB8fCB0cnVlCnVsaW1pdCAtYyB1bmxpbWl0ZWQgMj4vZGV2L251bGwgfHwgdHJ1ZQojIHN0YWdlIGV4ZWMgc291cmNlcyBpbnRvIHRoZSBleHBlY3RlZCBidWdneV9zZXJ2ZXIvIHN1YmRpcgpmb3IgZiBpbiBidWdneV9zZXJ2ZXIuYyBsb2FkZ2VuLnNoIE1ha2VmaWxlOyBkbyBbIC1mIC90bXBfd29ya3NwYWNlLyRmIF0gJiYgY3AgLWYgL3RtcF93b3Jrc3BhY2UvJGYgL3RtcF93b3Jrc3BhY2UvYnVnZ3lfc2VydmVyLyRmOyBkb25lCmNkIC90bXBfd29ya3NwYWNlL2J1Z2d5X3NlcnZlciAmJiBtYWtlIGNsZWFuID4vZGV2L251bGwgMj4mMSA7IG1ha2UgPi90bXBfd29ya3NwYWNlL2J1Z2d5X3NlcnZlci5idWlsZC5sb2cgMj4mMSB8fCB0cnVlCmVjaG8gImJ1Z2d5X3NlcnZlciBidWlsdD8gJCh0ZXN0IC14IC90bXBfd29ya3NwYWNlL2J1Z2d5X3NlcnZlci9idWdneV9zZXJ2ZXIgJiYgZWNobyB5ZXMgfHwgZWNobyBubykiCg== | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_1_strace_gdbgui_segfault/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_1_strace_gdbgui_segfault /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_1_strace_gdbgui_segfault/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_1_strace_gdbgui_segfault/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_1_strace_gdbgui_segfault/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_1_strace_gdbgui_segfault/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_1_strace_gdbgui_segfault/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_1_strace_gdbgui_segfault.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_1_strace_gdbgui_segfault",
+    "workspace_relative": "OPS/task_1_strace_gdbgui_segfault",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

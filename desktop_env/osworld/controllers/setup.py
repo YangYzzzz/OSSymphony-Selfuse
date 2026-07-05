@@ -331,7 +331,7 @@ class SetupController:
         bootstrap = (
             "set -e\n"
             f"echo {shlex_quote(password)} | sudo -S -p '' rm -rf {shlex_quote(remote_root)}\n"
-            f"mkdir -p {shlex_quote(remote_root)} {shlex_quote(remote_root + '/tmp')} /opt/eval\n"
+            f"echo {shlex_quote(password)} | sudo -S -p '' mkdir -p {shlex_quote(remote_root)} {shlex_quote(remote_root + '/tmp')} /opt/eval\n"
             f"echo {shlex_quote(password)} | sudo -S -p '' chown -R user:user {shlex_quote(remote_root)} /opt/eval || true\n"
         )
         self.run_bash_script(bootstrap, timeout=120)
@@ -355,18 +355,87 @@ class SetupController:
         self.run_bash_script("chmod +x /tmp/openclaw_task_env.sh", timeout=30)
 
         if warmup and warmup.strip():
-            warmup_inner = f"cd {remote_root}\n{warmup}"
-            warmup_script = (
-                "set -e\n"
-                "if [ -f /tmp/openclaw_task_env.sh ]; then set -a; . /tmp/openclaw_task_env.sh; set +a; fi\n"
-                f"cd {shlex_quote(remote_root)}\n"
+            apt_lock_wait = (
+                "# wait for apt lock release (packagekitd auto-update on fresh boot)\n"
+                "for _i in $(seq 1 60); do\n"
+                "  if ! fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; then\n"
+                "    break\n"
+                "  fi\n"
+                "  if [ \"$_i\" = \"1\" ]; then echo 'WeaveBench: waiting for apt lock (packagekitd)...' >&2; fi\n"
+                "  sleep 2\n"
+                "done\n"
+            )
+            full_script = "#!/bin/bash\nset -e\n" + apt_lock_wait + warmup + "\n"
+            self.upload_text(full_script, "/tmp/_warmup.sh")
+            self.run_bash_script(
+                "rm -f /tmp/_warmup.done /tmp/_warmup.rc /tmp/_warmup.log && chmod +x /tmp/_warmup.sh",
+                timeout=30,
+            )
+
+            # 测试脚本需要显示传递, 因为以 root 权限执行脚本会 reset 所有环境变量
+            proxy_env = " ".join(
+                f"{key}={shlex_quote(os.environ.get(key, ''))}"
+                for key in (
+                    "http_proxy",
+                    "https_proxy",
+                    "HTTP_PROXY",
+                    "HTTPS_PROXY",
+                    "no_proxy",
+                    "NO_PROXY",
+                )
+            )
+            wrapped = (
+                "( "
+                "if [ -f /tmp/openclaw_task_env.sh ]; then set -a; . /tmp/openclaw_task_env.sh; set +a; fi; "
+                f"cd {shlex_quote(remote_root)}; "
                 f"echo {shlex_quote(password)} | sudo -S -p '' "
                 "env DEBIAN_FRONTEND=noninteractive PATH=\"$PATH\" HOME=/root "
-                f"bash -c {shlex_quote(warmup_inner)}\n"
+                f"{proxy_env} "
+                "bash /tmp/_warmup.sh; "
+                "echo $? >/tmp/_warmup.rc "
+                ") >/tmp/_warmup.log 2>&1; touch /tmp/_warmup.done"
             )
-            result = self.run_bash_script(warmup_script, timeout=timeout)
-            if int(result.get("returncode", 1)) != 0:
-                raise RuntimeError(f"WeaveBench warmup failed: {result}")
+            launch = self.run_bash_script(
+                f"nohup bash -c {shlex_quote(wrapped)} > /tmp/_warmup_launcher.log 2>&1 &",
+                timeout=30,
+            )
+            if int(launch.get("returncode", 1)) != 0:
+                raise RuntimeError(f"WeaveBench warmup launch failed: {launch}")
+
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                status = self.run_bash_script(
+                    "test -f /tmp/_warmup.done && echo DONE || true",
+                    timeout=10,
+                )
+                if "DONE" in (status.get("output") or ""):
+                    break
+                time.sleep(5)
+            else:
+                log = self.run_bash_script(
+                    "tail -n 120 /tmp/_warmup.log 2>/dev/null || true",
+                    timeout=15,
+                )
+                raise RuntimeError(
+                    "WeaveBench warmup did not complete within timeout "
+                    f"({timeout}s).\n--- last 120 log lines ---\n{(log.get('output') or '').strip()}"
+                )
+
+            rc_out = self.run_bash_script("cat /tmp/_warmup.rc 2>/dev/null || echo -1", timeout=15)
+            try:
+                rc = int((rc_out.get("output") or "-1").strip().splitlines()[-1])
+            except (ValueError, IndexError):
+                rc = -1
+            if rc != 0:
+                log = self.run_bash_script(
+                    "tail -n 120 /tmp/_warmup.log 2>/dev/null || true",
+                    timeout=15,
+                )
+                snippet = (warmup[:200] + "...") if len(warmup) > 200 else warmup
+                raise RuntimeError(
+                    f"WeaveBench warmup failed (rc={rc}). First 200 chars of script:\n"
+                    f"{snippet}\n--- last 120 log lines ---\n{(log.get('output') or '').strip()}"
+                )
 
     def _change_wallpaper_setup(self, path: str):
         if not path:

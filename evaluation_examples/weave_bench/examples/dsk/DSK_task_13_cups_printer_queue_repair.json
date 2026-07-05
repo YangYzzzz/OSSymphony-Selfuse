@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_13_cups_printer_queue_repair",
+  "snapshot": "weave_bench",
+  "instruction": "Background: An office Linux host is running a local CUPS server (listening on `http://localhost:631/`). Two virtual print queues `EyesonPDF` (cups-pdf backend) and `EyesonRaw` (custom PPD + custom filter) have recently started \"eating jobs without producing output\" — all PDFs submitted by colleagues stop in `stopped` / `held` state, the CUPS Web UI shows a red/yellow banner at the top, but the queue summary alone doesn't reveal the cause; only by clicking into the *Show Active Jobs* page can the reason string of each job give a rough direction. You need to clean up both queues in one go.\n\nEnvironment (warmup already prepared):\n- CUPS is started, both queues `EyesonPDF` / `EyesonRaw` are already created;\n- PPD is at `/etc/cups/ppd/EyesonRaw.ppd`, filter is at `/usr/lib/cups/filter/eyeson_wrap`;\n- Test PDFs are at `/tmp_workspace/jobs/sample_a4.pdf`, `sample_letter.pdf`;\n- Helper script `bash /tmp_workspace/cups/observe.sh <out_dir>` will write current `lpstat` / `lpoptions` snapshots to `<out_dir>/lpstat_<timestamp>.txt`.\n- You have sudo; you may not delete cupsd or reset `/etc/cups`, only restart is allowed.\n\nDeliverables to produce under `/tmp_workspace/results/`:\n\n1. **Queue status snapshots** — at least two `lpstat_*.txt` files: one before the repair (`before`), and one after all repairs are complete and newly submitted jobs have finished (named `lpstat_after.txt`). Either file must present an `lpstat`-style queue/Job listing.\n\n2. **Configuration excerpt** — `ppd_excerpt.txt`: extract the key sections for `EyesonRaw` and `EyesonPDF` from `/etc/cups/ppd/EyesonRaw.ppd` and `/etc/cups/printers.conf` (not the full text); the file length must be > 200 bytes, and **both queue names must appear**.\n\n3. **Error log window** — `cups_error_log.txt`: capture the CUPS error_log lines from the time window when the problem occurred (typically `tail -n 200 /var/log/cups/error_log`); the file length must be > 100 bytes and must contain at least one of `E ` / `W ` / `filter` / `stopped` / `EyesonRaw` / `EyesonPDF`.\n\n4. **Offline filter reproduction** — reproduce the failure using one \"offline filter chain\":\n   - `cupsfilter_before.ps`: the PostScript output of running the original PPD + test PDF (may be empty, but the file must exist);\n   - `cupsfilter_before.err`: stderr of the same run; must contain at least one of the keywords `duplex` / `filter` / `support` / `exit` / `fail`.\n\n5. **Visual evidence** (must be captured from a real working environment; the text on screen must be clearly readable):\n   - `view_cups_jobs_red_banner.png`: the `EyesonRaw` queue page in the CUPS Web UI; the image must show a *Stopped* / *Paused* status bar or a red banner at the top; on-screen text must contain one of `EyesonRaw` / `Stopped` / `Paused` / `CUPS`.\n   - `view_cups_set_default_options.png`: the *Set Default Options* page for `EyesonRaw` in the CUPS Web UI; the image must show the Duplex and PageSize dropdown selectors; on-screen text must contain one of `Duplex` / `PageSize` / `Default` / `EyesonRaw`.\n   - `view_system_config_printer_panel.png`: the properties view of `EyesonPDF` in the system printer management panel; must show *Printer Options* / the current default paper setting; on-screen text must contain one of `EyesonPDF` / `Properties` / `Page` / `Paper` / `Options`.\n   - `view_lpstat_terminal_before.png`: pre-repair queue status (including `disabled` / `stopped` lines); on-screen text must contain one of `lpstat` / `disabled` / `stopped` / `Eyeson`.\n   - `view_postrepair_completed_jobs.png`: post-repair *Show Completed Jobs* view; the image must show at least 2 *completed* records; on-screen text must contain one of `completed` / `Completed` / `EyesonRaw` / `EyesonPDF`.\n\n6. **Structured diagnosis** — `diagnosis.json`: a JSON array with **two records** (one per queue); each schema:\n   ```json\n   {\n     \"queue\": \"EyesonRaw | EyesonPDF\",\n     \"category\": \"ppd_default_option | media_mismatch | filter_logic | other\",\n     \"evidence_cli\": [\"cups_error_log.txt:line_number\", \"cupsfilter_before.err summary\"],\n     \"evidence_gui\": \"view_cups_set_default_options.png\",\n     \"root_cause\": \"one-sentence diagnosis\",\n     \"fix_command\": \"lpadmin / lpoptions / sed command string\"\n   }\n   ```\n   The `category` field must be one of the four choices; both queue names must be covered.\n\n7. **Post-repair filter re-verification**:\n   - `cupsfilter_after.ps`: the PostScript produced by running the offline filter again after the repair; file size > 200 bytes;\n   - `cupsfilter_after.err`: the stderr of the same run; **must not** contain the words `error` / `fail`.\n\n8. **Regression submission**: after the repair, submit one compliant test job to each of the two queues (PageSize / Duplex etc. parameters must match the post-repair default values), wait until both reach completed, then take another status snapshot (`lpstat_after.txt` from step 1); that snapshot must contain at least 2 `completed` lines and 0 `stopped` / `disabled` lines.\n\n9. **Report** — `report.md` (≥ 60 lines):\n   Must contain six sections: \"queue topology / symptoms / evidence collection / root cause / fix / re-verification\" (Chinese or English keywords are both accepted); each section must cite the corresponding evidence file; copying the root cause verbatim into the report's title is not allowed.\n\nHard constraints:\n- `rm -rf /etc/cups` is not allowed; stopping cupsd is not allowed (only restart);\n- The semantics of legal Duplex options in the PPD must not be broken;\n- Red herring: in `/etc/cups/ppd/EyesonRaw.ppd` the PPD spec only allows switching the default value or making the filter accept the legal value; wholesale replacement of the PPD is not allowed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_13_cups_printer_queue_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_13_cups_printer_queue_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/jobs /opt/dsk13_gt\nchmod 1777 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/jobs 2>/dev/null || true\nchmod 700 /opt/dsk13_gt 2>/dev/null || true\ncat > /opt/dsk13_gt/expected.json <<'JSON'\n{\n  \"queues\": [\"EyesonPDF\", \"EyesonRaw\"],\n  \"expected_root_causes\": [\n    {\"queue\": \"EyesonRaw\", \"category\": \"ppd_default_option\", \"keywords\": [\"Duplex\",\"DuplexNoTumble\",\"filter-failed\",\"PPD\"]},\n    {\"queue\": \"EyesonPDF\", \"category\": \"media_mismatch\",     \"keywords\": [\"media\",\"A5\",\"A4\",\"PageSize\",\"Letter\"]}\n  ],\n  \"min_findings\": 2,\n  \"post_repair_required\": {\"no_stopped_jobs\": true, \"completed_jobs_min\": 2, \"cupsfilter_returncode\": 0},\n  \"expected_screens\": [\"view_cups_jobs_red_banner.png\",\"view_cups_set_default_options.png\",\"view_system_config_printer_panel.png\",\"view_lpstat_terminal_before.png\",\"view_postrepair_completed_jobs.png\"],\n  \"min_cross_channel_switches\": 5,\n  \"min_lpstat_snapshots\": 2\n}\nJSON\nchmod 600 /opt/dsk13_gt/expected.json 2>/dev/null || true\nchown -R root:root /opt/dsk13_gt 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nexport DISPLAY=${DISPLAY:-:0}\nwhich python3 || (apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq python3 python3-pip tesseract-ocr poppler-utils ghostscript) || true\npip install -q --break-system-packages reportlab pillow pytesseract 2>/dev/null || pip install -q reportlab pillow pytesseract 2>/dev/null || true\npython3 - <<'PYEOF'\nimport pathlib\nB = \"c\" + \"u\" + \"p\" + \"s\"\nppd_dir = pathlib.Path(\"/etc\") / B / \"ppd\"\nppd_dir.mkdir(parents=True, exist_ok=True)\nconf_path = pathlib.Path(\"/etc\") / B / \"printers.conf\"\nlog_dir = pathlib.Path(\"/var/log\") / B\nlog_dir.mkdir(parents=True, exist_ok=True)\nppd = '''*PPD-Adobe: \"4.3\"\n*FormatVersion: \"4.3\"\n*FileVersion: \"1.0\"\n*LanguageVersion: English\n*PCFileName: \"EYESONRAW.PPD\"\n*Manufacturer: \"Eyeson\"\n*Product: \"(EyesonRaw)\"\n*ModelName: \"EyesonRaw\"\n*NickName: \"EyesonRaw Virtual Queue\"\n*PSVersion: \"(3010.000) 0\"\n*LanguageLevel: \"3\"\n*ColorDevice: True\n*DefaultColorSpace: RGB\n*OpenUI *PageSize/Media Size: PickOne\n*OrderDependency: 10 AnySetup *PageSize\n*DefaultPageSize: A4\n*PageSize A4/A4: \"<</PageSize[595 842]/ImagingBBox null>>setpagedevice\"\n*PageSize Letter/US Letter: \"<</PageSize[612 792]/ImagingBBox null>>setpagedevice\"\n*CloseUI: *PageSize\n*OpenUI *Duplex/2-Sided Printing: PickOne\n*OrderDependency: 10 AnySetup *Duplex\n*DefaultDuplex: DuplexNoTumble\n*Duplex None/Off: \"<</Duplex false>>setpagedevice\"\n*Duplex DuplexNoTumble/Long Edge: \"<</Duplex true/Tumble false>>setpagedevice\"\n*CloseUI: *Duplex\n*%% Filter eyeson_wrap rejects DuplexNoTumble when PageSize=Letter (broken default)\n'''\n(ppd_dir / \"EyesonRaw.ppd\").write_text(ppd)\nconf = '''# Printer configuration file written by warmup\nNextPrinterId 3\n<DefaultPrinter EyesonPDF>\nUUID urn:uuid:eyeson-pdf-0001\nInfo Eyeson Virtual PDF Queue\nLocation Local\nMakeModel Generic PDF Printer\nDeviceURI pdf:/\nState Stopped\nStateMessage \"Filter failed: media mismatch\"\nStateTime 1714000000\nConfigTime 1713999000\nAccepting Yes\nShared No\nJobSheets none none\nQuotaPeriod 0\nPageLimit 0\nKLimit 0\nOpPolicy default\nErrorPolicy stop-printer\nOption media A5\n</DefaultPrinter>\n<Printer EyesonRaw>\nUUID urn:uuid:eyeson-raw-0002\nInfo Eyeson Raw Virtual Queue\nLocation Local\nMakeModel EyesonRaw Virtual Queue\nDeviceURI file:///dev/null\nState Stopped\nStateMessage \"Filter eyeson_wrap stopped: Duplex DuplexNoTumble unsupported on Letter\"\nStateTime 1714000100\nConfigTime 1713999100\nAccepting Yes\nShared No\nJobSheets none none\nOpPolicy default\nErrorPolicy stop-printer\n</Printer>\n'''\nconf_path.write_text(conf)\nlog = '''I [01/May/2026:10:00:01 +0000] [Job 101] Starting filter chain for EyesonRaw.\nW [01/May/2026:10:00:02 +0000] [Job 101] Unsupported Duplex value \"DuplexNoTumble\" on PageSize Letter.\nE [01/May/2026:10:00:02 +0000] [Job 101] Filter \"eyeson_wrap\" stopped (exit status 1)\nE [01/May/2026:10:00:02 +0000] [Job 101] EyesonRaw stopped: filter exit code 1\nW [01/May/2026:10:00:05 +0000] [Job 102] EyesonPDF: media A5 mismatch with submitted A4 page.\nE [01/May/2026:10:00:05 +0000] [Job 102] EyesonPDF stopped: media mismatch.\nI [01/May/2026:10:00:30 +0000] Printer \"EyesonRaw\" stopped by scheduler.\nI [01/May/2026:10:00:31 +0000] Printer \"EyesonPDF\" stopped by scheduler.\n'''\n(log_dir / \"error_log\").write_text(log)\npathlib.Path(\"/tmp_workspace/state/lpstat_stub.txt\").write_text(\n    'printer EyesonPDF disabled since Wed 01 May 2026 10:00:31 -\\n'\n    '        Filter failed: media mismatch\\n'\n    'printer EyesonRaw disabled since Wed 01 May 2026 10:00:30 -\\n'\n    '        Filter eyeson_wrap stopped (Duplex DuplexNoTumble unsupported on Letter)\\n'\n)\nout = pathlib.Path(\"/tmp_workspace/jobs\"); out.mkdir(parents=True, exist_ok=True)\ntry:\n    from reportlab.pdfgen import canvas\n    from reportlab.lib.pagesizes import A4, letter\n    for name, ps in ((\"sample_a4.pdf\", A4), (\"sample_letter.pdf\", letter)):\n        p = out / name\n        if not p.exists():\n            c = canvas.Canvas(str(p), pagesize=ps)\n            c.drawString(72, 720, \"Eyeson sample: \" + name)\n            c.showPage(); c.save()\nexcept Exception:\n    for name in (\"sample_a4.pdf\", \"sample_letter.pdf\"):\n        p = out / name\n        if not p.exists():\n            p.write_bytes(b\"%PDF-1.4\\n%EOF\\n\")\nPYEOF\nls -l /etc/c\"ups\"/ppd/EyesonRaw.ppd /etc/c\"ups\"/printers.conf /var/log/c\"ups\"/error_log 2>/dev/null || true\necho \"[warmup-dsk13] done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_13_cups_printer_queue_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_13_cups_printer_queue_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_13_cups_printer_queue_repair/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_13_cups_printer_queue_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_13_cups_printer_queue_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_13_cups_printer_queue_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_13_cups_printer_queue_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_13_cups_printer_queue_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_13_cups_printer_queue_repair",
+    "workspace_relative": "DSK/task_13_cups_printer_queue_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

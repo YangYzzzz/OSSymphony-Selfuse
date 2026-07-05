@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_11_anagramarama_word_grid",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: an Anagramarama timed round gives a 9-letter root word and asks you to find sub-words formed\nfrom those letters. The root word for this task is in `/tmp_workspace/exec/seed.txt`. The goal is to normalize\nthe root word, enumerate candidate sub-words of length 3 to 9 that fit within the root's letter bag using local\nEnglish dictionaries, record the words actually submitted, and use image evidence to cross-check the letter\narea, the timer/score area, and the final score during the round.\n\nProduce the following artifacts under `/tmp_workspace/results/`, preserving field names and file names:\n\n- `seed_normalized.txt`: a single 9-letter lowercase English word with no extra whitespace, derived from\n  `/tmp_workspace/exec/seed.txt`.\n- `candidates.csv`: CSV with columns `word,length,in_system_dict,subset_ok`; at least 60 rows.\n  Each `word` should be an alphabetic candidate of length 3 to 9, and `subset_ok` indicates that it can be\n  spelled from the root's letter bag without replacement.\n- `view_anagram_initial.png`: image evidence showing the initial state of an Anagramarama round, including the\n  9 letter slots, the timer area and the score area; recognizable text should contain one of the related keywords\n  such as `anagram`, `score`, `time`, `found`, `letters`, or `level`.\n- `entered.csv`: CSV with columns `ts_iso,word,accepted`; at least 18 rows. `word` records the candidate words\n  that were submitted, of which at least 6 must have length >= 5 and at least 1 must have length >= 7;\n  `accepted` may be `yes`, `no`, or `unknown`.\n- `view_anagram_midgame.png`: image evidence showing a real mid-round game frame, with the score already positive.\n- `view_anagram_final.png`: image evidence showing the end of the round or the final scoring state, with a\n  readable score number greater than 0.\n- `report.json`: JSON object containing `seed`, `candidates_total`, `entered_total`,\n  `entered_accepted`, `max_word_len`, `screenshots`, `ocr_score_value`, `score_match`.\n  `screenshots` lists `view_anagram_initial.png`, `view_anagram_midgame.png`,\n  `view_anagram_final.png`; `score_match` indicates whether `ocr_score_value` falls within\n  `[entered_accepted*5, entered_accepted*30]`.\n- `diff.txt`: non-empty text report comparing high-value candidate words against submitted words, explaining\n  which candidates were covered and which were missed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_11_anagramarama_word_grid.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_11_anagramarama_word_grid",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq aspell aspell-en wamerican wbritish imagemagick tesseract-ocr python3-pip) || true\npip install -q pillow numpy pytesseract 2>/dev/null || pip3 install -q --break-system-packages pillow numpy pytesseract 2>/dev/null || true\n[ -s /tmp_workspace/exec/seed.txt ] || python3 -c \"\nimport os, random\nwords=[w.strip().lower() for w in open('/usr/share/dict/words') if w.strip().isalpha() and len(w.strip())==9]\nrandom.seed(20260427)\nos.makedirs('/tmp_workspace/exec', exist_ok=True)\nopen('/tmp_workspace/exec/seed.txt','w').write(random.choice(words)+'\\n')\n\"",
+        "timeout": 5400
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_11_anagramarama_word_grid/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_11_anagramarama_word_grid /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_11_anagramarama_word_grid/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_11_anagramarama_word_grid/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_11_anagramarama_word_grid/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_11_anagramarama_word_grid/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_11_anagramarama_word_grid/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_11_anagramarama_word_grid.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_11_anagramarama_word_grid",
+    "workspace_relative": "GAM/task_11_anagramarama_word_grid",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

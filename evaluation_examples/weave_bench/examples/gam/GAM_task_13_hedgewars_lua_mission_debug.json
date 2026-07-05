@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_13_hedgewars_lua_mission_debug",
+  "snapshot": "weave_bench",
+  "instruction": "Background: `/tmp_workspace/exec/scripts/CrateCrash.lua` is a hand-crafted Hedgewars training\nmission. The player should collect 3 health crates on a small Bamboo-themed island to\ncomplete the \"Crate Crash Course\". The current script has several issues spanning team,\nammo and map configuration that you need to locate yourself.\nYour goal is to parse the original Lua mission, record reproduction evidence, produce a\nsyntactically valid and numerically sane fixed version, and provide image evidence of the\nmission list, the bug states, and the completion state.\n\nPlease produce the following files, keeping field names and file names exactly as specified:\n\n- `/tmp_workspace/results/before/CrateCrash.lua`: an unmodified copy of the original mission script, for diff bookkeeping.\n- `/tmp_workspace/results/parse_before.json`: JSON object containing the six keys\n  `map`, `theme`, `team`, `hogs`, `ammo`, `crates`; the `crates` list must have length 3.\n  Recommended: `team` includes `name,color_hex,grave,fort,voicepack,flag`,\n  `hogs` entries include `name,hat,spawn`,\n  `ammo` includes `amBazooka,amGrenade,amSkip`,\n  `crates` entries include `index,x,y`.\n- `/tmp_workspace/results/bugs.json`: JSON object containing three items:\n  `bug_team_color_invisible` (with `detected,color_hex`, optionally `theme,rationale`),\n  `bug_player_no_ammo` (with `detected,weapons_with_zero`),\n  `bug_crate_offscreen` (with `detected,crate_index,y`, optionally `map_max_y`).\n  Each item's fields should document the colour, ammo or coordinate evidence that triggered detection.\n- `/tmp_workspace/work/scripts/CrateCrash_fixed.lua`: the fixed Lua script; it must be\n  syntactically valid, the colour passed to `AddTeam(...)` must be a legal hex value and\n  not close to `0xFFFFFF`, the ammo counts for `amBazooka` and `amGrenade` must each be\n  at least 5, and the `y` coordinate of the second `SpawnHealthCrate` must lie within\n  `[0, 2048]`.\n- `/tmp_workspace/results/view_frontend.png`: image evidence showing that, before the fix,\n  the mission appears in the training mission list, with visible text such as `Training`,\n  `Single`, `Mission`, `Crate` or `Course`.\n- `/tmp_workspace/results/view_play_bug.png`: image evidence showing one of the real bug\n  states in the unfixed mission — e.g. character/name tag invisibility, abnormal\n  Bazooka/ammo state, or insufficient health crates; recognisable text should include\n  one of `Trainee`, `Rookie`, `Bazooka`, `Crates` or `ammo`.\n- `/tmp_workspace/results/view_frontend_after.png`: image evidence showing the training\n  mission list after the fix, with the mission still visible and selectable.\n- `/tmp_workspace/results/view_play_finish.png`: image evidence showing the mission\n  completion state, with result text such as `Mission complete`, `All crates collected`\n  or `You won` visible.\n- `/tmp_workspace/results/engine.log`: a non-empty log containing mission/ammo-related\n  markers such as `Trainee`, `Rookie`, `ammo` or `bazooka`.\n- `/tmp_workspace/results/parse_after.json`: JSON object with the same schema as\n  `parse_before.json`, reflecting the structure of the fixed script.\n- `/tmp_workspace/results/diff.txt`: text diff between the original script and\n  `CrateCrash_fixed.lua`, with between 6 and 200 lines.\n- `/tmp_workspace/results/report.json`: JSON object containing `bugs_found`,\n  `fixes_applied`, `team_color_after`, `ammo_after`, `crates_after`,\n  `playthrough_finished`, `screenshots`, `engine_log_lines`; `screenshots` lists the\n  four image evidence file names.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_13_hedgewars_lua_mission_debug.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_13_hedgewars_lua_mission_debug",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq imagemagick tesseract-ocr lua5.3 libgl1 python3-pip) || true\npip install -q pillow numpy pytesseract luaparser 2>/dev/null || pip3 install -q --break-system-packages pillow numpy pytesseract luaparser 2>/dev/null || true",
+        "timeout": 5400
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_13_hedgewars_lua_mission_debug/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_13_hedgewars_lua_mission_debug /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_13_hedgewars_lua_mission_debug/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_13_hedgewars_lua_mission_debug/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_13_hedgewars_lua_mission_debug/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_13_hedgewars_lua_mission_debug/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_13_hedgewars_lua_mission_debug/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_13_hedgewars_lua_mission_debug.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_13_hedgewars_lua_mission_debug",
+    "workspace_relative": "GAM/task_13_hedgewars_lua_mission_debug",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

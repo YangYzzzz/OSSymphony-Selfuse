@@ -150,7 +150,7 @@ def run_env_tasks(
         snapshot_name = None
         region = getattr(args, "region", None)
 
-        if args.benchmark == "osworld":
+        if args.benchmark in {"osworld", "weave_bench"}:
             env = OSWorldDesktopEnv(
                 path_to_vm=args.path_to_vm,
                 action_space=args.action_space,

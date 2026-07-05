@@ -1,0 +1,71 @@
+{
+  "id": "WEB_task_0_iframe_3layer_form",
+  "snapshot": "weave_bench",
+  "instruction": "Background: the local URL `http://localhost:8765/insurance_quote.html` hosts a multi-step insurance-quote form demo (mimicking a real insurance SaaS). The top page nests an `<iframe id=\"step-frame\">` inside its `#wizard` container; the same iframe sequentially loads `step1.html` (personal info) → `step2.html` (vehicle info) → `step3.html` (drag-to-verify captcha) → `step4.html` (confirm & submit). The parent page persists the current step's field values to `window.formData` via Next/Back buttons before switching; step4 reads everything back from `window.parent.formData`, POSTs the aggregated payload to the backend `/submit_quote`, and the backend dynamically computes a quote from the submitted fields and redirects to `quote_result.html`.\n\nGoal: walk through the full 4-step form and submit it, then save the backend-computed quote to disk as two deliverables (screenshot + amount text). Field values to submit:\n\n- Personal info: name `张三`, date of birth `1990-05-15`, gender `男`\n- Vehicle info: brand `Toyota`, model `Camry`, year `2022`, plate `京A12345`\n- Step 3 must complete the puzzle-drag verification; step 4 must check the terms box and then click \"Submit Quote\"\n\n### Required deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `quote.png` | Full-screen screenshot of `quote_result.html` after a successful submission. File ≥ 5 KB (≥ 20 KB recommended). The image must clearly show the quote amount (including the ¥ symbol), must be the result page (not an intermediate step), and must not contain any error / anti-bot red banner. |\n| `quote_amount.txt` | A single line of plain text strictly matching `¥<integer>.<two-decimals>` (e.g. `¥2,345.00`). The numeric value must fall in `[100, 100000]`. The amount must come from the real backend response — do not fabricate. |\n\n### Anti-cheat and flow constraints\n\n- Step transitions must go through the Next button so the parent page captures the current step's fields; jumping URLs directly bypasses capture and the submission will be missing fields.\n- The puzzle drag must simulate a realistic mouse trajectory (with acceleration/deceleration). Teleporting will be flagged as `bot_detected` in `server.log` and the task is considered failed.\n- Each step transition has roughly 1.5s of async loading; wait for the iframe `load` event before interacting.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_0_iframe_3layer_form.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_0_iframe_3layer_form",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which chromium-browser >/dev/null 2>&1 || which chromium >/dev/null 2>&1 || apt-get install -y -qq chromium-browser || apt-get install -y -qq chromium || true\nmkdir -p /tmp_workspace || true\nnohup python3 /tmp_workspace/setup/server.py >/tmp/web_task0_server.log 2>&1 &\nsleep 3 || true\ncurl -sf http://localhost:8765/insurance_quote.html >/dev/null && echo \"WEB_task_0 server up\" || echo \"WEB_task_0 server NOT up\"\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_0_iframe_3layer_form/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_0_iframe_3layer_form /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_0_iframe_3layer_form/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_0_iframe_3layer_form/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_0_iframe_3layer_form.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_0_iframe_3layer_form",
+    "workspace_relative": "WEB/task_0_iframe_3layer_form",
+    "uses_vlm_helper": true,
+    "has_gt": false
+  }
+}

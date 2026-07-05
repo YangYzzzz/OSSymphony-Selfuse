@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_16_prometheus_alert_silence_grafana",
+  "snapshot": "weave_bench",
+  "instruction": "You are the on-call engineer for the checkout-api team. Starting at 03:14, your phone was blown up by PagerDuty for 30 minutes, and multiple alerts on the alerting dashboard are flapping non-stop. The SRE Lead wants three things done before your shift hand-off:\n\n1. Silence **the alert that is actually flapping** for ~2 hours (use the Alertmanager Silence mechanism; **do not** delete the rule_file);\n2. Identify another **fake alert that fires forever due to a broken expression** (hint: comparing a monotonically increasing counter directly with `> 0` — always true), and provide a fixed `fixed_rules.yml`;\n3. Write a postmortem of ≥ 800 characters explaining the root cause, why it was not detected automatically at the time, and a regression test plan.\n\nEnvironment and assets (everything is already up; credentials `admin/admin`):\n- `http://localhost:9090/`: Prometheus (`/alerts` `/rules` `/api/v1/...`).\n- `http://localhost:9093/`: Alertmanager UI (`/#/silences` `/#/alerts` `/api/v2/...`).\n- `http://localhost:7016/`: Grafana 10.4, dashboard \"Checkout API on-call\"; left sidebar ☰ → Alerting provides Alert rules / Silences / Contact points / State history.\n- `http://127.0.0.1:9097/`: webhook sink, writes to `/tmp/webhook.log`; every alertmanager POST lands there.\n- `/tmp_workspace/dash16/prometheus/rules/noisy_alerts.yml`: the currently in-use (broken) rule file — **do not modify it directly**; grading uses this file as the baseline.\n\nTask objectives:\n- Use the Alertmanager Silence mechanism to silence the truly flapping alert for ~2 hours (duration falls within [115min, 135min]);\n- Patch the always-true-expression alert via a `fixed_rules.yml` (after the fix, `expr` must wrap the counter with `rate(...)` / `irate(...)` / `increase(...)` and the comparison threshold must be changed to ≥ 0.01);\n- Leave joint evidence across three channels: structured data + rendered UI + network traffic;\n- Write a qualifying postmortem.\n\nProduce the following deliverables under `/tmp_workspace/results/`:\n\n1. **Alert and rule evidence (before)**\n   - `firing_alerts.json`: list of alerts currently firing, schema:\n     ```json\n     {\"timestamp\": \"...\", \"firing\": [{\"name\": \"...\", \"service\": \"...\", \"value\": \"...\"}, ...]}\n     ```\n     At least 2 firing records, and at least one of the flapping alert or the always-true alert should be findable among them.\n   - `promtool_check_before.txt`: promtool check result for the original `noisy_alerts.yml` (keep both stdout/stderr) as a snapshot of the rule state before the fix.\n\n2. **Silence evidence**\n   - `silences.json`: structured dump of all current Alertmanager silences; for the flapping alert, there must exist a silence satisfying all of the following:\n     - The `matchers` list contains `name == \"alertname\"` and `value == <name of the flapping alert>`;\n     - `isRegex == true` is not allowed (must be equality match);\n     - The silence's `endsAt - startsAt` falls within a ~2-hour range (accepted range 6900s ~ 8100s, i.e. ~115~135 min).\n   - `amtool_silences.txt`: amtool's human-readable list of current silences; must contain the name of the silenced alert.\n\n3. **Network evidence that the silence actually took effect**\n   - `webhook_after_silence.pcap` (or `webhook_after_silence.txt`, either one): packet capture of alertmanager POST traffic on the :9097 webhook within 60 seconds after the silence was created;\n   - `webhook_tail.log`: copy of the tail of `/tmp/webhook.log` (≥ 30 lines).\n   - In both pieces of evidence above, the name of the silenced alert must **no longer appear** (proving the silence really intercepted the webhook push); meanwhile, the other still-firing alert (the always-true-expression one) should still appear.\n\n4. **Fixed rules and unit tests**\n   - `fixed_rules.yml`: a valid prometheus rule file; `promtool check rules` must exit 0; for the always-true alert, its `expr` must contain one of `rate(` / `irate(` / `increase(` and compare against a threshold ≥ 0.01.\n   - `test_rules.yml`: a minimal usable promtool unit test (≥ 2 input series + ≥ 2 alert_test).\n   - `promtool_test_after.txt`: the result of running that unit test; must contain a success marker such as `SUCCESS` / `PASS` / `0 failures`.\n\n5. **Visual evidence** (each PNG ≥ 5 KB, from actually rendered Grafana / Alertmanager pages; PIL compositing is not allowed)\n   - `view_alert_state_history.png`: Grafana → Alerting → State history view of the flapping alert; the image must show red/green bands indicating the alert state repeatedly switching between firing↔normal (i.e., the flap frequency exists only in pixel color).\n   - `view_silence_create.png`: Silence detail page (Alertmanager UI or Grafana → Alerting → Silences); must show an \"Active\" badge + a valid alertname matcher + an Expires time ~2 hours in the future.\n   - `view_annotate_panel.png`: screenshot of a region annotation on the \"API error ratio\" panel on the dashboard — must show a red (or colored) horizontal region overlaying the flap segment + an annotation text bubble (suggested content along the lines of \"flap window — silenced, see postmortem for root cause\").\n   - `view_edit_inspect.png`: Edit / Inspect → Data drawer of the \"JVM old-gen GC pause\" panel on the dashboard; must show the csv table / Stats sub-tab labels.\n   - `view_alert_resolved.png`: in the Grafana → Alerting → Alert rules list, the state badge of the silenced alert has changed to \"Silenced\" or \"Normal\".\n\n6. **Postmortem**\n   - `postmortem.md`: ≥ 800 characters; suggested structure: 1) incident timeline → 2) root cause (must hit both layers: `counter without rate()` and `threshold too tight causing flap`) → 3) current workaround (silence duration / patch location) → 4) long-term fix → 5) regression test plan (mention `promtool test rules`); hit ≥ 4/6 keywords (`flap`, `canary`, `rate(`, `silence`, `threshold`, `counter`).\n\nHard constraints:\n- The Silence matcher must be an `alertname=<name>` equality match; regex matchers are not accepted.\n- The fix must land in the new file `fixed_rules.yml`; **do not** modify `/tmp_workspace/dash16/prometheus/rules/noisy_alerts.yml`.\n- The invariant \"the silenced alert no longer appears in the network evidence\" must hold; a gray UI badge alone is not enough.\n- Screenshots must come from actually rendered pages (must genuinely show key UIs such as Alertmanager Silences editor, Inspect, and Grafana Annotation / State history).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_16_prometheus_alert_silence_grafana.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_16_prometheus_alert_silence_grafana",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /opt/dash16 /tmp_workspace/dash16 /tmp_workspace/results /tmp_workspace/state /var/lib/grafana/dashboards /opt/dav16_gt\nwhich jq || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip wget curl tar tcpdump jq poppler-utils)\npip3 install --break-system-packages --quiet prometheus_client 2>/dev/null || pip3 install --quiet prometheus_client\ncp -rn /tmp_workspace/exec/* /tmp_workspace/dash16/ 2>/dev/null || true\nfor d in prometheus alertmanager grafana_provisioning grafana_dashboards metric_emitter; do [ -e /tmp_workspace/$d ] && cp -rn /tmp_workspace/$d /tmp_workspace/dash16/ 2>/dev/null; done\n[ -f /tmp_workspace/webhook_sink.py ] && cp /tmp_workspace/webhook_sink.py /tmp_workspace/dash16/ 2>/dev/null\n# Move expected.json to a root-only path so the agent cannot read the\n# noisy alertname / patched-expr literal / postmortem keyword list as\n# hints. Mirrors DAV_11/12 + DSK_16 pattern.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/dav16_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/dav16_gt 2>/dev/null || true\n  chmod 700 /opt/dav16_gt 2>/dev/null || true\n  chmod 600 /opt/dav16_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\ntest -x /opt/dash16/grafana/bin/grafana-server || (for url in \"https://dl.grafana.com/oss/release/grafana-10.4.0.linux-amd64.tar.gz\" \"https://mirrors.tuna.tsinghua.edu.cn/grafana/oss/release/grafana-10.4.0.linux-amd64.tar.gz\"; do curl -fL --retry 5 --retry-delay 3 --connect-timeout 30 -o /tmp_workspace/state/grafana.tgz \"$url\" && break; done; tar -xzf /tmp_workspace/state/grafana.tgz -C /opt/dash16 && mv /opt/dash16/grafana-* /opt/dash16/grafana)\ntest -x /opt/dash16/prometheus/prometheus || (for url in \"https://github.com/prometheus/prometheus/releases/download/v2.51.2/prometheus-2.51.2.linux-amd64.tar.gz\" \"https://ghproxy.net/https://github.com/prometheus/prometheus/releases/download/v2.51.2/prometheus-2.51.2.linux-amd64.tar.gz\" \"https://mirror.ghproxy.com/https://github.com/prometheus/prometheus/releases/download/v2.51.2/prometheus-2.51.2.linux-amd64.tar.gz\"; do curl -fL --retry 5 --retry-delay 3 --connect-timeout 30 -o /tmp_workspace/state/prom.tgz \"$url\" && break; done; tar -xzf /tmp_workspace/state/prom.tgz -C /opt/dash16 && mv /opt/dash16/prometheus-* /opt/dash16/prometheus) || (DEBIAN_FRONTEND=noninteractive apt-get install -y -qq prometheus 2>/dev/null && mkdir -p /opt/dash16/prometheus && ln -sf \"$(command -v prometheus)\" /opt/dash16/prometheus/prometheus && ln -sf \"$(command -v promtool)\" /opt/dash16/prometheus/promtool)\ntest -x /opt/dash16/alertmanager/alertmanager || (for url in \"https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz\" \"https://ghproxy.net/https://github.com/prometheus/alertmanager/releases/download/v0.27.0/alertmanager-0.27.0.linux-amd64.tar.gz\"; do curl -fL --retry 5 --retry-delay 3 --connect-timeout 30 -o /tmp_workspace/state/am.tgz \"$url\" && break; done; tar -xzf /tmp_workspace/state/am.tgz -C /opt/dash16 && mv /opt/dash16/alertmanager-* /opt/dash16/alertmanager) || (DEBIAN_FRONTEND=noninteractive apt-get install -y -qq prometheus-alertmanager 2>/dev/null && mkdir -p /opt/dash16/alertmanager && ln -sf \"$(command -v alertmanager)\" /opt/dash16/alertmanager/alertmanager && ln -sf \"$(command -v amtool)\" /opt/dash16/alertmanager/amtool)\nln -sf /opt/dash16/prometheus/promtool /usr/local/bin/promtool 2>/dev/null\nln -sf /opt/dash16/alertmanager/amtool /usr/local/bin/amtool 2>/dev/null\nmkdir -p /opt/dash16/grafana/conf/provisioning/datasources /opt/dash16/grafana/conf/provisioning/dashboards\ncp /tmp_workspace/dash16/grafana_provisioning/datasources/ds.yaml /opt/dash16/grafana/conf/provisioning/datasources/ds.yaml 2>/dev/null\ncp /tmp_workspace/dash16/grafana_provisioning/dashboards/dashboards.yaml /opt/dash16/grafana/conf/provisioning/dashboards/dashboards.yaml 2>/dev/null\ncp /tmp_workspace/dash16/grafana_dashboards/*.json /var/lib/grafana/dashboards/ 2>/dev/null\ncurl -sf http://localhost:9100/metrics >/dev/null 2>&1 || nohup python3 /tmp_workspace/dash16/metric_emitter/emitter.py >/tmp/emitter.log 2>&1 &\ncurl -sf http://127.0.0.1:9097/ >/dev/null 2>&1 || nohup python3 /tmp_workspace/dash16/webhook_sink.py >/tmp/webhook_sink.log 2>&1 &\nsleep 1\ncurl -sf http://localhost:9090/-/ready >/dev/null 2>&1 || nohup /opt/dash16/prometheus/prometheus --config.file=/tmp_workspace/dash16/prometheus/prometheus.yml --storage.tsdb.path=/tmp_workspace/state/promdata16 --web.listen-address=:9090 --web.enable-lifecycle >/tmp/prom16.log 2>&1 &\ncurl -sf http://localhost:9093/-/ready >/dev/null 2>&1 || nohup /opt/dash16/alertmanager/alertmanager --config.file=/tmp_workspace/dash16/alertmanager/alertmanager.yml --storage.path=/tmp_workspace/state/amdata16 --web.listen-address=:9093 >/tmp/am16.log 2>&1 &\ncurl -sf http://localhost:7016/api/health >/dev/null 2>&1 || (cd /opt/dash16/grafana && GF_SERVER_HTTP_PORT=7016 GF_SECURITY_ADMIN_PASSWORD=admin GF_AUTH_ANONYMOUS_ENABLED=true GF_AUTH_ANONYMOUS_ORG_ROLE=Editor nohup ./bin/grafana-server --homepath=/opt/dash16/grafana >/tmp/grafana16.log 2>&1 &)\nsleep 3\nfor i in $(seq 1 30); do curl -sf http://localhost:7016/api/health >/dev/null && break; sleep 2; done\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_16_prometheus_alert_silence_grafana/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_16_prometheus_alert_silence_grafana /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_16_prometheus_alert_silence_grafana/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_16_prometheus_alert_silence_grafana/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_16_prometheus_alert_silence_grafana/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_16_prometheus_alert_silence_grafana/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_16_prometheus_alert_silence_grafana/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_16_prometheus_alert_silence_grafana.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_16_prometheus_alert_silence_grafana",
+    "workspace_relative": "DAV/task_16_prometheus_alert_silence_grafana",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

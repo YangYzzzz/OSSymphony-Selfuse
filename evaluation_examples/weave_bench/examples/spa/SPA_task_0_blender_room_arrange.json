@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_0_blender_room_arrange",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: this task is graded purely on the deliverable files — **there is no human approver**. Just execute, produce the files, and don't write \"if you would like me to...\" style questions or wait for approval. All deliverables must land in the **`/tmp_workspace/` root directory**, and once finished, run `ls -la /tmp_workspace/` as a self-check before exiting.\n\nBackground: under `/tmp_workspace/assets/` there are 6 `.blend` furniture assets (sofa / coffee table / TV stand / dining table / chairs ×2 / nightstand). Note that `assets/floor_lamp.blend` is a legacy name — **the internal object is actually `ClassicNightstand_01` (a nightstand)**. Place it according to \"nightstand\" semantics; keep the filename unchanged.\n\nGoal: build a 30 m² rectangular living room (approximately 5 m × 6 m × 2.8 m, with 4 walls + floor + ceiling), arrange the 6 pieces of furniture per the home-layout common sense below, add basic lighting and a camera, render the scene, and produce the primary deliverable `room.blend` plus the supporting deliverables. The implementation method is up to you (Blender GUI / `bpy` script / headless `blender -b -P` are all fine); only the final deliverable fields are graded.\n\nPlacement rules:\n- Sofa against the north wall, ~100 mm clearance from the wall;\n- TV stand against the south wall, centered horizontally;\n- Coffee table sits between the sofa and the TV stand, centered;\n- Dining table against the east wall with ~800 mm clearance, with the two chairs on either side of it;\n- Nightstand (from `floor_lamp.blend`) in the corner at the right end of the sofa, flush against the sofa's short side as a side table.\n\n### Hard constraints on the primary deliverable `room.blend`\n- The filename must be exactly `room.blend` (not `room_scene.blend` or similar).\n- Must contain at least 6 MESH objects whose names can be recognized as synonyms of the following 6 furniture categories: sofa / coffee(table) / tv(stand or console) / dining(table) / chair / nightstand (bedside / sidetable / lamp and similar synonyms are accepted).\n- The xy bounding boxes of the 6 pieces must pairwise not overlap (no clipping); the overall overlap-compliance rate must be ≥ 0.85.\n- Placement orientation and wall clearances must conform to the rules above (tolerance ~ ±50–100 mm).\n- At least 1 piece of furniture must have `distance_to_nearest_wall_mm` within `[0, 200]` (i.e., genuinely flush against a wall).\n\n### Supporting deliverables (under `/tmp_workspace/` root)\n| File | Requirement |\n|---|---|\n| `render.png` | Perspective render, resolution strictly **1920×1080**, with real materials and shadows (grayscale std > 35), file size ≥ 30 KB |\n| `top_view.png` | Top-down view screenshot, resolution ≥ **1280×720**, file size ≥ 15 KB; md5 must differ from `render.png` (prevents renaming the same image) |\n| `layout.csv` | ≥ 6 rows; header must be `object,x,y,z,rotation_z,distance_to_nearest_wall_mm`; the 6 object names must all be distinct |\n\nOverall, the scene should visibly demonstrate: a complete room, no furniture clipping, ≥ 3 large pieces against walls, a walkable aisle through the center, and normal lighting (not all-black / not over-exposed).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_0_blender_room_arrange.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_0_blender_room_arrange",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which blender >/dev/null 2>&1 || (curl -fsSLo /tmp/blender.tar.xz https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64.tar.xz && mkdir -p /opt/blender && tar -xJf /tmp/blender.tar.xz -C /opt/blender --strip-components=1 && ln -sf /opt/blender/blender /usr/local/bin/blender) || true\napt-get install -y -qq tesseract-ocr || true\npip install -q numpy pillow pytesseract || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_0_blender_room_arrange/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_0_blender_room_arrange /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_0_blender_room_arrange/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_0_blender_room_arrange/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_0_blender_room_arrange/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_0_blender_room_arrange/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_0_blender_room_arrange/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_0_blender_room_arrange.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_0_blender_room_arrange",
+    "workspace_relative": "SPA/task_0_blender_room_arrange",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

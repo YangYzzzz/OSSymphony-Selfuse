@@ -12,6 +12,7 @@ import time
 from multiprocessing import Manager, Process, Queue, current_process
 
 import lib_run_single
+from task_loader import load_task_config
 from mm_agents.os_symphony2.os_symphony2_agent import OSSymphony2Agent
 from desktop_env.osworld.desktop_env import DesktopEnv as OSWorldDesktopEnv
 from desktop_env.waa.desktop_env import DesktopEnv as WindowsAgentArenaDesktopEnv
@@ -99,6 +100,15 @@ active_environments = []
 processes = []
 is_terminating = False
 
+def task_get(task_config, key: str, default=None):
+    if hasattr(task_config, "get") and callable(getattr(task_config, "get")):
+        try:
+            return task_config.get(key, default)
+        except TypeError:
+            return task_config.get(key)
+    return getattr(task_config, key, default)
+
+
 def distribute_tasks(test_all_meta: dict) -> list:
     all_tasks = []
     for domain, examples in test_all_meta.items():
@@ -137,7 +147,7 @@ def run_env_tasks(
         snapshot_name = None
         region = getattr(args, "region", None)
 
-        if args.benchmark == "osworld":
+        if args.benchmark in {"osworld", "osworld-v2"}:
             env = OSWorldDesktopEnv(
                 path_to_vm=args.path_to_vm,
                 action_space=args.action_space,
@@ -228,14 +238,17 @@ def run_env_tasks(
                 break
             domain, example_id = item
             try:
-                config_file = os.path.join(
-                    args.test_config_base_dir, f"{args.benchmark}/examples/{domain}/{example_id}.json"
+                is_osworld_v2 = args.benchmark == "osworld-v2"
+                example = load_task_config(
+                    task_id=example_id,
+                    base_dir=args.test_config_base_dir,
+                    benchmark="osworld" if is_osworld_v2 else args.benchmark,
+                    domain=domain,
+                    eval_version="v2" if is_osworld_v2 else "v1",
+                    prefer_class=is_osworld_v2,
                 )
-                with open(config_file, "r", encoding="utf-8") as f:
-                    example = json.load(f)
 
-
-                instruction = example["instruction"]
+                instruction = task_get(example, "instruction")
                 
                 example_result_dir = os.path.join(
                     args.result_dir,
@@ -371,7 +384,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--input_screen_height", type=int, default=1080, help="Model Image height")
     parser.add_argument("--max_steps", type=int, default=15)
 
-    parser.add_argument("--benchmark", type=str, default="osworld", help="osworld / waa / macos")
+    parser.add_argument("--benchmark", type=str, default="osworld", help="osworld / waa / macos / weavebench / osworld-v2")
 
     parser.add_argument("--domain", type=str, default="all")
     parser.add_argument(

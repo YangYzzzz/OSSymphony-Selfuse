@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_12_verilator_gtkwave_uart_bug",
+  "snapshot": "weave_bench",
+  "instruction": "Background: `/tmp_workspace/uart_tx.v` is a candidate 8N1 UART transmitter RTL\n(forked from opencores `wb_uart16550`). The on-board USB serial receiver keeps\nreporting framing errors. `/tmp_workspace/scope_reference_capture.txt` lays out\nthe contract: 100 MHz clock, 16 clk/bit, the test byte `0x55` must appear on the\nwire LSB-first as `1 0 1 0 1 0 1 0`, and the stop bit must hold for a full\nbit-time (160 ns). The RTL has **two** regressions against this contract.\n\nGoal: build and simulate both the buggy and fixed versions, produce a\nside-by-side waveform comparison, supply the minimal fix diff, and write a\nregression report suitable for submission to the ASIC team. All deliverables go\nto `/tmp_workspace/results/`. Input materials: `uart_tx.v` / `sim_main.cpp` /\n`Makefile` / `scope_reference_capture.txt`.\n\n### Hard constraints on the main deliverables\n\n- `sim_build.log`: merged build/simulation output for both buggy and fixed runs;\n  must contain visible RTL→C++ simulator compile traces, at least 2 `[sim] done`\n  markers, with the two halves separated by `=== fixed ===`.\n- `dump_buggy.vcd` / `dump_fixed.vcd`: must contain a valid `$timescale` /\n  `$var` header, a `tx` signal declaration, and enough event lines (0/1\n  transitions) to cover a full frame.\n- `vcd_signals.txt`: lists the signal names present in the dump; must include\n  `tx`, `bit_idx`, `state`, `clk`.\n- `observed_bits_buggy.json`: produced by your decode script from\n  `dump_buggy.vcd`, schema\n  `{byte_hex, bits_lsb_first[8], stop_width_ns, frame_total_ns}`; the values\n  must reflect the RTL's actual wire behavior right now (i.e. the consequence\n  of the two bugs), not back-derived from the contract.\n- `observed_bits_fixed.json`: same schema, reflects the post-fix behavior, and\n  must line up with the reference contract (byte `0x55`, bits\n  `[1,0,1,0,1,0,1,0]`, stop ≈ 160 ns, frame total ≈ 1600 ns).\n- `decode_wire.py`: written by you (≥ 25 lines / ≥ 600 characters); the script\n  body must show `vcd` / `$var` / timestamp (`#`) handling, and must be able to\n  recover the `tx` bit window and the byte from the VCD; must not depend on\n  `/tmp_workspace/gt/`.\n- `uart_tx_fixed.v`: the fixed RTL, **must still contain** the\n  `data_r[bit_idx]` and `CLKS_PER_BIT-1` forms, and **must no longer contain**\n  `data_r[7 - bit_idx]` or `(CLKS_PER_BIT/2)-1`.\n- `fix.diff`: a unified diff from `uart_tx.v` to `uart_tx_fixed.v`, 1–3 hunks;\n  the `-` lines must remove the two buggy forms above and the `+` lines must\n  introduce the correct forms.\n- `marker_readout.json`: `{marker_A_ns, marker_B_ns, data_bit_centers_ns[8],\n  data_bit_levels[8]}`; `marker_B - marker_A ≥ 1000 ns`; `levels` must be the\n  fixed-side ground truth `[1,0,1,0,1,0,1,0]`; `centers` must be monotonically\n  increasing with adjacent spacing 140–180 ns.\n- `marker_alignment.json`: `{\"diff_ns\": <num>}`, `0 < |diff_ns| ≤ 12`, and\n  `|(marker_B - marker_A) - 1440| ≤ 80`.\n- `fix_explanation.md`: 120–400 words, two paragraphs (bit addressing direction\n  / stop-bit width).\n- `report.md`: ≥ 400 words; must contain the keywords `LSB`, `stop`, `0x55`,\n  `0xAA`, `160`, `marker A`, `marker B`, plus the numeric/term tokens `1520` /\n  `1600` / `framing` / `bit_idx`; must reference the three screenshots\n  `view_01` / `view_03` / `view_04` by filename; ends with a lessons-learned\n  section of ≥ 60 words.\n\n### Four work-in-progress screenshots (under `/tmp_workspace/results/`)\n\nEach must be a real screenshot of a waveform-viewer GUI window (showing the\nsignal tree, the Wave pane, the time axis, the status bar and other UI\nelements) — hand-drawn or synthesized images are not allowed. The screenshots\nwill be checked with both OCR and a VLM.\n\n| File | Content requirement |\n|---|---|\n| `view_01_gtkwave_full.png` | Full-window view after loading the buggy dump, with the 6 signals `clk`/`tx`/`busy`/`state[2:0]`/`bit_idx[2:0]`/`data_r[7:0]` already added to the wave pane |\n| `view_02_gtkwave_marker_pair.png` | Two **named markers** (named `A` and `B`) placed at the START edge and at the end of the STOP region; the UI / status bar shows their names and timestamps |\n| `view_03_gtkwave_fixed.png` | Same 6-signal view after loading the fixed dump; the `tx` bit pattern is visually distinguishable from view_01 |\n| `view_04_gtkwave_zoom_stop.png` | Zoomed into the STOP region of the fixed dump; the time axis / marker shows a STOP high-level width of ≈ 160 ns |\n\n### Red lines\n\n- Copying any file from `/tmp_workspace/gt/` into `results/` is not allowed\n  (detected by hash comparison).\n- The RTL fix must be exactly the two substantive changes; do not rearrange the\n  module structure.\n- All numeric fields must be derived from your decode script / from readings of\n  the GUI; do not just fill in values by hand.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_12_verilator_gtkwave_uart_bug.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_12_verilator_gtkwave_uart_bug",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\nmkdir -p /tmp_workspace/results /tmp_workspace/state\nchmod -R 777 /tmp_workspace 2>/dev/null || true\nwhich iverilog >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich iverilog >/dev/null 2>&1 || timeout 300 apt-get -o Acquire::Retries=10 install -y -qq iverilog build-essential 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore pyvcd matplotlib numpy 2>/dev/null || pip3 install -q --root-user-action=ignore pyvcd matplotlib numpy 2>/dev/null || true\nchmod -R 777 /tmp_workspace 2>/dev/null || true\necho \"[warmup] SPA_task_12 done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_12_verilator_gtkwave_uart_bug/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_12_verilator_gtkwave_uart_bug /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_12_verilator_gtkwave_uart_bug/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_12_verilator_gtkwave_uart_bug/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_12_verilator_gtkwave_uart_bug/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_12_verilator_gtkwave_uart_bug/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_12_verilator_gtkwave_uart_bug/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_12_verilator_gtkwave_uart_bug.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_12_verilator_gtkwave_uart_bug",
+    "workspace_relative": "SPA/task_12_verilator_gtkwave_uart_bug",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

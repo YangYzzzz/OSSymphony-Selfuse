@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_12_dbus_service_introspect_repair",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: You have taken over a Linux workstation. A small session-bus service `org.eyeson.MetricsBox` written by your predecessor (managed by systemd `--user`, source at `/tmp_workspace/metricsbox/metricsbox_service.py`) has recently been receiving complaints from third-party clients:\n\n- Calling `Echo(\"hi\")` returns `org.freedesktop.DBus.Error.InvalidArgs`;\n- After subscribing to the `MetricUpdated` signal and triggering `Tick(3)`, the client **receives no signal at all**;\n- Calling `GetSecret()` returns `AccessDenied`.\n\nThe service's public contract (written in `/tmp_workspace/metricsbox/README.txt`) is fixed as: service name `org.eyeson.MetricsBox`, object path `/org/eyeson/MetricsBox`, interface `org.eyeson.MetricsBox.Counter`, methods `Echo(s)->s` / `Tick(i)->i` / `GetSecret()->s`, signal `MetricUpdated(s,i)`, property `Total: i`. The source code contains 3 bugs of **mutually non-overlapping nature**, falling respectively under: method signature / argument type mismatch, signal routing (object path) error, and permission / environment denial. The reference client `client_probe.py` is also in the same directory.\n\nTask goal: Without modifying the contract (README, bus name, object path, interface name, method signatures exposed in XML), and without sidestepping errors by removing XML signatures or tampering with polkit/policy, locate and fix `metricsbox_service.py`, leaving a cross-channel evidence chain of \"diagnose → repair → reverify\" in `/tmp_workspace/results/`. The channels used for diagnosis / reverification are entirely free (`busctl` / `dbus-monitor` / `gdbus` / terminal scripts / any D-Bus debugger are all accepted).\n\n### Hard constraints for the main deliverables (located in `/tmp_workspace/results/`)\n\n- `introspect.xml`: The full introspection XML of the service at `/org/eyeson/MetricsBox`. Must contain interface `org.eyeson.MetricsBox.Counter` and method `Echo`; after repair, simply re-capture with `busctl --user --xml-interface introspect ...`. The post-repair live contract shape must still contain the `Counter` interface, `Echo` method name, and `MetricUpdated` signal name (evaluation uses `busctl introspect` for live verification).\n- `findings.json`: JSON array, **at least 3 entries**, each with schema:\n  ```json\n  {\"id\":\"B1|B2|B3\",\"symptom\":\"...\",\"evidence_cli\":\"...\",\"evidence_gui\":\"...\",\"root_cause\":\"file:lineno\",\"fix\":\"...\"}\n  ```\n  The 3 root causes must **cover three different categories**: method signature / argument type mismatch, signal routing, and permission / environment denial; each entry must have all four fields `evidence_cli` / `evidence_gui` / `root_cause` / `fix` filled in.\n- `repair.patch`: A **valid unified diff** against `/tmp_workspace/metricsbox/metricsbox_service.py` (starting with `---` / `diff ` / `@@`), which must apply cleanly with `patch --dry-run -p0 -d /`, with changes covering all three root-cause categories (do not touch only one place).\n- `report.md`: Diagnosis / repair report, **≥ 60 lines**, must contain the four sections \"Symptom / Evidence / Root Cause / Fix\" (both Chinese and English keywords are accepted), each root cause must reference one screenshot filename + one D-Bus traffic snippet.\n\n### Companion deliverables (located in `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `dbus_monitor.log` | Session bus traffic captured simultaneously while the client performs `Echo / Tick / GetSecret / listening to MetricUpdated`; **≥ 30 lines of valid content**; must contain at least one `InvalidArgs` error frame (evaluation uses regex matching `error_name=org.freedesktop.DBus.Error.InvalidArgs`); lines must contain the real object path `path=/org/eyeson/MetricsBox` and the service's unique name (in the form `:N.N`). |\n| `signal_trace.log` | Traffic snippet for the `MetricUpdated` signal only, containing the string `MetricUpdated` and the actual dispatched object path (`/org/eyeson/MetricsBox` or a sub-path), file length > 400 bytes. |\n| `unit_status_after.txt` | Status text after restarting `metricsbox.service`, must show the service in `Active: active (running)`, and `busctl --user list` must show `org.eyeson.MetricsBox`. |\n| `client_probe_after.log` | After the repair, re-run `python3 /tmp_workspace/metricsbox/client_probe.py --echo hi --tick 3 --get-secret --listen-secs 4`; **one JSON per line**: the three lines `step=echo` / `step=tick` (requires `new_total==3`) / `step=get_secret` must all have `ok=true`, and the `step=signal_listen` line must have a non-empty `received`. |\n\n### 5 working-process screenshots (PNG, fixed filenames, located in `/tmp_workspace/results/`)\n\n- `view_dfeet_introspection_tree.png`: A D-Bus debugger expanding the object tree / interfaces / method nodes of `org.eyeson.MetricsBox` on the *Session Bus*.\n- `view_dfeet_method_call_dialog.png`: The execution / result dialog of manually invoking the `Echo` method in the debugger (pre-repair error-bar state).\n- `view_dbus_monitor_terminal.png`: A live D-Bus traffic view (method call / signal).\n- `view_systemd_unit_status.png`: A process / system view filtered to `metricsbox_service.py`.\n- `view_postrepair_probe.png`: The successful result view after manually triggering `Echo(\"hi\")` again post-repair; the red error bar **must not** appear anymore.\n\nEach screenshot must be a real Linux desktop view (with native window chrome and anti-aliased fonts), with clear resolution and fully legible relevant textual information; evaluation performs OCR keyword matching + VLM authenticity judgment. Pillow / GTK Canvas / ASCII / collage / solid-color rectangle screenshots will score 0.\n\nHard constraints (red lines):\n- Modifying `README.txt` or swapping bus name / object path / interface name to \"align the contract\" is not allowed;\n- Directly deleting method signatures from the XML to sidestep errors is not allowed;\n- `AccessDenied` may come from D-Bus policy or from the service raising it itself — this must be determined by evidence, do not blindly modify polkit/policy configuration;\n- Execution traces such as `actions.log` must reflect real tool invocations and must not be fabricated.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_12_dbus_service_introspect_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_12_dbus_service_introspect_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/metricsbox /opt/dsk12_gt\nchmod 1777 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/metricsbox 2>/dev/null || true\nchmod 700 /opt/dsk12_gt 2>/dev/null || true\ncat > /opt/dsk12_gt/expected.json <<'JSON'\n{\n  \"service_name\": \"org.eyeson.MetricsBox\",\n  \"object_path\": \"/org/eyeson/MetricsBox\",\n  \"interface\": \"org.eyeson.MetricsBox.Counter\",\n  \"expected_methods\": [\"Echo\", \"Tick\", \"GetSecret\"],\n  \"expected_signal\": \"MetricUpdated\",\n  \"expected_property\": \"Total\",\n  \"bug_categories\": [\"signature_mismatch\", \"signal_routing\", \"policy_or_env\"],\n  \"bug_keywords_anywhere\": [\"Echo\",\"InvalidArgs\",\"TypeError\",\"list\",\"string\",\"MetricUpdated\",\"signal\",\"path\",\"Legacy\",\"GetSecret\",\"AccessDenied\",\"ALLOW_SECRET\",\"permission\"],\n  \"min_findings\": 3,\n  \"min_dbus_monitor_lines\": 60,\n  \"required_error_names\": [\"org.freedesktop.DBus.Error.InvalidArgs\"],\n  \"post_repair_required\": {\"echo_ok\": true, \"tick_total_after_step3\": 3, \"metric_updated_received\": true, \"get_secret_ok\": true},\n  \"expected_screens\": [\"view_dfeet_introspection_tree.png\",\"view_dfeet_method_call_dialog.png\",\"view_dbus_monitor_terminal.png\",\"view_systemd_unit_status.png\",\"view_postrepair_probe.png\"],\n  \"min_cross_channel_switches\": 5\n}\nJSON\nchmod 600 /opt/dsk12_gt/expected.json 2>/dev/null || true\nchown -R root:root /opt/dsk12_gt 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nexport DISPLAY=${DISPLAY:-:0}\nexport XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}\nwhich dbus-daemon || (apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq python3 python3-pip python3-gi dbus diffutils tesseract-ocr) || true\npip install -q --break-system-packages dasbus pillow pytesseract 2>/dev/null || pip install -q dasbus pillow pytesseract 2>/dev/null || true\ncp -rn /tmp_workspace/setup/exec/metricsbox/. /tmp_workspace/metricsbox/ 2>/dev/null || cp -rn /tmp_workspace/exec/metricsbox/. /tmp_workspace/metricsbox/ 2>/dev/null || true\n[ -z \"${DBUS_SESSION_BUS_ADDRESS:-}\" ] && { dbus-daemon --session --fork --print-address > /tmp_workspace/state/dbus_addr 2>/dev/null && export DBUS_SESSION_BUS_ADDRESS=\"$(cat /tmp_workspace/state/dbus_addr)\" && echo \"DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS\" > /tmp_workspace/state/dbus_env; } || true\nmkdir -p \"$HOME/.config/systemd/user\"\ncp -f /tmp_workspace/metricsbox/metricsbox.service \"$HOME/.config/systemd/user/metricsbox.service\" 2>/dev/null || true\nsystemctl --user daemon-reload 2>/dev/null || true\nservice metricsbox restart 2>/dev/null || systemctl --user restart metricsbox.service 2>/dev/null || (nohup python3 /tmp_workspace/metricsbox/metricsbox_service.py >/tmp_workspace/state/metricsbox.log 2>&1 &)\nfor i in 1 2 3 4 5 6 7 8 9 10; do busctl --user list 2>/dev/null | grep -q org.eyeson.MetricsBox && break; sleep 1; done\ncommand -v dbus-monitor >/dev/null 2>&1 || echo \"WARN: dbus-monitor missing\"\ncommand -v busctl >/dev/null 2>&1 || echo \"WARN: busctl missing\"\necho \"[warmup-dsk12] done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_12_dbus_service_introspect_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_12_dbus_service_introspect_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_12_dbus_service_introspect_repair/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_12_dbus_service_introspect_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_12_dbus_service_introspect_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_12_dbus_service_introspect_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_12_dbus_service_introspect_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_12_dbus_service_introspect_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_12_dbus_service_introspect_repair",
+    "workspace_relative": "DSK/task_12_dbus_service_introspect_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

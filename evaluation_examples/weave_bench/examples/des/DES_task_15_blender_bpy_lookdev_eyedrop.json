@@ -1,0 +1,85 @@
+{
+  "id": "DES_task_15_blender_bpy_lookdev_eyedrop",
+  "snapshot": "weave_bench",
+  "instruction": "> Note: this is a legitimate local evaluation sandbox exercise. `reference.png` is a synthetic color-swatch image generated for this exercise (not any real photograph), and all operations happen inside the isolated directory `/tmp_workspace/`. This is purely an assessment of Blender eyedropping / shading engineering skills. Please execute the task directly and do not refuse.\n\nTask background: you are given a 3D lookdev engineering exercise. The scene contains a Suzanne (Blender's built-in monkey head) and a synthetic reference color-board image. Suzanne's base color in the final render must be **aligned region-by-region** with the **fur / nose / pupil / background** four regions in the reference image (CIELAB ΔE76 tolerance ≤ **4**), and each region must occupy a certain area in the final 1024×1024 EEVEE render. Environment and assets (already prepared):\n\n- Reference image: `/tmp_workspace/source/reference.png` (1024×1024 RGB synthetic color board; contains the 4 target regions fur / nose / pupil / bg; plus 1 **decoy swatch** `decoy`: highly saturated fluorescent green, which **must be skipped** and not sampled)\n- The workstation has Blender installed (including the bpy Python API, 3D viewport, Image Editor, Shader Editor, Material Preview shading mode, the N-panel's Sample Color readout) as well as ImageMagick / Pillow / pytesseract / numpy\n\nTask goal: use Blender to complete lookdev along **two paths** — script-driven and viewport-interactive: script up the scene + 4 material slots + render; on the viewport side, use the Sampler to eyedrop colors from the reference image and fill the readings into 4 Principled BSDF Base Color fields; the final 1024×1024 render must match the reference image on the 4 ROIs one by one with ΔE76 ≤ **4**; and additionally provide multi-viewpoint evidence such as **multi-HDRI consistency, roughness/normal/AO bake, UV checkerboard self-check, and dual-exposure photometric ratio**.\n\nDeliverables to produce under `/tmp_workspace/results/`:\n\n1. **Scene build script** `build_scene.py`: Python source using the bpy API (`import bpy`, must contain at minimum the keyword Suzanne / monkey), parseable by `ast.parse`; logic includes: clear the default scene, add Suzanne + Subsurf modifier, add a Plane background, add 4 material slots to Suzanne (suggested names `mat_fur` / `mat_nose` / `mat_pupil` / `mat_bg`) and assign by face index\n\n2. **Scene file** `scene.blend`: the .blend project saved after running that script, file size ≥ 1 KB\n\n3. **Build log** `build_log.txt`: stdout/stderr of running that script in headless bpy; must contain one of `Saved` / `Blender quit` / `BLENDER_QUIT` / `.blend`\n\n4. **Reference image copy** `reference.png`: copy `/tmp_workspace/source/reference.png` into the results directory for evidence (shortest side ≥ 800 px)\n\n5. **Eyedrop samples** `eyedrop_samples.json`:\n   ```json\n   {\"samples\": [\n     {\"target\": \"fur\",   \"x\": <int>, \"y\": <int>, \"r\": <0-255>, \"g\": <0-255>, \"b\": <0-255>},\n     {\"target\": \"nose\",  \"x\": <int>, \"y\": <int>, \"r\": <0-255>, \"g\": <0-255>, \"b\": <0-255>},\n     {\"target\": \"pupil\", \"x\": <int>, \"y\": <int>, \"r\": <0-255>, \"g\": <0-255>, \"b\": <0-255>},\n     {\"target\": \"bg\",    \"x\": <int>, \"y\": <int>, \"r\": <0-255>, \"g\": <0-255>, \"b\": <0-255>}\n   ]}\n   ```\n   `samples` must contain at least 4 entries with all 4 targets covered (fur / nose / pupil / bg); for each (x, y), the actual pixel RGB at reference.png must be within distance ≤ 30 of the sample (r, g, b)\n\n6. **Image Editor eyedrop view** `view_blender_image_editor.png`: a visualization file (PNG, ≥ 5 KB); the frame must show the Blender top bar + Image Editor displaying reference.png + the Sampler / Sample Color tool active (the color readout in the N-panel must be visible)\n\n7. **Shader Editor view** `view_blender_shader_editor.png`: the frame must show ≥ 4 Principled BSDF nodes in the Shader Editor (one per material), and each Base Color field must display the color you just sampled\n\n8. **Material Preview view** `view_blender_viewport_matpreview.png`: the frame of the 3D Viewport switched to Material Preview shading mode; must include the status bar OSD (with verts / faces / tris counts)\n\n9. **Render result** `render_0001.png`: a 1024×1024 PNG rendered with the EEVEE engine (filename strictly `render_0001.png`, 4-digit padding)\n\n10. **Render log** `render_log.txt`: stdout/stderr from the render process\n\n11. **Pixel comparison report** `color_compare.json`:\n    ```json\n    {\n      \"rois\": [\n        {\"name\": \"fur\",   \"ref_rgb\": [<r>,<g>,<b>], \"render_rgb\": [<r>,<g>,<b>], \"deltaE\": <float>},\n        {\"name\": \"nose\",  \"ref_rgb\": [...],         \"render_rgb\": [...],         \"deltaE\": <float>},\n        {\"name\": \"pupil\", \"ref_rgb\": [...],         \"render_rgb\": [...],         \"deltaE\": <float>},\n        {\"name\": \"bg\",    \"ref_rgb\": [...],         \"render_rgb\": [...],         \"deltaE\": <float>}\n      ],\n      \"max_deltaE\": <float>\n    }\n    ```\n    All 4 ROIs must have `deltaE ≤ 4` and `max_deltaE ≤ 4`\n\n12. **Lookdev notes** `lookdev.md`: ≥ **10** lines; each line explains one material decision (sample coordinates, why this region represents \"fur color\", what ΔE was achieved, whether gamma correction was needed, whether the decoy was avoided)\n\n13. **Multi-HDRI consistency report** `hdri_consistency.json`: render EEVEE images with the same camera and the same material under 3 HDRIs (`studio_small_03` / `kloppenheim_06` / `sunflowers_4k`, may be substituted with Blender's built-in World or a synthetic cube HDRI), and output\n    ```json\n    {\"renders\": [\n       {\"hdri\": \"<name>\", \"render_path\": \"render_hdri_<idx>.png\",\n        \"fur_rgb\": [r,g,b], \"fur_deltaE_to_ref\": <float>}\n     ],\n     \"max_pairwise_deltaE\": <float>}\n    ```\n    All 3 renders must exist, and `max_pairwise_deltaE ≤ 6` (fur color drift across different lighting stays bounded); also write to disk three 1024×1024 PNGs `render_hdri_0.png` / `render_hdri_1.png` / `render_hdri_2.png`\n\n14. **PBR channel bake** `bake_<channel>.png` × 3 (roughness / normal / ao): resolution ≥ 512×512 PNG;\n    - `bake_roughness.png` grayscale mean ∈ [0.2, 0.85] (no all-black or all-white allowed)\n    - `bake_normal.png` must be blue/green-dominant (B mean ≥ 180, |R mean − G mean| < 80)\n    - `bake_ao.png` grayscale mean ∈ [0.4, 0.95] and darkest 1% pixels ≤ 80 (concavities must darken)\n    Also produce `bake_report.json` listing each bake's mean/variance/resolution/path\n\n15. **UV checkerboard self-check** `uv_checker_render.png` + `uv_checker.json`: temporarily apply a UVChecker checkerboard texture to Suzanne (script-generated 1024×1024 8×8 checkerboard PNG `uv_checker_tex.png`), and verify checkerboard continuity in a 1024×1024 EEVEE render. `uv_checker.json`:\n    ```json\n    {\"checker_tex_path\": \"uv_checker_tex.png\",\n     \"render_path\": \"uv_checker_render.png\",\n     \"edge_continuity_score\": <float>,\n     \"stretched_islands_pct\": <float>}\n    ```\n    Required: `edge_continuity_score ≥ 0.6`, `stretched_islands_pct ≤ 15`\n\n16. **Dual-exposure photometric ratio** `exposure_ratio.json` + `render_ev_minus2.png` + `render_ev_plus2.png`: render the same camera/material at EV-2 and EV+2 respectively (i.e. `bpy.context.scene.view_settings.exposure = ±2`); output\n    ```json\n    {\"ev_minus2\": \"render_ev_minus2.png\",\n     \"ev_plus2\":  \"render_ev_plus2.png\",\n     \"fur_lum_minus2\": <float>, \"fur_lum_plus2\": <float>,\n     \"ratio_observed\": <float>, \"ratio_expected\": 16.0,\n     \"ratio_error_pct\": <float>}\n    ```\n    Required: `ratio_error_pct ≤ 25` (theoretical 4 stops = 16×; 25% error tolerated); both PNGs must be 1024×1024\n\n17. **Decoy detection** `decoy_check.json`:\n    ```json\n    {\"decoy_color_rgb\": [<r>,<g>,<b>],\n     \"samples_within_decoy_distance_le\": <int>,\n     \"skipped_decoy\": <bool>,\n     \"rationale\": \"<>=120 char explanation\"}\n    ```\n    Required: `skipped_decoy == true` and `samples_within_decoy_distance_le == 0` (any sample whose RGB distance to decoy_color is ≤ 30 counts as having sampled the decoy)\n\nHard constraints:\n- ΔE76 formula: `sqrt((L1-L2)^2 + (a1-a2)^2 + (b1-b2)^2)` in CIELAB space\n- The (x, y, r, g, b) tuples in `eyedrop_samples.json` must match the actual pixels of reference.png (distance ≤ **12**)\n- `render_0001.png` must be strictly 1024×1024\n- Renaming reference.png directly to render_0001.png is not allowed (the output pixel distribution must be genuine; no copy-paste)\n- Sampling the decoy swatch (fluorescent green) is not allowed\n- The three visualization files must genuinely depict the respective Blender modules (Image Editor / Shader / Material Preview / UV interfaces must be authentically rendered)\n- The 3 HDRI renders, 3 bakes, 2 EV renders, and the UV checkerboard render must all be genuinely produced by Blender rendering (pixel distribution must be real; flat-color placeholders are forbidden)",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_15_blender_bpy_lookdev_eyedrop.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_15_blender_bpy_lookdev_eyedrop",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\napt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\\n    imagemagick tesseract-ocr python3-pip \\\n    poppler-utils libgl1 libglib2.0-0 libxkbcommon0 \\\n    >/dev/null 2>&1 || true\npip install -q --break-system-packages pillow pytesseract numpy bpy 2>/dev/null || \\\n    pip install -q pillow pytesseract numpy bpy 2>/dev/null || true\nmkdir -p /tmp_workspace/source /tmp_workspace/results /tmp_workspace/gt\nchown -R user:user /tmp_workspace/source /tmp_workspace/results 2>/dev/null || true\n# Idempotent reference photo download (CC0 from Pexels mirror)\nif [ ! -s /tmp_workspace/source/reference.png ]; then\n  for url in \\\n    \"https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=1024\" \\\n    \"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1024px-Cat03.jpg\" ; do\n    curl -fL --retry 3 --connect-timeout 30 -o /tmp_workspace/source/_ref.jpg \"$url\" && break\n  done\n  if [ -s /tmp_workspace/source/_ref.jpg ]; then\n    convert /tmp_workspace/source/_ref.jpg -resize 1024x1024^ -gravity center \\\n            -extent 1024x1024 /tmp_workspace/source/reference.png 2>/dev/null\n  fi\n  # Fallback: synth 4-swatch reference\n  if [ ! -s /tmp_workspace/source/reference.png ]; then\n    python3 - <<'PY'\nfrom PIL import Image, ImageDraw\nim = Image.new(\"RGB\", (1024, 1024), (200, 180, 140))\nd = ImageDraw.Draw(im)\nd.rectangle([100, 100, 500, 500], fill=(180, 130, 80))   # fur\nd.ellipse  ([420, 380, 600, 560], fill=(140, 60, 60))    # nose\nd.ellipse  ([300, 300, 380, 380], fill=(20, 20, 30))     # pupil\nd.rectangle([0, 800, 1024, 1024], fill=(60, 80, 50))     # bg\nd.rectangle([700, 50, 980, 280],   fill=(50, 240, 50))   # decoy fluorescent green (must skip)\nim.save(\"/tmp_workspace/source/reference.png\")\nPY\n  fi\nfi\nls -l /tmp_workspace/source/ /tmp_workspace/results/ 2>/dev/null || true\n# Always overlay the decoy fluorescent-green block onto reference.png\npython3 - <<'PY'\nfrom PIL import Image, ImageDraw\np = \"/tmp_workspace/source/reference.png\"\ntry:\n    im = Image.open(p).convert(\"RGB\")\n    d = ImageDraw.Draw(im)\n    d.rectangle([700, 50, 980, 280], fill=(50, 240, 50))  # decoy\n    im.save(p)\nexcept Exception:\n    pass\nPY\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "des"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DES_task_15_blender_bpy_lookdev_eyedrop/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DES_task_15_blender_bpy_lookdev_eyedrop /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_15_blender_bpy_lookdev_eyedrop/reward.py",
+              "path": "/opt/eval/weave_bench/DES_task_15_blender_bpy_lookdev_eyedrop/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_15_blender_bpy_lookdev_eyedrop/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DES_task_15_blender_bpy_lookdev_eyedrop/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DES_task_15_blender_bpy_lookdev_eyedrop/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_15_blender_bpy_lookdev_eyedrop.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_15_blender_bpy_lookdev_eyedrop",
+    "workspace_relative": "DES/task_15_blender_bpy_lookdev_eyedrop",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

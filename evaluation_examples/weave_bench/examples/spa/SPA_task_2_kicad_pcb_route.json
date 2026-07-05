@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_2_kicad_pcb_route",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task. All artifacts go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nTask: Under `/tmp_workspace/pcb_project/` there is a KiCad 7 project — a small\nsensor acquisition board (MCU + sensors + power conditioning + debug header).\nThe schematic, netlist, and component placement are ready, but the PCB has\n**zero traces**. You need to drive this board from \"unrouted\" to \"ready to\nfabricate,\" and write all intermediate artifacts to `/tmp_workspace/results/`\n(create missing directories with `mkdir -p` as needed).\n\n[Domain background]\n- The project ships with `design_rules.json`, which specifies minimum trace width, minimum clearance, via drill, and similar constraints; routing must satisfy these DRC rules.\n- Power nets (VCC / GND) should use the power default trace width; signal nets (SPI / I2C / UART) should use the signal default trace width; GND is recommended to be poured as copper.\n- After routing in KiCad, the ratsnest (yellow flylines) should be cleared and DRC unconnected should ideally reach 0; concrete violation counts follow the actual report — the prompt does not hard-code numbers.\n- Fab-ready release typically requires a complete Gerber set (per-layer `.gbr`) plus drill (`.drl`) files; the exact number of layers depends on KiCad configuration.\n\n[Deliverables] File list to write under `/tmp_workspace/results/`:\n\nReports / data:\n- `drc_before.json` — DRC report before routing (with structured fields such as violations / unconnected items / warnings).\n- `drc_after.json` — DRC report after routing, same structure; ideally unconnected drops to 0.\n- `ratsnest_count.txt` — single-line integer recording the unconnected count before routing.\n- `drc_before_summary.txt` — textual summary of `drc_before.json` (list length or value per key) for quick comparison.\n- `bom.csv` — bill of materials exported from the schematic, consistent with the schematic's component list.\n- `drc_comparison.json` — before/after DRC comparison, with the following structure (numbers computed from the actual reports):\n  ```json\n  {\n    \"before\": {\"unconnected\": <int>, \"violations\": <int>, \"warnings\": <int>},\n    \"after\":  {\"unconnected\": <int>, \"violations\": <int>, \"warnings\": <int>},\n    \"improvement\": {\"unconnected_fixed\": <int>, \"violations_delta\": <int>},\n    \"gerber_files\": [\"<list of .gbr basenames>\"],\n    \"drill_files\":  [\"<list of .drl basenames>\"]\n  }\n  ```\n- `export_count.txt` — single-line / two-number record of the final `.gbr` and `.drl` file counts under the `gerbers/` directory.\n\nManufacturing / rendering artifacts:\n- `gerbers/` — complete Gerber set, containing ≥ 5 `.gbr` files (covering copper layers / silkscreen / soldermask / board edge, etc.) and ≥ 1 `.drl` drill file.\n- `pcb_top.svg` — top-layer (F.Cu / F.SilkS / F.Mask / Edge.Cuts, etc.) rendered SVG.\n- `pcb_bottom.svg` — bottom-layer (B.Cu, etc.) rendered SVG.\n\nVisual evidence screenshots (these describe the state the screenshot should show; the specific tool is not constrained):\n- `view_01_ratsnest.png` — PCB editor view, showing the layer panel, the PCB canvas, and ratsnest flylines across components.\n- `view_02_board_setup.png` — Board Setup / Design Rules / Constraints view, with key parameters such as Minimum Track Width, Clearance, and Via Size visible.\n- `view_03_routing.png` — PCB canvas during routing, with routed power + signal traces, remaining flylines, and the GND copper pour area visible.\n- `view_04_drc_dialog.png` — DRC check dialog, with the Violations / Unconnected items list or counts visible.\n- `view_05_3d_top.png` — 3D top-view render of the PCB, roughly a 45° elevated angle, with the board and component 3D models visible.\n- `view_06_3d_bottom.png` — 3D bottom-view render of the PCB (flipped view).\n- `view_07_net_inspector.png` — Net Inspector view, with net name and Net Length column visible.\n- `view_08_3d_orbit_animation.png` — In the KiCad 3D Viewer, **rotate the view to a non-default oblique angle via mouse drag** (neither the default top-down nor the straight-on front view); the screenshot must include the 3D Viewer's own menu bar (View / Preferences / Render) and the angle state (the bottom status bar or the top menu showing the current view). The 3D Viewer uses OpenGL real-time rendering and requires a real DISPLAY, so it cannot be captured headless.\n- `view_09_pcbnew_and_eeschema.png` — **A single screenshot** containing two real KiCad application windows: pcbnew on the left highlighting a power net (e.g., +3V3), and eeschema on the right simultaneously highlighting the wiring for the same net (the bidirectional net highlight between pcbnew and eeschema is a KiCad-specific UI behavior that requires cross-probing to be enabled). The two windows must be side by side in the same screenshot.\n- `view_10_drc_dialog_running.png` — DRC dialog in the **running** state (the Run DRC button is greyed out, the Status line shows transitional text like \"Checking...\" or \"Refilling Zones...\", or the Violations list is being populated dynamically) — not the static, already-completed results. Capture this immediately after clicking Run DRC; the transient state is hard to capture headless.\n- `view_11_layer_visibility_toggled.png` — Via the left-hand Layer Manager panel, **show a single copper layer in isolation** (e.g., tick only F.Cu and untick every other layer); the main canvas in the screenshot shows only that layer's traces, with the checkbox state visible in the Layer Manager. This is a live pcbnew UI operation; headless cannot reproduce the layer-panel toggle state. — Net inspector / Net Inspector view, with net name and Net Length column visible.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_2_kicad_pcb_route.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_2_kicad_pcb_route",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "apt-get update -qq || true\nwhich pcbnew >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq kicad >/dev/null 2>&1 || true\nwhich pcbnew >/dev/null 2>&1 || true\nDEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils tesseract-ocr >/dev/null 2>&1 || true\npip install -q --break-system-packages pillow pytesseract numpy 2>/dev/null || pip install -q pillow pytesseract numpy 2>/dev/null || true\nmkdir -p /tmp_workspace/results /tmp_workspace/results/gerbers /tmp_workspace/gt /tmp_workspace/pcb_project || true\n[ -f /tmp_workspace/setup/generate_pcb_project.py ] && python3 /tmp_workspace/setup/generate_pcb_project.py || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_2_kicad_pcb_route/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_2_kicad_pcb_route /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_2_kicad_pcb_route/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_2_kicad_pcb_route/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_2_kicad_pcb_route/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_2_kicad_pcb_route/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_2_kicad_pcb_route/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_2_kicad_pcb_route.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_2_kicad_pcb_route",
+    "workspace_relative": "SPA/task_2_kicad_pcb_route",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}
