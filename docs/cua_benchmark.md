@@ -1,5 +1,7 @@
 # CUA Benchmark 评测与数据采集指南
 
+> 评估过程中若遇到代理问题，需手动去除一下 `desktop_env/osworld` 下面 Hard Code 的代理配置(可检索**10.1.8.5:23128**)
+
 本仓库统一支持 CUA Benchmark 评测与轨迹数据采集，覆盖以下任务集：
 
 | 类型 | 支持的数据集 |
@@ -99,5 +101,3 @@ OSWorld-V2 的完整启动示例见 [`start_osworld_v2.sh`](start_osworld_v2.sh)
 
 > [!IMPORTANT]
 > OSWorld-v2 虚拟机镜像需要根据官方说明自行下载。
-
-> 评估过程中若遇到代理问题，需手动去除一下 `desktop_env/osworld` 下面 Hard Code 的代理配置(可检索**10.1.8.5:23128**)
