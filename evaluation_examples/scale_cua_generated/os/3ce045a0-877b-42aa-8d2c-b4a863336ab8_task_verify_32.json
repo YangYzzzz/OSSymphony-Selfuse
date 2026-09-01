@@ -1,0 +1,70 @@
+{
+  "id": "3ce045a0-877b-42aa-8d2c-b4a863336ab8",
+  "new_id": "task_verify_32",
+  "snapshot": "os",
+  "instruction": "Activate sticky keys to make keyboard shortcuts more accessible.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/a11y-stickykeys.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "STICKY_KEYS=$(timeout 10 gsettings get org.gnome.desktop.a11y.keyboard stickykeys-enable 2>/dev/null | grep -c true); if [ \"$STICKY_KEYS\" -gt 0 ]; then echo \"Sticky keys enabled\"; else echo \"Sticky keys disabled\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Sticky keys enabled"
+        ],
+        "exclude": [
+          "Sticky keys disabled",
+          "error"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires enabling sticky keys. The evaluator checks if org.gnome.desktop.a11y.keyboard stickykeys-enable is set to true. Sticky keys allows users to press keyboard shortcuts one key at a time instead of simultaneously, which is helpful for users with motor disabilities. This is similar in difficulty to the original task - both require navigating accessibility settings and enabling a single feature. No custom functions needed as we use existing check_include_exclude metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: Command reads the correct gsettings key 'org.gnome.desktop.a11y.keyboard stickykeys-enable' and checks if value is 'true'",
+        "Metric comparison logic is appropriate: check_include_exclude correctly verifies presence of success string and absence of failure strings for this binary state check",
+        "Coverage is complete: Evaluator checks the only requirement (sticky keys enabled) specified in the instruction",
+        "Expected values are semantically correct: 'Sticky keys enabled' matches the instruction requirement, exclude list properly catches failure cases",
+        "Data flow is correct: vm_command_line executes shell command → returns text output → check_include_exclude verifies include/exclude patterns → returns score",
+        "Edge cases handled properly: 10-second timeout prevents hanging, stderr redirection (2>/dev/null) suppresses errors, 'error' string in exclude list catches failures",
+        "State is accessible: gsettings is the correct API for checking GNOME accessibility settings, no special postconfig needed as this is a persistent system setting"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "3ce045a0-877b-42aa-8d2c-b4a863336ab8_aug_19_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

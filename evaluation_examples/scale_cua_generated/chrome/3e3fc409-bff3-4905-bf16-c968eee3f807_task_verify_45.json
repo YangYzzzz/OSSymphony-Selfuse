@@ -1,0 +1,149 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_45",
+  "snapshot": "chrome",
+  "instruction": "Looking through my movie collection in the opened Excel file, I want to identify the true classics - highly-rated films from the previous century. Create a new sheet called 'classics' containing all movies with a rating of 8.5 or higher that were released before the year 2000. Use the same column headers and arrange them by rating from highest to lowest.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_sorted__5828d226",
+    "result": {
+      "type": "xlsx_sheet_data__5828d226",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "classics"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "exact_rows": 25,
+        "min_rows": 25,
+        "sort_column_idx": 2,
+        "descending": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires filtering movies with rating >= 8.5 from before 2000, sorted by rating descending. Verified with Python: 25 classics found (The Shawshank Redemption 9.3, The Godfather 9.2, Schindler's List 9.0, The Godfather Part II 9.0, Pulp Fiction 8.9, Fight Club 8.8, Forrest Gump 8.8, Star Wars Empire Strikes Back 8.7, Goodfellas 8.7, Terminator 2 8.6, etc.). Expected sheet has exactly 25 rows sorted by rating column (index 2) descending.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_3/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "headers_match": 0.15,
+      "min_rows_present": 0.15,
+      "exact_row_count": 0.15,
+      "sorted_correctly": 0.3,
+      "filtering_correct": 0.25
+    },
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator correctly verifies ALL instruction requirements - headers match, exact row count (25), sorting by rating descending, AND filtering criteria (rating >= 8.5 AND year < 2000)",
+        "Correct parameter handling: Metric function properly handles expected parameter at line 33 with 'rules = expected', correctly understanding that when expected.type='rule', the framework passes the rules dict directly",
+        "Filtering validation implemented: Lines 96-138 verify filtering criteria by checking each row's year (column index 1 < 2000) and rating (column index 2 >= 8.5), with proper partial credit scoring for violations",
+        "Getter logic correct: get_xlsx_sheet_data__5828d226 properly extracts sheet data from Excel file, handles missing sheets, extracts headers and rows with appropriate error handling",
+        "Sorting logic correct: Metric properly validates descending sort order by column index 2 (ratings) with robust type handling for numeric/string comparisons",
+        "Expected values semantically correct: Headers match instruction columns, 25 rows verified from data analysis (metadata explanation lists actual classic movies), sort column and direction match instruction",
+        "Appropriate postconfig: Ctrl+S ensures file is saved before verification, suitable for file-based evaluation",
+        "Robust error handling: Both getter and metric handle edge cases (missing sheets, None values, empty rows, type conversions) appropriately",
+        "Partial credit logic sound: Filtering violations reduce score proportionally, allowing fair scoring for partially correct results"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

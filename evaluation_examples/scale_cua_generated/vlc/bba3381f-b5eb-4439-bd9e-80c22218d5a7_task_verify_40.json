@@ -1,0 +1,76 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "task_verify_40",
+  "snapshot": "base_setup",
+  "instruction": "Please play this streaming video for me: https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8",
+  "source": "https://developer.apple.com/streaming/examples/ - Apple HLS test streams for developers",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "is_vlc_playing",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8"
+      }
+    },
+    "result": {
+      "type": "vlc_playing_info",
+      "dest": "status.xml"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation using a different Apple HLS test stream (bipbop 4x3 variant). Uses existing is_vlc_playing metric to verify VLC is playing the specified URL. Same complexity as original - simple streaming task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks both that VLC is in 'playing' state AND that the correct URL is being played",
+        "Getter (get_vlc_playing_info) properly extracts VLC status via HTTP interface and saves status.xml",
+        "Metric (is_vlc_playing) correctly handles HLS streaming URLs - important since the test URL is an HLS manifest (.m3u8)",
+        "Metric uses correct parameter name 'rule' instead of 'expected', properly receiving the rules dictionary from get_rule()",
+        "Multiple fallback methods for URL extraction from VLC's XML increase robustness (checks filename, URI, location, title fields)",
+        "Special handling for HLS streams where VLC may show just the filename instead of full URL (lines 107-114 in vlc.py)",
+        "Edge cases handled: returns 0 if VLC not playing, or if URL info not found in XML",
+        "Comprehensive logging provides good debugging information"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding postconfig to explicitly verify VLC HTTP interface is accessible before evaluation, though current setup should work since VLC is launched with HTTP interface enabled",
+        "Minor: If getter fails to fetch status.xml (HTTP error), it returns None which would cause metric to fail - this is acceptable behavior but could be more gracefully handled with explicit error messages"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

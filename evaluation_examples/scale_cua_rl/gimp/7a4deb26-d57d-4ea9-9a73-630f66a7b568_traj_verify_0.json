@@ -1,0 +1,132 @@
+{
+  "id": "7a4deb26-d57d-4ea9-9a73-630f66a7b568",
+  "new_id": "7a4deb26-d57d-4ea9-9a73-630f66a7b568_traj_verify_0",
+  "snapshot": "gimp",
+  "instruction": "Increase the contrast of my photo.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/7a4deb26-d57d-4ea9-9a73-630f66a7b568/woman_sitting_by_the_tree.png",
+            "path": "/home/user/Desktop/woman_sitting_by_the_tree.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/woman_sitting_by_the_tree.png"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"shift\", \"ctrl\", \"e\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.write(\"edited_contrast\");time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_contrast_increase__a61095a992c03ac5e17b282d64e6f2d0",
+    "result": {
+      "type": "contrast_comparison__a61095a992c03ac5e17b282d64e6f2d0",
+      "path": "/home/user/Desktop/edited_contrast.png",
+      "original_path": "/home/user/Desktop/woman_sitting_by_the_tree.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_similarity": 0.3
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_7a4deb26-d57d-4ea9-9a73-630f66a7b568_sid_1488070",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully decreased brightness by opening Colors > Brightness-Contrast dialog, setting brightness to -24, confirming with OK, then exporting via File > Export As. Completed in 15 turns.",
+    "capability_extraction": "Can navigate GIMP menus (Colors, File), use Brightness-Contrast dialog with sliders, export images via Export As, handle file overwrite dialogs",
+    "task_rationale": "Same Brightness-Contrast dialog but targeting contrast instead of brightness. Tests if model can adjust a different parameter in the same dialog it already proved capable of using.",
+    "explanation": "Task asks to increase contrast. Custom getter fetches both original and edited images from VM, computes contrast (std dev of grayscale pixels) and structural similarity (MSE-based). Custom metric checks contrast increased (0.5 score) and structural similarity maintained above threshold (0.5 score). Postconfig exports the edited image as edited_contrast.png for evaluation. [Fixed: replaced cloud_file expected type with rule-based expected using custom getter/metric that fetch both images from VM]",
+    "new_functions_paths": [
+      "{tmp_func_dir}/getters/gimp.py",
+      "{tmp_func_dir}/metrics/gimp.py"
+    ],
+    "difficulty": "medium",
+    "variation_index": 0,
+    "scoring_breakdown": {
+      "contrast_increase": "0.5 - Contrast of edited image is higher than original",
+      "structural_similarity": "0.5 - Edited image maintains structural similarity to original (>= 0.3)"
+    },
+    "fix_history": [
+      "Fix 1: Replaced cloud_file expected.type with rule-based expected. Created custom getter (get_contrast_comparison__a61095a992c03ac5e17b282d64e6f2d0) that fetches both original and edited images from VM and computes contrast/similarity metrics. Created custom metric (check_contrast_increase__a61095a992c03ac5e17b282d64e6f2d0) that validates contrast increase and structural similarity using rule-based thresholds."
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly measures contrast as standard deviation of grayscale pixel intensities — a valid and standard contrast metric.",
+        "Getter properly fetches both original and edited images from VM and computes MSE-based structural similarity to ensure the image wasn't replaced entirely.",
+        "Metric correctly handles expected parameter for type='rule' — directly accesses expected.get('min_similarity', 0.3) without incorrectly wrapping in expected['rules'].",
+        "Scoring breakdown is sensible: 0.5 for contrast increase + 0.5 for structural similarity maintained, totaling 1.0 for full success.",
+        "Coverage is complete for the instruction 'Increase the contrast of my photo' — verifies contrast increased and image identity preserved.",
+        "Minor concern: postconfig types 'edited_contrast' without .png extension in GIMP Export As dialog. GIMP may or may not auto-append the extension depending on format selector state, which could cause the getter to fail finding the file at the expected path '/home/user/Desktop/edited_contrast.png'."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider typing the full filename with extension ('edited_contrast.png') in the postconfig pyautogui.write() call to ensure the exported file has the correct .png extension regardless of GIMP dialog state."
+      ]
+    }
+  }
+}

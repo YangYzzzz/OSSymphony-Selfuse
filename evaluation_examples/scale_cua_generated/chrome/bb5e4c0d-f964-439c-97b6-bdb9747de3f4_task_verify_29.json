@@ -1,0 +1,100 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_29",
+  "snapshot": "chrome",
+  "instruction": "Set the browser's default font size to 24 pixels.",
+  "source": "https://support.google.com/chrome/answer/96810",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 24
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the user to change Chrome's default font size to 24 pixels. The evaluator uses the existing get_chrome_font_size getter (returns dict with font size values) and check_font_size metric to verify the font size setting. Similar complexity to the original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "High - similar type of Chrome setting change, same number of steps, similar interaction pattern",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_chrome_font_size reads Chrome's Preferences file and extracts the webkit.webprefs dictionary containing font size settings, specifically returning the default_font_size field",
+        "Metric logic is correct: check_font_size receives the font size dictionary and correctly checks if font_size['default_font_size'] == 24",
+        "Data flow is semantically correct: Getter extracts font settings dict -> Metric verifies default_font_size matches expected value of 24",
+        "Instruction coverage is complete: The evaluator verifies the exact requirement (default font size = 24 pixels)",
+        "Expected value is semantically correct: Expected value of 24 matches the instruction requirement of '24 pixels'",
+        "Postconfig is appropriate: Restarting Chrome ensures the Preferences file is written with new settings before verification, which is necessary since Chrome may cache settings in memory",
+        "State accessibility is correct: Chrome Preferences file is persisted to disk and accessible after Chrome restart"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

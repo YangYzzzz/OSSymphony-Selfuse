@@ -1,0 +1,90 @@
+{
+  "id": "7f52cab9-535c-4835-ac8c-391ee64dc930",
+  "new_id": "7f52cab9-535c-4835-ac8c-391ee64dc930_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's bookmarks manager page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://shopping.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://bookmarks"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_7f52cab9-535c-4835-ac8c-391ee64dc930_sid_1488078",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to search for drip coffee makers on Google Shopping but encountered SSL cert error (NET::ERR_CERT_COMMON_NAME_INVALID). Navigated to Amazon instead, searched 'drip coffee maker', applied color/price/deals filters, scrolled results. Later tried Google Shopping URL but landed on Best Buy. Failed after 50 turns.",
+    "capability_extraction": "Can navigate Chrome address bar, type URLs, search products on Amazon, use search filters (color, price, deals), scroll through results, interact with web elements",
+    "failure_analysis": "Google Shopping inaccessible due to SSL certificate error. Model could not bypass the cert error and tried alternative shopping sites instead. Evaluator expected Google Shopping-specific URL and filter states.",
+    "task_rationale": "Decomposed original complex shopping task into a simple Chrome internal navigation task. Model demonstrated ability to type URLs in address bar, so navigating to chrome://bookmarks is within demonstrated capability and avoids SSL issues.",
+    "explanation": "Task requires navigating to Chrome's bookmarks manager page (chrome://bookmarks). Evaluator uses URL pattern matching to verify the active tab URL contains 'chrome://bookmarks'. Uses official getter active_url_from_accessTree and metric is_expected_url_pattern_match.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "navigation": "1.0 - URL matches chrome://bookmarks"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active tab URL from the accessibility tree, which is the right state to verify navigation to chrome://bookmarks.",
+        "Metric is_expected_url_pattern_match uses re.search to find the pattern 'chrome://bookmarks' in the URL, which will correctly match even though the getter prepends a default 'https://' prefix to the address bar text.",
+        "Expected value 'chrome://bookmarks' is the correct URL for Chrome's bookmarks manager page.",
+        "The metric receives the rules dict directly (with key 'expected'), and accesses rules['expected'] correctly to get the pattern list.",
+        "Single-step instruction with single verification check provides complete coverage.",
+        "Minor note: the getter's default goto_prefix='https://' will produce 'https://chrome://bookmarks' which is semantically odd but does not break the regex search match."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider passing goto_prefix as empty string or 'chrome://' in the getter config to avoid the redundant 'https://' prefix on chrome:// URLs, though this is cosmetic and does not affect correctness."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

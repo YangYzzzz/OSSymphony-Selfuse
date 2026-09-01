@@ -1,0 +1,119 @@
+{
+  "id": "ac1b39ff-ee4d-4483-abce-c117e98942f0",
+  "new_id": "ac1b39ff-ee4d-4483-abce-c117e98942f0_traj_verify_2",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Add a new row at the bottom of the table on Slide 3 with values \"10\", \"11\", and \"12\".",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/ac1b39ff-ee4d-4483-abce-c117e98942f0/55_10.pptx",
+            "path": "/home/user/Desktop/55_10.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/55_10.pptx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "55_10.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_table_rows__d7904b6a5ae76e528f93447180e8419d",
+    "result": {
+      "type": "pptx_table_rows__d7904b6a5ae76e528f93447180e8419d",
+      "path": "/home/user/Desktop/55_10.pptx",
+      "slide_index": 2
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_row_count": 4,
+        "expected_last_row": [
+          "10",
+          "11",
+          "12"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_libreoffice_impress_ac1b39ff-ee4d-4483-abce-c117e98942f0_sid_1488223",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to Slide 3, selected the table, attempted to move it to the bottom using drag and Position and Size dialog (set Y=15cm). The table was repositioned but the text placeholder also got displaced, causing the comparison with the reference file to fail.",
+    "capability_extraction": "Can navigate between slides in the slide panel, select tables by clicking, enter table edit mode by clicking cells, use Escape to exit edit mode, interact with table cells",
+    "failure_analysis": "Model failed to accurately reposition only the table without disturbing other slide elements. However it demonstrated ability to navigate to the table, select it, and enter table edit mode.",
+    "task_rationale": "The model demonstrated it can navigate to Slide 3, select the table, and enter table cell editing mode. Adding a row by pressing Tab in the last cell is a simpler table manipulation task within demonstrated capability.",
+    "explanation": "Task requires navigating to Slide 3, clicking the last cell of the table, pressing Tab to create a new row, and typing values 10, 11, 12. Getter reads the row count and last row cell values from the table on slide index 2. Metric awards 0.5 for row_count >= 4 (original 3 + 1 new) and 0.5 for last row values matching ['10', '11', '12']. [Fixed: extended getter to extract last_row_values, extended metric to verify cell contents, added expected_last_row to rules]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_impress_ac1b39ff-ee4d-4483-abce-c117e98942f0_sid_1488223_traj_verify_2/getters/pptx_table_rows.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_impress_ac1b39ff-ee4d-4483-abce-c117e98942f0_sid_1488223_traj_verify_2/metrics/check_table_rows.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "scoring_breakdown": {
+      "row_count_correct": "0.5 - Table has at least 4 rows",
+      "last_row_values_correct": "0.5 - Last row contains ['10', '11', '12']"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Extended getter to extract last_row_values (cell text from last row of table)",
+      "Fix 2: Extended metric to verify last row values match expected ['10', '11', '12'] for 0.5 credit, row count >= 4 for 0.5 credit",
+      "Fix 3: Replaced min_row_count with expected_last_row in rules; updated scoring_breakdown and explanation"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete verification coverage: The evaluator checks both row count (>= 4, awarding 0.5) and last row cell values matching ['10', '11', '12'] (awarding 0.5), fully covering the instruction requirements.",
+        "Getter correctly extracts state: The getter reads the PPTX file at slide_index=2 (Slide 3, 0-indexed), finds the first table, and returns row_count, col_count, and last_row_values with stripped text from each cell in the last row.",
+        "Metric correctly handles expected parameter: With expected.type='rule', the metric receives the rules dict directly and accesses expected.get('expected_row_count') and expected.get('expected_last_row') correctly.",
+        "Postconfig ensures file is saved (Ctrl+S) before the getter reads it, preventing stale state.",
+        "Partial credit scoring is well-designed: 0.5 for structural change (row added) + 0.5 for content correctness (values match)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The getter only checks the first table found on the slide. If multiple tables exist, it may read the wrong one. Consider adding a table index parameter for robustness.",
+        "Minor: Row count uses >= comparison (lenient). Using == 4 would be stricter but >= is acceptable since extra rows don't negate the task completion."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

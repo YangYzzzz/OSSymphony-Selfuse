@@ -1,0 +1,128 @@
+{
+  "id": "778efd0a-153f-4842-9214-f05fc176b877",
+  "new_id": "task_verify_23",
+  "snapshot": "vlc",
+  "instruction": "Delete the last slide from the presentation and add a footer text 'Created with LibreOffice Impress' to all remaining slides.",
+  "source": "https://researchguides.case.edu/c.php?g=1286426",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/Minimalist_Business_Slides.pptx",
+            "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/planet.mp4",
+            "path": "/home/user/Desktop/planet.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/planet.mp4",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress",
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Minimalist_Business_Slides.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_ppt_slide_count_footer__166960ad",
+    "result": {
+      "type": "ppt_slide_count_footer__166960ad",
+      "ppt_file_path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "slide_count": 5,
+        "footer_text": "Created with LibreOffice Impress"
+      }
+    },
+    "options": {}
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires deleting last slide (reducing count from 6 to 5) and adding footer to all slides. Evaluator checks: (1) Slide count is 5 (0.5 points), (2) All slides contain the footer text 'Created with LibreOffice Impress' (0.5 points).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/778efd0a-153f-4842-9214-f05fc176b877_task_verify_3/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/778efd0a-153f-4842-9214-f05fc176b877_task_verify_3/metrics/slides.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.50": "Slide count is 5 (last slide deleted)",
+      "1.00": "All slides contain footer text 'Created with LibreOffice Impress'"
+    },
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.55,
+      "llm_judge_reasons": [
+        "Footer detection uses unreliable heuristic (bottom 20% of slide) instead of proper LibreOffice footer API",
+        "Getter only captures first text shape in bottom region, may miss actual footer or capture wrong content",
+        "Footer extraction doesn't use python-pptx placeholder/footer mechanisms that access LibreOffice's actual footer system",
+        "Logic fragile: if any slide's footer extraction fails (returns empty string), entire footer check scores 0.0 despite partial completion",
+        "Risk of false positives: regular content text in bottom 20% could be mistaken for footer",
+        "Risk of false negatives: actual footers positioned slightly above 80% threshold would be missed"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use python-pptx's slide.placeholders to access actual footer placeholder (typically placeholder[2] for footers)",
+        "For LibreOffice compatibility, check slide.shapes.placeholders and iterate to find footer placeholder type",
+        "Add fallback logic: if no placeholder footer found, then use position-based heuristic as backup",
+        "Consider providing partial credit in metric if some (but not all) slides have correct footer",
+        "Verify initial slide count assumption (metadata claims 6→5, but this should be validated against actual file)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

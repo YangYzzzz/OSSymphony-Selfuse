@@ -1,0 +1,122 @@
+{
+  "id": "c867c42d-a52d-4a24-8ae3-f75d256b5618",
+  "new_id": "task_verify_19",
+  "snapshot": "thunderbird",
+  "instruction": "Export Thunderbird's Personal Address Book as contacts.csv on the Desktop. Then open the CSV file in LibreOffice Calc, count how many unique first names exist in the contacts, and write that count in cell I1. Save the file as contacts_unique.xlsx on the Desktop.",
+  "source": "https://www.sync.blue/en/sync/mozilla-thunderbird/google-sheets/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/c867c42d-a52d-4a24-8ae3-f75d256b5618/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "--recursive-unlink",
+          "-xz",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.click(640, 400); time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_cell_value__5b7d2296",
+    "result": {
+      "type": "xlsx_cell_value__5b7d2296",
+      "path": "/home/user/Desktop/contacts_unique.xlsx",
+      "sheet": 0,
+      "cell": "I1"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 29
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting Thunderbird contacts to CSV, then counting unique first names. Verified with Python script: There are 29 unique first names among the 30 contacts (one first name appears twice).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c867c42d-a52d-4a24-8ae3-f75d256b5618_aug_19_task_verify_5/getters/xlsx_cell__5b7d2296.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c867c42d-a52d-4a24-8ae3-f75d256b5618_aug_19_task_verify_5/metrics/xlsx_cell__5b7d2296.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly extracts cell I1 value from contacts_unique.xlsx file as required by instruction",
+        "Metric correctly performs exact integer comparison (result == 29) which is appropriate for verifying a count",
+        "Expected value (29) is semantically correct based on metadata explanation: 29 unique first names among 30 contacts",
+        "Metric parameter handling is CORRECT: directly accesses expected.get('value') which works because when expected.type='rule', the framework returns config['rules'] directly as the expected parameter",
+        "Postconfig appropriately saves the file (Ctrl+S) before verification to ensure file state is persisted",
+        "Data flow is correct: Getter reads xlsx → extracts I1 → Metric compares against 29",
+        "Evaluator uses outcome-based verification: checks final result (cell I1 = 29) rather than verifying each intermediate step (export CSV, open in Calc, count names). This is acceptable for OSWorld tasks as correct final outcome implies correct execution",
+        "Minor coverage gap: intermediate steps not explicitly verified (CSV export, file opening, counting process), only final result is checked"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification for intermediate artifacts: check if contacts.csv exists on Desktop to ensure export step completed",
+        "Could enhance robustness by verifying the xlsx file has the expected structure (e.g., contact data in columns A-H, count in I1)",
+        "The postconfig click at (640, 400) is position-dependent; consider using more robust save commands or checking window focus first"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89",
+  "new_id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_traj_verify_0",
+  "snapshot": "base_setup",
+  "instruction": "Set VLC's video snapshot save location to the Desktop folder.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_vlc_snapshot_path__5e0183d902d6d20115487cceb9d1bd09",
+    "result": {
+      "type": "vlc_snapshot_path__5e0183d902d6d20115487cceb9d1bd09",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_snapshot_path": "/home/user/Desktop"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened VLC, navigated to Tools > Preferences, switched to Advanced Preferences, browsed Input/Codecs and Stream output > Record sections. Then opened terminal and used grep to find 'input-record-path' in vlcrc but failed to correctly use sed to modify the config file due to syntax errors. Spent 50 turns without successfully changing the recording directory.",
+    "capability_extraction": "Can open VLC menus, navigate to Preferences, switch to Advanced Preferences, browse preference tree nodes, open terminal, use grep to search config files, attempt sed edits",
+    "failure_analysis": "Model found the correct config key (input-record-path at line 3962 in vlcrc) but failed due to repeated sed syntax errors when trying to modify the file. The model also confused the Stream output 'Record' section's 'Destination prefix' with the recording directory setting.",
+    "task_rationale": "Snapshot directory is a similar VLC config setting (snapshot-path in vlcrc) that can be changed via Preferences UI (Video section in Simple Preferences) or terminal. Simpler because it's more visible in Simple Preferences under Video tab.",
+    "explanation": "Task requires changing VLC's snapshot save path. Custom getter reads vlcrc, custom metric checks if snapshot-path equals /home/user/Desktop.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380_traj_verify_0/getters/vlc_snapshot.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380_traj_verify_0/metrics/vlc_snapshot.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly retrieves vlcrc config file from the VM using platform-appropriate paths (Linux/macOS/Windows)",
+        "Metric correctly parses vlcrc line-by-line, skips comments and blank lines, and finds the 'snapshot-path' key while excluding 'snapshot-path-hierarchical'",
+        "Metric parameter handling is correct: 'rule' parameter receives the rules dict directly from get_rule, and accesses 'rule.get(\"expected_snapshot_path\", \"\")' correctly",
+        "Expected value '/home/user/Desktop' is semantically correct for the instruction 'set snapshot save location to the Desktop folder'",
+        "Exact string match comparison is appropriate for file path verification",
+        "Complete coverage: the single instruction requirement (set snapshot path to Desktop) is fully verified"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding a postconfig step to close VLC before evaluation, as VLC may not flush vlcrc to disk until it exits. Without this, the getter might read stale config if VLC is still running."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

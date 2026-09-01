@@ -1,0 +1,90 @@
+{
+  "id": "f3b19d1e-2d48-44e9-b4e1-defcae1a0197",
+  "new_id": "f3b19d1e-2d48-44e9-b4e1-defcae1a0197_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Find the Ticket Delivery and Ticket Sharing section on Ticketek's help site.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://premier.ticketek.com.au/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "help\\.ticketek\\.com\\.au",
+          "Ticket-Delivery"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f3b19d1e-2d48-44e9-b4e1-defcae1a0197_sid_1488094",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent started on premier.ticketek.com.au which showed a security block. Tried Google search (SSL error). Eventually navigated to help.ticketek.com.au/hc/en-us, passed Cloudflare CAPTCHA, found FAQ categories, and clicked Ticket Delivery section reaching help.ticketek.com.au/hc/en-us/categories/360000153687-Ticket-Delivery.",
+    "capability_extraction": "Can navigate Chrome address bar, enter URLs, handle Cloudflare CAPTCHA, browse help pages, click category links",
+    "failure_analysis": "Original task failed due to URL pattern mismatch. The agent actually reached the Ticket Delivery page successfully but the evaluator expected 'Ticket-Delivery-FAQs' while the actual URL contained 'Ticket-Delivery'.",
+    "task_rationale": "This variation tests the same navigation the model actually completed successfully in the trajectory. The evaluator now uses the correct URL pattern 'Ticket-Delivery' that matches the real URL structure.",
+    "explanation": "Task requires navigating to the Ticket Delivery section on the help site. Evaluator checks URL matches both the help domain and the Ticket-Delivery path. This is exactly what the model achieved in the original trajectory.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "scoring_breakdown": {
+      "navigation": "1.0 - URL contains help.ticketek.com.au and Ticket-Delivery"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active tab URL, which is the right state for a navigation verification task.",
+        "Metric 'is_expected_url_pattern_match' correctly iterates over all patterns and requires all to match via regex. Parameter handling is correct: rules dict is accessed directly as 'rules[\"expected\"]'.",
+        "Expected patterns correctly verify both the help domain ('help.ticketek.com.au') and the target section path ('Ticket-Delivery').",
+        "Minor gap: Instruction mentions 'Ticket Delivery and Ticket Sharing section' but only 'Ticket-Delivery' is checked in the URL. Per trajectory evidence, 'Ticket-Delivery' is the actual URL slug for this combined section, so the check is practically sufficient.",
+        "Data flow is sound: getter returns URL string -> metric regex-matches against expected patterns -> returns 1.0 if all patterns found."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a 'Ticket-Sharing' or 'Sharing' pattern if 'Ticket Sharing' is a separate section, or clarify in the instruction that it refers to a single combined section named 'Ticket Delivery'."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

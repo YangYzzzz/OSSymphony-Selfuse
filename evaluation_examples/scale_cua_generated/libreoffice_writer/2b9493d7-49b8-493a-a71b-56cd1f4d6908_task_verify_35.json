@@ -1,0 +1,138 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_35",
+  "snapshot": "libreoffice_writer",
+  "instruction": "My LibreOffice application is not responding and I need to terminate all LibreOffice processes immediately. Can you help me force close all soffice processes using the terminal? I'm on Ubuntu and want to ensure all LibreOffice components are completely shut down.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "for pid in $(pgrep -f bash); do kill -s USR1 $pid 2>/dev/null || true; done; sleep 3"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "for pid in $(pgrep -f gnome-terminal); do kill -SIGTERM $pid 2>/dev/null; done; sleep 2"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server 2>/dev/null || true; sleep 1"
+          ]
+        }
+      }
+    ],
+    "func": "check_termination__6114da3ced4ee1360298ed1f97e4a748",
+    "result": {
+      "type": "process_term__6114da3ced4ee1360298ed1f97e4a748",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "ps aux | grep \"[s]office\" > /dev/null 2>&1 && echo \"soffice still running\" || echo \"all soffice terminated\"; grep -E \"[k]ill|pkill\" ~/.bash_history > /dev/null 2>&1 && echo \"terminated from terminal\" || echo \"not terminated from terminal\""
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "all soffice terminated",
+          "terminated from terminal"
+        ],
+        "exclude": [
+          "soffice still running",
+          "not terminated from terminal"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires terminating all LibreOffice soffice processes using terminal commands like killall or pkill. The evaluator verifies that: 1) All soffice processes are no longer running after the command, and 2) the user used terminal commands to kill the processes (bash history contains kill/killall/pkill commands). This is very similar to the original task with the same difficulty level.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_task_verify_1/getters/process_term__6114da3ced4ee1360298ed1f97e4a748.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_task_verify_1/metrics/term_metric__6114da3ced4ee1360298ed1f97e4a748.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "POSITIVE: Coverage is complete - evaluator checks both requirements: 1) all soffice processes terminated via 'ps aux | grep \"[s]office\"', and 2) terminal was used via bash history check",
+        "POSITIVE: Process termination check using 'ps aux | grep \"[s]office\"' is semantically correct - the [s] bracket prevents grep from matching itself",
+        "POSITIVE: Bash history check pattern '[k]ill|pkill' correctly matches kill, killall, and pkill commands",
+        "POSITIVE: Metric function correctly handles expected parameter - uses 'expected.get(\"include\")' and 'expected.get(\"exclude\")' directly, not 'expected.get(\"rules\")'",
+        "POSITIVE: Postconfig includes USR1 signal to bash processes (line 56) to trigger history flush before killing terminals, mitigating timing issues",
+        "CONCERN: Bash history verification has inherent fragility - the 3-second sleep after USR1 signal may not guarantee history flush on all systems under load, though this should work in most cases",
+        "MINOR: Expected patterns are semantically correct - 'all soffice terminated' + 'terminated from terminal' for success, 'soffice still running' + 'not terminated from terminal' for failure"
+      ],
+      "llm_judge_fix_suggestions": [
+        "OPTIONAL: Increase USR1 sleep from 3 to 5 seconds (line 56) to provide more margin for history flush on slower systems",
+        "OPTIONAL: Add explicit verification that bash history was flushed by checking file modification timestamp in postconfig",
+        "ALTERNATIVE: For more robustness, use 'history -a' command injection or check terminal session logs instead of relying solely on ~/.bash_history file writes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

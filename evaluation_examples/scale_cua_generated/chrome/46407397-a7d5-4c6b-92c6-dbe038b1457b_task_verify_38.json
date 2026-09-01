@@ -1,0 +1,145 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "From the \"Lecture Document\" email in Thunderbird Notes folder, get the docx attachment, extract any charts and images it contains, and upload them to a new Google Drive folder called 'figures'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_folder_not_empty__95db6624",
+    "result": {
+      "type": "googledrive_has_files__95db6624",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_query": "title = 'figures' and trashed = false and mimeType = 'application/vnd.google-apps.folder'"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting images from docx and uploading to Google Drive. Evaluator checks if figures folder is not empty (has any files).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_7/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_7/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that folder should contain files. Simple existence check.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks core requirement: verifies that 'figures' folder exists and contains files",
+        "Getter logic flow is correct: searches for folder, gets folder ID, lists files in folder, returns boolean",
+        "Metric correctly interprets boolean result: 1.0 if folder has files, 0.0 if empty",
+        "Implicitly verifies folder creation (returns False if folder doesn't exist)",
+        "Edge case handling: returns False for missing folder or empty folder",
+        "Minor redundancy in getter line 20: adds 'and \"root\" in parents' when config folder_query already includes parent constraint, but unlikely to cause runtime errors",
+        "Limitation: doesn't verify file types (images vs other files), but this is an acceptable simplification given task complexity",
+        "Limitation: doesn't verify files came from docx extraction vs uploaded from elsewhere, but task setup (config deletes folder first) provides reasonable assurance"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove redundant parent constraint in getter line 20: change 'folder_search = f'{folder_query} and \"root\" in parents'' to 'folder_search = folder_query' since config already includes parent check",
+        "Consider adding file type verification to check if uploaded files are images (mimeType contains 'image/'), though current approach is acceptable"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

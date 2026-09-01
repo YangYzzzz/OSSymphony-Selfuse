@@ -1,0 +1,130 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_63",
+  "snapshot": "os",
+  "instruction": "Create symbolic links for all files matching \"*failed.ipynb\" in a new directory \"./links\" at the root of test_environment, using the same filename without the directory path",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/eval.sh",
+            "path": "eval.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd /home/user/test_environment/links 2>/dev/null && ls -la | grep '^l' | awk '{print $9}' | sort || echo ''",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "a_failed.ipynb",
+          "c_failed.ipynb",
+          "e_failed.ipynb"
+        ],
+        "exclude": [
+          "b.ipynb",
+          "d.ipynb"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating symbolic links for '*failed.ipynb' files in a links/ directory. Based on setup.sh, there are 3 such files: a_failed.ipynb, c_failed.ipynb, e_failed.ipynb. The links should be created with just the filename (not full path). The evaluator checks that links directory contains these 3 symlinks and not the non-failed files. Uses existing check_include_exclude metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Command correctly extracts symlink names using 'awk {print $9}' which gets field 9 (the symlink name, not the target)",
+        "Evaluator properly verifies all instruction requirements: (1) symlinks are in ./links directory, (2) correct files are linked (3 *failed.ipynb files), (3) wrong files are not linked (non-failed files), (4) filenames are basenames without directory path",
+        "check_include_exclude metric correctly checks that output contains the 3 expected symlink names and excludes the 2 non-failed filenames",
+        "The getter command handles edge cases with '2>/dev/null' and '|| echo \"\"' to avoid errors if directory doesn't exist",
+        "Complete coverage: All requirements in the instruction are verified by the evaluator"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

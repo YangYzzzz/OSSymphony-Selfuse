@@ -1,0 +1,103 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_42",
+  "snapshot": "os",
+  "instruction": "Move all files in the \"/tmp/test_files\" directory tree that were last modified 30 days ago to a new directory called \"/tmp/old_archive\"",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'ARCHIVE_COUNT=$(find /tmp/old_archive -type f 2>/dev/null | wc -l); OLD_REMAIN=$(find /tmp/test_files/old_files -type f 2>/dev/null | wc -l); NEW_COUNT=$(find /tmp/test_files/new_files -type f 2>/dev/null | wc -l); if [ \"$ARCHIVE_COUNT\" -eq 2 ] && [ \"$OLD_REMAIN\" -eq 0 ] && [ \"$NEW_COUNT\" -eq 2 ]; then echo \"Success: Old files moved to archive, new files preserved\"; else echo \"Fail: ARCHIVE=$ARCHIVE_COUNT OLD_REMAIN=$OLD_REMAIN NEW=$NEW_COUNT\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files moved to archive, new files preserved"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires moving old files (30+ days) to /tmp/old_archive while preserving new files. Verification checks that 2 files exist in /tmp/old_archive, 0 files remain in old_files, and 2 files remain in new_files. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Hardcoded file counts (2, 0, 2) are not explained or justified by the instruction text",
+        "Verification assumes specific subdirectories (old_files/, new_files/) that are not mentioned in the instruction",
+        "Does not directly verify '30 days ago' requirement - relies on directory structure assumption instead of checking file modification times",
+        "Evaluator may work if setup.sh creates the expected structure, but logic is indirect and fragile to setup changes"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add metadata documenting the exact setup: number of files, their modification times, and directory structure created by setup.sh",
+        "Consider verifying actual file modification times (mtime) instead of just counts and directory locations",
+        "Make the instruction more specific about the expected directory structure if subdirectories are part of the test design",
+        "Add explanation of why exactly 2 files should move and 2 should remain based on the setup"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

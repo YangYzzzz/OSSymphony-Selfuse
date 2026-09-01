@@ -1,0 +1,129 @@
+{
+  "id": "df67aebb-fb3a-44fd-b75b-51b6012df509",
+  "new_id": "task_verify_0",
+  "snapshot": "vscode",
+  "instruction": "For each paper cited in the opened thesis document, search DBLP to find its bibtex entry (preferring non-arxiv sources when available), and add all entries to 'references.bib' with blank lines between entries. Ensure you include all 6 papers.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://dblp.org/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "touch",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/df67aebb-fb3a-44fd-b75b-51b6012df509/references.docx",
+            "path": "/home/user/Desktop/references.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/references.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_bibtex_entry_count__158776f670e179a0f46e13d333164963",
+    "result": {
+      "type": "bibtex_entry_count__158776f670e179a0f46e13d333164963",
+      "path": "/home/user/Desktop/references.bib"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 6
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding BibTeX entries on DBLP for all 6 papers listed in references.docx. The evaluator extracts BibTeX entries from references.bib and verifies they correspond to the papers cited in references.docx. Expected: at least 6 valid entries matching: Spider, SParC, CoSQL, Attention is All you Need, BERT, and GPT-3 (Language Models are Few-Shot Learners). Verification checks: (1) Count >= 6 entries, (2) Each entry has valid title and type fields, (3) Entry titles/authors match referenced papers using keyword matching strategies for different paper name formats (datasets, full titles, acronyms).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_0/getters/bibtex.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_0/metrics/bibtex.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 12,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Metric correctly handles expected parameter - directly accesses expected.get('min_count') without incorrect nested access",
+        "Getter successfully extracts BibTeX entries with title, authors, and type fields using regex parsing",
+        "Getter attempts to parse references.docx to dynamically identify cited papers",
+        "Getter has robust fallback to known papers list if docx parsing fails (python-docx not available or parsing errors)",
+        "Metric verifies entry count >= min_count (6) as first check",
+        "Metric validates each entry has required fields (title and type) with partial scoring (0.3) if fields missing",
+        "Metric matches BibTeX entries against referenced papers using three strategies: direct substring match, keyword matching for multi-word titles (allowing 1 missing keyword), and word boundary regex matching for acronyms",
+        "Metric provides graduated scoring: 1.0 for 100% match, 0.9 for >=80%, 0.7 for >=60%, 0.5 for >=40%, 0.3 for valid entries without content match",
+        "Logic is sound and will work correctly at runtime with proper error handling",
+        "MINOR COVERAGE GAP: Cannot verify 'preferring non-arxiv sources when available' - no mechanism to check entry source type (arXiv vs conference/journal)",
+        "MINOR COVERAGE GAP: Cannot verify 'blank lines between entries' - getter extracts entries but doesn't check formatting/spacing in original file",
+        "BibTeX regex may fail on complex entries with nested braces, but handles standard entries correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "To verify non-arXiv preference: Add logic to extract 'archivePrefix' or 'eprint' fields from BibTeX entries and check if non-arXiv alternatives exist for papers that have arXiv entries",
+        "To verify blank lines: Modify getter to check raw file content for double newlines (\\n\\n) between consecutive @entry patterns",
+        "Consider more robust BibTeX parsing using bibtexparser library if available, to handle complex nested structures"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_53",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Identify and terminate every LibreOffice process currently running via the terminal.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "history -a && sleep 1 && killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_process_count__52c76d254db0544b609f6696c1a71aee",
+    "result": {
+      "type": "process_count__52c76d254db0544b609f6696c1a71aee",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep -E \"(pgrep|ps|top|htop|pidof|killall)\"); if [ -z \"$output\" ]; then echo \"process check not performed\"; else echo \"process check performed\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "process check performed"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "process check not performed"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires checking LibreOffice process count before terminating them. Evaluator verifies: (1) no LibreOffice process is running after termination, and (2) process check commands (pgrep or ps) were used. This tests both process inspection and termination skills.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_1/getters/terminal.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_1/metrics/terminal.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both instruction requirements: (1) checking LibreOffice process count, and (2) terminating all LibreOffice processes.",
+        "LibreOffice termination verification is sound: Uses 'ps aux | grep \"[s]office\"' to verify all processes are killed, checking for both presence and absence correctly.",
+        "Process check verification uses comprehensive regex: 'grep -E \"(pgrep|ps|top|htop|pidof|killall)\"' covers all common process inspection commands users would naturally use.",
+        "Metric function correctly handles expected parameter for type='rule': Uses 'expected.get(\"include\")' and 'expected.get(\"exclude\")' directly, not 'expected.get(\"rules\")', which is the correct pattern.",
+        "Postconfig properly flushes bash history: Executes 'history -a && sleep 1 && killall gnome-terminal-server' to ensure history is written to disk before terminal closure, addressing potential race conditions.",
+        "Getter implementation is simple and correct: Executes bash command and returns output string for pattern matching.",
+        "Complete coverage: Both requirements from the instruction are verified - process checking was performed AND all LibreOffice processes were terminated."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing sleep duration to 2-3 seconds in postconfig for extra safety: 'history -a && sleep 2 && killall gnome-terminal-server' to ensure history flush completes on slower systems.",
+        "Minor enhancement: Could add verification that killall/pkill commands were actually used for termination, not just process checking, to ensure proper completion method."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

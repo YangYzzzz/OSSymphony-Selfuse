@@ -1,0 +1,137 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_15",
+  "snapshot": "os",
+  "instruction": "Set the permissions of every file in the current directory and its subdirectories to 600.",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "local_path": "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_1/eval_1.sh",
+          "dest": "eval.sh"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x eval.sh",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cd ~",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "All files have the correct permissions."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing all file permissions to 600 (rw-------) which makes files accessible only to the owner. The setup creates files with permissions 755, 644, and 777. The evaluator runs eval_1.sh which verifies all files have 600 permissions. This is similar in complexity to the original task.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_1/eval_1.sh"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "The evaluator logic correctly verifies the instruction requirement: checking that all files in testDir have 600 permissions (-rw-------)",
+        "The eval_1.sh script properly iterates through all files using 'find testDir -type f' and checks each file's permissions",
+        "The metric function check_include_exclude correctly verifies the success message is in the output",
+        "Minor concern: The eval script uses relative path 'testDir' which assumes execution from the home directory. The postconfig includes 'cd ~' (line 80-86) but this runs as a separate command, so it may not affect the working directory of the subsequent 'bash eval.sh' in the result section, depending on the execution context.",
+        "However, if commands default to running from the home directory (where setup.sh creates testDir), the evaluation should work correctly in practice"
+      ],
+      "llm_judge_fix_suggestions": [
+        "For more robustness, change the result command from 'bash eval.sh' to 'cd ~ && bash eval.sh' to ensure eval runs from the home directory",
+        "Or modify eval_1.sh line 14 to use absolute path: 'find ~/testDir -type f' instead of relative 'find testDir -type f'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

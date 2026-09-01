@@ -1,0 +1,130 @@
+{
+  "id": "f4aec372-4fb0-4df5-a52b-79e0e2a5d6ce",
+  "new_id": "f4aec372-4fb0-4df5-a52b-79e0e2a5d6ce_traj_verify_2",
+  "snapshot": "gimp",
+  "instruction": "Resize the canvas of this image to 1000 by 1000 pixels, centering the existing content.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/f4aec372-4fb0-4df5-a52b-79e0e2a5d6ce/Triangle_On_The_Side.png",
+            "path": "/home/user/Desktop/Triangle_On_The_Side.png"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/f4aec372-4fb0-4df5-a52b-79e0e2a5d6ce/Triangle_On_The_Side.xcf",
+            "path": "/home/user/Desktop/Triangle_On_The_Side.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/Triangle_On_The_Side.xcf"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey([\"shift\", \"ctrl\", \"e\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.write(\"Triangle_Canvas\");time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_image_size",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Triangle_Canvas.png",
+      "dest": "Triangle_Canvas.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "width": 1000,
+        "height": 1000
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_f4aec372-4fb0-4df5-a52b-79e0e2a5d6ce_sid_1488058",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened GIMP with yellow triangle image (800x800), tried to select and center the triangle using Align tool and Move tool over 30 turns, but never successfully repositioned the triangle.",
+    "capability_extraction": "Can navigate GIMP menus, select tools (Crop, Align, Move), change tool options (Relative to: Image), interact with Layer menu, anchor floating selections",
+    "failure_analysis": "Model failed to properly select the triangle as a movable element. It anchored the floating selection to the background layer, then tried Align tool which aligns layers not pixel regions. The triangle remained in its original upper-left position.",
+    "task_rationale": "Simplified to a canvas resize operation via Image > Canvas Size, which requires menu navigation and dialog interaction - capabilities demonstrated in the trajectory. The 'center' option in the Canvas Size dialog is simpler than the original layer-level centering task.",
+    "explanation": "Task requires resizing the canvas from 800x800 to 1000x1000 via Image > Canvas Size with content centered. Postconfig exports the result as PNG. Evaluator uses check_image_size to verify the exported image dimensions match 1000x1000.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 7,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.65,
+      "llm_judge_reasons": [
+        "Canvas size verification is correct: check_image_size properly checks width==1000 and height==1000 on the exported PNG, which verifies the canvas resize requirement.",
+        "Postconfig correctly exports the GIMP image as PNG via Shift+Ctrl+E for external verification.",
+        "Getter (vm_file) correctly fetches the exported file from the expected path.",
+        "Metric parameter handling is correct: check_image_size receives the rules dict directly as 'rule' parameter, matching the expected.type='rule' framework behavior.",
+        "COVERAGE GAP: The instruction requires 'centering the existing content', but the evaluator only checks image dimensions (1000x1000). It does not verify that the original content is centered within the new canvas. A user could resize the canvas with content offset to any position and still pass the evaluation.",
+        "The centering requirement is an explicit part of the instruction, making this an incomplete verification. However, the primary requirement (canvas resize to 1000x1000) is correctly verified."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a pixel-level check to verify content centering. Since the original image is 800x800 and the new canvas is 1000x1000, the content should be offset by 100 pixels on each side. Could compare the exported image's content bounding box or compare specific pixel regions to verify the 100px padding on all sides.",
+        "Alternatively, use a pixel comparison metric that checks a reference image with correctly centered content against the exported result."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_57",
+  "snapshot": "thunderbird",
+  "instruction": "Uninstall the account \"admin.user@outlook.com\" from the Thunderbird application.",
+  "source": "https://www.wikihow.com/Remove-an-Email-Account-from-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "unexpect": [
+          {
+            "url": "imap://outlook.office365.com",
+            "user": "admin.user@outlook.com"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires uninstalling the admin email account 'admin.user@outlook.com' from Thunderbird. The evaluator confirms the account has been removed from the account configuration.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies account uninstallation by checking absence in exported CSV",
+        "Postconfig appropriately uses firefox_decrypt.py to extract Thunderbird account credentials after task completion",
+        "check_csv metric correctly implements 'unexpect' logic - returns 1.0 only if the specified account is NOT found",
+        "Data flow is semantically correct: extract accounts → check CSV → verify target account absent",
+        "Expected rules correctly specify both 'url' and 'user' fields to uniquely identify the account to be removed"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Evaluator assumes firefox_decrypt.py outputs CSV with 'url' and 'user' column headers. If column names differ, _match_record will fail silently. This is likely fine given the script version is pinned, but runtime robustness could be improved with column name validation or more flexible matching."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

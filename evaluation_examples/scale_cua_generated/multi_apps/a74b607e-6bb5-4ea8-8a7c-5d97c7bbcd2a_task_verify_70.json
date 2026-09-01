@@ -1,0 +1,98 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_70",
+  "snapshot": "multiapps",
+  "instruction": "I have a locally developed Chrome extension stored in the Desktop directory. Please install this extension in Chrome browser by loading it as an unpacked extension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_ext_name_installed__91053ece",
+    "result": {
+      "type": "ext_name_list__91053ece"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Hello Extensions"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_0/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_0/metrics/chrome.py"
+    ],
+    "explanation": "Task requires installing the 'Hello Extensions' extension from Desktop. Evaluator checks if the extension name 'Hello Extensions' appears in the list of installed Chrome extensions. Verified from manifest.json that extension name is 'Hello Extensions'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts extension names from Chrome's Preferences file (~/.config/google-chrome/Default/Preferences)",
+        "Getter uses appropriate JSON parsing to read extensions.settings[ext_id].manifest.name for each installed extension",
+        "Metric correctly performs membership check to verify if 'Hello Extensions' exists in the list",
+        "Expected value 'Hello Extensions' is semantically correct and verified from actual manifest.json",
+        "Data flow is correct: getter returns list of extension names, metric checks for expected name in list",
+        "Error handling is robust: getter returns empty list on file/parse errors, metric validates list type",
+        "Evaluator completely covers the instruction requirement (verify extension is installed)",
+        "Verification reads persistent filesystem state (Preferences file), not transient UI state, making it reliable"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Static warning about UI/state-dependent task is a false positive - getter reads persistent file state, not UI state, so no postconfig needed",
+        "Minor performance optimization possible: getter could check for specific extension instead of collecting all names, but this does not affect correctness"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

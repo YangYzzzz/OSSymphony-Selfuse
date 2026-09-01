@@ -1,0 +1,98 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_9",
+  "snapshot": "multiapps",
+  "instruction": "Install the extension from the helloExtension folder on your Desktop into Chrome as an unpacked extension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_ext_count__2cf92b2479d096498965f5b9ffc3704c",
+    "result": {
+      "type": "ext_count__2cf92b2479d096498965f5b9ffc3704c",
+      "name_pattern": "hello.*extension",
+      "path_contains": "Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension_name_pattern": "hello.*extension",
+        "expected_path_contains": "Desktop/helloExtension"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires loading unpacked Chrome extension from Desktop/helloExtension folder and verifying the specific extension is loaded. Custom getter searches Chrome preferences for extension with path or name matching 'helloExtension' or 'Hello Extension'. Metric verifies the specific extension was found, preventing false positives from pre-existing extensions.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_4/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: extension loaded, correct name pattern, and correct path location",
+        "Getter properly extracts extension information from Chrome Preferences file with configurable name_pattern and path_contains parameters (chrome.py:47-48)",
+        "Metric correctly uses regex matching for extension name validation (chrome.py metrics:36-43) using expected['extension_name_pattern']",
+        "Metric correctly validates path contains expected location (chrome.py metrics:46-50) using expected['expected_path_contains']",
+        "Data flow is correct: config provides patterns → getter searches with patterns → metric validates using expected rules",
+        "Both name and path validation must pass, providing strong specificity and preventing false positives from unrelated extensions",
+        "Chrome Preferences file persists extension data, so no postconfig needed - state is accessible after task completion"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding verification that extension is enabled (state==1) as an additional check, though current logic already extracts this field"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

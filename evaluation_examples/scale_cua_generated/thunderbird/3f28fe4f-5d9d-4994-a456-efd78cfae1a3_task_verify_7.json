@@ -1,0 +1,116 @@
+{
+  "id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+  "new_id": "task_verify_7",
+  "snapshot": "thunderbird",
+  "instruction": "Update your Thunderbird email account's display name to 'Dr. Smith' for use as the sender name in outgoing emails.",
+  "source": "https://www.adsigner.com/user-manual/signatures/setup-email-client-thunderbird/#:~:text=is%20probably%20hidden.-,Right%20click%20on%20the%20empty%20space%20at%20the%20top%20of,signature%20from%20a%20file%20instead.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.fullName": {
+            "method": "==",
+            "ref": "Dr. Smith"
+          }
+        }
+      }
+    },
+    "func": "check_thunderbird_prefs"
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting a custom display name (sender name) for the email account. The evaluator checks the mail.identity.id1.fullName preference in prefs.js to verify it is set to 'Dr. Smith'. Uses the existing check_thunderbird_prefs metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: checks if mail.identity.id1.fullName preference is set to 'Dr. Smith'",
+        "Complete coverage: instruction has one requirement (set display name), evaluator checks exactly this requirement",
+        "Correct data flow: get_vm_file extracts prefs.js from VM, check_thunderbird_prefs parses and validates the preference value",
+        "Metric function correctly handles expected parameter: when expected.type='rule', the metric receives rules dict directly (via get_rule) and correctly accesses rule.get('expect', {}) and rule.get('unexpect', {})",
+        "Appropriate postconfig: closes Thunderbird window to ensure preferences are flushed to disk before reading prefs.js",
+        "Edge cases handled: metric returns 0.0 when result is None, handles missing preferences gracefully",
+        "Type compatibility is correct: get_vm_file with multi=False returns str or None, which check_thunderbird_prefs handles properly (static warning is false positive)",
+        "Expected value is semantically correct: mail.identity.id1.fullName is the correct Thunderbird preference for email display name"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

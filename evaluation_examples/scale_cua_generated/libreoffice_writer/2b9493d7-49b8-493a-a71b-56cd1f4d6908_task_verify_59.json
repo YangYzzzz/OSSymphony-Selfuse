@@ -1,0 +1,114 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_59",
+  "snapshot": "libreoffice_writer",
+  "instruction": "LibreOffice Writer has stopped working and won't close. I need to use the terminal to kill it on my Ubuntu system. Can you help me force quit just the Writer process without affecting other applications?",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep -E \"(kill|pkill|killall)\"); if [ -z \"$output\" ]; then echo \"not killed from terminal\"; else echo \"killed from terminal\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "killed from terminal"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "not killed from terminal"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires killing LibreOffice Writer process via terminal on Ubuntu. Evaluator verifies soffice process termination and checks for kill/pkill/killall commands in bash history.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks both requirements: (1) LibreOffice process termination and (2) use of terminal kill commands",
+        "Getter logic properly uses grep pattern '[s]office' to avoid matching the grep process itself",
+        "Metric check_include_exclude correctly requires all include conditions and excludes all exclude conditions",
+        "Bash history verification confirms terminal-based kill command usage",
+        "Postconfig appropriately kills terminal to ensure clean verification state and flush bash history",
+        "Data flow is semantically correct: command output contains both process state and history check, metric verifies both aspects"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: bash history grep pattern '(kill|pkill|killall)' will match ANY use of these commands, not just LibreOffice-specific ones. Could use 'grep -E \"(kill|pkill|killall).*(soffice|writer)\"' for more precise verification, though this is unlikely to cause issues in practice",
+        "Note: All LibreOffice applications (Writer, Calc, Impress) share the same 'soffice' backend process, so killing Writer necessarily affects other LibreOffice apps if they're running. This is correct behavior given LibreOffice's architecture"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

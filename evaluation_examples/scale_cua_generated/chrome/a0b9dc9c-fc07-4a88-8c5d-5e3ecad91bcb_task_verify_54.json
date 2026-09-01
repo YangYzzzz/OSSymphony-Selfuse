@@ -1,0 +1,160 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_54",
+  "snapshot": "chrome",
+  "instruction": "Save all messages from the Bills folder in Thunderbird to Google Drive under 'emails' folder as .eml files, using the email subject as filename.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_eml_files__846f274f",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path_list": [
+        [
+          "emails"
+        ],
+        [
+          "emails"
+        ]
+      ],
+      "dest": [
+        "downloaded1.eml",
+        "downloaded2.eml"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "all_exist": true,
+        "min_count": 2
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Uses existing get_googledrive_file getter to download files from 'emails' folder and verify at least 2 .eml files can be retrieved. Verified 2 emails exist in Bills folder.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_2/metrics/googledrive_846f274f.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical coverage gap: Instruction requires files to be named 'using the email subject as filename', but evaluator does not verify filenames at all",
+        "Incomplete verification: Evaluator only checks if at least 2 files exist in 'emails' folder, but does not verify these are the correct emails from Bills folder",
+        "Missing file format validation: Does not verify that files are actually .eml files (no extension checking)",
+        "Missing source verification: Does not confirm files originated from Thunderbird Bills folder",
+        "Weak expected value: Only checks count >= 2, but does not verify which specific emails or their properties",
+        "Getter limitation: Downloads files as arbitrary names (downloaded1.eml, downloaded2.eml) rather than checking actual uploaded filenames"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify getter to list all files in 'emails' folder and retrieve their actual filenames from Google Drive API",
+        "Add metric logic to verify filenames match expected email subjects from Bills folder (would need to access Thunderbird data or specify expected subjects)",
+        "Add validation that all files have .eml extension",
+        "Consider verifying file content is valid .eml format (e.g., contains email headers)",
+        "Update expected values to include the actual email subjects that should be present",
+        "Alternatively: Simplify instruction to just 'save at least 2 emails' if filename verification is not critical"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

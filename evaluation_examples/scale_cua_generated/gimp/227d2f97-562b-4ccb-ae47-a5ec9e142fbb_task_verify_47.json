@@ -1,0 +1,97 @@
+{
+  "id": "227d2f97-562b-4ccb-ae47-a5ec9e142fbb",
+  "new_id": "task_verify_47",
+  "snapshot": "gimp",
+  "instruction": "Open the .xcf file from the Desktop, copy the image, and paste it into a new LibreOffice Writer document. Resize the image to 50% of its original size and save the document as 'resized_image.docx' on the Desktop.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Desktop/QTdHniCqfJbBLJe3L3nijU-1200-80.xcf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/227d2f97-562b-4ccb-ae47-a5ec9e142fbb/QTdHniCqfJbBLJe3L3nijU-1200-80.xcf"
+          }
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_writer",
+    "gimp",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "resized_image.docx - LibreOffice Writer",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "compare_docx_images",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/resized_image.docx",
+      "dest": "resized_image.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_image": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "explanation": "Task requires resizing image to 50% before pasting. Uses existing compare_docx_images which checks image presence. Exact size verification is complex in DOCX format, so we verify the image was successfully inserted.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Wrong metric function signature - compare_docx_images requires TWO docx file paths, but evaluator provides one file and one rule dictionary. Type mismatch will cause runtime failure.",
+        "CRITICAL: Incomplete coverage - instruction explicitly requires 'Resize the image to 50% of its original size' but evaluator only checks image presence, not size.",
+        "CRITICAL: Wrong expected value structure - compare_docx_images expects a second docx file path as expected value, not a rule dictionary {'has_image': true}.",
+        "SEMANTIC: Evaluator cannot verify the core requirement of 50% resizing. The metadata acknowledges this limitation but the task still requires it."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Create a new metric function that checks: (1) if a DOCX contains at least one image, and (2) optionally validates image dimensions/size ratio if size verification is needed",
+        "Alternative: Simplify the instruction to remove the '50% resize' requirement and only require 'paste the image into LibreOffice Writer document'",
+        "If keeping current approach, change expected type from 'rule' to 'vm_file' and provide a reference DOCX file with the correctly resized image for comparison",
+        "Change func to a metric that accepts (result_file, rules_dict) signature, not (file1, file2) signature"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Search for electric vans with a maximum price of $52,000 within 90 miles of 80202.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]",
+        "body_style_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "52000",
+          "maximum_distance": "90",
+          "zip": "80202",
+          "fuel_slugs[]": "electric",
+          "body_style_slugs[]": "van"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task searches for electric vans on cars.com with filters: max price $52,000, within 90 miles of Denver (80202). Same evaluation pattern with different vehicle and location combination.",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: max price ($52,000), distance (90 miles), location (80202), fuel type (electric), and body style (van)",
+        "Getter 'get_active_tab_url_parse' correctly extracts URL query parameters from cars.com search results",
+        "Metric 'check_direct_json_object' correctly compares all extracted parameters against expected values with exact matching",
+        "Complete coverage: All 5 search criteria from instruction are verified (list_price_max, maximum_distance, zip, fuel_slugs[], body_style_slugs[])",
+        "Data flow is semantically correct: accessibility tree -> active URL -> URL parsing -> parameter extraction -> exact comparison",
+        "Robust error handling: getter validates required parameters and handles missing URL; metric handles None results",
+        "State accessibility is guaranteed: URL state is always accessible from active tab after search completion, no postconfig needed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

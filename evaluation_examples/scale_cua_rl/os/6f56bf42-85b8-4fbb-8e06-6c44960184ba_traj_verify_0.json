@@ -1,0 +1,109 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba_traj_verify_0",
+  "snapshot": "os",
+  "instruction": "Move file1 into dir1, then create symbolic links to dir1/file1 in both dir2 and dir3.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/6f56bf42-85b8-4fbb-8e06-6c44960184ba/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_move_symlinks__2a402a2f74167209d0ebc1db72b76fd8",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c '[ -f /home/user/dir1/file1 ] && echo \"FILE_IN_DIR1:YES\" || echo \"FILE_IN_DIR1:NO\"; [ ! -e /home/user/file1 ] && echo \"FILE1_REMOVED:YES\" || echo \"FILE1_REMOVED:NO\"; [ -L /home/user/dir2/file1 ] && echo \"SYMLINK_DIR2:YES\" || echo \"SYMLINK_DIR2:NO\"; [ -L /home/user/dir3/file1 ] && echo \"SYMLINK_DIR3:YES\" || echo \"SYMLINK_DIR3:NO\"'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_in_dir1": true,
+        "file1_removed": true,
+        "symlink_in_dir2": true,
+        "symlink_in_dir3": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_6f56bf42-85b8-4fbb-8e06-6c44960184ba_sid_1488213",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully copied file1 to dir1, dir2, dir3 using cp commands with && chaining, then verified with ls -la. Completed in 9 turns.",
+    "capability_extraction": "Can use terminal, execute file operations (cp, ls, mv), chain commands with &&, verify results",
+    "task_rationale": "Extends copy task to move + symlink creation, testing deeper file operation knowledge while using same setup",
+    "explanation": "Task requires moving file1 to dir1 (not copying), then creating symbolic links in dir2 and dir3 pointing to dir1/file1. Evaluator runs bash checks for: (1) file1 exists as regular file in dir1, (2) file1 no longer in home, (3) dir2/file1 is symlink, (4) dir3/file1 is symlink. Partial credit: 0.25 per check.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_6f56bf42-85b8-4fbb-8e06-6c44960184ba_sid_1488213_traj_verify_0/metrics/check_move_symlinks__2a402a2f74167209d0ebc1db72b76fd8.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "file_in_dir1": "0.25 - file1 exists as regular file in dir1",
+      "file1_removed": "0.25 - file1 no longer exists in home directory",
+      "symlink_dir2": "0.25 - dir2/file1 is a symbolic link",
+      "symlink_dir3": "0.25 - dir3/file1 is a symbolic link"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter command correctly checks all 4 aspects: file exists in dir1 (-f), file removed from home (! -e), dir2/file1 is symlink (-L), dir3/file1 is symlink (-L)",
+        "Instruction coverage is complete: move operation verified by checking both destination existence and source removal; symlink creation verified in both dir2 and dir3",
+        "Partial credit scoring (0.25 per check) is reasonable and well-structured",
+        "Minor gap: Symlink target is not verified. The -L test only checks if a symlink exists, not that it points to /home/user/dir1/file1. A symlink pointing to a wrong target would still pass.",
+        "The expected rules dict values (true booleans) are never actually used by the metric function, which only parses the result string for YES/NO patterns. This is harmless but indicates a disconnect between expected config and metric logic."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add symlink target verification to the getter command, e.g.: readlink /home/user/dir2/file1 and check it equals /home/user/dir1/file1",
+        "Example enhanced check: [ \"$(readlink /home/user/dir2/file1)\" = \"/home/user/dir1/file1\" ] && echo SYMLINK_DIR2_TARGET:YES || echo SYMLINK_DIR2_TARGET:NO"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_45",
+  "snapshot": "chrome",
+  "instruction": "Download the invoice PDF from Google Drive, extract all table data from it, and save the extracted content as 'invoice.xlsx' on the Desktop with meaningful data.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_min_file_size__b756f99d",
+    "result": {
+      "type": "file_size__b756f99d",
+      "path": "/home/user/Desktop/invoice.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_size_bytes": 1024
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task verifies that the extracted invoice data produces a file with reasonable size (at least 1KB), indicating meaningful data was extracted. The evaluator checks the file size meets the minimum threshold.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_7/getters/generic.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_7/metrics/generic.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "b756f99d",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires downloading PDF from Google Drive, extracting ALL table data, and saving with meaningful data, but evaluator only checks file size",
+        "Semantic verification failure: File size >= 1KB cannot verify that data was actually extracted from the PDF or that it contains meaningful content",
+        "Missing content validation: Evaluator does not verify Excel file contains actual table data, correct structure, or values matching the invoice PDF",
+        "Logic weakness: A 1KB+ file could be an empty Excel workbook with formatting overhead, file with random data, or partial extraction - all would incorrectly pass",
+        "No verification of data extraction quality: Cannot determine if ALL table data was extracted or if extracted data matches source PDF content",
+        "No verification of source: Cannot verify PDF was actually downloaded from Google Drive as required"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to read Excel file content using LibreOffice/openpyxl APIs to extract actual cell values, row count, and column count",
+        "Add metric to verify minimum data structure requirements: minimum row count (e.g., >= 5 rows for typical invoice), presence of expected columns/headers",
+        "Add expected values derived from the actual invoice PDF content (e.g., total amount, invoice number, line item count) to verify extraction correctness",
+        "Consider adding verification that source invoice.pdf exists in Google Drive or was downloaded (via Google Drive API check or local file existence)",
+        "Add metric to check for non-empty cell values in key columns to ensure meaningful data vs. just formatting"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

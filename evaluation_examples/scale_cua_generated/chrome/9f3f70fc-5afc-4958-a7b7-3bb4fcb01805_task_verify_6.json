@@ -1,0 +1,119 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_6",
+  "snapshot": "chrome",
+  "instruction": "Look through the selection of men's Adidas jerseys costing under $70.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_nba_store_filters__9f3f70fc",
+    "result": {
+      "type": "nba_store_filter_check__9f3f70fc",
+      "expected_filters": {
+        "under $70": true,
+        "men": true,
+        "jerseys": true,
+        "adidas": true
+      },
+      "filter_selectors": [
+        ".filter-selector-link",
+        "[class*='filter']",
+        "[class*='facet']",
+        "[data-filter]",
+        ".refinement",
+        ".selected-filter"
+      ],
+      "product_selector": "[class*='product'], [data-product], .product-card, .product-item, .product-grid-item",
+      "min_products": 1
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "filters": {
+          "under $70": true,
+          "men": true,
+          "jerseys": true,
+          "adidas": true
+        },
+        "require_all_filters": true,
+        "require_products": true,
+        "min_products": 1
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "This task is a variation of the original NBA store browsing task. The agent must navigate to the NBA store and apply filters to browse men's Adidas jerseys under $70. The evaluator uses a custom getter (get_nba_store_filter_check__9f3f70fc) that implements robust URL parsing with word-boundary matching to avoid false positives (e.g., 'men' won't match 'women' or 'comment'). It extracts and verifies URL query parameters properly, checks for filter elements on the page using multiple CSS selectors for robustness, and verifies that actual product results are displayed. The custom metric (check_nba_store_filters__9f3f70fc) validates all expected filters are present in the URL and ensures products are shown, providing a comprehensive verification that the filtering task was completed successfully.",
+    "new_functions_paths": [
+      "tmp_funcs/9f3f70fc-5afc-4958-a7b7-3bb4fcb01805_task_verify_4/getters/nba_store_filter_check__9f3f70fc.py",
+      "tmp_funcs/9f3f70fc-5afc-4958-a7b7-3bb4fcb01805_task_verify_4/metrics/check_nba_store_filters__9f3f70fc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "task_variation_index": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly uses urlparse and parse_qs for robust URL parameter extraction, addressing previous concerns about substring matching",
+        "Implements word-boundary regex matching (\\b pattern) to prevent false positives (e.g., 'men' won't match 'women' or 'comment')",
+        "Properly verifies all four required filters (men, jerseys, adidas, under $70) are present in URL parameters or path",
+        "Correctly checks that products are displayed, meeting the 'browse the list' requirement with min_products=1",
+        "Metric correctly handles expected parameter for type='rule' - directly accesses expected.get('filters') without trying expected.get('rules')",
+        "With require_all_filters=True, returns 0.0 if any filter is completely missing from URL, providing strict verification",
+        "Checks filters across multiple locations: URL query params, URL path segments, and page elements for robustness"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Partial credit logic (0.5 for filters on page but not in URL) may be too lenient - filters visible on page but not in URL likely means they aren't actually applied, just available as options",
+        "Consider: CSS selectors for products and filters are generic and may need adjustment for NBA.com's specific structure, but this is a practical concern rather than a logic flaw"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

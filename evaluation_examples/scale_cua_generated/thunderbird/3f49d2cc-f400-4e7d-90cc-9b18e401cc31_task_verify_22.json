@@ -1,0 +1,120 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "task_verify_22",
+  "snapshot": "thunderbird",
+  "instruction": "I want to be able to see my calendar and tasks alongside my email. Can you help me show the today pane in Thunderbird so I can view my schedule without switching tabs?",
+  "source": "https://www.reddit.com/r/Thunderbird/comments/182dg5p/unified_inbox_howto/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/xulstore.json",
+      "dest": "xulstore.json"
+    },
+    "func": "check_json",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "chrome://messenger/content/messenger.xhtml",
+              "today-pane-splitter",
+              "hidden"
+            ],
+            "method": "eq",
+            "ref": "false"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires showing the today pane in Thunderbird. The evaluator checks xulstore.json for today-pane-splitter.hidden set to 'false'. Verified in the sample xulstore.json that this setting exists with value 'true' (hidden), so task requires changing it to 'false' (visible). Similar complexity to original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified xulstore.json contains 'today-pane-splitter' with 'hidden' attribute currently set to 'true'. Task requires changing it to 'false' to show the pane.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly identifies the right configuration file (xulstore.json) and setting (today-pane-splitter.hidden) to verify today pane visibility",
+        "Postconfig properly closes Thunderbird to ensure settings are persisted to disk before verification",
+        "check_json metric correctly navigates nested JSON structure using key path [chrome://messenger/content/messenger.xhtml][today-pane-splitter][hidden]",
+        "Expected value 'false' (string) correctly matches Thunderbird's storage format for showing the today pane",
+        "Complete coverage: instruction requires showing today pane, evaluator checks exactly that requirement",
+        "Data flow is semantically correct: fetch file → parse JSON → navigate keys → compare value with expected",
+        "Runtime feasibility verified: get_vm_file can fetch files, check_json handles JSON parsing with proper error handling and key navigation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

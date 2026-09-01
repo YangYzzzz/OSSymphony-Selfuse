@@ -1,0 +1,101 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_56",
+  "snapshot": "chrome",
+  "instruction": "I prefer using DuckDuckGo for privacy reasons. Please set DuckDuckGo as my default search engine in Chrome.",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_search_engine__d2ec4a7b",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "name": "DuckDuckGo"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting DuckDuckGo as the default search engine. Uses existing getter (get_default_search_engine) and custom metric to verify.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing getter, creates simple custom metric to check search engine name.",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: DuckDuckGo is set as default search engine",
+        "Getter logic is correct: get_default_search_engine reads from Chrome's Preferences file at the correct JSON path (default_search_provider_data.template_url_data.short_name)",
+        "Metric logic is correct: check_search_engine__d2ec4a7b correctly accesses expected_state.get('name') directly, which is the proper way to handle expected parameter when type='rule'",
+        "Data flow is semantically correct: getter returns search engine name as string, metric compares it with expected name using case-insensitive comparison",
+        "Postconfig is appropriate: restarts Chrome to ensure preference file reflects any changes made by the agent",
+        "Expected value is correct: {'name': 'DuckDuckGo'} matches the instruction requirement",
+        "The metric at line 24 uses expected_state.get('name', None) which is the correct pattern for type='rule' (the previous judgment claiming line 23 used nested access was incorrect)"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

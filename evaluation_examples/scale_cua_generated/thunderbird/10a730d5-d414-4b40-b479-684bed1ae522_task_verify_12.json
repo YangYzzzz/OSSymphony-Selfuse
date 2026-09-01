@@ -1,0 +1,114 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_12",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to compact folders automatically when the potential disk space savings exceed 1000 KB.",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.purge_threshold_mb": {
+            "method": "eq",
+            "ref": 1
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Thunderbird to automatically compact folders when it will save over 1000 KB. This is done by setting the mail.purge_threshold_mb preference to 1 (since the preference uses MB units and 1000 KB ≈ 1 MB). The evaluator uses the existing check_thunderbird_prefs function to verify this preference value in the prefs.js file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: 1000 KB ≈ 1 MB, and mail.purge_threshold_mb is set to 1",
+        "Metric function check_thunderbird_prefs correctly parses prefs.js and compares preference values using 'eq' method",
+        "Postconfig properly closes Thunderbird to ensure prefs.js is saved before verification",
+        "Expected value semantics are correct: ref=1 for mail.purge_threshold_mb matches the instruction's 1000 KB requirement",
+        "Getter get_vm_file correctly retrieves the prefs.js file from the VM to local cache for metric evaluation",
+        "Metric handles None result gracefully (returns 0.0 if file retrieval fails)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding a preference check for 'mail.prompt_purge_threshold' to verify auto-compact is enabled (not just threshold set), though current check may be sufficient depending on Thunderbird defaults"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "10a730d5-d414-4b40-b479-684bed1ae522_aug_14_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

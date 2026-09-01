@@ -1,0 +1,73 @@
+{
+  "id": "3ce045a0-877b-42aa-8d2c-b4a863336ab8",
+  "new_id": "task_verify_38",
+  "snapshot": "os",
+  "instruction": "Turn on the high contrast theme so I can more easily see and identify elements on the screen.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/a11y-contrast.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "GTK_THEME=$(timeout 10 gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null | tr -d \"'\"); if [ -n \"$GTK_THEME\" ] && echo \"$GTK_THEME\" | grep -qiE 'high.*contrast|contrast.*high|HighContrast'; then echo \"High contrast theme enabled: $GTK_THEME\"; else echo \"No high contrast theme enabled (current: $GTK_THEME)\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "High contrast theme enabled"
+        ],
+        "exclude": [
+          "No high contrast theme enabled",
+          "error"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling high contrast theme for better visibility. Evaluator checks if GTK theme contains 'high contrast' or 'HighContrast' in the theme name using gsettings. Similar difficulty to original task - both are single accessibility settings. Uses existing check_include_exclude metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary score: 1.0 if high contrast theme is enabled, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly uses vm_command_line to execute gsettings command that retrieves GTK theme and checks for high contrast patterns (case-insensitive regex matching 'high.*contrast', 'contrast.*high', 'HighContrast')",
+        "Metric logic (check_include_exclude) correctly verifies presence of success message 'High contrast theme enabled' and absence of failure messages",
+        "Complete instruction coverage: evaluator directly checks if high contrast theme is enabled via GTK theme setting, which is the primary method in GNOME/Ubuntu systems",
+        "Robust error handling: command includes 10-second timeout, stderr redirection to /dev/null, and explicit check for non-empty theme name before pattern matching",
+        "Expected values are semantically correct: include list checks for success message, exclude list checks for failure message and errors",
+        "Data flow is sound: command execution → theme retrieval → pattern matching → output message → metric verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "3ce045a0-877b-42aa-8d2c-b4a863336ab8_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+  "new_id": "task_verify_8",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to automatically attach a vCard with my contact information to outgoing emails. Enable the option to attach my vCard to messages.",
+  "source": "https://www.adsigner.com/user-manual/signatures/setup-email-client-thunderbird/#:~:text=is%20probably%20hidden.-,Right%20click%20on%20the%20empty%20space%20at%20the%20top%20of,signature%20from%20a%20file%20instead.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.attach_vcard": {
+            "method": "==",
+            "ref": true
+          }
+        }
+      }
+    },
+    "func": "check_thunderbird_prefs"
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the option to attach a vCard (contact card) to outgoing emails. The evaluator checks the mail.identity.id1.attach_vcard preference in prefs.js to verify it is set to true. Uses the existing check_thunderbird_prefs metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement - checks mail.identity.id1.attach_vcard preference which controls vCard attachment to outgoing emails",
+        "Getter logic is correct - extracts Thunderbird prefs.js file from VM after closing window to flush preferences to disk",
+        "Metric logic is correct - parses prefs.js format properly and checks the exact preference key with correct comparison method",
+        "Complete instruction coverage - the single preference mail.identity.id1.attach_vcard fully controls the vCard attachment feature",
+        "Robust error handling - metric handles None return from getter (returns 0.0), missing preferences, and malformed lines",
+        "Postconfig is appropriate - closes Thunderbird window to ensure preferences are written to disk before verification",
+        "Static type warning is false positive - while get_vm_file returns Union[Optional[str], List[Optional[str]]], the metric explicitly handles None case at line 41-42"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

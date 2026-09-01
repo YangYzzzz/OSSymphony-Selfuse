@@ -1,0 +1,151 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Retrieve invoice.pdf from Google Drive, extract all service costs, and save to 'invoice.xlsx' on the Desktop. Calculate the average unit price of all services and write it in cell C11.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_value__eea1c2e4",
+    "result": {
+      "type": "xlsx_cell__eea1c2e4",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0,
+      "cell": "C11"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 187.857143
+      }
+    },
+    "options": {
+      "tolerance": 1.0
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires calculating average unit price. Verified with Python: 1315.0/7 = 187.857143. The evaluator reads cell C11 and checks if the value matches the expected value.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_7/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_7/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if C11 contains 187.857143 (±1.0), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Evaluator only verifies the final calculation result in cell C11, not intermediate steps (data retrieval from Google Drive, data extraction to spreadsheet)",
+        "Single-cell verification approach assumes that correct average implies correct completion of all previous steps",
+        "Risk: Agent could potentially hardcode the value in C11 without actually extracting data from invoice.pdf",
+        "However, the specific expected value (187.857143) is precise enough that it's unlikely to be guessed without completing the task",
+        "Getter logic is correct: reads cell C11 from /home/user/Desktop/invoice.xlsx with data_only=True for calculated values",
+        "Metric logic is correct: compares numeric values with appropriate tolerance (±1.0)",
+        "Postconfig correctly saves the file before reading to ensure data persistence",
+        "Metric correctly handles expected parameter when type='rule' by using expected.get('value')"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification for intermediate steps: check if invoice.xlsx contains the expected data structure (e.g., service costs in specific columns)",
+        "Add getter to verify that the spreadsheet contains expected number of rows/services (7 services based on metadata calculation)",
+        "Consider checking if specific columns contain extracted cost data, not just the final average",
+        "Alternative: Accept single-cell verification as sufficient if the specific calculated value serves as a strong proxy for task completion"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

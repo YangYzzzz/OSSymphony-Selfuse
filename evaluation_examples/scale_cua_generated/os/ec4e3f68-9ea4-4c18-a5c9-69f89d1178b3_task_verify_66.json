@@ -1,0 +1,87 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_66",
+  "snapshot": "os",
+  "instruction": "Keep only the first favorite application and remove the other two.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorites_single__e2063f4a",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "thunderbird.desktop"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires keeping only the first favorite app (thunderbird.desktop) and removing vim and google-chrome. Original: ['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop'], expected: ['thunderbird.desktop']. Evaluator checks for exactly one app.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_12_task_verify_4/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Semantic verification: The evaluator correctly verifies that exactly one favorite app remains and it matches the expected first app (thunderbird.desktop)",
+        "Coverage completeness: The evaluator fully covers the instruction requirement - checking both that only one app remains and that it's the correct app",
+        "Logical correctness: The metric logic correctly checks len(apps) == 1 AND apps[0] == expected_app, which accurately verifies the instruction",
+        "Data flow correctness: Getter extracts gsettings output → metric parses and compares → returns 1.0 for success, 0.0 for failure",
+        "Expected value correctness: 'thunderbird.desktop' is correct as it's the first app from the setup that should be kept",
+        "State accessibility: gsettings is a persistent system setting that will be available after task completion, no postconfig needed",
+        "Minor issue: Metric uses eval() to parse the apps string (line 11), which is a security concern. Should use ast.literal_eval() instead, but this doesn't affect semantic verification correctness"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace 'apps = eval(apps_str)' with 'import ast; apps = ast.literal_eval(apps_str)' in check_gnome_favorites_single__e2063f4a for better security",
+        "Add error handling for malformed gsettings output (e.g., try/except around parsing)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "e2dd0213-26db-4349-abe5-d5667bfd725c",
+  "new_id": "e2dd0213-26db-4349-abe5-d5667bfd725c_traj_verify_0",
+  "snapshot": "gimp",
+  "instruction": "Scale this image to 800 pixels wide and 400 pixels tall.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/e2dd0213-26db-4349-abe5-d5667bfd725c/orange_background.xcf",
+            "path": "/home/user/Desktop/orange_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/orange_background.xcf"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey([\"shift\", \"ctrl\", \"e\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; pyautogui.write(\"resized_check\");time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_image_size",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/resized_check.png",
+      "dest": "resized_check.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "width": 800,
+        "height": 400
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_e2dd0213-26db-4349-abe5-d5667bfd725c_sid_1488036",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to move 'Thanks World' text layer to the left using Move tool. Selected the layer, pressed 'M' for Move, set 'Move the active layer' mode, and dragged text slightly left. However, text was not moved far enough (evaluator requires within left 5% of image width).",
+    "capability_extraction": "Can navigate GIMP interface, select layers in layers panel, activate tools via keyboard shortcuts (M for Move), configure tool options, drag layers on canvas",
+    "failure_analysis": "Model moved text only slightly left (~139px drag), insufficient to reach the left 5% threshold of the 2192px-wide image. The drag distance was too small to satisfy the evaluator.",
+    "task_rationale": "Simplified from layer positioning to basic image scaling. Uses Image > Scale Image menu which the model should be able to access given demonstrated ability to navigate GIMP menus and tools.",
+    "explanation": "Task requires scaling the image to 800x400. Postconfig exports the modified image as PNG via Ctrl+Shift+E. Evaluator uses official check_image_size to verify exported PNG has expected dimensions.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Instruction requires scaling image to 800x400 pixels. Evaluator checks exactly these dimensions via check_image_size with rules {width: 800, height: 400}. Full coverage of instruction requirements.",
+        "Postconfig correctly uses Ctrl+Shift+E to trigger GIMP Export As dialog, types filename 'resized_check', and presses Enter twice to confirm filename and export settings. This exports the current canvas state as PNG.",
+        "Getter vm_file fetches /home/user/Desktop/resized_check.png from VM. Metric check_image_size opens the image with PIL and compares actual width/height against expected values. Data flow is correct.",
+        "Metric function signature is check_image_size(src_path, rule) where rule receives the rules dict directly from get_rule. The function correctly accesses rule.get('width') and rule.get('height'). No parameter handling issues.",
+        "Minor concern: The export filename typed is 'resized_check' without .png extension. GIMP's Export As dialog may or may not append .png automatically depending on the format filter state. If GIMP does not append the extension, the file would be saved without .png and the vm_file getter would fail to find /home/user/Desktop/resized_check.png. This is a minor risk."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider typing the full filename 'resized_check.png' in the postconfig export step to ensure the .png extension is always present, avoiding reliance on GIMP's auto-extension behavior."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "id": "897e3b53-5d4d-444b-85cb-2cdc8a97d903",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Take the form.docx file on the desktop and create a PDF version, then upload it to the forms folder in Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/convert-word-file-to-pdf-and-store-in-onedrive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'form.pdf' or title = 'form.docx' or title = 'form.docx.pdf' or title = 'forms'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.zhihu.com/",
+          "https://www.coursera.org/",
+          "https://www.deepl.com",
+          "https://www.wikidata.org/wiki/Wikidata:Main_Page"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/897e3b53-5d4d-444b-85cb-2cdc8a97d903/form.docx",
+            "path": "/home/user/Desktop/form.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/form.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_pdf__a70aba9d",
+    "result": {
+      "type": "gdrive_pdf_file__a70aba9d",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "forms",
+      "file_patterns": [
+        "form.pdf",
+        "form.docx.pdf"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relation": "eq",
+        "ref_value": 1,
+        "verify_content": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Rephrased instruction using 'create a PDF version'. Evaluator verifies PDF file in forms folder has 1 page.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/897e3b53-5d4d-444b-85cb-2cdc8a97d903_task_verify_3/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/897e3b53-5d4d-444b-85cb-2cdc8a97d903_task_verify_3/metrics/googledrive.py"
+    ],
+    "hash_suffix": "a70aba9d",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction has 2 steps (convert docx to PDF + upload to Drive), but evaluator only verifies step 2 (upload)",
+        "Cannot verify conversion: Evaluator only checks if a PDF exists in forms folder, but cannot verify it was actually converted from form.docx",
+        "No source verification: Evaluator would pass even if a different PDF was manually uploaded without touching form.docx",
+        "Weak content verification: Only checks file size > 10KB, doesn't verify PDF content matches docx content",
+        "Missing assumption documentation: Page count check assumes form.docx has exactly 1 page, but this isn't verified or documented"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that form.docx was actually used as source (e.g., compare PDF content with docx content, or check PDF metadata for conversion source)",
+        "Either simplify instruction to only require upload (remove conversion requirement) OR add evaluator steps to verify conversion happened",
+        "Add more robust content verification beyond just file size (e.g., check PDF has extractable text, verify page count matches source)",
+        "Document the assumption that form.docx has 1 page in metadata, or make the expected page count dynamic based on source file analysis"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_gdrive_pdf__a70aba9d first parameter type (str) may not match getter get_gdrive_pdf_file__a70aba9d return type (Any)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

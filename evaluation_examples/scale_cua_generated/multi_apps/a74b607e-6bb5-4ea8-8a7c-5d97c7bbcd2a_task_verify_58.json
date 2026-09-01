@@ -1,0 +1,94 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_58",
+  "snapshot": "multiapps",
+  "instruction": "Add the unpacked extension from the Desktop's helloExtension directory to Chrome, then confirm it uses Manifest V3.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_ext_manifest__6cc108f05c91be7e91c5c6203cef4c24",
+    "result": {
+      "type": "ext_manifest__6cc108f05c91be7e91c5c6203cef4c24",
+      "path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "manifest_version": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires loading unpacked Chrome extension from Desktop and verifying it uses Manifest V3. Based on the manifest.json file, manifest_version is 3. Custom getter reads Chrome preferences to find the extension by path and extracts manifest information including manifest_version. Metric checks if manifest_version equals 3.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the Manifest V3 requirement from the instruction",
+        "Getter appropriately reads Chrome Preferences to find extension by path and extract manifest_version",
+        "Metric correctly compares manifest_version (expected=3) using direct equality check",
+        "Expected value (manifest_version=3) is semantically correct for Manifest V3 verification",
+        "Metric parameter handling is correct - directly accesses expected.get('manifest_version') which works with type='rule'",
+        "Minor concern: No postconfig defined to ensure Chrome has persisted Preferences after extension load, which could cause timing issues if Chrome hasn't written the file yet",
+        "Task coverage is appropriate - verifies the verifiable requirement (Manifest V3), though the 'Add extension' action itself is user-performed and not directly verifiable"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a postconfig step to wait/ensure Chrome has saved Preferences file after extension loading (e.g., small delay or file freshness check)",
+        "Could add error handling in getter for when extension path is not found in Preferences (currently returns manifest_version=0 which would fail the check)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "id": "ee9a3c83-f437-4879-8918-be5efbb9fac7",
+  "new_id": "task_verify_67",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Using terminal commands, filter the ODS file on desktop to keep only entries from France and save as france_data.csv on the desktop.",
+  "source": "https://stackoverflow.com/questions/64589140/convert-ods-to-csv-using-command-line-when-libreoffice-instance-is-running",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/ee9a3c83-f437-4879-8918-be5efbb9fac7/file_example_ODS_5000.ods",
+            "path": "/home/user/Desktop/file_example_ODS_5000.ods"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/file_example_ODS_5000.ods"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_csv_country_filter_e8558020",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/france_data.csv",
+      "dest": "france_data.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_rows": 1200,
+        "country_value": "France"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering for France entries. Verified: 1200 France entries.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ee9a3c83-f437-4879-8918-be5efbb9fac7_aug_11_task_verify_7/metrics/csv.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can properly verify the instruction",
+        "Getter correctly retrieves the france_data.csv file from VM desktop using get_vm_file (returns cached file path, not bytes)",
+        "Metric correctly handles expected parameter: when expected.type='rule', expected IS the rules dict (from get_rule), and metric correctly accesses expected.get('expected_rows') and expected.get('country_value')",
+        "Data flow is correct: get_vm_file retrieves file from VM, saves to cache, returns file path → metric opens file path → parses CSV → validates row count and country values",
+        "Complete coverage: checks both file location (/home/user/Desktop/france_data.csv), country filtering (all rows must be France), and correct row count (1200 ±10 tolerance)",
+        "Partial scoring logic is reasonable: 50% for row count match, 50% for country correctness ratio",
+        "Tolerance of ±10 rows is appropriate for filtering variations",
+        "Postconfig appropriately kills terminal before evaluation, file should be saved to disk already",
+        "Metric correctly consumes vm_file result: result parameter is file path (returned by get_vm_file), opened via 'with open(result, ...)' at line 21",
+        "CSV parsing logic is correct: uses csv.DictReader, checks 'Country' field in each row"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

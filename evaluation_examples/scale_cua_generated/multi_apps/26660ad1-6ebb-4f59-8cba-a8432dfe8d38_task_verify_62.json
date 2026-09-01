@@ -1,0 +1,106 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_62",
+  "snapshot": "multiapps",
+  "instruction": "Run a network speed test on speedtest.net to assess my current internet connection. Copy the test results shown on speedtest.net/results and save them to the file ~/Test/Speed/results.txt (create the directory structure if needed). Use the format where each metric appears on a new line with the metric name and value separated by a single space.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Test/Speed/results.txt",
+      "dest": "results.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task involves executing a speed test on speedtest.net, obtaining results from speedtest.net/results page, and writing to a file. Evaluator validates that the saved file includes the three critical network metrics: Ping, Download, and Upload. This is a paraphrase of the original instruction.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_instruction",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification: Evaluator only checks for presence of metric names ('Ping', 'Download', 'Upload') using substring matching, but does not verify the instruction's format requirements",
+        "Missing format validation: Instruction explicitly requires 'each metric appears on a new line with the metric name and value separated by a single space', but evaluator does not validate this structure",
+        "No value presence check: Evaluator does not verify that actual numeric values are present after the metric names",
+        "Overly permissive: A file containing just 'Ping Download Upload' anywhere (even on a single line without values) would pass, violating the instruction's requirements",
+        "The file_contains metric (general.py:554-568) only performs substring matching with 'if text not in file_text', not structured format checking"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace file_contains with check_list metric to use regex patterns that verify format: e.g., 'Ping\\s+\\d+', 'Download\\s+[\\d.]+', 'Upload\\s+[\\d.]+'",
+        "Use check_list with regex patterns that verify each metric appears on its own line with a numeric value",
+        "Consider adding expected patterns like: ['Ping\\\\s+\\\\d+(\\\\.\\\\d+)?\\\\s*(ms)?', 'Download\\\\s+\\\\d+(\\\\.\\\\d+)?\\\\s*(Mbps)?', 'Upload\\\\s+\\\\d+(\\\\.\\\\d+)?\\\\s*(Mbps)?']",
+        "Alternative: Create a custom getter/metric combination that parses the file line-by-line and validates both the format and presence of numeric values"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "id": "4de54231-e4b5-49e3-b2ba-61a0bec721c0",
+  "new_id": "4de54231-e4b5-49e3-b2ba-61a0bec721c0_traj_verify_0",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Fill out all rows for columns B and D using the formula pattern from row 2. Then add a SUM formula in cell B31 to compute the total of all acceleration values in column B.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/4de54231-e4b5-49e3-b2ba-61a0bec721c0/RampUpAndDown.xlsx",
+            "path": "/home/user/RampUpAndDown.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/RampUpAndDown.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "RampUpAndDown.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_columns_filled_and_sum__f0c5ce9b9ab74cdf70d3ea75ec500ce3",
+    "result": {
+      "type": "xlsx_multi_cell_values__f0c5ce9b9ab74cdf70d3ea75ec500ce3",
+      "path": "/home/user/RampUpAndDown.xlsx",
+      "cells": [
+        "B15",
+        "D15",
+        "B31"
+      ],
+      "sheet": 0
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": -0.5464405279,
+        "tolerance": 0.01
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_libreoffice_calc_4de54231-e4b5-49e3-b2ba-61a0bec721c0_sid_1488429",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully identified formulas in B2 and D2, copied them down to rows 3-30, then created a Combined Data column with concatenated values rounded to 2 decimal places. Completed in 26 turns.",
+    "capability_extraction": "Can read cell formulas, copy formulas to fill ranges, create new columns with headers, use TEXT/ROUND functions for formatting, concatenate cell values",
+    "task_rationale": "Successful trajectory demonstrated formula copying and SUM is a simpler aggregation task using the same fill-down capability",
+    "explanation": "Task requires filling columns B and D using the existing formula in row 2, then adding a SUM formula in B31. Evaluator uses partial scoring: checks B15 is filled (column B verification), D15 is filled (column D verification), and B31 SUM is close to expected (~-0.546) with tolerance 0.01. [Fixed: added column D verification via sample cell D15, added column B sample cell B15 check, tightened tolerance from 0.5 to 0.01, implemented partial scoring]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_calc_4de54231-e4b5-49e3-b2ba-61a0bec721c0_sid_1488429_traj_verify_0/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_calc_4de54231-e4b5-49e3-b2ba-61a0bec721c0_sid_1488429_traj_verify_0/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "column_b_filled": "0.33 - Column B sample cell B15 has a numeric value",
+      "column_d_filled": "0.34 - Column D sample cell D15 has a numeric value",
+      "sum_value": "0.33 - B31 contains the correct sum of column B (within tolerance 0.01)"
+    },
+    "variation_index": 0,
+    "fix_history": [
+      "Fix 1: Replaced single-cell getter (xlsx_cell_value) with multi-cell getter (xlsx_multi_cell_values) that reads B15, D15, and B31",
+      "Fix 2: Added column D verification by checking sample cell D15 has a numeric value",
+      "Fix 3: Added column B direct verification by checking sample cell B15 has a numeric value (not just SUM)",
+      "Fix 4: Tightened tolerance from 0.5 to 0.01 to prevent false positives",
+      "Fix 5: Implemented partial scoring metric (0.33 + 0.34 + 0.33) replacing binary pass/fail"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads cells B15, D15, and B31 from the xlsx file using openpyxl with data_only=True, which returns computed values after LibreOffice saves",
+        "Postconfig properly saves the file via Ctrl+S before getter reads, ensuring formula results are persisted",
+        "Metric correctly handles expected parameter for type='rule' — directly accesses expected.get('expected_value') and expected.get('tolerance') without incorrectly wrapping in 'rules'",
+        "Partial scoring (0.33 + 0.34 + 0.33 = 1.0) correctly maps to the three verification requirements: column B filled, column D filled, and SUM formula in B31",
+        "Minor concern: only one sample cell per column (row 15) is checked — an incomplete fill (e.g., only rows 2-20 filled) could still pass the column fill checks. Checking additional sample cells (e.g., B28, D28) would improve robustness",
+        "Expected SUM value (-0.5464405279) with tolerance 0.01 is specific enough to verify correctness without being overly strict for floating-point arithmetic"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding additional sample cells (e.g., B3, B28, D3, D28) to better verify that ALL rows are filled, not just the middle row"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

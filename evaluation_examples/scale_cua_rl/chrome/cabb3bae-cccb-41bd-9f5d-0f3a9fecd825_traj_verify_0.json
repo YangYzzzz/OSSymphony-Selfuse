@@ -1,0 +1,94 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Search for 'Spider-Man toys for kids' on Amazon and sort the results by lowest price.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_amazon_search_and_sort__68d5458a8c27a6ef63b63368a040c1bb",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "search_pattern": "amazon\\.com/s.*[?&]k=.*[Ss]pider.?[Mm]an",
+        "sort_pattern": "price-asc-rank|s=price-asc"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_sid_1488135",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent encountered 'Access Denied' on kohls.com. Navigated to Amazon, searched 'Spider-Man toys for kids', and sorted by 'Price: Low to High'. Task scored 0 because evaluator required kohls.com-specific elements.",
+    "capability_extraction": "Can navigate Chrome address bar, search products on Amazon, use sort dropdowns, handle blocked sites by navigating elsewhere",
+    "failure_analysis": "Kohls.com returned Access Denied. Model adapted by going to Amazon, but evaluator checks kohls.com-specific HTML breadcrumbs and sort selector.",
+    "task_rationale": "Tests the exact search+sort capability the model demonstrated on Amazon. Partial credit rewards search (0.5) and sort (0.5) independently.",
+    "explanation": "Custom metric checks Amazon search URL for Spider-Man query and price-asc-rank sort parameter, with 0.5 partial credit for each.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_sid_1488135_traj_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "search": "0.5 - URL contains Amazon search with Spider-Man query",
+      "sort": "0.5 - URL contains price-asc-rank sort parameter"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the current Chrome URL from the accessibility tree, which is the right state to verify Amazon search and sort.",
+        "Metric correctly handles expected parameter for type='rule' - directly accesses expected.get('search_pattern') and expected.get('sort_pattern') from the rules dict.",
+        "Search pattern regex 'amazon\\.com/s.*[?&]k=.*[Ss]pider.?[Mm]an' correctly validates the URL is an Amazon search containing 'Spider-Man' query.",
+        "Sort pattern 'price-asc-rank|s=price-asc' correctly matches Amazon's price-ascending sort URL parameter.",
+        "Partial credit scoring (0.5 search + 0.5 sort) is logical and well-structured.",
+        "Minor gap: search_pattern only verifies 'Spider-Man' is in the query but does not check for 'toys for kids', so an agent searching just 'Spider-Man' would get 0.5 credit for search.",
+        "Data flow is correct: URL string from getter -> regex match in metric -> float score returned."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider tightening search_pattern to also verify 'toys' or 'kids' appear in the query parameter, e.g. 'amazon\\.com/s.*[?&]k=.*[Ss]pider.?[Mm]an.*(?:toys|kids)' to ensure the full search query is validated."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

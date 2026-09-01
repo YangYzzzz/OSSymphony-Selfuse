@@ -1,0 +1,100 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_14",
+  "snapshot": "chrome",
+  "instruction": "Please configure Yahoo as the search engine for my browser searches.",
+  "source": "https://support.google.com/chrome/answer/95426?sjid=16867045591165135686-AP",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Yahoo!",
+          "Yahoo"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing Chrome's default search engine to Yahoo. Uses existing getter 'get_default_search_engine' which reads Chrome preferences file and extracts the default search engine name. Metric 'match_in_list' checks if the result matches 'Yahoo!' or 'Yahoo' (both variants accepted). Postconfig restarts Chrome to ensure settings are persisted. Same pattern as original task, just different search engine.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'get_default_search_engine' correctly reads Chrome's Preferences file from OS-specific paths and extracts the default search engine name from 'default_search_provider_data.template_url_data.short_name'",
+        "Metric 'match_in_list' appropriately checks if result is in expected list ['Yahoo!', 'Yahoo'], handling both common naming variants",
+        "Postconfig correctly restarts Chrome to ensure preferences are persisted to disk before verification",
+        "Complete coverage: evaluator verifies exactly what the instruction requires (Yahoo as default search engine)",
+        "Data compatibility: getter returns string, metric expects string in list - perfect semantic match",
+        "Good error handling: getter has try-except with fallback to 'Google', handles missing files and OS differences",
+        "Expected values are semantically correct and comprehensive for the task"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

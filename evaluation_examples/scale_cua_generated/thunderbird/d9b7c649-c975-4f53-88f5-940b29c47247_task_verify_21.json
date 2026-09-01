@@ -1,0 +1,128 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "task_verify_21",
+  "snapshot": "thunderbird",
+  "instruction": "Filter all emails in the daily folder on Thunderbird that contain the word \"Digest\" in the subject line, and create a LibreOffice Calc spreadsheet named \"digest_emails.xlsx\" on the Desktop listing the sender name, sender email, and subject for each matching email.",
+  "source": "https://marketplace.uipath.com/listings/extract-the-first-1000-gmail-emails-from-the-current-month-in-a-new-google-sheets-report",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "digest_emails.xlsx"
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's')"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_tb_filtered_emails__01abb20597fbc4723613687c7c60c0d3",
+    "result": {
+      "type": "tb_filtered_emails__01abb20597fbc4723613687c7c60c0d3",
+      "path": "/home/user/Desktop/digest_emails.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "keyword": "digest",
+        "min_count": 5,
+        "expected_subjects": [
+          "HKU Daily Email Digest (22 JAN 2024)",
+          "HKU Daily News Digest 0124 (CPAO)",
+          "HKU Daily Email Digest (25 JAN 2024)",
+          "HKU Daily Email Digest (29 JAN 2024)",
+          "HKU Daily Email Digest (30 JAN 2024)"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering emails containing 'Digest' in subject from daily folder and creating a spreadsheet. Verified by analyzing all 9 emails: 5 contain 'Digest' (4 from HKU Bulk Email Delivery System, 1 from Media Team CPAO). Custom getter extracts email list, custom metric validates: (1) minimum 5 emails present (0.3 points), (2) all contain 'digest' keyword (0.4 points), (3) expected subjects match (0.3 points).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_18_task_verify_2/getters/thunderbird_xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_18_task_verify_2/metrics/thunderbird_xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Score breakdown: minimum count check (0.3 points if >= 5 emails), keyword presence (0.4 points if all emails contain 'digest'), subject matching (0.3 points proportional to matching subjects).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: file creation, file location (/home/user/Desktop/digest_emails.xlsx), content filtering (keyword 'Digest'), and data fields (sender_name, sender_email, subject)",
+        "Getter logic is semantically correct: reads xlsx file, extracts 3-column email data, handles header row detection, returns appropriate data structure",
+        "Metric comparison logic is sound: validates minimum count (0.3 pts), keyword presence in all emails (0.4 pts), and subject matching (0.3 pts) with case-insensitive comparison",
+        "Expected parameter handling is CORRECT: metric directly accesses expected.get('keyword'), expected.get('min_count'), etc. - proper pattern for type='rule'",
+        "Postconfig is appropriate: activates xlsx window, saves with Ctrl+S, waits for save completion to ensure file state is accessible",
+        "Edge cases handled: empty file, missing file, empty result list all handled gracefully"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor limitation: expected_subjects list is hardcoded to 5 specific subjects. If user creates a correct spreadsheet with additional valid 'Digest' emails beyond these 5, they won't receive full credit for the subject matching component (0.3 points). However, this is acceptable since min_count and keyword checks ensure correctness.",
+        "Consider: The expected_subjects matching gives proportional credit, so 5/5 matches = 0.3 pts, but 6 correct emails with 5 matches would still only give 5/6 * 0.3 = 0.25 pts for that component. This is a minor semantic limitation but doesn't prevent correct verification."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3",
+  "new_id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default search engine to Bing.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Bing"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3_sid_1488136",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated to chrome://settings/manageProfile, cleared the existing profile name 'Person 1', and typed 'Thomas' to rename the Chrome profile.",
+    "capability_extraction": "Can navigate Chrome settings pages, interact with text input fields, modify Chrome configuration values",
+    "task_rationale": "Related Chrome settings modification task - changing default search engine requires similar navigation through Chrome settings",
+    "explanation": "Task requires changing Chrome's default search engine to Bing. Evaluator uses official default_search_engine getter to read the current search engine setting and exact_match metric to verify it equals 'Bing'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'default_search_engine' correctly reads Chrome's Preferences JSON file and extracts the search engine short_name, which is the right state for verifying the instruction.",
+        "Metric 'exact_match' correctly compares the getter result against the expected value 'Bing' using strict equality, appropriate for verifying a specific search engine name.",
+        "Expected value 'Bing' matches Chrome's internal short_name for the Bing search engine.",
+        "Postconfig properly kills and relaunches Chrome to ensure preferences are flushed to disk before the getter reads the Preferences file.",
+        "Single-step instruction is fully covered by a single getter+metric evaluation — no missing verification steps."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

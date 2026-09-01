@@ -1,0 +1,112 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_64",
+  "snapshot": "chrome",
+  "instruction": "Search for Marvel Avengers toys for kids and display from most to least expensive.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Marvel Avengers",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price High-Low"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Marvel Avengers": "Marvel Avengers",
+        "marvel avengers": "Marvel Avengers",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=5": "Price High-Low"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "marvel avengers": true,
+          "toys": true,
+          "kids": true,
+          "price high-low": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Marvel Avengers toys for kids on kohls.com and sorting by price high-low. Similar pattern to original with different superhero franchise. Evaluator uses check_direct_json_object.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks all search criteria (Marvel Avengers, Toys, Kids) using both HTML class elements and URL parameters",
+        "Evaluator correctly verifies that price high-low sort option was selected via both breadcrumb elements and URL parameter S=5",
+        "Evaluator correctly checks for unexpected filter elements using is_other_exist flag",
+        "Lowercase conversion logic in getter matches expected value format",
+        "Incomplete verification: Only checks that sort option was SELECTED, not that products are ACTUALLY displayed in price high-low order - semantic gap between selection and result",
+        "Dual verification (HTML classes + URL params) may be fragile if website structure varies, but provides robustness",
+        "The evaluator verifies task completion indicators rather than actual sorting results - acceptable for UI interaction verification but doesn't guarantee correct display"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification that product prices in the search results are actually in descending order to fully verify 'display from most to least expensive'",
+        "Could extract first few product prices from search results and verify they are sorted correctly",
+        "Alternatively, clarify that verification only checks sort option selection, not actual result ordering"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

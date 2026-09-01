@@ -1,0 +1,67 @@
+{
+  "id": "28cc3b7e-b194-4bc9-8353-d04c0f4d56d2",
+  "new_id": "task_verify_48",
+  "snapshot": "os",
+  "instruction": "Turn up the system sound to 80% of maximum capacity.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/sound-volume.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "pulseaudio --start\npactl list sinks | grep '^[[:space:]]Volume:' | head -n 1 | awk '{print $5}' | sed 's/%//g'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "80\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires agent to set system volume to 80%. Evaluator uses pactl command to check volume percentage, expecting '80\\n' output. Uses existing exact_match metric and vm_command_line getter - no custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that pactl command returns volume percentage as integer (0-100) followed by newline. Volume 80% produces output '80\\n'.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts system volume percentage using pactl command",
+        "Metric comparison appropriately uses exact_match to verify volume is exactly 80%",
+        "Expected value '80\\n' correctly matches the instruction requirement of 80% volume",
+        "Data flow is semantically correct: command extracts volume → exact_match compares → returns pass/fail",
+        "Complete coverage: evaluator checks the single requirement in the instruction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The command assumes pactl output format is stable (field 5 contains percentage). This is generally reliable but could be made more robust with additional parsing validation.",
+        "Minor: Using head -n 1 assumes the first sink is the correct one to check. For multi-sink systems, this might need clarification, though it's reasonable for typical setups."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

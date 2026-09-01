@@ -1,0 +1,86 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_42",
+  "snapshot": "os",
+  "instruction": "I want my terminal to have a transparent background so I can see my desktop wallpaper through it. Enable terminal transparency permanently so it persists after system reboot.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ use-transparent-background'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "true"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently enabling terminal transparency. Evaluator opens new terminal and checks use-transparent-background setting using gsettings, expecting 'true'. Uses existing check_include_exclude metric with vm_terminal_output getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies terminal transparency by checking the persistent gsettings value 'use-transparent-background'",
+        "Properly addresses both requirements: enabling transparency AND persistence across reboots (gsettings stores to dconf which persists)",
+        "Postconfig appropriately opens a fresh terminal to verify the configuration in a clean state",
+        "Data flow is correct: vm_terminal_output getter extracts terminal output → check_include_exclude metric checks for 'true' substring → expected value is semantically correct",
+        "Complete coverage: both transparency enablement and persistence are verified through the gsettings check"
+      ],
+      "llm_judge_fix_suggestions": [
+        "The gsettings command in postconfig is complex with nested shell substitution, which could be fragile on some systems - consider testing thoroughly",
+        "String matching using 'include: [true]' is slightly loose (would match 'not true'), though gsettings output should only be 'true' or 'false'",
+        "Consider adding a longer sleep after opening terminal if command execution is slow on some systems"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

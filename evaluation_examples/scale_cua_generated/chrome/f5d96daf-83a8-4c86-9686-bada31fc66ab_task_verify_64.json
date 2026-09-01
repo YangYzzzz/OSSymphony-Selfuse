@@ -1,0 +1,104 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_64",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 14 with iPhone 13 and iPhone 12",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-14",
+            "iphone-13",
+            "iphone-12"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "proxy": true,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task requires comparing 3 iPhone models (standard versions) on Apple's website. Evaluator checks that the active tab URL contains the modelList parameter with the 3 specified iPhone models (order-independent). Similar complexity to original task, just different model selection.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Evaluator only verifies URL query parameters contain the 3 iPhone models, but does not verify actual comparison page is displayed or loaded",
+        "Strong assumption that Apple's comparison tool encodes models in URL as 'modelList' parameter - Apple's actual URL structure may differ (could use fragments, JavaScript state, or different parameter names)",
+        "Missing verification that comparison content/table is actually rendered on the page - URL presence does not guarantee successful comparison display",
+        "No postconfig to reopen or stabilize the comparison page state - if user navigates away after completing task, verification will fail",
+        "The expected model names ('iphone-14', 'iphone-13', 'iphone-12') assume specific URL encoding format without verification against real Apple URLs",
+        "Getter 'get_active_tab_url_parse' will return None if 'modelList' parameter is missing, but this assumes the parameter name and might miss valid comparison URLs with different structures"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that comparison page content is actually displayed - use additional getter to check for comparison table/content elements on the page (e.g., check for specific CSS classes or text that indicates comparison is rendered)",
+        "Verify expected URL parameter names and values against actual Apple.com comparison URLs before deployment",
+        "Consider adding 'optional_keys' for modelList parameter or add fallback verification methods (e.g., check page content/HTML for model names if URL parsing fails)",
+        "Add postconfig to ensure comparison page remains stable for verification (e.g., keep comparison page open or add delay)",
+        "Consider hybrid verification: check both URL parameters AND page content to ensure comparison is actually displayed, not just requested",
+        "Test against real Apple.com comparison tool to validate URL structure assumptions"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

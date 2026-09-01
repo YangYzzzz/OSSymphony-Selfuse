@@ -1,0 +1,97 @@
+{
+  "id": "dd60633f-2c72-42ba-8547-6f2c8cb0fdb0",
+  "new_id": "task_verify_82",
+  "snapshot": "multiapps",
+  "instruction": "Extract all PyTorch tensor operations and torch function calls from Karpathy's GPT colab code cells. Save to \"gpt_torch_ops.py\" in Home directory, including lines that use torch.tensor, torch.randn, torch.zeros, etc.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing#scrollTo=h5hjCcLDr2WC"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os",
+    "writer"
+  ],
+  "evaluator": {
+    "func": "check_torch_ops__bb726c0f",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/gpt_torch_ops.py",
+      "dest": "gpt_torch_ops.py"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_lines": 10,
+        "required_patterns": [
+          "torch.tensor",
+          "torch.manual_seed",
+          "torch.randn",
+          "torch.zeros"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires extracting lines with PyTorch tensor operations from Karpathy's GPT colab. Based on the gold file, common operations include: torch.tensor, torch.manual_seed, torch.randn, torch.zeros, torch.ones, torch.tril, etc. Evaluator checks: (1) at least 10 lines extracted, (2) file contains at least 3 of the 4 key patterns. Scoring: 0.4 for line count, 0.6 for patterns.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_task_verify_6/metrics/general.py"
+    ],
+    "estimated_steps": 5,
+    "difficulty": "medium",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires extracting 'all PyTorch tensor operations' but evaluator only checks for 4 specific patterns (torch.tensor, torch.manual_seed, torch.randn, torch.zeros). Many other torch operations like torch.ones, torch.tril, torch.matmul, etc. mentioned in the explanation are not verified.",
+        "Cannot verify completeness: Evaluator cannot determine if ALL torch operations were extracted from the colab. A submission with only 10 lines containing the 4 checked patterns would pass even if the colab contains 50+ torch operations.",
+        "Pattern selection mismatch: torch.manual_seed is not a tensor operation (it's a random seed setter), which doesn't align with the instruction's focus on 'tensor operations and torch function calls'.",
+        "Weak threshold: Requiring only 3 out of 4 patterns allows missing one required operation entirely while still scoring well.",
+        "Arbitrary minimum line count: The 10-line minimum doesn't validate extraction completeness - it's disconnected from the actual content of the colab."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Expand required_patterns to include more torch operations mentioned in explanation: torch.ones, torch.tril, torch.matmul, torch.nn.functional, torch.optim, etc. to better match 'all tensor operations' requirement.",
+        "Consider checking for a broader pattern like 'torch\\.' to verify comprehensive extraction rather than only specific operations.",
+        "Increase the minimum required pattern count or make it proportional to the number of patterns checked (e.g., require at least 80% of checked patterns).",
+        "If possible, add logic to verify the file contains diverse torch operations, not just the minimum set.",
+        "Consider comparing extracted content against a reference extraction or checking for a minimum diversity of torch operation types."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "env_may_change": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

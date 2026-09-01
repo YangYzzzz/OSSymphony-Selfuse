@@ -1,0 +1,101 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Find all men's large-size long-sleeve shirts with a discount of 60% or more.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "long_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "L",
+          "Price_discount_range": "60_PERCENT_ off & more",
+          "long_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Variation 3: Changed discount from 50% to 60%, changed sleeve type from short to long, keeps L size. Maintains same complexity and interaction pattern as original task.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Missing long_sleeve extraction logic - The getter function (get_macys_product_url_parse at chrome.py:2499-2567) checks for 'short_sleeve' but has NO logic to extract 'long_sleeve' information from the URL. Expected value requires 'long_sleeve: true' but the getter cannot extract this parameter.",
+        "CRITICAL: Wrong discount threshold - The getter's discount checking logic (chrome.py:2551-2554) only checks for '50_PERCENT_ off & more', but the instruction and expected value require '60_PERCENT_ off & more'. This mismatch means the evaluator cannot correctly verify the 60% discount requirement.",
+        "CRITICAL: Incomplete coverage - The evaluator cannot verify ALL requirements in the instruction. The instruction has 5 requirements (men's clothing, shirts, large size, long sleeve, 60% discount), but the getter can only extract 4 of them (missing long_sleeve).",
+        "LOGIC ERROR: The getter will fail at runtime because the expected value includes 'long_sleeve: true' but the getter function has no code path that sets result['long_sleeve']. This will cause key mismatch in check_direct_json_object comparison."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add long_sleeve extraction logic to get_macys_product_url_parse function: Check if 'long-sleeve' or 'Long Sleeve' appears in the URL path or in the Sleeve_length key-value pair, similar to how short_sleeve is currently handled (lines 2522, 2538-2539).",
+        "Fix discount threshold checking: Update the discount comparison logic (lines 2551-2554) to check for '60_PERCENT_ off & more' instead of '50_PERCENT_ off & more' to match the instruction requirement.",
+        "Ensure all parse_keys are extractable: Verify that every key in parse_keys has corresponding extraction logic in the getter function. The getter should be able to extract all 5 parameters: mens_clothing, shirts, Men_regular_size_t, Price_discount_range, and long_sleeve."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Display the URL from the latest Bills email by opening it in a Google Chrome tab.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 8: Uses 'display' action and 'Google Chrome' full name. Task displays the first link (https://www.amazon.com/) from the latest Bills email by opening it in Google Chrome. Evaluator verifies all three tabs are present including the new amazon.com tab.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Semantic mismatch: instruction asks to 'display the URL from the latest Bills email' (singular task: open ONE URL from email), but evaluator checks for exactly 3 specific tabs including 2 pre-existing tabs",
+        "Incomplete coverage: the evaluator verifies pre-task state (apple.com, scholar.google.com) rather than focusing on task completion (amazon.com URL opened)",
+        "False negative risk: if agent closes pre-existing tabs during task execution, evaluation would fail even though the core task (opening the Bills email URL) was completed correctly",
+        "Overly strict verification: evaluator uses are_lists_equal which likely requires exact match of all tabs, making evaluation brittle to agent behavior that doesn't affect task completion (e.g., closing unrelated tabs, tab ordering)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change evaluator to verify only that amazon.com URL is present in open tabs, rather than checking for exact set of 3 specific URLs",
+        "Use a metric that checks 'contains expected URL' rather than 'exact list match' - e.g., iterate through open_tabs and check if any tab URL matches amazon.com",
+        "Alternative: update instruction to explicitly state 'open the Bills email URL while keeping existing tabs open' to match current evaluator behavior",
+        "Consider using a partial match metric that verifies the task-critical URL (amazon.com) is present without requiring specific pre-existing tabs"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

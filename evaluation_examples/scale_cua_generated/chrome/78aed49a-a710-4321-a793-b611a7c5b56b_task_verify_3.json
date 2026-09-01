@@ -1,0 +1,141 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_3",
+  "snapshot": "chrome",
+  "instruction": "Locate messages with receipt attachments in the Bills local folders and move only those receipt files to the 'receipts' folder on Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_single_file_exists__d6fb1e53c50621e1a08efd7623119b0d",
+    "result": {
+      "type": "googledrive_files_list__d6fb1e53c50621e1a08efd7623119b0d",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_path": [
+        "receipts"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "filename": "Receipt-0123-4567.pdf"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding a message with receipt attachment in Bills folder and uploading only that specific receipt file to Google Drive. The X/Twitter message (verified from cache) contains 2 attachments: Invoice-01234567-89ab.pdf and Receipt-0123-4567.pdf. The task specifically asks for the receipt file only. Evaluator verifies that Receipt-0123-4567.pdf exists in the Google Drive receipts folder. Partial credit (0.5) if the file exists but other files are also present, full credit (1.0) if only the receipt file is uploaded.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_3/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_3/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.5 if Receipt-0123-4567.pdf exists in receipts folder but other files also present, 1.0 if only the receipt file exists (correct selective upload)",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the key requirement: the specific receipt file (Receipt-0123-4567.pdf) is uploaded to the Google Drive 'receipts' folder",
+        "Getter logic is correct: accesses Google Drive API, navigates to 'receipts' folder, retrieves list of filenames",
+        "Metric logic is semantically sound: awards 1.0 for selective upload (only receipt file), 0.5 for partial success (receipt + other files), 0.0 for failure",
+        "Expected value is correct: Receipt-0123-4567.pdf matches the actual receipt filename from the metadata",
+        "Parameter handling is correct: metric properly accesses expected.get('filename') for type='rule'",
+        "Partial credit logic appropriately rewards correct selective upload vs. uploading all attachments",
+        "Data flow is correct: getter extracts filenames → metric checks existence and exclusivity → score reflects task completion quality"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Getter returns empty list [] when folder not found (line 38), but metric's log message 'Result is None - folder not found' (line 20) would never appear. Consider updating log message to distinguish between None (exception) and [] (folder not found). This does not affect correctness, only logging clarity."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

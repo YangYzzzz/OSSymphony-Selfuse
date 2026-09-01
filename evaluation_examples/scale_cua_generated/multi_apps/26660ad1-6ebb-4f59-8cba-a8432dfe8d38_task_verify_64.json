@@ -1,0 +1,105 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_64",
+  "snapshot": "multiapps",
+  "instruction": "Measure my laptop's network connection using the speedtest.net service. After running the test, extract the results from speedtest.net/results and store them in ~/Test/Speed/results.txt (create any missing directories). Format the output with one metric per line, using a single space to separate metric names from their values.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Test/Speed/results.txt",
+      "dest": "results.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task involves conducting a network speed measurement via speedtest.net, retrieving the metrics from speedtest.net/results page, and saving to a file. Evaluator verifies the file contains the three fundamental network parameters: Ping, Download, and Upload. This is a paraphrase variation.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_instruction",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Evaluator only checks for substring presence of 'Ping', 'Download', 'Upload' but does not verify the required formatting",
+        "Instruction specifies 'one metric per line, using a single space to separate metric names from their values', but evaluator does not verify this format",
+        "Current check would pass even if file contains unstructured text like 'Ping Download Upload' on one line or narrative text with these words",
+        "No verification that actual measurement values are present alongside metric names",
+        "Evaluator cannot distinguish between properly formatted output (e.g., 'Ping 12ms') and improperly formatted output (e.g., 'Results: Ping was 12ms')"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use check_list metric with regex patterns to verify each metric appears on its own line with the format 'MetricName Value' (e.g., '^Ping \\S+$', '^Download \\S+$', '^Upload \\S+$')",
+        "Alternatively, use a more structured verification approach that parses each line and validates the 'name value' format with a single space separator",
+        "Consider adding verification that values follow expected patterns (e.g., ping in ms, download/upload in Mbps or similar units)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

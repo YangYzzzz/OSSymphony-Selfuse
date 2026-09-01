@@ -1,0 +1,147 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_16",
+  "snapshot": "chrome",
+  "instruction": "In Thunderbird, find the Bills folder and select a link from an email to view it in a new Chrome tab.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "chrome_close_tabs_except",
+      "parameters": {
+        "keep_urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_workflow_and_amazon_tab__0f025d55a86976e1ae415a210c74f719",
+    "result": {
+      "type": "thunderbird_and_chrome_state__0f025d55a86976e1ae415a210c74f719"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "exact_tab_urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ],
+        "amazon_url": "https://www.amazon.com/",
+        "thunderbird_folder": "Bills"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This variation verifies the complete Thunderbird workflow: (1) Thunderbird accessibility tree confirms Bills folder was actively accessed (requires selected/focused state, not just visibility), (2) Chrome history with recent timestamp (10-minute window) confirms amazon.com was opened after task start, and (3) exactly 3 tabs exist with expected URLs. The postconfig closes extra tabs, ensuring the amazon tab was newly created. Combined with strengthened Thunderbird state verification, this prevents cheating by directly opening amazon.com. Note: Cannot verify 'newest email' or 'first hyperlink' requirements - task instruction simplified to match verification capabilities.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/58565672-7bfe-48ab-b828-db349231de6b_aug_17_task_verify_4/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/58565672-7bfe-48ab-b828-db349231de6b_aug_17_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.0": "Verification failed - Thunderbird Bills folder not actively accessed (selected/focused) or tabs incorrect",
+      "0.3": "Thunderbird Bills folder actively accessed but tabs incorrect",
+      "0.7": "Correct tabs but Thunderbird not actively accessed (possible cheating)",
+      "0.8": "Thunderbird actively accessed, correct tabs, but recent history check failed (timing issue - amazon visit too old)",
+      "1.0": "Complete workflow verified - Thunderbird Bills folder actively accessed (selected/focused) + recent Amazon visit (within 10 minutes) + correct tabs"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator provides multi-layered verification (Thunderbird accessibility tree + Chrome history timestamp + tab verification) which is comprehensive",
+        "Bills folder verification logic (thunderbird.py:201-215) correctly REQUIRES selected/focused state - bills_folder_visible is only set to True when 'selected' or 'focused' appears in element state (lines 206-210), providing strong anti-cheating protection",
+        "10-minute recency threshold (chrome.py:113) is reasonable for handling slower task execution, improved from previous 5-minute threshold",
+        "Postconfig closes extra tabs, ensuring amazon.com tab was newly created during task execution",
+        "Chrome history timestamp verification confirms amazon.com was visited recently, not pre-existing",
+        "Cannot verify 'newest email' requirement - no logic to check which email was selected or if it was the newest one in the Bills folder",
+        "Cannot verify 'first hyperlink' requirement - no logic to confirm which specific hyperlink was clicked (first vs. any other link)",
+        "Instruction assumes email contains Amazon link, but evaluator hardcodes amazon.com URL expectation without verifying the email content actually contains this link"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add email list verification to identify and confirm newest email selection (e.g., parse email list from accessibility tree, check timestamps or ordering)",
+        "Add hyperlink extraction from email content to verify which link was available and potentially which was clicked (may require parsing email body via accessibility tree)",
+        "Consider making the expected URL configurable or extracted from email content rather than hardcoded to amazon.com",
+        "Document explicitly that verification covers 'Bills folder access + any hyperlink clicked' but cannot verify 'newest email' or 'first hyperlink' specifics"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "58565672-7bfe-48ab-b828-db349231de6b_aug_17_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

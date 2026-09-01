@@ -1,0 +1,73 @@
+{
+  "id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89",
+  "new_id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_traj_verify_1",
+  "snapshot": "base_setup",
+  "instruction": "Change VLC's network caching value to 500 milliseconds in the preferences.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_vlc_network_cache__72b69002c9e414b44114ece1b158222e",
+    "result": {
+      "type": "vlc_network_cache__72b69002c9e414b44114ece1b158222e",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_cache_ms": "500"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened VLC, navigated to Tools > Preferences, switched to Advanced Preferences, browsed Input/Codecs and Stream output > Record sections. Then opened terminal and used grep to find 'input-record-path' in vlcrc but failed to correctly use sed to modify the config file due to syntax errors. Spent 50 turns without successfully changing the recording directory.",
+    "capability_extraction": "Can open VLC menus, navigate to Preferences, switch to Advanced Preferences, browse preference tree nodes, open terminal, use grep to search config files, attempt sed edits",
+    "failure_analysis": "Model found the correct config key (input-record-path at line 3962 in vlcrc) but failed due to repeated sed syntax errors when trying to modify the file.",
+    "task_rationale": "Network caching is a simpler numeric setting visible in Input/Codecs section of Advanced Preferences where the model already navigated successfully. Changing a numeric value in a text field is simpler than navigating a file browser dialog.",
+    "explanation": "Task requires changing VLC's network-caching value to 500. Custom getter reads vlcrc, custom metric checks if network-caching equals 500.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380_traj_verify_1/getters/vlc_network_cache.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380_traj_verify_1/metrics/vlc_network_cache.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 6,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly fetches vlcrc config file from VM based on OS type, which is where VLC stores network-caching preferences.",
+        "Metric correctly handles expected parameter for type='rule' - accesses rule.get('expected_cache_ms') directly from the rules dict.",
+        "Metric correctly parses vlcrc: skips comment lines starting with '#', finds 'network-caching' line, extracts value after '=' and compares with expected '500'.",
+        "Expected value '500' correctly matches the instruction requirement of 500 milliseconds.",
+        "Single instruction requirement (change network caching to 500ms) is fully covered by the evaluator.",
+        "Minor concern: substring match 'network-caching' in line could theoretically match similar keys (e.g., 'network-caching-mms'), but this is unlikely to cause false positives in VLC's vlcrc format."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a more precise match like checking if the line starts with 'network-caching=' to avoid potential substring matches with similar config keys."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

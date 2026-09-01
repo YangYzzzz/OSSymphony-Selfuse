@@ -1,0 +1,96 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_21",
+  "snapshot": "chrome",
+  "instruction": "Configure Chrome to open a new tab on startup instead of continuing where you left off.",
+  "source": "https://support.google.com/chrome/answer/95314",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "new_startup_page"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires the agent to change Chrome's startup behavior to open a new tab (fresh start mode) instead of restoring previous session. The evaluator uses the existing get_new_startup_page getter function. Task complexity is similar to the original - navigating to Chrome settings and modifying a single configuration option. Verified by reading the getter implementation at lines 1363-1398 in chrome.py, which checks if session.restore_on_startup equals 5 (new tab mode) or if session key doesn't exist (fresh start).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "original_task": "030eeff7-b492-4218-b312-701ec99ee0cc_aug_19",
+    "similarity_level": "very_high",
+    "verification_method": "Uses existing Chrome getter function get_new_startup_page which reads from Preferences file",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly identifies Chrome startup mode: checks both cases where session key doesn't exist (fresh start) and where session.restore_on_startup equals 5 (new tab mode)",
+        "Metric function (exact_match) correctly compares result string 'true' against expected value 'true'",
+        "Expected value is semantically correct: 'true' indicates new tab startup mode as required by instruction",
+        "Postconfig is necessary and appropriate: kills and restarts Chrome to verify startup settings persist after configuration change, with adequate 3-second sleep for Chrome initialization",
+        "Complete coverage: evaluator verifies the exact requirement from instruction (new tab startup vs continue where left off)",
+        "Data flow is correct: getter extracts Chrome Preferences file -> reads session.restore_on_startup -> returns 'true'/'false' string -> metric compares with expected 'true'"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

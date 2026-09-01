@@ -1,0 +1,148 @@
+{
+  "id": "aceb0368-56b8-4073-b70e-3dc9aee184e0",
+  "new_id": "task_verify_63",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Find and grade all students who scored 70 points by comparing their answer sheets with the reference answers and updating the spreadsheet.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/aceb0368-56b8-4073-b70e-3dc9aee184e0/exam.zip",
+            "path": "/home/user/exam.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "unzip",
+          "/home/user/exam.zip",
+          "-d",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/exam/ReferenceAnswers.docx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/exam/grades.xlsx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/exam/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "libreoffice_writer",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_score_70_students__8124ffa3",
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "grades.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/exam/grades.xlsx",
+      "dest": "grades.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "student_rows": [
+          2,
+          3,
+          4
+        ],
+        "expected_total": 70
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires grading students with 70 points. Verified: Linda Garcia(row2), Richard Smith(row3), Jennifer Rodriguez(row4) all scored 70. Evaluator now verifies grading correctness by comparing with reference answers and checks for false positives.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_aug_1_task_verify_7/metrics/general.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 18,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Partial credit based on number of 70-score students graded correctly. Penalties for false positives (grading wrong students).",
+    "fixes_applied": [
+      "Added extract_reference_answers() to parse ReferenceAnswers.docx and extract Q1-Q10 correct answers",
+      "Added extract_student_answers() to parse student answer sheet files and extract their responses",
+      "Modified main check function to verify each Q1-Q10 score matches expected based on answer comparison (10 if correct, 0 if wrong)",
+      "Added false positive detection: checks if non-target students were incorrectly graded and applies 0.2 penalty per false positive",
+      "Graceful degradation: if reference/student answers can't be extracted, falls back to structural checks only",
+      "Enhanced error reporting with traceback for debugging"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Comprehensive verification: Checks all 10 question scores (Q1-Q10) are filled for target students (lines 52-78)",
+        "Grading correctness verified: Compares each Q score with reference answers, expecting 10 if correct, 0 if wrong (lines 66-74)",
+        "False positive detection: Correctly penalizes grading non-target students with 0.2 penalty each (lines 96-107)",
+        "Correct parameter handling: Properly accesses expected.get('student_rows') without incorrect 'rules' nesting",
+        "Graceful degradation: Falls back to structural checks if answer extraction from docx files fails (lines 86-91)",
+        "Minor limitation: student_rows [2,3,4] are hardcoded based on data analysis rather than discovered dynamically, but this is acceptable for verification tasks with known ground truth",
+        "Potential runtime issue: extract_student_answers() assumes specific file naming patterns for student answer sheets, may fail if files named differently, but has graceful fallback"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding more flexible file discovery patterns in extract_student_answers() to handle various naming conventions",
+        "Could add validation that exam directory exists and contains expected files before attempting extraction"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

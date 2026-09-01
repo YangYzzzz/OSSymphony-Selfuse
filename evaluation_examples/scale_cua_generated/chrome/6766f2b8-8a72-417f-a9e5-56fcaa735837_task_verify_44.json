@@ -1,0 +1,95 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_44",
+  "snapshot": "chrome",
+  "instruction": "Extract the helloExtension.zip file from the Desktop, place its contents on the Desktop, and load it as a Chrome extension in developer mode.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation with conversational instruction tone using 'decompress' and 'add to Chrome's extensions'. Task involves decompressing the extension zip file and loading it as an unpacked extension. Evaluator reuses existing Chrome infrastructure: get_find_unpacked_extension_path reads Chrome preferences to get all extension paths, is_in_list confirms the target path is loaded.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: Chrome stores extension paths in preferences JSON, getter parses this file, metric performs list membership check.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the main requirement: Chrome extension is loaded from the expected path (/home/user/Desktop/helloExtension)",
+        "Getter logic (get_find_unpacked_extension_path) correctly reads Chrome Preferences file and extracts all extension paths from extensions.settings",
+        "Metric logic (is_in_list) correctly checks if expected path exists in the result list",
+        "Expected value is semantically correct and matches the decompressed extension location",
+        "Implicit verification: If extension is loaded from /home/user/Desktop/helloExtension, decompression must have succeeded",
+        "Data flow is correct: getter extracts paths → metric checks membership → expected value matches instruction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Evaluator only implicitly verifies decompression (by checking if extension is loaded from the decompressed path). Could add explicit verification that the directory exists, though current approach is functionally adequate.",
+        "Minor improvement: Evaluator doesn't explicitly distinguish unpacked extensions (developer mode) from Web Store extensions, though the path format and getter function name suggest unpacked extension verification is intended."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

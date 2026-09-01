@@ -1,0 +1,115 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_82",
+  "snapshot": "thunderbird",
+  "instruction": "I keep forgetting to attach files when I mention them in my emails. Could you enable the attachment reminder feature in Thunderbird to warn me when I forget attachments?",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.compose.attachment_reminder": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling attachment reminder feature by setting mail.compose.attachment_reminder to true. This feature analyzes email content for keywords like 'attached', 'attachment', etc. and warns the user if no files are attached.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "The preference mail.compose.attachment_reminder is a standard Thunderbird setting that controls whether the attachment reminder feature is enabled.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly retrieves Thunderbird preferences file (prefs.js) from the correct path",
+        "Metric function check_thunderbird_prefs correctly parses prefs.js using regex pattern and validates preference values",
+        "Expected value mail.compose.attachment_reminder=true is semantically correct for enabling attachment reminder feature",
+        "Postconfig appropriately closes Thunderbird to ensure preference changes are flushed to disk before verification",
+        "Complete coverage: instruction requires enabling attachment reminder, evaluator verifies exactly this single requirement",
+        "Data flow is correct: getter extracts prefs file → metric parses and compares → expected value matches task requirement",
+        "Parameter handling is correct: get_rule returns rules dict directly, metric function signature correctly receives it as 'rule' parameter"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

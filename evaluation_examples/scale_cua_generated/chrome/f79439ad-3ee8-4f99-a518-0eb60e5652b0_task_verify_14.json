@@ -1,0 +1,109 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_14",
+  "snapshot": "chrome",
+  "instruction": "Find a one-way flight from Brussels to Madrid for two adults and one child departing on the 5th of next month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "5th next month"
+        },
+        "expected": {
+          "originIata": "CRL",
+          "destinationIata": "MAD",
+          "tpAdults": "2",
+          "tpTeens": "0",
+          "tpChildren": "1",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation 2: Search for one-way flight from Brussels Charleroi (CRL) to Madrid (MAD) for 2 adults and 1 child on 5th of next month. Uses existing evaluator functions to verify URL parameters including child passenger count. Similar complexity with additional passenger type selection.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts all URL parameters needed to verify the flight search (origin, destination, passenger counts, date, one-way flag)",
+        "Getter uses active_tab_url_parse to parse Ryanair URL query parameters, which is the correct approach for verifying search form submission",
+        "All instruction requirements are covered: Brussels (CRL) to Madrid (MAD), 2 adults, 1 child, 5th of next month, one-way flight",
+        "Expected values are semantically correct: CRL is the correct IATA code for Brussels Charleroi (Ryanair's hub), MAD for Madrid, passenger counts match instruction",
+        "Metric check_direct_json_object performs exact match comparison, which is appropriate for structured URL parameters",
+        "Relative time processing (get_rule_relativeTime) correctly handles '5th next month' calculation and formats it to match Ryanair's URL parameter format",
+        "The evaluator checks tpTeens: '0' even though not explicitly mentioned in instruction, which ensures complete passenger count verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_aug_14_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

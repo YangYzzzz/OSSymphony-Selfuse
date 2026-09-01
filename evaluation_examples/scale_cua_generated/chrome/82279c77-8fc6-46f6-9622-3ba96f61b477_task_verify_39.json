@@ -1,0 +1,101 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Search for electric cars priced below $35,000 within a 25-mile radius of the 33101 ZIP code.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "35000",
+          "maximum_distance": "25",
+          "zip": "33101",
+          "fuel_slugs[]": "electric"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 2: Changed to search in Miami area (ZIP 33101 instead of 10001), with lower price cap ($35,000 instead of $50,000), and smaller search radius (25 miles instead of 50). Keeps electric fuel type. Uses the same evaluator logic - parsing URL query parameters. No custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts URL query parameters from the active tab using get_active_tab_url_parse",
+        "Metric correctly compares extracted parameters with expected values using check_direct_json_object",
+        "All instruction requirements are covered: electric fuel type (fuel_slugs[]=electric), ZIP code (zip=33101), price limit (list_price_max=35000), and search radius (maximum_distance=25)",
+        "Expected values are semantically correct for cars.com URL query parameter format",
+        "String-based comparison is appropriate since URL query parameters are extracted as strings",
+        "Minor assumption about exact parameter names, but these are standard cars.com parameters observed in practice",
+        "Array parameter fuel_slugs[] extracted as single string value, which is acceptable for this single-value case"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider documenting that this evaluator assumes standard cars.com URL parameter format (list_price_max, maximum_distance, zip, fuel_slugs[])",
+        "For robustness against future website changes, could add alternative parameter name support if cars.com modifies their URL structure",
+        "If cars.com uses comma-separated values for fuel_slugs[] in some cases, consider adding split logic to handle multiple values (though not needed for this specific task)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "82279c77-8fc6-46f6-9622-3ba96f61b477_aug_15_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "I maintain a comprehensive movie log in the opened Excel file. I'd like to organize my collection by rating tiers to better understand my viewing patterns. Create a new sheet called 'rating_categories' that groups movies into rating ranges. Include all movies with ratings 8.0 and above, categorized by their rating tier. Use the same column headers as the original sheet.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_rating_categories__43260c3c",
+    "result": {
+      "type": "xlsx_sheet_data__43260c3c",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "rating_categories",
+      "original_sheet_name": "movies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_headers": true,
+        "min_total_movies": 150,
+        "original_file_path": "/home/user/Desktop/movies.xlsx",
+        "original_sheet_name": "movies"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating rating categories sheet with all movies >= 8.0. Verified with Python: All 150 movies in the dataset have ratings between 8.0-9.3, so all should be included. The task allows flexible categorization approaches (by rating tier, sorted, etc.). Custom metric validates that sheet has sufficient movies with valid rating data in column 2, with at least some variety in rating ranges.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_7/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_7/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "has_headers": 0.2,
+      "min_movies_present": 0.3,
+      "valid_rating_data": 0.3,
+      "rating_variety": 0.2
+    },
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all core requirements: sheet existence, header matching with original sheet, correct movie count (150), ratings >= 8.0, and rating tier organization.",
+        "Rating organization check (lines 143-158) intelligently validates both sorted data and tier-based grouping patterns, correctly addressing the 'categorized by rating tier' requirement.",
+        "Header matching logic (lines 52-68) now compares against original sheet headers, fulfilling the 'same column headers' requirement.",
+        "Dynamic rating column detection (lines 79-88) searches headers for 'rating' or 'score' keywords before falling back to common position.",
+        "Getter properly distinguishes between file-not-found (None) vs sheet-not-found (error dict) for clear error handling.",
+        "Minor issue: Header matching uses strict position-based comparison (actual_headers[i] == original_headers[i]), which may be overly strict if column order could vary. However, this is a reasonable interpretation of 'same column headers'.",
+        "Minor issue: If original_headers extraction fails (empty list), falls back to lenient check (len >= 3) which may pass invalid headers. Edge case with low probability."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making header matching more flexible: allow headers in any order or as a superset (contains all original headers) rather than strict positional matching.",
+        "Handle the edge case where original_headers is empty more strictly - perhaps fail the check or add a warning rather than falling back to a lenient count check."
+      ]
+    }
+  }
+}

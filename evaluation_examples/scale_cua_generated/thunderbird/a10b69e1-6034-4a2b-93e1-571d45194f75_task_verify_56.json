@@ -1,0 +1,108 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_56",
+  "snapshot": "thunderbird",
+  "instruction": "Add two new local folders to Thunderbird: one called FINANCE and another called INVOICES.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bFINANCE\\.msf\\b",
+          "\\bFINANCE/?(?!\\.msf)",
+          "\\bINVOICES\\.msf\\b",
+          "\\bINVOICES/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating two local folders in Thunderbird (FINANCE and INVOICES). Evaluator checks for both folder files and .msf metadata files. Same complexity as original task with different folder names.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator checks for FINANCE and INVOICES folders and their .msf files using regex patterns.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks both required folders (FINANCE and INVOICES)",
+        "Correct state extraction: Postconfig runs 'ls -R' on the correct Thunderbird local folders directory",
+        "Thunderbird-aware: Correctly checks for both directory and .msf metadata file for each folder",
+        "Appropriate metric: check_list uses regex pattern matching suitable for ls output",
+        "Minor regex pattern concern: Patterns use negative lookahead (?!\\.msf) which may not optimally match ls -R directory format (directories appear with colon, e.g., 'FINANCE:')",
+        "Practical functionality: Despite pattern concerns, evaluator will likely work correctly in practice as patterns will match both directory listings and .msf files"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using more explicit regex patterns: '\\bFINANCE:' for directory listing and '\\bFINANCE\\.msf\\b' for metadata file",
+        "Alternative approach: Use separate patterns '\\bFINANCE\\.msf\\b' for the file and '\\bFINANCE:?\\s*$' for the directory to handle both 'FINANCE:' and 'FINANCE/' formats"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

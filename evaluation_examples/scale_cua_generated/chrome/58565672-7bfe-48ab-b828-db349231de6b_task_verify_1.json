@@ -1,0 +1,115 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Thunderbird, navigate to the Bills folder, select the most recent email, and launch its main URL in an active Chrome tab.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.amazon.com/"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding the latest email in Thunderbird's Bills folder and opening the first URL (https://www.amazon.com/) in Chrome. The evaluator verifies that the active tab's URL is https://www.amazon.com/ using the existing is_expected_active_tab metric function. This reuses existing evaluator functions without requiring custom code.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts active tab state using get_active_tab_info (chrome.py:781-868), which retrieves URL from accessibility tree and connects to Chrome via CDP",
+        "Metric logic correctly compares URLs using is_expected_active_tab (chrome.py:18-38) with proper parameter handling - receives rules dict directly and accesses rule['type'] and rule['url']",
+        "Complete coverage: evaluator verifies the final requirement that the correct URL (https://www.amazon.com/) is open in Chrome's active tab",
+        "Expected value is correct: https://www.amazon.com/ matches the first URL from the Bills folder email as stated in metadata",
+        "Data flow is correct: getter returns {title, url, content} → metric receives active_tab_info and rule dict → compares URLs using compare_urls utility → returns 1.0 for match",
+        "No parameter handling antipatterns: metric correctly uses 'rule' parameter name and accesses rule['url'] directly without incorrect patterns like expected.get('rules')",
+        "State timing is appropriate: getter reads active tab state after task completion, no postconfig needed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "58565672-7bfe-48ab-b828-db349231de6b_aug_16_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "id": "22a4636f-8179-4357-8e87-d1743ece1f81",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Convert the document \"Meeting-Agenda.docx\" from the Desktop to PDF format, rename it to \"Team-Meeting-Agenda.pdf\", and upload it to the 'meetings' folder in my Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "mkdirs"
+        ],
+        "args": [
+          {
+            "query": "title = 'Meeting-Agenda.docx' or title = 'Meeting-Agenda.pdf' or title = 'Team-Meeting-Agenda.pdf'",
+            "trash": false
+          },
+          {
+            "path": [
+              "meetings"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/22a4636f-8179-4357-8e87-d1743ece1f81/Meeting-Agenda.docx",
+            "path": "/home/user/Desktop/Meeting-Agenda.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/Meeting-Agenda.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_pdf_in_gdrive__a1937ab0",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path": [
+        "meetings",
+        "Team-Meeting-Agenda.pdf"
+      ],
+      "dest": "Team-Meeting-Agenda.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_pages": 1,
+        "min_file_size": 5000
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires converting Meeting-Agenda.docx to PDF, renaming it to Team-Meeting-Agenda.pdf, and uploading to Google Drive meetings folder. Evaluator checks if the file exists, has at least 1 page, and minimum file size of 5KB to ensure valid PDF conversion.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/22a4636f-8179-4357-8e87-d1743ece1f81_task_verify_0/metrics/gdrive_pdf.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that PDF files from DOCX conversion typically contain at least 1 page and are larger than 5KB. Original document has meaningful content (meeting agenda with attendees) that should convert to valid PDF.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three instruction requirements: (1) PDF conversion verified by pypdf reader validating PDF format and page count, (2) correct filename 'Team-Meeting-Agenda.pdf' verified by getter path, (3) correct Google Drive location 'meetings' folder verified by getter path",
+        "Metric logic is sound: checks file existence, minimum file size (5KB), minimum page count (1), and PDF readability using pypdf.PdfReader",
+        "Expected values are semantically correct: min_pages=1 and min_file_size=5000 are reasonable thresholds for a converted DOCX document with meeting agenda content",
+        "Complete requirement coverage: all instruction steps are verified through the combination of getter path specification and metric validation checks",
+        "Getter can successfully extract the required state: googledrive_file getter will download from the exact path specified, and metric can verify PDF properties"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor limitation: evaluator cannot verify that the PDF content actually matches the original DOCX content, only that it is a valid PDF with appropriate size and page count. However, this is acceptable for practical verification purposes as the instruction focuses on the end result rather than the conversion process"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_in_gdrive__a1937ab0 first parameter type (str) may not match getter get_googledrive_file return type (Any)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

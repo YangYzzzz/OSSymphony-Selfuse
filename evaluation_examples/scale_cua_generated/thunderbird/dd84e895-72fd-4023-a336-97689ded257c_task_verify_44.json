@@ -1,0 +1,107 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_44",
+  "snapshot": "thunderbird",
+  "instruction": "Add a star to the first email in the Bills folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(*) = 1 from messageAttributes where attributeID = 58 and value = 1 and messageID = (select id from messages where folderID = 13 ORDER BY dateReceived ASC LIMIT 1);"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires adding a star to the first email in the Bills folder (folderID=13). The evaluator checks that the star attribute (attributeID=58) is set to 1 for the first email (ordered by dateReceived ASC) in folder 13. This is verified via SQL query on the Thunderbird global-messages-db.sqlite database, ensuring the starred messageID matches the first message in the folder.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies that the first email in the Bills folder is starred",
+        "SQL query properly identifies the first email using 'ORDER BY dateReceived ASC LIMIT 1' in the subquery",
+        "The outer query checks that the starred message (attributeID=58, value=1) matches exactly the first email's messageID",
+        "This logic ensures only the first email can pass - starring the 2nd or 3rd email would fail the check",
+        "Postconfig correctly closes Thunderbird to flush database to disk before verification",
+        "Getter correctly retrieves the Thunderbird SQLite database from VM",
+        "Metric function run_sqlite3 correctly executes the SQL query and returns boolean result",
+        "Complete coverage of instruction requirements with correct semantic verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

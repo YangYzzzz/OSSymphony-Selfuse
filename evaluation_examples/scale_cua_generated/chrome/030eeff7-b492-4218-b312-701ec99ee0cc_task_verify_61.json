@@ -1,0 +1,102 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_61",
+  "snapshot": "chrome",
+  "instruction": "Help me enable autofill for addresses in Chrome settings so forms are filled automatically.",
+  "source": "https://support.google.com/chrome/answer/142893",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "autofill_addresses_enabled__bc73a156"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to enable autofill for addresses in Chrome settings. The getter reads Chrome Preferences to verify autofill.enabled is true.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_5/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "task_category": "chrome_autofill_settings",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Getter likely checks wrong Chrome Preferences key: reads 'autofill.enabled' but address-specific autofill typically uses 'autofill.profile_enabled' or similar",
+        "Semantic mismatch: instruction specifically asks for 'autofill for addresses' but getter may check a generic autofill toggle or non-existent key",
+        "Risk of false negatives: if 'autofill.enabled' key doesn't exist in Chrome Preferences, getter will always return 'false' even when address autofill is actually enabled",
+        "Chrome's Preferences file typically distinguishes between different autofill types (addresses vs credit cards vs passwords), but getter uses generic key that may not verify address-specific setting"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify the correct Chrome Preferences key for address autofill (likely 'autofill.profile_enabled' or check Chrome's actual Preferences structure)",
+        "Update getter to read the correct key: data.get('autofill', {}).get('profile_enabled', False) instead of data.get('autofill', {}).get('enabled', False)",
+        "Consider checking multiple related keys if Chrome uses nested structure for address autofill settings",
+        "Test against actual Chrome Preferences file to confirm the correct key path for address autofill verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

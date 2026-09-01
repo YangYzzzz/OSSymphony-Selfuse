@@ -1,0 +1,113 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_13",
+  "snapshot": "chrome",
+  "instruction": "Explore women's Adidas t-shirts with prices exceeding $40.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject_flexible": {
+        "[class*='filter'] | [class*='facet'] | [class*='refinement'] | [class*='selected'] | [class*='active'] | [class*='applied']": [
+          "$40",
+          "women",
+          "t-shirts",
+          "adidas",
+          "is_other_exist"
+        ]
+      },
+      "url_include_expected": [
+        "women",
+        "t-shirts",
+        "adidas"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "$40": true,
+          "women": true,
+          "t-shirts": true,
+          "adidas": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "This task is a variation of the original NBA store browsing task. The agent must navigate to the NBA store and apply filters to browse women's Adidas t-shirts over $40. The evaluator uses a dual verification approach: (1) class_multiObject_flexible checks for all four filter values in the page's filter UI elements by looking for elements with 'filter', 'facet', 'refinement', 'selected', 'active', or 'applied' in their class names - it checks for 'women', 'adidas', 't-shirts', and '$40' (using '$40' instead of 'over $40' because e-commerce sites commonly display price filters as '$40+', '$40-999', or similar numeric formats); (2) url_include_expected checks only the three category/brand filters (women, t-shirts, adidas) in the URL. The price filter '$40' is intentionally excluded from URL verification because e-commerce sites encode price ranges as numeric parameters (e.g., 'price=40-999', 'minPrice=40') rather than literal text strings, making URL substring matching unreliable for price verification. The use of '$40' as the verification text allows matching against common price filter displays like '$40+', 'Price: $40', '$40 and up', etc. All four filters are verified via the UI elements check, which is the primary verification mechanism. The metric check_direct_json_object compares the result against expected filter values. This maintains similar complexity to the original task - same number of filters (4), same interaction pattern (navigate and filter), with a robust evaluation approach that adapts to how e-commerce sites actually implement filters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "task_variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "The evaluator uses a well-designed dual verification approach that correctly adapts to how e-commerce sites implement filters.",
+        "The class_multiObject_flexible check verifies all four filter requirements (women, adidas, t-shirts, $40) by searching for filter UI elements with classes containing 'filter', 'facet', 'refinement', 'selected', 'active', or 'applied'. This is semantically correct for detecting applied filters in the UI.",
+        "The url_include_expected check verifies only the three category/brand filters (women, t-shirts, adidas) that reliably appear as literal text in URLs. This is semantically sound.",
+        "The price filter '$40' is intentionally excluded from URL verification (not in url_include_expected array), which is correct because e-commerce sites encode prices as numeric parameters (e.g., 'price=40', 'minPrice=40') not as literal '$40' strings.",
+        "The expected rules correctly map to what the getter extracts: the getter returns a dict with boolean values for each filter key, and the expected values are booleans (true for required filters, false for is_other_exist).",
+        "The metric check_direct_json_object will correctly compare all returned keys against expected values, ensuring all four filters are present and no unexpected filters exist.",
+        "The use of '$40' (not 'over $40') as the verification text is pragmatic - it can match common price filter displays like '$40+', 'Price: $40', '$40 and up', etc.",
+        "Minor consideration: The evaluator relies on consistent class naming conventions across e-commerce sites. The broad selector pattern (filter|facet|refinement|selected|active|applied) should work for most sites, but edge cases might exist."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a fallback mechanism if the class-based filter detection fails on sites with non-standard class names. However, this is a minor edge case concern, not a critical flaw."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

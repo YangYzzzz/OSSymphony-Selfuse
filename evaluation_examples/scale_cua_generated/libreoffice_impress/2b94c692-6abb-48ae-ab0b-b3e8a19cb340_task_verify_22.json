@@ -1,0 +1,110 @@
+{
+  "id": "2b94c692-6abb-48ae-ab0b-b3e8a19cb340",
+  "new_id": "task_verify_22",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Move the image to the bottom of the slide on Slide 2.",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/2b94c692-6abb-48ae-ab0b-b3e8a19cb340/201_6.pptx",
+            "path": "/home/user/Desktop/201_6.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/201_6.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "201_6.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_pptx_bottom_position__fb68ba79",
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/201_6.pptx",
+      "dest": "201_6.pptx"
+    },
+    "options": {
+      "slide_index": 1,
+      "shape_index": 2,
+      "tolerance": 100000
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires moving the image on Slide 2 to the bottom position. The evaluator checks if the image's top position is approximately 4524840 EMUs (bottom-aligned position). Verified by analyzing the PPTX structure and calculating bottom position based on slide height.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/2b94c692-6abb-48ae-ab0b-b3e8a19cb340_task_verify_2/metrics/pptx__fb68ba79.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL: Hardcoded expected position (4524840 EMUs) assumes specific image dimensions (height=2158920 EMUs) and margin, rather than dynamically calculating bottom position",
+        "Semantic issue: The metric doesn't verify 'bottom of slide' semantically - it checks for one specific EMU coordinate that may not match if image height differs or positioning varies",
+        "Logic flaw: Expected position calculation in comments (6858000 - 2158920 - margin) should be done dynamically at runtime by reading actual slide and image dimensions",
+        "The instruction 'move image to bottom' is semantically verified incorrectly - should check if shape.top + shape.height is close to slide.height, not if shape.top equals a hardcoded value"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Calculate expected bottom position dynamically: read slide dimensions from presentation, get actual image height from shape, compute bottom position as (slide_height - image_height - optional_margin)",
+        "Change verification logic to: expected_bottom = slide.height - shape.height - margin (e.g., 100000 EMUs); check if abs(shape.top - expected_bottom) <= tolerance",
+        "Alternatively, verify bottom alignment by checking: abs((shape.top + shape.height) - slide.height) <= tolerance to ensure image bottom edge is near slide bottom",
+        "Remove hardcoded expected_bottom_top=4524840 and replace with runtime calculation based on actual PPTX structure"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

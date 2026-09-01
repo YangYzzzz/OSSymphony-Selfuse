@@ -1,0 +1,122 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_47",
+  "snapshot": "thunderbird",
+  "instruction": "Please remove the email account \"john.smith@hotmail.com\" from the email client",
+  "source": "https://www.wikihow.com/Remove-an-Email-Account-from-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "unexpect": [
+          {
+            "url": "imap://outlook.office365.com",
+            "user": "john.smith@hotmail.com"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation: Remove Hotmail/Outlook account. Uses same evaluator (check_csv) to verify account removal via unexpect rules.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: firefox_decrypt.py extracts Thunderbird account credentials to CSV, which persists even after account removal",
+        "Metric comparison logic is correct: check_csv with unexpect rules properly verifies that the account (url + user) does NOT appear in the CSV",
+        "Coverage is complete: Single requirement (remove account) is fully verified by checking its absence in the credentials export",
+        "Data flow is semantically correct: postconfig extracts accounts -> result reads CSV from cache -> check_csv verifies account absence",
+        "Expected values are correct: unexpect rule correctly specifies both 'imap://outlook.office365.com' (correct Hotmail IMAP server) and 'john.smith@hotmail.com' (exact username from instruction)",
+        "State is accessible: Thunderbird profile data persists on disk and can be accessed by firefox_decrypt.py without reopening Thunderbird",
+        "Practical feasibility confirmed: firefox_decrypt.py is a real tool with correct command-line arguments for extracting Thunderbird credentials to CSV format"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

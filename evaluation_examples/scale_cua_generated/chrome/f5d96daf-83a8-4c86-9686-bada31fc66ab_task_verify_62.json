@@ -1,0 +1,99 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_62",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 15 Plus with iPhone 15 and iPhone 14 Plus",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-15-plus",
+            "iphone-15",
+            "iphone-14-plus"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "proxy": true,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task requires comparing 3 iPhone models (Plus and standard versions) on Apple's website. Evaluator checks that the active tab URL contains the modelList parameter with the 3 specified iPhone models (order-independent). Similar complexity to original task, just different model selection.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "CRITICAL: Metric logic bug - ignore_list_order flag is checked in wrong location (expected_json.get('ignore_list_order') instead of rules.get('ignore_list_order')), causing order-insensitive comparison to fail at chrome.py general.py:428-434",
+        "Coverage gap: Evaluator only verifies URL contains correct modelList parameter, but does not verify user actually viewed/completed the comparison (just navigating to URL is insufficient for 'compare' task)",
+        "Expected values are semantically correct - model identifiers match Apple's URL pattern for comparison feature",
+        "Getter logic is sound - correctly extracts and parses URL parameters, handles missing parameters appropriately"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix metric bug: In check_direct_json_object (general.py:428), change 'expected_json.get(\"ignore_list_order\", False)' to 'rules.get(\"ignore_list_order\", False)' to correctly access the flag",
+        "Consider adding postconfig to verify comparison UI is visible, or add HTML parsing to confirm comparison table/results are displayed, not just URL navigation",
+        "Alternative: Add second evaluator check for page content (e.g., verify comparison table contains all 3 model names) to ensure task completion beyond URL check"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

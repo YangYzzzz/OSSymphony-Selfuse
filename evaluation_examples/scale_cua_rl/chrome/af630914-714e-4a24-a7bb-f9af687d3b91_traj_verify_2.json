@@ -1,0 +1,102 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "af630914-714e-4a24-a7bb-f9af687d3b91_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Enable the 'Send a Do Not Track request' option in Chrome's privacy settings.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_do_not_track_enabled__2a127fa9e4cd79198d970c24eb95cab0",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": "true"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_af630914-714e-4a24-a7bb-f9af687d3b91_sid_1488225",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Chrome menu -> Settings -> Appearance -> Font size dropdown and selected 'Very large' in 7 turns.",
+    "capability_extraction": "Can open Chrome menu, navigate to Settings, find specific settings sections, interact with toggles and dropdowns.",
+    "task_rationale": "Related Chrome settings task: enabling Do Not Track requires navigating to Privacy and security section instead of Appearance. Tests the model's ability to find and toggle a privacy setting.",
+    "explanation": "Task requires navigating to Chrome Settings -> Privacy and security and enabling the 'Send a Do Not Track request' toggle. Evaluator uses official enable_do_not_track getter with a custom metric that checks the string value is 'true'. [Fixed: changed expected_value from boolean true to string 'true' to match getter return type; updated metric to normalize both sides to lowercase strings for robust comparison.]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_af630914-714e-4a24-a7bb-f9af687d3b91_sid_1488225_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 2,
+    "scoring_breakdown": {
+      "do_not_track": "1.0 - Do Not Track setting enabled"
+    },
+    "fix_history": [
+      "Fix 1: Changed expected_value from boolean true to string 'true' to match getter return type",
+      "Fix 2: Updated metric to normalize both result and expected to lowercase strings for robust comparison"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts the Do Not Track setting: get_enable_do_not_track reads Chrome's Preferences JSON and returns string 'true' or 'false', which is exactly the state needed to verify this instruction.",
+        "Metric correctly handles the expected parameter for type='rule': expected receives {'expected_value': 'true'} directly from get_rule, and the metric accesses expected.get('expected_value', 'true') correctly without wrapping errors.",
+        "String comparison is robust: both result and expected_value are normalized to lowercase strings via str().lower(), so 'true' == 'true' will correctly return 1.0 when DNT is enabled.",
+        "Postconfig correctly kills and restarts Chrome to ensure preferences are flushed to disk before the getter reads them. The 3-second sleep allows Chrome to fully initialize.",
+        "Coverage is complete: the single instruction requirement (enable Do Not Track) is fully verified by a single getter+metric pair."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

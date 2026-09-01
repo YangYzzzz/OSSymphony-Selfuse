@@ -1,0 +1,88 @@
+{
+  "id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37",
+  "new_id": "task_verify_18",
+  "snapshot": "chrome",
+  "instruction": "I want to set up a global hotkey for play/pause in VLC so I can control playback even when VLC is not focused.\nHow can I configure the global play/pause hotkey in VLC preferences?",
+  "source": "https://www.reddit.com/r/Fedora/comments/rhljzd/how_to_run_multiple_instances_of_vlc_media_player/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_global_key_play_pause",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_global_key_play_pause": 1
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires configuring a global play/pause hotkey in VLC preferences. The evaluator checks the vlcrc config file for a non-empty global-key-play-pause value (expected_global_key_play_pause=1 means configured). Uses existing check_global_key_play_pause metric function and get_vlc_config getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "The task follows the same pattern as the original: launch VLC, navigate to preferences, and change a specific configuration setting. The evaluator reads the vlcrc config file to verify that global-key-play-pause has a value configured (not empty).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vlc_config reads the vlcrc config file from platform-specific paths, which is the appropriate state to verify this task",
+        "Metric logic is correct: check_global_key_play_pause correctly checks if the global-key-play-pause setting has a non-empty value (configured) vs empty value (not configured)",
+        "Expected value is semantically correct: expected_global_key_play_pause=1 correctly represents that the setting should be configured",
+        "Complete coverage: The evaluator checks the exact requirement from the instruction - whether the global play/pause hotkey is configured",
+        "Postconfig is appropriate: Kills and relaunches VLC to ensure config file is saved and accessible for verification",
+        "Edge cases handled: Correctly handles empty config values, non-empty values, and missing config lines"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

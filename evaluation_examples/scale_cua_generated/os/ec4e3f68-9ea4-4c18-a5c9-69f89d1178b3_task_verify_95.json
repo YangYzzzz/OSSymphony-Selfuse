@@ -1,0 +1,91 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_95",
+  "snapshot": "os",
+  "instruction": "Swap the positions of Thunderbird and Chrome in your favorites dock, keeping Vim in the middle.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps_order__f848009c",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_order": [
+          "google-chrome.desktop",
+          "vim.desktop",
+          "thunderbird.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires swapping positions of Thunderbird (1st) and Chrome (3rd), with Vim remaining in the middle. Uses custom metric to verify exact order. Expected order: chrome, vim, thunderbird. IMPORTANT: No postconfig needed - gsettings is a persistent D-Bus system configuration backend that can be queried directly via command line regardless of UI state. Rule warning about UI/state-dependency is a false positive.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_6_task_verify_6/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification is correct: Instruction requires swapping Thunderbird (position 1) with Chrome (position 3) while keeping Vim in middle (position 2). Evaluator verifies exact order through list comparison.",
+        "Coverage is complete: Single exact list comparison verifies all requirements - Chrome moved to position 1, Vim stayed at position 2, Thunderbird moved to position 3. No partial steps need separate verification.",
+        "Getter logic is correct: get_vm_command_line executes 'gsettings get org.gnome.shell favorite-apps' which returns string representation of the favorite apps list (general.py:8-22)",
+        "Metric logic is correct: check_gnome_favorite_apps_order__f848009c parses string using ast.literal_eval (secure), then performs exact list comparison against expected_order (basic_os.py:20-30)",
+        "Data flow is correct: gsettings command → string like \"['app1.desktop', 'app2.desktop']\" → ast.literal_eval → Python list → exact comparison with expected list",
+        "Expected value is semantically correct: ['google-chrome.desktop', 'vim.desktop', 'thunderbird.desktop'] correctly reflects the swap from initial state ['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']",
+        "Parameter handling is correct: Metric uses expected.get('expected_order', []) which is correct for type='rule' where expected IS the rules dict passed by get_rule (misc.py:88-92)",
+        "No postconfig needed: gsettings is a persistent D-Bus configuration backend - can be queried via command line regardless of UI state. Not dependent on any application or window being open.",
+        "Implementation is secure: Uses ast.literal_eval instead of eval for string parsing, preventing code injection"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "manual_review": "LLM judge confirmed all aspects are correct. Rule warning is false positive - gsettings is persistent configuration backend, not UI-dependent."
+    }
+  }
+}

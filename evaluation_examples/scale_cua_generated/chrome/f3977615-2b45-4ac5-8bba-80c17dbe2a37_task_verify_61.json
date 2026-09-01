@@ -1,0 +1,93 @@
+{
+  "id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37",
+  "new_id": "task_verify_61",
+  "snapshot": "chrome",
+  "instruction": "I want to change VLC's default recording location to my Desktop folder. How do I configure VLC to save recordings directly to /home/user/Desktop instead of the default location?",
+  "source": "https://www.reddit.com/r/Fedora/comments/rhljzd/how_to_run_multiple_instances_of_vlc_media_player/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "is_vlc_recordings_folder",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Desktop"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to configure VLC's recording folder setting to /home/user/Desktop. The evaluator checks the vlcrc config file for the 'input-record-path' setting and verifies it matches the expected path. Using existing metric function is_vlc_recordings_folder from vlc.py.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "requires_action": true,
+    "verification": "Reuses existing is_vlc_recordings_folder metric which checks the input-record-path setting in VLC config file",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_vlc_config getter to retrieve the VLC configuration file (vlcrc)",
+        "Metric is_vlc_recordings_folder properly searches for 'input-record-path' setting and compares against expected value",
+        "Complete coverage: evaluator checks exactly what the instruction requires (recording path configuration)",
+        "Data flow is correct: getter extracts config file → metric reads and parses it → compares recording path",
+        "Expected value '/home/user/Desktop' is semantically correct and matches instruction requirement",
+        "Edge cases handled: missing config file, setting not found, comment lines, empty lines all return 0",
+        "Postconfig (kill and relaunch VLC) ensures settings are flushed to disk, though potentially unnecessary since we read from file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor optimization: The postconfig that restarts VLC might be unnecessary since verification reads directly from the config file rather than VLC's running state. However, this is conservative and ensures settings are written to disk, so it's acceptable."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

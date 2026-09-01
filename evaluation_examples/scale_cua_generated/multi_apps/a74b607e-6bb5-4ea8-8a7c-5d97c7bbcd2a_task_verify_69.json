@@ -1,0 +1,133 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_69",
+  "snapshot": "multiapps",
+  "instruction": "In Chrome, manually load the extension located in the Desktop helloExtension folder as an unpacked extension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "pkill -f 'google-chrome|chrome' || true",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Alternative phrasing for loading the extension. Verifies extension path is in the installed extensions list.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [
+      "tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_12_task_verify_9/getters/find_unpacked_extension_path.py",
+      "tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_12_task_verify_9/metrics/is_in_list.py"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts all extension paths from Chrome Preferences file by reading extensions.settings[id].path for each extension (lines 52-62 in find_unpacked_extension_path.py)",
+        "Getter implements robust path normalization using os.path.normpath() to handle edge cases with trailing slashes, ensuring '/path/to/ext' and '/path/to/ext/' are treated as identical (line 61)",
+        "Metric correctly checks if expected path exists in the returned list using proper membership testing with path normalization (lines 28-39 in is_in_list.py)",
+        "Expected value '/home/user/Desktop/helloExtension' correctly matches the actual unpacked extension path created by setup config (config line 22 unzips to /home/user/Desktop/)",
+        "Evaluator provides complete coverage: fully verifies the core instruction requirement that the unpacked extension from the specified folder was loaded into Chrome",
+        "Postconfig is EXCELLENT: kills Chrome, waits 2s, and restarts Chrome (lines 52-89) to ensure Preferences file is properly flushed to disk before verification - addresses the state-dependent nature of the task",
+        "Data flow is logically sound and semantically correct: getter returns list of normalized paths → metric performs normalized membership check → returns 1.0 if found, 0.0 otherwise",
+        "Edge cases are properly handled: empty result list returns 0.0 (line 22-23), non-string items use direct comparison (line 37-39), error handling returns empty list (line 67-68)",
+        "No parameter handling issues: metric correctly accesses rules.get('expected') directly since expected.type='rule' means the framework passes the rules dict directly as the expected parameter"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

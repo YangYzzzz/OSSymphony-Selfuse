@@ -1,0 +1,107 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "dd84e895-72fd-4023-a336-97689ded257c_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Add a star to the AWS invoice email in the local Bills folder.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "run_sqlite3",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select sum(1) > 0 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 13);"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_dd84e895-72fd-4023-a336-97689ded257c_sid_1488186",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to Bills folder, opened both emails (AWS invoice and X receipt), attempted to star them by clicking star icons and selecting all messages, but spent 50 turns toggling stars on/off without achieving persistent starring of both emails.",
+    "capability_extraction": "Can navigate Thunderbird folder tree, click on Bills folder, open and read individual emails, select multiple messages, interact with star/flag icons (inconsistently), use Ctrl+A to select all",
+    "failure_analysis": "Model failed to reliably star all emails. It repeatedly toggled star icons on individual messages. Screenshots show the model did manage to star individual emails at various points (e.g., screenshot 15 shows AWS with star), but kept toggling, losing the state.",
+    "task_rationale": "Simplified from original 'star every email' to 'star one specific email'. The model showed partial ability to star individual messages (visible in screenshots 10-15). Reducing to a single email makes the task achievable within fewer turns.",
+    "explanation": "Task requires starring only the AWS invoice email in Bills folder. Evaluator reuses the original SQL query which checks if at least one message in folderID=13 (Bills) has the star attribute (attributeID=58, value=1). This is a direct simplification of the original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses run_sqlite3 metric with get_vm_file getter to query Thunderbird's global-messages-db.sqlite for star/flagged attributes (attributeID=58, value=1) in the Bills folder (folderID=13).",
+        "Postconfig correctly closes Thunderbird before reading the SQLite database to avoid file locking issues.",
+        "Data flow is correct: get_vm_file returns a file path string, run_sqlite3 opens it and executes the SQL query, get_rule returns the rules dict which run_sqlite3 accesses via rules['sql'].",
+        "Minor coverage gap: The SQL checks if ANY message in folderID=13 is starred, not specifically the AWS invoice email. If another email in the Bills folder were starred instead of the AWS invoice, the evaluator would still pass. However, given the simplified task context with few emails in Bills, this is an acceptable approximation.",
+        "The SQL expression 'sum(1) > 0' correctly returns 1 (true) if at least one starred message exists in the folder, and 0 (false) otherwise."
+      ],
+      "llm_judge_fix_suggestions": [
+        "To improve precision, the SQL query could additionally filter by message subject containing 'AWS' or 'invoice', e.g.: 'select sum(1) > 0 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 13 and id in (select docID from messagesText_content where c0content MATCH \"AWS invoice\"))' or similar subject-matching approach."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

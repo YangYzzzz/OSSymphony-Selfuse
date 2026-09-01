@@ -1,0 +1,112 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_45",
+  "snapshot": "chrome",
+  "instruction": "Please bookmark the Rotary Embeddings page to the bookmarks bar.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://blog.eleuther.ai/rotary-embeddings/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires bookmarking the first tab (Rotary Embeddings blog post) to the bookmark bar. Uses the existing is_expected_bookmarks metric with bookmark_bar_websites_urls type. Same difficulty as original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: bookmarking the Rotary Embeddings page to the bookmark bar",
+        "Getter logic is correct: get_bookmarks (chrome.py:465) reads Chrome's Bookmarks file from OS-specific path and returns the bookmarks structure",
+        "Metric logic is correct: is_expected_bookmarks (chrome.py:185) with 'bookmark_bar_websites_urls' type extracts URLs from bookmark bar and checks if expected URL is present using subset check",
+        "Expected value is semantically correct: URL 'https://blog.eleuther.ai/rotary-embeddings/' matches the first tab opened in config that should be bookmarked",
+        "Postconfig is necessary and correct: Restarting Chrome ensures bookmark state is flushed to disk before getter reads the Bookmarks file",
+        "Complete coverage: Evaluator verifies both that bookmark exists AND that it's in the bookmark bar (not other folders)",
+        "Edge cases handled: Returns 0 if bookmarks file missing, bookmark_bar empty, or URL not found",
+        "Data flow is correct: get_bookmarks returns bookmarks dict -> is_expected_bookmarks receives it as 'bookmarks' parameter -> extracts bookmark_bar URLs -> checks subset",
+        "Subset check is appropriate: Allows other bookmarks to exist, only verifies that the expected URL is present"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

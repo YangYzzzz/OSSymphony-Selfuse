@@ -1,0 +1,91 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_66",
+  "snapshot": "multiapps",
+  "instruction": "Load the unpacked extension from /home/user/Desktop/helloExtension directory into Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Instruction with full path specified. Verifies the extension path appears in Chrome's installed extensions list.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is semantically correct: extracts all installed extension paths from Chrome Preferences file (chrome.py:1401-1436)",
+        "Getter implementation: reads extensions.settings dictionary, iterates through all extension IDs, extracts 'path' field from each, returns list of all extension paths",
+        "Metric logic is semantically correct: uses 'in' operator to check if expected path exists in result list (general.py:76-81)",
+        "Expected value '/home/user/Desktop/helloExtension' semantically matches the instruction requirement - verifies the exact directory path specified in the instruction",
+        "Data flow is logically correct: getter extracts list of extension paths -> metric verifies expected path is in list -> returns 1.0 if found, 0.0 otherwise",
+        "Complete coverage: instruction requires loading unpacked extension from specific directory, evaluator verifies that exact path appears in Chrome's extension settings - all requirements verified",
+        "State accessibility is correct: extension loading in Chrome persists to Preferences JSON file, no postconfig needed since state is file-based not UI-based",
+        "Edge cases properly handled: empty extension list returns [], file read errors caught by try/except return [], missing JSON keys caught by .get() with error handling",
+        "Static validation warning is false positive: no UI state dependency exists, getter reads from persisted filesystem not UI state"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": "Heuristic warning about postconfig reviewed and confirmed as false positive. Extension data persists to Chrome Preferences file, no postconfig needed as validated by LLM judge. No fixes required - task is correct as-is. Rule-based warning can be safely ignored as LLM judge confirmed no UI state dependency exists."
+    }
+  }
+}

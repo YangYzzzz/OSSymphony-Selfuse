@@ -1,0 +1,97 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "Can you turn on Enhanced Safe Browsing in Chrome to get proactive protection against dangerous sites and downloads?",
+  "source": "https://support.google.com/chrome/answer/9890866",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_enhanced_safety_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling Enhanced Safe Browsing feature in Chrome settings. The evaluator uses the existing get_enable_enhanced_safety_browsing getter which checks the safebrowsing.enhanced field in Chrome Preferences file. This is verified by reading the Chrome Preferences JSON structure where safebrowsing.enhanced is a boolean value. The exact_match metric compares the result against expected value 'true'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts the safebrowsing.enhanced field from Chrome Preferences file",
+        "Metric (exact_match) correctly compares getter result against expected value 'true'",
+        "Expected value 'true' is semantically correct for verifying Enhanced Safe Browsing is enabled",
+        "Postconfig appropriately restarts Chrome to ensure settings are persisted to disk before verification",
+        "Evaluator completely covers the instruction requirement to turn on Enhanced Safe Browsing",
+        "Data flow is correct: getter returns 'true'/'false' string -> exact_match compares against 'true' -> returns 1.0 or 0.0"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

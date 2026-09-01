@@ -1,0 +1,87 @@
+{
+  "id": "69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "new_id": "task_verify_22",
+  "snapshot": "os",
+  "instruction": "Help me set up the OpenAI Gym environment for developing RL algorithms. Clone the repository from 'https://github.com/openai/gym' to /home/user and configure the environment as specified in their setup documentation.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "related_apps": [
+    "os",
+    "chrome",
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_error",
+      "command": [
+        "python",
+        "-c",
+        "import gym; print('Gym version:', gym.__version__)"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Gym version:"
+        ],
+        "exclude": [
+          "Error:",
+          "ModuleNotFoundError",
+          "ImportError"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation testing OpenAI Gym environment setup. Evaluator verifies that the gym module can be imported and version can be printed. The check_include_exclude metric ensures 'Gym version:' is present and no error strings appear.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical semantic error: Evaluator uses get_vm_command_error which reads stderr, but the Python print() statement outputs to stdout. The evaluator will never find 'Gym version:' in stderr.",
+        "Wrong data source: The command 'python -c \"import gym; print('Gym version:', gym.__version__)\"' prints to stdout, not stderr. Should use get_vm_command_line instead of get_vm_command_error.",
+        "Incomplete coverage: Instruction requires (1) cloning repository to /home/user and (2) configuring the environment. Evaluator only verifies gym can be imported but does not verify the repository was cloned to the correct location.",
+        "Runtime failure guaranteed: Even if the task is completed successfully (gym installed and working), the evaluator will score 0.0 because it's reading from the wrong output stream."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change evaluator result type from 'vm_command_error' to 'vm_command_line' to read stdout instead of stderr where print() outputs",
+        "Add a second evaluation step to verify the repository was cloned: check if /home/user/gym directory exists using a file system getter",
+        "Consider using vm_command_line with command like 'ls /home/user/gym && python -c \"import gym; print('Gym version:', gym.__version__)\"' to verify both cloning and installation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

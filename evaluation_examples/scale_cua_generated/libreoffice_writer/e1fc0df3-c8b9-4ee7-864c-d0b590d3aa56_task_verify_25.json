@@ -1,0 +1,82 @@
+{
+  "id": "e1fc0df3-c8b9-4ee7-864c-d0b590d3aa56",
+  "new_id": "task_verify_25",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Enable the Wiki Publisher extension in LibreOffice Writer.",
+  "source": "augmented",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome",
+    "libreoffice",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "bash",
+            "-c",
+            "if [ -f /home/user/.config/libreoffice/4/user/registrymodifications.xcu ]; then grep -i 'wiki.*publisher' /home/user/.config/libreoffice/4/user/registrymodifications.xcu | grep -i 'enabled' || echo 'NOT_ENABLED'; else echo 'FILE_NOT_FOUND'; fi"
+          ],
+          "stdout": "check_wiki_enabled.out"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "check_wiki_enabled.out"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "(?i)wiki.*publisher.*true"
+        ],
+        "unexpect": [
+          "NOT_ENABLED",
+          "FILE_NOT_FOUND"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling Wiki Publisher extension. Evaluator checks LibreOffice's registrymodifications.xcu configuration file to verify that the Wiki Publisher extension is both present and enabled (with value 'true'). Uses existing check_list metric with cache_file getter and regex pattern that matches 'wiki publisher' followed by 'true', and rejects output containing 'NOT_ENABLED' or 'FILE_NOT_FOUND'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - uses identical grep pattern in uno_packages directory",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Correct verification target: The evaluator now checks /home/user/.config/libreoffice/4/user/registrymodifications.xcu, which is the correct file where LibreOffice stores extension enablement state.",
+        "Semantically correct logic: The regex pattern '(?i)wiki.*publisher.*true' correctly matches configuration entries where the Wiki Publisher extension has been enabled (value set to 'true').",
+        "Proper error handling: The evaluator rejects outputs containing 'NOT_ENABLED' or 'FILE_NOT_FOUND', ensuring it only passes when the extension is actually enabled and the config file exists.",
+        "Minor inefficiency: The bash command uses a two-stage grep (first for 'wiki.*publisher', then for 'enabled'), which is slightly convoluted. A single grep pattern or XML parser would be more elegant, but the current approach should work correctly in practice since LibreOffice registry entries are typically on single lines.",
+        "Complete coverage: The evaluator fully verifies the instruction requirement - that the Wiki Publisher extension is enabled, not just installed."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider simplifying the bash command to use a single grep pattern that captures both the extension name and enabled state: grep -i 'wiki.*publisher.*true' instead of the two-stage grep",
+        "For maximum robustness, consider using xmllint or a proper XML parser to extract the Enabled property value from the XML structure, though the current approach should work for typical LibreOffice config files"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,28 +1,43 @@
-"""
-To use Gitlab API, we need to create a Gitlab instance with proper authentication.
-This module sets up the Gitlab client using environment variables for configuration.
+"""GitLab helpers for OSWorld-V2 compatibility tasks.
 
-Environment Variables Required:
-GITLAB_URL=<your_gitlab_instance_url>
-GITLAB_PRIVATE_TOKEN=<your_private_token>
+This module is self-contained in OSSymphony and lazily imports python-gitlab so
+tasks that merely import these helpers can still be loaded when GitLab support
+is not configured.
 """
 
-import gitlab
-import dotenv
+from __future__ import annotations
+
 import os
 import time
 
-# import environment variables from .env in project root
+import dotenv
+
 dotenv.load_dotenv()
 
-# create Gitlab instance
-URL = os.getenv('GITLAB_URL', None)
-PRIVATE_TOKEN = os.getenv('GITLAB_PRIVATE_TOKEN', None)
+URL = os.getenv("GITLAB_URL", None)
+PRIVATE_TOKEN = os.getenv("GITLAB_PRIVATE_TOKEN", None)
 
-if URL is None or PRIVATE_TOKEN is None:
-    raise ValueError("GITLAB_URL and GITLAB_PRIVATE_TOKEN must be set in environment variables")
+
+def _load_gitlab_module():
+    try:
+        import gitlab  # type: ignore
+    except Exception as exc:
+        raise RuntimeError(
+            "OSWorld-V2 GitLab tasks require the python-gitlab package."
+        ) from exc
+    return gitlab
+
+
+def _require_config() -> None:
+    if URL is None or PRIVATE_TOKEN is None:
+        raise RuntimeError(
+            "OSWorld-V2 GitLab tasks require GITLAB_URL and GITLAB_PRIVATE_TOKEN."
+        )
+
 
 def get_gitlab_admin_client():
+    _require_config()
+    gitlab = _load_gitlab_module()
     return gitlab.Gitlab(url=URL, private_token=PRIVATE_TOKEN)
 
 
@@ -32,9 +47,6 @@ def _get_user_by_username(gl, username):
 
 
 def create_user_and_get_client(user_config, *, allow_existing=False):
-    """
-    Create a new GitLab user and return the user object for user-scoped actions.
-    """
     username = user_config.get("username")
     if not username:
         raise ValueError("user_config must include a username")
@@ -49,23 +61,19 @@ def create_user_and_get_client(user_config, *, allow_existing=False):
 
     return gl.users.create(user_config)
 
+
 def get_user_client(username):
-    """
-    Get a GitLab user object by username.
-    """
     gl = get_gitlab_admin_client()
     user = _get_user_by_username(gl, username)
     if not user:
         raise ValueError(f"User not found: {username}")
     return user
 
+
 def delete_user(*, username=None, user_id=None):
-    """
-    Delete a GitLab user by username or user_id. Returns True if deletion occurred.
-    """
     if user_id is None and not username:
         raise ValueError("username or user_id is required")
-    
+
     gl = get_gitlab_admin_client()
 
     if user_id is None:
@@ -87,14 +95,11 @@ def import_project_from_github(
     wait_for_import=True,
     poll_interval=2,
 ):
-    """
-    Import a GitHub repo into the user's namespace and optionally wait for completion.
-    """
     if not github_url:
         raise ValueError("github_url is required")
     if not project_name:
         raise ValueError("project_name is required")
-    
+
     gl = get_gitlab_admin_client()
 
     project = user_client.projects.create(

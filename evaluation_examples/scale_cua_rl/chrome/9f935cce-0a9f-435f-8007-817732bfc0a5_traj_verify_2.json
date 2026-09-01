@@ -1,0 +1,85 @@
+{
+  "id": "9f935cce-0a9f-435f-8007-817732bfc0a5",
+  "new_id": "9f935cce-0a9f-435f-8007-817732bfc0a5_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Find the Bankruptcy Forms section on the U.S. Courts website (uscourts.gov).",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.justice.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "uscourts\\.gov.*bankruptcy-forms"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_9f935cce-0a9f-435f-8007-817732bfc0a5_sid_1488046",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to browse Civil Division forms on justice.gov but encountered Access Denied. Tried direct URL paths and Google search, all blocked. Eventually navigated to uscourts.gov, found Forms & Rules menu, clicked Forms, then Civil Forms sidebar link successfully.",
+    "capability_extraction": "Can type URLs in address bar, navigate Chrome dropdown menus, click sidebar navigation links, scroll pages, handle Access Denied by trying alternative websites",
+    "failure_analysis": "justice.gov blocked VM access entirely (Access Denied). Model could not reach the expected URL pattern on justice.gov. Successfully found an alternative path on uscourts.gov but that didn't match the expected URL.",
+    "task_rationale": "Similar navigation pattern to what model demonstrated (sidebar form category selection) but with a different target category (Bankruptcy instead of Civil). Tests generalization of demonstrated capability.",
+    "explanation": "Task requires navigating to uscourts.gov Bankruptcy Forms page. Evaluator checks active tab URL matches uscourts.gov with bankruptcy-forms path. Same navigation pattern as demonstrated in trajectory but different sidebar target.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active tab URL from Chrome's accessibility tree address bar, with goto_prefix 'https://www.' producing a complete URL",
+        "Metric is_expected_url_pattern_match correctly receives rules dict with 'expected' key containing regex patterns, and uses re.search to match against the extracted URL",
+        "Regex pattern 'uscourts\\.gov.*bankruptcy-forms' correctly matches the expected uscourts.gov bankruptcy forms page URL (e.g., https://www.uscourts.gov/forms/bankruptcy-forms)",
+        "Instruction requires only navigating to the Bankruptcy Forms section on uscourts.gov — URL pattern check provides complete coverage of this single requirement",
+        "Starting config opens justice.gov (a different site), appropriately requiring the agent to navigate to uscourts.gov as instructed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "id": "aceb0368-56b8-4073-b70e-3dc9aee184e0",
+  "new_id": "task_verify_50",
+  "snapshot": "libreoffice_calc",
+  "instruction": "I am grading students' English exam papers. After comparing the remaining students' answers with the answer key and recording the detailed scoring in the spreadsheet, please identify which student scored below 60 points and write their name in cell O3. Only one student failed the exam.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/aceb0368-56b8-4073-b70e-3dc9aee184e0/exam.zip",
+            "path": "/home/user/exam.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "unzip",
+          "/home/user/exam.zip",
+          "-d",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/exam/ReferenceAnswers.docx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/exam/grades.xlsx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/exam/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "grades.xlsx"
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's')"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_failing_student_name__d4477d7a",
+    "result": {
+      "type": "xlsx_cell_o3__d4477d7a",
+      "path": "/home/user/exam/grades.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_name": "Karen Davis"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires grading all students' exams and identifying the failing student. Verified with Python: Karen Davis scored 50 points (below 60), the only failing student out of 9. Agent must: 1) Grade all 9 students, 2) Identify student with score < 60, 3) Write their name in cell O3.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_task_verify_1/getters/xlsx_cell_o3__d4477d7a.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_task_verify_1/metrics/check_failing_student_name__d4477d7a.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator verifies all key requirements - (1) scores recorded for at least 9 students, (2) student in O3 has score < 60, (3) all other students have score >= 60, (4) correct name in O3",
+        "Semantic correctness: Getter extracts both failing_student_name from O3 AND student_scores from spreadsheet, enabling comprehensive verification of grading work",
+        "Logical correctness: Metric correctly validates that the student named in O3 actually has a failing score and confirms only one student failed",
+        "Parameter handling: Correctly accesses expected.get('expected_name') directly from rules dictionary (no type='rule' handling errors)",
+        "Expected value: 'Karen Davis' is semantically correct per metadata (scored 50 points, the only failing student)",
+        "Postconfig: Appropriately activates window and saves file to ensure fresh data",
+        "Minor concern: Getter assumes specific spreadsheet structure (rows 2-19, columns M-P) which may be fragile, but this is an implementation robustness issue not a semantic verification issue"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making the getter more robust by searching for column headers (e.g., 'Total', 'Score') instead of hard-coding column ranges M-P",
+        "Consider adding validation that the total score column was actually found rather than assuming it exists in columns M-P"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

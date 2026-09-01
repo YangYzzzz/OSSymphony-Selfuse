@@ -1,0 +1,100 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Identify diesel automobiles under $35,000 available within 25 miles of zip code 60601.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "35000",
+          "maximum_distance": "25",
+          "zip": "60601",
+          "fuel_slugs[]": "diesel"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 1: Changed to diesel fuel type with price limit $35,000, distance 25 miles, and Chicago zip code 60601. Maintains identical task structure and complexity as original - same website, same number of filters, same interaction pattern. Uses existing getter get_active_tab_url_parse and metric check_direct_json_object, no custom functions needed.",
+    "new_functions_paths": [],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 search filter requirements from the instruction: price ceiling ($35,000 via list_price_max), distance (25 miles via maximum_distance), zip code (60601), and fuel type (diesel via fuel_slugs[])",
+        "Getter logic (get_active_tab_url_parse) appropriately extracts URL query parameters from the active tab, which is the correct state to check for cars.com search filters",
+        "Metric logic (check_direct_json_object) performs exact string matching for all expected filter values, ensuring precise verification",
+        "Expected values are semantically correct for the task requirements (35000, 25, 60601, diesel)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor semantic gap: Instruction says 'Locate' cars, which implies both setting filters AND executing the search/viewing results. Current evaluator only verifies filters are set in URL, not that search was executed. However, for web search tasks, URL parameters are a reasonable proxy for completion.",
+        "Potential robustness issue: Getter assumes filters are in URL query parameters. If cars.com changes to use hash fragments, POST data, or different parameter names, evaluation would fail. Consider documenting this assumption or adding fallback logic."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "82279c77-8fc6-46f6-9622-3ba96f61b477_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

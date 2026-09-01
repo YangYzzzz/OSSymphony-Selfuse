@@ -1,0 +1,106 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "Open the spreadsheet and go to cell B3. Extract the first name from that cell and use Chrome to search for it.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=mara(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": [
+      {
+        "type": "focus_window",
+        "parameters": {
+          "window_name": "Google Chrome"
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B3 value 'Mara' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'mara' (case-insensitive). Verified by reading complete Excel file: B3 contains 'Mara' at row 2, column 1 (0-indexed).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: it checks that Chrome's active tab shows a Google search for 'mara'",
+        "Expected value is semantically correct: the regex pattern matches Google search URLs for 'mara' (case-insensitive), which correctly matches the value 'Mara' in cell B3 of the Excel file (verified in metadata)",
+        "Data flow is correct: get_active_tab_info extracts active tab URL from accessibility tree → is_expected_search_query verifies URL matches expected search pattern",
+        "Regex pattern is well-formed and comprehensive: (?i)https?://(?:www\\.)?google\\.com/search\\?q=mara(?:&|$|#).* correctly matches various Google search URL formats (http/https, with/without www, allows additional query parameters) with case-insensitive 'mara' query",
+        "Postconfig is correctly provided (lines 73-80): focuses Chrome window before verification to ensure active tab state is accessible",
+        "The metric function is_expected_search_query (chrome.py:247-256) correctly handles both string URLs and dict with 'url' key, extracts URL properly, and performs regex matching"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

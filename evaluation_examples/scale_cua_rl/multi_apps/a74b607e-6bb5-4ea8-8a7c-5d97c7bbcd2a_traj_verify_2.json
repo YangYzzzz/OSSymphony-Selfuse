@@ -1,0 +1,94 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_traj_verify_2",
+  "snapshot": "multiapps",
+  "instruction": "Load the unpacked Chrome extension from the Desktop into the browser. It should appear as 'Hello Extensions' on the extensions page.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_installed_extension_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Hello Extensions"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_sid_1488328",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to chrome://extensions, enabled Developer mode, clicked Load unpacked, but loaded extension from wrong path (/tmp instead of Desktop). Extension was installed successfully but from incorrect directory.",
+    "capability_extraction": "Can navigate Chrome URLs, enable Developer mode, use Load unpacked button, open Terminal, run bash commands, install Chrome extensions",
+    "failure_analysis": "Model installed the extension from /tmp/chrome_extensions/ instead of /home/user/Desktop/helloExtension. Evaluator checked path, not name, so it failed despite successful installation.",
+    "task_rationale": "Uses extension name-based verification instead of path-based. The model demonstrated it CAN install extensions, just from wrong path. This evaluator checks the extension name appears in Chrome, which would succeed regardless of source path.",
+    "explanation": "Task requires loading the unpacked extension from Desktop. Evaluator checks Chrome preferences for installed extension name 'Hello Extensions' using existing find_installed_extension_name getter. This is a more lenient evaluation than path-based checking.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "extension_installed": "1.0 - Extension name 'Hello Extensions' found in Chrome preferences"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter find_installed_extension_name correctly reads Chrome Preferences file and extracts all installed extension names into a list.",
+        "Metric is_in_list correctly checks if the expected name 'Hello Extensions' is present in the returned list of extension names.",
+        "Data flow is correct: getter returns list of strings, metric checks membership of expected string in that list.",
+        "Expected value 'Hello Extensions' matches the instruction requirement.",
+        "Minor concern: Evaluator only verifies extension name is installed, not that it was loaded from the Desktop path as the instruction specifies. This makes the evaluator more lenient than the instruction requires - an extension installed from any path with the same name would pass.",
+        "Minor concern: Getter error handling returns the string 'Google' on exception, which is semantically odd but would not cause false positives for this task."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a secondary check using find_installed_extension_path getter to verify the extension was loaded from /home/user/Desktop/, matching the 'from the Desktop' requirement in the instruction.",
+        "The error fallback returning 'Google' string instead of an empty list could cause type issues with is_in_list if an exception occurs; consider this edge case."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

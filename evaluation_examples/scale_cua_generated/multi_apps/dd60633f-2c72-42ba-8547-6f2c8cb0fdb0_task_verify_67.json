@@ -1,0 +1,84 @@
+{
+  "id": "dd60633f-2c72-42ba-8547-6f2c8cb0fdb0",
+  "new_id": "task_verify_67",
+  "snapshot": "multiapps",
+  "instruction": "Extract all the Python code from the code cells in the Colab notebook and save it as 'valid_code.py' in the /home/user directory. Make sure the extracted code is syntactically valid Python.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing#scrollTo=h5hjCcLDr2WC"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os",
+    "writer"
+  ],
+  "evaluator": {
+    "func": "check_python_syntax__198be354",
+    "result": {
+      "type": "python_syntax__198be354",
+      "path": "/home/user/valid_code.py"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    }
+  },
+  "metadata": {
+    "explanation": "Task extracts code from Colab notebook and requires valid Python syntax. Evaluator uses Playwright to extract actual code from the Colab notebook code cells, reads the saved file, and verifies: (1) file exists, (2) file has syntactically valid Python using ast.parse(), and (3) file content was actually extracted from the notebook (checks for significant overlap between saved code and notebook code). Returns 1.0 only if all three conditions are met, ensuring the user actually extracted code from the notebook rather than creating an arbitrary valid Python file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_aug_9_task_verify_9/getters/python_syntax.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_aug_9_task_verify_9/metrics/python_syntax_check.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete requirement coverage: Evaluator verifies all three requirements: (1) file existence, (2) syntactic validity using ast.parse(), and (3) code was extracted from Colab notebook.",
+        "Robust extraction verification: Getter uses Playwright to extract actual code from Colab notebook code cells (tries multiple CSS selectors for robustness), then compares saved file content with extracted notebook code using overlap ratio (30% threshold).",
+        "Correct three-part logic: Metric returns 1.0 only if file exists AND has valid syntax AND was extracted from notebook, ensuring user cannot pass by creating arbitrary Python files.",
+        "Minor concern: 30% overlap threshold might be lenient - user could pass with partial extraction. A higher threshold (50-70%) might be more appropriate for 'extract ALL code' requirement.",
+        "Minor concern: Overlap calculation (character-by-character zip) could give false negatives if code is reformatted, though normalized whitespace removal partially mitigates this.",
+        "Good error handling: If Playwright extraction fails, extracted_from_notebook=False, preventing false positives."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing overlap threshold from 30% to 50-70% to better align with 'extract ALL code' requirement in instruction.",
+        "Consider more robust similarity comparison (e.g., using difflib.SequenceMatcher or checking for substring containment with flexible whitespace) instead of character-by-character zip.",
+        "Could add logging/metadata about how many code cells were found vs extracted to help debug extraction issues."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

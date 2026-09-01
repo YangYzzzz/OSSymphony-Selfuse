@@ -1,0 +1,101 @@
+{
+  "id": "4783cc41-c03c-4e1b-89b4-50658f642bd5",
+  "new_id": "4783cc41-c03c-4e1b-89b4-50658f642bd5_traj_verify_0",
+  "snapshot": "os",
+  "instruction": "Copy the directory structure from ~/Desktop/dir1/ into ~/Documents/, preserving only the folder hierarchy.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "sourceDir=\"/home/user/Desktop/\"\nmkdir -p \"$sourceDir\"/dir1/dir2\nmkdir -p \"$sourceDir\"/dir3/dir4",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click(960, 540); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "find",
+        "/home/user/Documents",
+        "-type",
+        "d"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "dir1",
+          "dir1/dir2"
+        ],
+        "exclude": [
+          "dir3",
+          "dir4"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_4783cc41-c03c-4e1b-89b4-50658f642bd5_sid_1488201",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent was given an infeasible task to copy directory hierarchy using undefined variables $sourceDir and $targetDir. Spent 31 turns systematically checking environment variables, config files (.bashrc, .profile), searching with grep/find across home directory and system files. Correctly determined the task was infeasible and reported [INFEASIBLE].",
+    "capability_extraction": "Can navigate terminal, run bash commands (grep, find, ls, cat), check environment variables, search config files systematically, use shell pipes and redirection",
+    "task_rationale": "Original task was infeasible due to undefined variables. This variation makes the task feasible by providing explicit paths. Tests the same directory copying skill the original task described.",
+    "explanation": "Task requires copying directory structure from ~/Desktop/dir1/ into ~/Documents/. Evaluator uses find to list directories under ~/Documents/ and checks that dir1 and dir1/dir2 are present (include list), while dir3 and dir4 are absent (exclude list) to ensure only dir1's hierarchy was copied. [Fixed: added dir1 and dir1/dir2 to include list for full hierarchy check; added dir3/dir4 to exclude list to reject over-copying]",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "fix_history": [
+      "Fix 1: Added 'dir1' and 'dir1/dir2' to include list to verify full directory hierarchy was copied",
+      "Fix 2: Added 'dir3' and 'dir4' to exclude list to ensure only dir1's structure was copied, not other Desktop directories"
+    ],
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'find /home/user/Documents -type d' to list all directories under Documents, which is the right state to extract for verifying directory hierarchy.",
+        "Include list ['dir1', 'dir1/dir2'] correctly verifies the full copied hierarchy is present in the find output via substring matching.",
+        "Exclude list ['dir3', 'dir4'] correctly ensures directories outside dir1/ on the Desktop were not copied into Documents.",
+        "Parameter handling is correct: expected.type='rule' triggers get_rule which returns the rules dict directly, and check_include_exclude correctly accesses rules.get('include') and rules.get('exclude').",
+        "Minor: substring matching ('r in result') could false-positive if Documents already contained directories with 'dir1' or 'dir2' in their names, but this is unlikely in a fresh VM environment and acceptable for this task."
+      ],
+      "llm_judge_fix_suggestions": [
+        "For higher precision, could use full path checks like '/home/user/Documents/dir1' instead of bare 'dir1', but this is a minor improvement and not required for correctness in a clean VM."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

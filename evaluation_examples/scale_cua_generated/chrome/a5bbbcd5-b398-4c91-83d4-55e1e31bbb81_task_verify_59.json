@@ -1,0 +1,91 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "The global play/pause hotkey in VLC is interfering with other applications on my system. Could you help me disable the global hotkey so VLC only responds to play/pause when it's the active window?",
+  "source": "https://superuser.com/questions/776056/how-to-hide-bottom-toolbar-in-vlc",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_global_key_play_pause",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_global_key_play_pause": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling the global play/pause hotkey in VLC. The evaluator checks the global-key-play-pause setting in VLC config file. Expected value is 0 (disabled - empty value in config). Uses existing check_global_key_play_pause metric function.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Checked existing VLC metric functions. check_global_key_play_pause reads vlcrc file and checks if global-key-play-pause is empty (returns 0) or set (returns 1). Expected 0 means the global hotkey should be disabled.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts VLC config file (vlcrc) using get_vlc_config",
+        "Metric logic correctly checks if global-key-play-pause is disabled (empty value in config returns 0, any value returns 1)",
+        "Expected value of 0 semantically matches instruction requirement to disable global hotkey",
+        "Complete coverage: evaluator checks the single requirement (disable global play/pause hotkey)",
+        "Correct parameter handling: metric uses 'rule' parameter and directly accesses rule['expected_global_key_play_pause'], which is correct for type='rule'",
+        "Appropriate postconfig: kills and relaunches VLC to ensure config changes take effect",
+        "Proper error handling for missing config file or exceptions",
+        "Default value of 0 when config line not found is reasonable (treats absence as disabled)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

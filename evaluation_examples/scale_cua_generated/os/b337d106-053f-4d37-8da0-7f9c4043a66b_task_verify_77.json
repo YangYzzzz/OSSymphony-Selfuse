@@ -1,0 +1,116 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "task_verify_77",
+  "snapshot": "os",
+  "instruction": "I find Vim's default search highlighting confusing. Please search online to find out how to enable incremental search highlighting in Vim and configure it permanently in my local Vim settings.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b337d106-053f-4d37-8da0-7f9c4043a66b/eval.sh",
+              "path": "eval_incsearch__4dc24072.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > eval_incsearch__4dc24072.sh << 'EOF'\n#!/bin/bash\nif grep -q \"set incsearch\" ~/.vimrc 2>/dev/null || grep -q \"set is\" ~/.vimrc 2>/dev/null; then\n    echo \"Incremental Search Enabled!\"\nelse\n    echo \"Incremental search not configured\"\nfi\nEOF\nchmod +x eval_incsearch__4dc24072.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_incsearch__4dc24072.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Incremental Search Enabled!"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires searching for how to enable incremental search in Vim and adding 'set incsearch' (or abbreviated 'set is') to ~/.vimrc. Evaluator checks if either command is present. Similar complexity to original (search tutorial, configure vim feature).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if incsearch is enabled in .vimrc, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the end goal: permanent Vim configuration in ~/.vimrc",
+        "Accepts both 'set incsearch' and abbreviated 'set is' forms as per Vim conventions",
+        "Uses appropriate bash script to check file contents with grep",
+        "check_include_exclude metric correctly validates the expected output string",
+        "Evaluator focuses on end-state verification (configuration present) rather than process verification (whether user searched online), which is typical and acceptable for OSWorld tasks"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The grep-based check could have false positives if 'set incsearch' appears in comments or strings, but this is unlikely in practice",
+        "Note: Instruction requires 'search online' but evaluator doesn't verify this step. This is acceptable as verifying web search behavior is unreliable and the end-state (correct configuration) is what matters"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

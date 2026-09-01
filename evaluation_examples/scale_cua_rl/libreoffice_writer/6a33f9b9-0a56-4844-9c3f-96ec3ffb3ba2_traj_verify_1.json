@@ -1,0 +1,105 @@
+{
+  "id": "6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2",
+  "new_id": "6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2_traj_verify_1",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Highlight all occurrences of 'Study Team' in yellow in this document.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2/sample-recruitment-phone-script.odt",
+            "path": "/home/user/Desktop/sample-recruitment-phone-script.odt"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/sample-recruitment-phone-script.odt"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "sample-recruitment-phone-script.odt - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      }
+    ],
+    "func": "check_writer_highlight__6b6e5048ebb3170359c47d1ce863bb95",
+    "result": {
+      "type": "writer_highlight_check__6b6e5048ebb3170359c47d1ce863bb95",
+      "path": "/home/user/Desktop/sample-recruitment-phone-script.odt",
+      "target_text": "Study Team"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "target_text": "Study Team",
+        "highlight_color": "yellow"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_libreoffice_writer_6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2_sid_1488282",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully removed all yellow highlights from a recruitment phone script document by selecting all text (Ctrl+A), opening the highlighting dropdown, and clicking No Fill, then saving.",
+    "capability_extraction": "Can select all text, use toolbar formatting dropdowns, navigate color picker, use Find & Replace, save documents in LibreOffice Writer",
+    "task_rationale": "Reverse of original task - adding highlights instead of removing them. Tests the same highlighting toolbar interaction but requires Find & Replace or manual selection of specific text instances.",
+    "explanation": "Task requires highlighting all 'Study Team' occurrences in yellow. Getter reads .odt, finds yellow-highlighted spans, and counts how many 'Study Team' instances are highlighted. Metric gives proportional credit based on fraction highlighted.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_writer_6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2_sid_1488282_traj_verify_1/getters/writer_highlight.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_writer_6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2_sid_1488282_traj_verify_1/metrics/writer_highlight.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "all_highlighted": "1.0 - All 'Study Team' instances highlighted in yellow",
+      "partial": "proportional - fraction of instances highlighted"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.65,
+      "llm_judge_reasons": [
+        "Getter correctly parses .odt automatic styles and identifies yellow-highlighted spans (#ffff00, #ffffff00, 'yellow'), which is appropriate for the task.",
+        "Counting logic has false-positive risk: `target_text in t or t in target_text` means partial span matches (e.g., just 'Team' or 'Study' from span splitting) would be incorrectly counted as highlighted occurrences of 'Study Team'. This could inflate highlighted_target_count.",
+        "Conversely, if 'Study Team' is split across two spans due to ODT formatting boundaries (e.g., 'Study ' in one span, 'Team' in another), neither span alone would match `target_text in t`, but both would match `t in target_text`, double-counting one occurrence.",
+        "Metric does not use the `expected` parameter at all (rules dict with target_text and highlight_color is ignored). The getter hardcodes yellow filtering, so this works for this specific task but is not parameterized.",
+        "Postconfig correctly saves the file before evaluation, ensuring the getter reads the latest state.",
+        "Coverage is complete: the single requirement (highlight all 'Study Team' in yellow) is verified by checking yellow highlight presence on target text."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix the highlighted target counting logic to handle ODT span splitting. Instead of matching individual span text, reconstruct contiguous highlighted text regions and then count 'Study Team' occurrences within those regions.",
+        "The `t in target_text` condition should be removed or replaced with exact match logic to avoid false positives from partial substring matches (e.g., a highlighted 'Team' elsewhere in the document).",
+        "Consider using the `expected` parameter in the metric to validate highlight_color and target_text, making the evaluator more robust and parameterized."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

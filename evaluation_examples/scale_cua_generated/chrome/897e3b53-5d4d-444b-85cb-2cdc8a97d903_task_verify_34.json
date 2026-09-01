@@ -1,0 +1,143 @@
+{
+  "id": "897e3b53-5d4d-444b-85cb-2cdc8a97d903",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Export the Writer document form.docx from the desktop as a PDF file and save it to the 'forms' directory in my Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/convert-word-file-to-pdf-and-store-in-onedrive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'form.pdf' or title = 'form.docx' or title = 'form.docx.pdf' or title = 'forms'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.zhihu.com/",
+          "https://www.coursera.org/",
+          "https://www.deepl.com",
+          "https://www.wikidata.org/wiki/Wikidata:Main_Page"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/897e3b53-5d4d-444b-85cb-2cdc8a97d903/form.docx",
+            "path": "/home/user/Desktop/form.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/form.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_pdf__bf7218b9",
+    "result": {
+      "type": "gdrive_pdf_file__bf7218b9",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "forms",
+      "file_patterns": [
+        "form.pdf",
+        "form.docx.pdf"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relation": "eq",
+        "ref_value": 1,
+        "verify_content": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Uses 'export' terminology instead of 'convert'. Evaluator checks PDF exists in forms folder with correct page count.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/897e3b53-5d4d-444b-85cb-2cdc8a97d903_task_verify_2/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/897e3b53-5d4d-444b-85cb-2cdc8a97d903_task_verify_2/metrics/googledrive.py"
+    ],
+    "hash_suffix": "bf7218b9",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly searches for PDF in 'forms' folder on Google Drive using appropriate file patterns",
+        "Getter properly downloads PDF for local inspection and returns file path",
+        "Metric correctly validates PDF existence, page count (eq 1), and basic content verification",
+        "All instruction requirements are covered: PDF location (forms folder), file format (PDF), and content verification",
+        "Good error handling for missing folders, files, and exceptions",
+        "Data flow is correct: Google Drive API -> PDF download -> page count check -> file size check"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Content verification is minimal (only file size > 10KB check) - could be strengthened by verifying PDF contains text/graphics from source document",
+        "Page count assumption (ref_value=1) is not explicitly verified against actual source document form.docx - metadata should document that form.docx is confirmed to be 1 page",
+        "Consider adding verification that PDF is not corrupted by attempting to read first page content"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_gdrive_pdf__bf7218b9 first parameter type (str) may not match getter get_gdrive_pdf_file__bf7218b9 return type (Any)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

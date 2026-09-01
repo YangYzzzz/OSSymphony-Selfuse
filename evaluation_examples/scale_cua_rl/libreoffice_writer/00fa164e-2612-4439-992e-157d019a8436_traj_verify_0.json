@@ -1,0 +1,125 @@
+{
+  "id": "00fa164e-2612-4439-992e-157d019a8436",
+  "new_id": "00fa164e-2612-4439-992e-157d019a8436_traj_verify_0",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Add a small table showing GPT-4's name and its average score from \"~/Documents/awesome-desktop/expe-results.xlsx\" into the \"Main Results\" section of the report.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/awesome-desktop/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Documents/awesome-desktop/awe_desk_env.docx",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/00fa164e-2612-4439-992e-157d019a8436/awe_desk_env.docx"
+          },
+          {
+            "path": "/home/user/Documents/awesome-desktop/expe-results.xlsx",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/00fa164e-2612-4439-992e-157d019a8436/results.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Documents/awesome-desktop/awe_desk_env.docx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "awe_desk_env.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "check_docx_gpt4_avg_table__75b704f601003cb29b05bac44a154402",
+    "result": {
+      "type": "docx_table_text__75b704f601003cb29b05bac44a154402",
+      "path": "/home/user/Documents/awesome-desktop/awe_desk_env.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "model_name": "Gpt-4",
+        "avg_score": "0.1557"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_00fa164e-2612-4439-992e-157d019a8436_sid_1488430",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent scrolled through Writer doc, opened Calc, navigated to expe-results.xlsx, selected GPT-4 row, switched to Writer at 'Main Results' section, inserted a partial table with only 7 of 12 columns and no headers.",
+    "capability_extraction": "Can open files cross-app (Writer/Calc), read xlsx data, navigate Writer document sections, insert tables into specific sections",
+    "failure_analysis": "Table was incomplete - only first 7 columns pasted (model through gimp), missing chrome/thunderbird/vscode/multi/avg columns and header row. The compare_docx_tables evaluator required exact match with ground truth.",
+    "task_rationale": "Simplified to require only model name and average score in a small table, reducing from 12 columns to 2 values within demonstrated capability",
+    "explanation": "Task requires inserting a small table with GPT-4 name and avg score. Getter reads docx tables. Metric checks for Gpt-4 name (0.5) and avg score ~0.1557 (0.5).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_00fa164e-2612-4439-992e-157d019a8436_sid_1488430_traj_verify_0/getters/docx_table.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_00fa164e-2612-4439-992e-157d019a8436_sid_1488430_traj_verify_0/metrics/docx_table.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 10,
+    "scoring_breakdown": {
+      "model_name": "0.5 - Table contains 'Gpt-4'",
+      "avg_score": "0.5 - Table contains avg score ~0.1557"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly extracts all table text from the docx file using python-docx, with proper file retrieval and temp file handling.",
+        "Metric correctly handles expected parameter for type='rule' - directly accesses expected.get('model_name') and expected.get('avg_score') without unwrapping.",
+        "Metric uses case-insensitive name matching and float comparison with 0.01 tolerance for the average score, which is appropriate.",
+        "Postconfig correctly saves the file (Ctrl+S) before getter reads it, ensuring fresh state.",
+        "Partial credit scoring (0.5 for name, 0.5 for avg score) is reasonable for this two-requirement task.",
+        "MINOR ISSUE: Evaluator does not verify that the table is located in the 'Main Results' section specifically - it checks ALL tables in the document. If GPT-4 data existed in a table elsewhere, it would falsely pass.",
+        "MINOR ISSUE: found_name and found_avg are tracked independently across ALL tables, not requiring them to be in the SAME table. The name could be in one table and the avg score in another, and the evaluator would still give full credit."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Enhance the getter to also return section context (e.g., which heading precedes each table) so the metric can verify the table is in the 'Main Results' section.",
+        "Modify the metric to require both model_name and avg_score to be found in the SAME table, not across different tables."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

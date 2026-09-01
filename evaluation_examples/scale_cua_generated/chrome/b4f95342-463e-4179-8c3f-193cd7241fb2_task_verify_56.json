@@ -1,0 +1,98 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_56",
+  "snapshot": "chrome",
+  "instruction": "Access recreation.gov and find the 'Campsite Name' column header in the search results table.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {},
+      "class_multiObject": {
+        "camp-sortable-column-header": {
+          "0": "camp-sortable-column-header"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "camp-sortable-column-header": "Campsite Name"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task variation targeting the first column header (index 0) in the campground table. Similar to variation 0 but looks for 'Campsite Name' instead. Uses existing Chrome functions (active_tab_html_parse getter and check_direct_json_object metric) to parse HTML class elements.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical gap: No mechanism to navigate to search results page before evaluation - config only opens recreation.gov homepage",
+        "State accessibility issue: Getter will run on homepage, not on search results where the column header 'camp-sortable-column-header' exists",
+        "Missing postconfig: Evaluator depends on UI state (search results table) that isn't guaranteed to exist when evaluation runs",
+        "Instruction requires finding column header in 'search results table' but no search is performed before evaluation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig section to perform a search (e.g., search for 'Diamond' campgrounds) and navigate to search results page before evaluation runs",
+        "Alternatively, modify the getter config to include navigation steps within the getter function itself (search, wait for results, then parse)",
+        "Ensure the search results table with class 'camp-sortable-column-header' is loaded and rendered before the getter attempts to extract it",
+        "Consider using a dedicated getter function that handles the full workflow: navigate to recreation.gov → perform search → wait for results → extract column header"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

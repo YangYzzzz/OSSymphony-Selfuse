@@ -1,0 +1,109 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_40",
+  "snapshot": "thunderbird",
+  "instruction": "Set up three local folders in Thunderbird named CLIENTS, PROJECTS, and ARCHIVE.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bCLIENTS\\.msf\\b",
+          "\\bCLIENTS/?(?!\\.msf)",
+          "\\bPROJECTS\\.msf\\b",
+          "\\bPROJECTS/?(?!\\.msf)",
+          "\\bARCHIVE\\.msf\\b",
+          "\\bARCHIVE/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating three local folders in Thunderbird. Evaluator checks for both the folder files and .msf metadata files for CLIENTS, PROJECTS, and ARCHIVE folders. Uses existing check_list metric with regex patterns to verify folder existence.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator checks for all three folders and their .msf files using regex patterns similar to original task.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly targets Thunderbird Local Folders directory for state extraction",
+        "Complete coverage: all three required folders (CLIENTS, PROJECTS, ARCHIVE) are verified",
+        "Appropriate verification approach: checks for both .msf files and folder entries, which is correct for Thunderbird",
+        "Regex patterns have minor ambiguity: patterns like '\\bCLIENTS/?(?!\\.msf)' use negative lookahead that may not work optimally with ls -R output format",
+        "Despite regex pattern concerns, the logic will likely work in practice as ls -R will show distinguishable entries for folders and .msf files"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider more robust regex patterns for directory matching, e.g., '\\bCLIENTS:' or '\\.?/CLIENTS/?$' to explicitly match directory entries in ls -R output",
+        "Alternative: use 'ls -1' instead of 'ls -R' for cleaner output parsing, or use separate patterns for directory vs file entries"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

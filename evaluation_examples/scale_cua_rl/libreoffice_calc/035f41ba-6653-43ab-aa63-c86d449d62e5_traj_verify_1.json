@@ -1,0 +1,122 @@
+{
+  "id": "035f41ba-6653-43ab-aa63-c86d449d62e5",
+  "new_id": "035f41ba-6653-43ab-aa63-c86d449d62e5_traj_verify_1",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Fill in the Total Cost of Goods Sold column (I) for each year by summing Materials Charges, Labor Charges, and Overhead.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/035f41ba-6653-43ab-aa63-c86d449d62e5/IncomeStatement2.xlsx",
+            "path": "/home/user/IncomeStatement2.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/IncomeStatement2.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "IncomeStatement2.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_column_values__6d4300c0b784865a64e946f955774003",
+    "result": {
+      "type": "xlsx_column_values__6d4300c0b784865a64e946f955774003",
+      "path": "/home/user/IncomeStatement2.xlsx",
+      "sheet": 0,
+      "column": "I",
+      "start_row": 2,
+      "end_row": 10
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_values": [
+          19000,
+          20598,
+          20140,
+          19632,
+          17713,
+          18491,
+          18279,
+          17030,
+          18978
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_libreoffice_calc_035f41ba-6653-43ab-aa63-c86d449d62e5_sid_1488228",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent successfully filled the Gross Profit column (J) with formula =(B-C)-D-F-G-H and created Sheet2 with Year_Profit concatenation. However the overall task scored 0 because the sheet data comparison with the ground truth failed, likely due to missing Net Sales (E) and Total COGS (I) columns and an extra row in Sheet2.",
+    "capability_extraction": "Can enter formulas in LibreOffice Calc cells, copy formulas down columns, create new sheets, use cross-sheet references, use concatenation and INT functions",
+    "failure_analysis": "Model computed Gross Profit directly but skipped filling Net Sales (E) and Total Cost of Goods Sold (I) columns. The compare_table evaluator compared full sheet data against ground truth and failed.",
+    "task_rationale": "Decomposed the original complex multi-step task into a simpler single-column formula task (Total COGS = Materials + Labor + Overhead). This is within the model's demonstrated formula-entry capability.",
+    "explanation": "Task requires filling column I with Total COGS formula (F+G+H) for rows 2-10. Custom getter reads column I values, metric compares against pre-computed expected values with partial credit per row.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_calc_035f41ba-6653-43ab-aa63-c86d449d62e5_sid_1488228_traj_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_calc_035f41ba-6653-43ab-aa63-c86d449d62e5_sid_1488228_traj_verify_1/metrics/xlsx.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "per_row": "Each of the 9 rows contributes 1/9 of the score (~0.111)"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads column I, rows 2-10 from the xlsx file using openpyxl with data_only=True, which extracts computed formula values.",
+        "Metric correctly handles expected parameter for type='rule' - accesses expected.get('expected_values') directly from the rules dict.",
+        "Partial credit scoring (per-row with 0.01 tolerance) is appropriate for this multi-row formula task.",
+        "Postconfig properly saves the file (Ctrl+S) before getter reads, ensuring formula results are persisted.",
+        "Complete coverage: the single instruction requirement (fill column I with COGS sums) is fully verified across all 9 rows.",
+        "Minor concern: openpyxl data_only=True relies on cached formula values in the xlsx. LibreOffice typically writes these on save, but there is a small risk of None values if caching doesn't occur as expected."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a fallback in the getter to handle None values from data_only=True (e.g., re-open without data_only and evaluate formulas, or log a warning).",
+        "Expected values (pre-computed sums) could not be independently verified against the source spreadsheet data; ensure these were computed from the actual Materials, Labor, and Overhead columns."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

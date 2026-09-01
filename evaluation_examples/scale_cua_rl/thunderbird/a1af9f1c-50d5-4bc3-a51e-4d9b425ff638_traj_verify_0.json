@@ -1,0 +1,111 @@
+{
+  "id": "a1af9f1c-50d5-4bc3-a51e-4d9b425ff638",
+  "new_id": "a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Add an outgoing SMTP server in Thunderbird with hostname smtp.gmail.com, port 587, and STARTTLS connection security.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/15c3b339-88f7-4a86-ab16-e71c58dcb01e/thunderbird-profile-blank.tar.gz",
+            "path": "/home/user/thunderbird-profile-blank.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile-blank.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "thunderbird"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_thunderbird_smtp_config__22e52b73b299835b6ec6765d839ed989",
+    "result": {
+      "type": "thunderbird_smtp_settings__22e52b73b299835b6ec6765d839ed989",
+      "path": "/home/user/.thunderbird/6ex3j72p.default-release/prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "hostname": "smtp.gmail.com",
+        "port": 587,
+        "try_ssl": 2
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_sid_1488174",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to configure Thunderbird for sending emails without incoming service. It navigated Account Settings, added SMTP server (smtp-mail.outlook.com, port 587, STARTTLS), and set up account via manual/advanced configuration. Failed because the task was infeasible and model should have recognized that.",
+    "capability_extraction": "Can navigate Thunderbird Account Settings, add/edit SMTP servers with specific hostname/port/security settings, interact with Account Setup wizard, use manual and advanced configuration, fill form fields, handle dialog boxes",
+    "failure_analysis": "Original task was marked 'infeasible' - model should have reported inability but instead tried to configure the account. Model spent 50 turns actively setting up SMTP and account settings.",
+    "task_rationale": "Decomposed the SMTP configuration part that the model successfully demonstrated. Task focuses on adding an SMTP server with specific settings, which the model showed clear ability to do.",
+    "explanation": "Task requires adding an outgoing SMTP server in Thunderbird with Gmail settings. Evaluator kills Thunderbird to flush prefs.js, then reads SMTP server configuration from prefs.js and checks hostname=smtp.gmail.com, port=587, try_ssl=2 (STARTTLS).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_sid_1488174_traj_verify_0/getters/thunderbird_smtp.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_sid_1488174_traj_verify_0/metrics/thunderbird_smtp.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "hostname": "0.50 - Correct SMTP hostname (smtp.gmail.com)",
+      "port": "0.25 - Correct port (587)",
+      "security": "0.25 - Correct connection security (STARTTLS)"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly parses Thunderbird prefs.js using regex to extract all user_pref entries and filters SMTP server settings from mail.smtpserver.* keys",
+        "Metric correctly handles expected parameter for type='rule' - directly accesses expected.get('hostname'), expected.get('port'), expected.get('try_ssl') without wrapping",
+        "Expected values are semantically correct: hostname='smtp.gmail.com', port=587 (standard STARTTLS port), try_ssl=2 (Thunderbird's internal value for STARTTLS)",
+        "Complete coverage: all three instruction requirements (hostname, port, STARTTLS security) are verified with appropriate partial credit weighting",
+        "Postconfig correctly kills Thunderbird and waits 3s to ensure prefs.js is flushed to disk before reading",
+        "Metric iterates all SMTP servers and returns best match score, correctly handling the case where multiple servers may exist"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "In the LibreOffice Calc spreadsheet, copy the content of Cell C4 and search for it using Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=hanner(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": [
+      {
+        "type": "activate_app",
+        "parameters": {
+          "app_name": "Google Chrome"
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying cell C4 (last name 'Hanner' from row 4) and searching it in Chrome. Evaluator verifies Google search URL contains 'hanner' as query parameter. Verified by reading Excel file: cell C4 (row 4, col 2) contains 'Hanner'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the observable outcome: Chrome active tab should contain a Google search URL with 'hanner' as the query parameter",
+        "Metric function is_expected_search_query (chrome.py:247-256) correctly handles the expected parameter - it accesses rules['expect']['pattern'] directly (expected IS the rules dict when type='rule'), which is the correct pattern per guidance Section 5.1",
+        "Expected regex pattern (?i)https?://(?:www\\.)?google\\.com/search\\?q=hanner(?:&|$|#).* is semantically correct for verifying Google search with case-insensitive 'hanner' query, handling various URL formats (http/https, with/without www, query parameter position)",
+        "Expected value 'Hanner' from cell C4 is verified correct per metadata explanation, and the case-insensitive regex pattern correctly handles potential case variations",
+        "Getter get_active_tab_info (chrome.py:803-890) correctly extracts active tab URL from accessibility tree and returns a dict with 'url' key that the metric can process",
+        "Postconfig is present (line 73-80) to activate Chrome, ensuring the active tab state is readable from accessibility tree",
+        "Complete verification coverage: the evaluator checks the final observable state (Google search URL) which indirectly verifies both the copy action (correct content) and search action (URL navigation)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Be aware that get_active_tab_info reloads the target URL (per chrome.py:806-807 warning comment), which could potentially cause issues if the Google search results page has dynamic redirects or session-based content. However, for standard Google search URLs this is generally stable and should work correctly."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

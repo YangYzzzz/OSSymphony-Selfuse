@@ -1,0 +1,110 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_55",
+  "snapshot": "multiapps",
+  "instruction": "Check connection latency via speedtest.net and store the Ping metric in ~/Connectivity/latency.txt, making the directory if missing, formatted as 'Ping <value>' on a single line.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "check_list",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Connectivity/latency.txt",
+      "dest": "latency.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "Ping\\s+\\d+"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation focuses specifically on network latency (Ping metric only), omitting Download and Upload measurements. It saves to ~/Connectivity/latency.txt. The task is slightly simpler than the original as it only requires capturing one metric instead of three, but maintains the same overall pattern - run speedtest.net and extract specific results to a text file. Uses existing file_contains metric to verify the Ping keyword is present.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if the Ping keyword is present in the file, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses check_list metric with regex pattern 'Ping\\s+\\d+' which verifies both the presence of 'Ping' keyword AND a numeric value separated by whitespace.",
+        "The regex pattern matches the format requirement: 'metric name and its value on a single line, separated by a space' - would match 'Ping 25', 'Ping 100', etc.",
+        "Getter get_vm_file correctly retrieves the file from VM path /home/user/Connectivity/latency.txt, returns file path or None if file doesn't exist.",
+        "Metric check_list properly handles None case (returns 0.0) and searches for the regex pattern in each line of the file.",
+        "Complete coverage: The evaluator verifies the core requirement - that the Ping metric value was saved in the correct format."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Could add optional verification for 'ms' unit (pattern: 'Ping\\s+\\d+\\s*ms') if stricter format validation is desired, but current pattern is sufficient for the instruction.",
+        "Consider adding 'unexpect' patterns to reject malformed output, but this is optional as the current pattern is already quite specific."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_list first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

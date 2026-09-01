@@ -1,0 +1,97 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_77",
+  "snapshot": "chrome",
+  "instruction": "Extract and load the Chrome extension from /home/user/Desktop/helloExtension.zip. Make sure the extension icon file is present.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_icon_exists__db044e4c",
+    "result": {
+      "type": "extension_icon_exists__db044e4c",
+      "extension_path": "/home/user/Desktop/helloExtension",
+      "icon_name": "hello_extensions.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": true
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task verifies that the extension icon file (hello_extensions.png) exists in the extracted extension directory. Verified from zip file listing.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_4/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_4/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Incomplete instruction coverage: instruction requires 'Extract AND load the Chrome extension' but evaluator only verifies file extraction, not extension loading in Chrome",
+        "Critical semantic gap: evaluator checks if icon file exists in filesystem (/home/user/Desktop/helloExtension/hello_extensions.png) but does not verify the extension was actually loaded/installed in Chrome browser",
+        "Evaluator would pass even if user never loads the extension into Chrome, as config already extracts the zip file automatically",
+        "Missing Chrome extension state verification: should check chrome://extensions/ or use Chrome DevTools Protocol to verify extension is installed and enabled"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to check Chrome extension state via CDP (Chrome DevTools Protocol): query installed extensions list and verify helloExtension is present and enabled",
+        "Alternative: use accessibility tree or screenshot analysis to verify extension icon appears in Chrome toolbar or extensions page",
+        "Consider splitting into two separate tasks: (1) Extract extension files (current evaluator), (2) Load extension in Chrome (new evaluator with Chrome state verification)",
+        "If keeping as single task, add postconfig to navigate to chrome://extensions/ and verify extension appears in the list"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

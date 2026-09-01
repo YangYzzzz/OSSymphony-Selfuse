@@ -1,0 +1,173 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_33",
+  "snapshot": "chrome",
+  "instruction": "Find the email titled \"Lecture Document\" in the Notes folder, download the attached docx file, extract all embedded images from it, and upload them as PNG files to a new Google Drive folder named 'figures'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_multi_step_task__45f05906",
+    "result": {
+      "type": "composite",
+      "email_check": {
+        "type": "thunderbird_email_with_attachment__45f05906",
+        "email_title": "Lecture Document",
+        "folder_name": "Notes",
+        "attachment_extension": ".docx"
+      },
+      "docx_check": {
+        "type": "downloaded_docx_file__45f05906",
+        "filename_pattern": "*.docx",
+        "check_recent": true,
+        "max_age_minutes": 30
+      },
+      "drive_check": {
+        "type": "googledrive_file_count__45f05906",
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "folder_query": "title = 'figures' and trashed = false and mimeType = 'application/vnd.google-apps.folder'",
+        "file_extension": ".png"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "email_expected": {
+          "email_should_exist": true,
+          "attachment_should_exist": true
+        },
+        "docx_expected": {
+          "file_should_exist": true,
+          "should_have_images": true
+        },
+        "drive_expected": {
+          "min_count": 3
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting images from docx email attachment and uploading to Google Drive as PNG files. Multi-step evaluator verifies: 1) Email with docx attachment exists in Thunderbird, 2) Docx was downloaded and contains images, 3) PNG files uploaded to Google Drive folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_1/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_1/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "verification": "Multi-step verification: 1) Checks email 'Lecture Document' exists in Thunderbird Notes folder with docx attachment (0.2), 2) Verifies docx was downloaded and contains embedded images (0.2), 3) Confirms PNG files uploaded to 'figures' folder in Google Drive with correct count and recent timestamp (0.6).",
+    "verification_improvements": "FIXED: Added comprehensive multi-step evaluator with partial credit. Now verifies intermediate steps (email finding, docx download with image content check) in addition to final outcome. Strengthened folder timestamp check to 15 minutes as hard requirement. While cannot fully verify exact image matching without complex comparison, the combination of checking docx contains images + recent file timestamps + correct count provides strong verification.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "PASS: Comprehensive multi-step verification covers all instruction requirements - email finding (0.2), docx download with image content check (0.2), PNG upload to Drive folder (0.6)",
+        "PASS: Email verification logic correctly checks Thunderbird Notes folder for email titled 'Lecture Document' with docx attachment (getters/googledrive.py:147-259)",
+        "PASS: Docx download verification checks file was downloaded AND contains images by examining zip structure for word/media/ files (getters/googledrive.py:262-361, lines 324-336)",
+        "PASS: Temporal verification strengthened - folder creation timestamp is now a HARD requirement with 15-minute threshold (metrics/googledrive.py:55-57, 203-207), ensures folder created during task execution",
+        "PASS: Partial credit scoring is semantically correct - weights final outcome (Drive upload 0.6) more heavily than intermediate steps (email 0.2, docx 0.2)",
+        "MINOR LIMITATION: Cannot verify that uploaded PNG files are exactly the SAME images from the docx (would require complex image comparison/hashing). However, combination of docx image check + file count + recent timestamps provides strong practical verification",
+        "MINOR: Instruction says 'extract ALL embedded images' but evaluator only checks min_count=3. This is acceptable if 3 matches expected count, but doesn't verify ALL images extracted if docx contains >3 images"
+      ],
+      "llm_judge_fix_suggestions": [
+        "OPTIONAL ENHANCEMENT: Add image hash/dimension comparison between docx embedded images and uploaded PNG files to verify exact match (complex, may not be worth the effort)",
+        "OPTIONAL: If the actual docx is known to contain exactly N images, set min_count=N and add max_count=N to verify ALL images extracted (not just minimum)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

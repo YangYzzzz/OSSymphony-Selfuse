@@ -1,0 +1,96 @@
+{
+  "id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a",
+  "new_id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Look up a one-way flight from Delhi to Singapore on the Qatar Airways website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.qatarairways.com/en-hk/homepage.html"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_flight_params__4c8f37f88d66f775179dafd23aadc29e",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "fromStation",
+        "toStation"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "fromStation": "DEL",
+        "toStation": "SIN"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_sid_1488147",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated Qatar Airways booking form: dismissed cookies, switched to One way, entered Mumbai (BOM) and Stockholm, selected ARN (Arlanda) instead of STO (general Stockholm code), picked correct next Monday date (Feb 16), clicked Search flights, reached flight results page.",
+    "capability_extraction": "Can dismiss cookie popups, interact with airline booking forms, type city names and select from dropdowns, switch trip types (Return/One way), navigate date calendar and select dates, click Search flights button",
+    "failure_analysis": "Model selected Stockholm Arlanda Airport (ARN) instead of general Stockholm city code (STO). The evaluator expected toStation=STO but got toStation=ARN. The model completed the task functionally but chose a specific airport instead of the city-level code.",
+    "task_rationale": "Different route (Delhi to Singapore) with unambiguous single-airport cities. DEL is the main Delhi airport code, SIN is the sole Singapore airport. Tests same flight search capability with different inputs.",
+    "explanation": "Task requires searching a one-way flight from Delhi to Singapore on Qatar Airways. Evaluator parses URL query parameters fromStation and toStation. Partial credit: 0.5 for correct origin (DEL), 0.5 for correct destination (SIN).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_sid_1488147_traj_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "fromStation": "0.5 - Correct departure airport (DEL)",
+      "toStation": "0.5 - Correct destination airport (SIN)"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter (active_tab_url_parse) correctly extracts fromStation and toStation URL query parameters from the Qatar Airways search results page, which is the right approach for verifying flight search routes.",
+        "Custom metric correctly handles the expected parameter for type='rule' - directly accesses expected.get('fromStation') and expected.get('toStation') without incorrectly wrapping in rules/type.",
+        "Expected values DEL (Delhi) and SIN (Singapore) are correct and unambiguous IATA airport codes matching the instruction.",
+        "Partial credit scoring (0.5 per correct station) is reasonable and well-structured.",
+        "Minor coverage gap: The instruction specifies 'one-way' flight, but the evaluator does not verify the trip type parameter (e.g., tripType=O or similar). An agent could search a round-trip flight with correct origin/destination and still score 1.0."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a check for the trip type URL parameter (e.g., parse 'tripType' key and verify it indicates one-way) to fully cover the 'one-way' requirement in the instruction. This could be weighted as a third scoring component (e.g., 0.33 each for fromStation, toStation, and tripType)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

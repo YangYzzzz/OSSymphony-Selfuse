@@ -1,0 +1,109 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_26",
+  "snapshot": "chrome",
+  "instruction": "Search for Hot Wheels cars for kids and organize them with the cheapest first.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Hot Wheels",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Hot Wheels": "Hot Wheels",
+        "hot+wheels": "Hot Wheels",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "hot wheels": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation searches for Hot Wheels cars instead of Spider-Man toys, maintaining the same pattern: search for a toy brand for kids and sort by price ascending. Uses existing evaluator functions to verify breadcrumbs and URL parameters on Kohl's website.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies search terms by checking breadcrumb elements for 'Hot Wheels', 'Toys', 'Kids'",
+        "Evaluator correctly verifies price sorting by checking for 'Price Low-High' in selector and URL parameter 'S=4'",
+        "Evaluator correctly verifies URL contains expected search parameters using case-insensitive matching",
+        "Evaluator correctly detects unexpected breadcrumb items via 'is_other_exist' flag",
+        "Minor issue: Breadcrumb verification only checks existence, not order or position - could accept results where breadcrumbs appear in different order",
+        "Minor issue: Case-insensitive matching might accept slight variations in text that shouldn't match exactly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding order verification for breadcrumbs if sequence matters (e.g., Kids > Toys > Hot Wheels hierarchy)",
+        "Consider adding exact count verification to ensure no extra or missing breadcrumb items beyond 'is_other_exist' check"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

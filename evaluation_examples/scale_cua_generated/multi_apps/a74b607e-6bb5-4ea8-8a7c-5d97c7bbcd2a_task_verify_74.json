@@ -1,0 +1,104 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_74",
+  "snapshot": "multiapps",
+  "instruction": "I have developed a Chrome extension packaged in a zip file on my Desktop. Please install it into Chrome and make sure it is enabled.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_extension_enabled__ae6416e4",
+    "result": {
+      "type": "extension_enabled_status__ae6416e4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension_name": "Hello Extensions"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing an unpacked Chrome extension and ensuring it is enabled. Custom getter reads Chrome Preferences file to extract extension state (state=1 means enabled). Metric checks if 'Hello Extensions' is in the enabled extensions map with value true.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both requirements: extension installation AND enabled status",
+        "Getter logic correctly reads Chrome Preferences file and extracts extension state (state=1 means enabled) from the correct path",
+        "Metric correctly handles expected parameter as rules dict (uses expected.get('extension_name') directly, not expected.get('rules'))",
+        "Metric checks both existence (extension_name in result) AND enabled status (result[extension_name] == true) before returning 1.0",
+        "Expected value 'Hello Extensions' matches the actual extension name from setup configuration",
+        "Data flow is semantically correct: user installs extension → Chrome Preferences file updated → getter extraction → metric comparison",
+        "State accessibility is correct: Preferences file persists on disk after task completion, no UI dialog needs to be reopened",
+        "Postconfig sleep(2) is appropriate to ensure Chrome has written the Preferences file to disk",
+        "Rule validation warning about UI/state dependency is a false positive - getter reads from persistent file, not transient UI state"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

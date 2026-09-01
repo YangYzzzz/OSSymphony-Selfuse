@@ -1,0 +1,111 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "task_verify_15",
+  "snapshot": "chrome",
+  "instruction": "Locate flights departing Phoenix for Washington DC on the 5th of next month, filtering results to show only mileage-purchasable options.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time",
+        "mach-global-tabs-small__wrapper__tab--active": "category"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relativeTime": {
+          "from": "5th next month"
+        },
+        "expected": {
+          "start": "PHX",
+          "end": "DCA",
+          "time": "{DoW}, {Month} {Day0D}, {Year}",
+          "category": "Miles"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "This variation changes the flight route from Seattle-NYC to Phoenix-Washington DC while maintaining identical task structure and complexity. The evaluator uses existing functions (get_active_tab_html_parse and check_direct_json_object) to verify: 1) the date is set to 5th of next month, 2) departure is PHX and destination is DCA, 3) the Miles filter is active. No custom functions needed as we reuse the original evaluator pattern with different airport codes.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 4,
+    "city_route": "Phoenix (PHX) to Washington DC (DCA)",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: route (PHX to DCA), date (5th next month), and Miles filter",
+        "Getter logic appropriately extracts flight information from Delta.com HTML structure using correct class selectors",
+        "Expected values are semantically correct: PHX/DCA are correct airport codes, 'Miles' matches Delta's filter naming",
+        "Data flow is correct: getter extracts 4 values (start, end, time, category) → get_rule_relativeTime converts date → metric compares all values",
+        "Minor issue: No postconfig to ensure browser remains on search results page after task completion, which could cause verification to fail if agent navigates away"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to navigate back to search results page or capture URL pattern to ensure verification happens on correct page",
+        "The rule validator error appears to be a false positive - expected.type is correctly set to 'rule', and the getter function get_rule_relativeTime is the correct implementation in the framework"
+      ]
+    },
+    "augmented_from": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

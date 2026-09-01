@@ -1,0 +1,110 @@
+{
+  "id": "ee9a3c83-f437-4879-8918-be5efbb9fac7",
+  "new_id": "task_verify_52",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Sort the data in the opened ods file by the Age column in ascending order and export to a csv file named 'sorted_by_age.csv' on the Desktop using command line tools.",
+  "source": "https://stackoverflow.com/questions/64589140/convert-ods-to-csv-using-command-line-when-libreoffice-instance-is-running",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/ee9a3c83-f437-4879-8918-be5efbb9fac7/file_example_ODS_5000.ods",
+            "path": "/home/user/Desktop/file_example_ODS_5000.ods"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/file_example_ODS_5000.ods"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_csv_sorted__8b88ca382748ac90936480358fbda368",
+    "result": {
+      "type": "csv_column_values__8b88ca382748ac90936480358fbda368",
+      "path": "/home/user/Desktop/sorted_by_age.csv",
+      "column": "Age"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "values": [
+          "21",
+          "21",
+          "21",
+          "21",
+          "21"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "explanation": "Task requires sorting ODS file by Age column in ascending order. Verified with Python: when sorted by age ascending, the first 5 rows all have age=21 (there are multiple people aged 21). Agent should convert ODS to CSV, then sort by Age column (column 6) using command line tools (e.g., sort -t',' -k6 -n). Evaluator checks if the first 5 data rows in the output CSV have Age values of [21, 21, 21, 21, 21].",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/ee9a3c83-f437-4879-8918-be5efbb9fac7_task_verify_4/getters/csv.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/ee9a3c83-f437-4879-8918-be5efbb9fac7_task_verify_4/metrics/csv.py"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly extracts ALL values from Age column (not just first 5), providing complete dataset access",
+        "Metric performs comprehensive verification: checks first 5 values are minimum (21), verifies consecutive ordering at beginning (50 rows), middle (50 rows), and end (50 rows), validates min/max values are reasonable",
+        "Multi-point sampling strategy effectively catches sorting errors across entire dataset (~5000 rows)",
+        "Edge case handling: checks for empty data, type conversion errors, insufficient rows",
+        "Minor logic inefficiency: The every-10th-value check (lines 52-54) only validates consecutive pairs instead of sampled intervals, but this doesn't affect correctness due to comprehensive consecutive checks at key regions"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional improvement: Change line 52-54 logic from 'int_values[i] > int_values[i + 1]' to 'int_values[i] > int_values[min(i + 10, len(int_values) - 1)]' to properly check monotonic ordering across sampled points"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

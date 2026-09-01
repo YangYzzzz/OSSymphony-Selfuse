@@ -1,0 +1,103 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_55",
+  "snapshot": "thunderbird",
+  "instruction": "Organize Thunderbird by creating two local folders: WORK and FAMILY.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bWORK\\.msf\\b",
+          "\\bWORK/?(?!\\.msf)",
+          "\\bFAMILY\\.msf\\b",
+          "\\bFAMILY/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating two local folders (WORK and FAMILY) in Thunderbird. The evaluator reuses the existing check_list metric function to verify that both the folder files and .msf index files exist for both folders using regex patterns.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "State extraction is correct: The postconfig runs 'ls -R' on Thunderbird's Local Folders directory, which is the correct location where local folders are stored",
+        "Metric logic is sound: The check_list function correctly searches for regex patterns in the directory listing output",
+        "Complete coverage: The evaluator verifies BOTH required folders (WORK and FAMILY) by checking for both the folder files and their .msf index files",
+        "Regex patterns are semantically correct: The patterns correctly match both the folder mailbox files (WORK, FAMILY) and their index files (WORK.msf, FAMILY.msf) using word boundaries and negative lookahead to distinguish between them",
+        "Thunderbird folder structure understanding: The evaluator correctly understands that Thunderbird creates both a mailbox file and an .msf index file for each local folder",
+        "Data flow is correct: ls output -> get_cache_file getter -> check_list metric with regex patterns -> verification of all 4 expected files/patterns"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

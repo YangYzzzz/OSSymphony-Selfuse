@@ -1,0 +1,98 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_13",
+  "snapshot": "multiapps",
+  "instruction": "Print the opened blog articles from Chrome to PDF and save them in /home/user/Documents/Blog, naming each file exactly as the article's main title.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "pip install PyMuPDF",
+          "shell": "true"
+        }
+      }
+    ],
+    "func": "check_pdf_count_and_content__9ba5dc81930fa553e6c6310edaaff2ec",
+    "result": {
+      "type": "pdf_directory_info__9ba5dc81930fa553e6c6310edaaff2ec",
+      "directory": "/home/user/Documents/Blog"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_pdf_count": 2,
+        "content_strings": [
+          "LLM Powered Autonomous Agents",
+          "Thinking about High-Quality Human Data"
+        ],
+        "expected_filenames": [
+          "LLM Powered Autonomous Agents",
+          "Thinking about High-Quality Human Data"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting Chrome tabs as PDFs with filenames exactly matching article titles. The evaluator checks that at least 2 PDF files exist in /home/user/Documents/Blog, that they are named exactly as the article titles ('LLM Powered Autonomous Agents' and 'Thinking about High-Quality Human Data'), and that they contain the expected content strings from both blog articles.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_2/getters/pdf.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_2/metrics/pdf.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.3 for having at least 2 PDFs, 0.3 for correct filenames, 0.2 for first article content, 0.2 for second article content",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Correct parameter handling: Metric function correctly accesses expected parameter fields directly (expected.get('min_pdf_count'), expected.get('content_strings'), expected.get('expected_filenames')) which is correct for type='rule'.",
+        "Complete verification coverage: Evaluator checks all three instruction requirements: (1) PDF count >= 2, (2) filenames match article titles exactly, (3) content strings present in PDFs.",
+        "Semantic correctness: Getter extracts PDF filenames by removing .pdf extension, metric compares against expected_filenames with partial credit logic for matches. Content verification ensures correct articles were printed.",
+        "Appropriate postconfig: Installs PyMuPDF which is required for PDF text extraction during content verification.",
+        "Robust implementation: Handles edge cases including missing files, extraction errors, and provides partial credit scoring (0.3 for count, 0.3 for filenames with partial matching, 0.4 split among content strings)."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

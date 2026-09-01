@@ -1,0 +1,90 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "task_verify_24",
+  "snapshot": "chrome",
+  "instruction": "Turn off the global play/pause shortcut in VLC so it doesn't trigger unintentionally.",
+  "source": "https://superuser.com/questions/1224784/how-to-change-vlcs-splash-screen",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_global_key_play_pause",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_global_key_play_pause": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling VLC's global play/pause hotkey by clearing the global-key-play-pause setting in the config file. The evaluator uses the existing check_global_key_play_pause metric function which checks if the setting is empty (returns '0') or has a value (returns '1'). Expected value is 0 (disabled). The get_vlc_config getter reads the VLC config file and the metric verifies the hotkey is disabled. No new functions needed - reusing existing VLC evaluation infrastructure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very similar - both tasks involve changing a single VLC preference setting. Original disables splash cone icon, this disables global hotkey.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly reads VLC config file from OS-specific location using get_vlc_config",
+        "Metric logic correctly checks if global-key-play-pause setting is empty (disabled=0) or has value (enabled=1)",
+        "Expected value correctly set to 0 to verify hotkey is disabled",
+        "Complete coverage: instruction requires disabling global hotkey, evaluator checks exactly that requirement",
+        "Postconfig appropriately kills and relaunches VLC to ensure config changes are reflected",
+        "Metric parameter handling is correct: accesses rule['expected_global_key_play_pause'] directly from rules dict",
+        "Runtime feasibility: config file will exist after VLC launch, getter can access it from VM",
+        "Logic handles edge cases: defaults to '0' if setting not found in config file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "215dfd39-f493-4bc3-a027-8a97d72c61bf-3_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

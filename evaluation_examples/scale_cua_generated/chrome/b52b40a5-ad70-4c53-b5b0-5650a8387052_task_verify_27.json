@@ -1,0 +1,151 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_27",
+  "snapshot": "chrome",
+  "instruction": "Locate the 'Paper Recommendation' email in Thunderbird and save its largest PDF attachment as 'largest_paper.pdf' in /home/user/Downloads.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_vm_file__f259522f5141b84d8b2c6c9007fd732a",
+    "result": {
+      "type": "vm_file_size__f259522f5141b84d8b2c6c9007fd732a",
+      "path": "/home/user/Downloads/largest_paper.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "exists": true,
+        "min_size_bytes": 51200,
+        "validate_pdf": true,
+        "require_pdf_extension": true,
+        "verify_largest_from_email": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding the largest PDF attachment in the 'Paper Recommendation' email and saving it to the Downloads folder with a specific name. The evaluator checks that the file 'largest_paper.pdf' exists in /home/user/Downloads with minimum size of 50KB, validates it has .pdf extension, verifies PDF format via magic bytes (%PDF- header), and confirms it is the largest PDF attachment from the 'Paper Recommendation' email. Custom getter queries Thunderbird's email database and attachment cache to enumerate all PDF attachments from the email, compares file sizes, and verifies the saved file matches the largest one. Custom metric validates all file requirements including format validation and email attachment verification.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_3/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_3/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "FIXED: Getter line 205 now correctly sets is_largest_from_email=False when verification data is unavailable, using the conservative approach of failing verification rather than passing by default.",
+        "Complete coverage: Evaluator verifies ALL instruction requirements - file existence, correct filename/location, PDF format validation (extension + magic bytes), minimum size, and largest-from-email verification.",
+        "Multi-layered verification approach: Getter attempts multiple methods to verify the largest PDF: (1) Thunderbird database query, (2) cache directory search, (3) directory grouping heuristic to identify same-email attachments.",
+        "Correct data flow: Getter extracts all necessary state (exists, size, PDF validation, email verification), metric correctly compares against expected rules using direct access pattern (expected.get()).",
+        "Basic validations are robust: file existence via stat, size extraction, .pdf extension check, PDF magic bytes (%PDF- header) validation.",
+        "Minor reliability concerns: Thunderbird database schema assumptions (lines 107-108) may not work across all versions; cache directory approach (lines 142-161) may include PDFs from unrelated emails; directory grouping heuristic is clever but not guaranteed to be accurate.",
+        "Conservative failure mode: When verification evidence is unavailable, the evaluator correctly fails (line 205), which is the appropriate behavior for a verification system.",
+        "No postconfig for Thunderbird state, but acceptable: relies on persistent Thunderbird profile database which should remain accessible after task execution."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding fallback verification using known ground truth: add metadata field specifying the actual size of the largest PDF attachment from the email setup, allowing direct comparison.",
+        "Enhance database query robustness: add explicit error handling and logging for database query failures, try multiple Thunderbird database schemas more systematically.",
+        "Improve cache directory filtering: use email metadata files (.msf) to verify which attachments belong to 'Paper Recommendation' email, or filter by more precise timestamp matching.",
+        "Optional: Add postconfig to verify Thunderbird profile persistence or use Thunderbird CLI tools to query attachment metadata more reliably."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

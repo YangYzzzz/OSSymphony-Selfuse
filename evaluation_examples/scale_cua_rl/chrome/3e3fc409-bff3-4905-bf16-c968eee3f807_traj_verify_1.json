@@ -1,0 +1,145 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "3e3fc409-bff3-4905-bf16-c968eee3f807_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "In the opened movies spreadsheet, create a new sheet called 'top_rated' with all movies that have a rating of 8.5 or higher. Use the same headers as the original sheet and sort by ratings from highest to lowest.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "movies.xlsx",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's'); import time; time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_filtered_sheet__7192ac900176bf2dc148847f36558198",
+    "result": {
+      "type": "xlsx_sheet_data__7192ac900176bf2dc148847f36558198",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "top_rated"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_sheet_name": "top_rated",
+        "expected_headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "expected_row_count": 38,
+        "sort_key": "ratings",
+        "sort_order": "desc"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent created an 'unseen_movies' sheet but copied ALL seen_movies data instead of finding unseen IMDB Top 30 movies. Never visited IMDB website. Attempted to sort data in the new sheet.",
+    "capability_extraction": "Can create new sheets in LibreOffice Calc, copy data between sheets, use sort dialog, navigate between sheet tabs, right-click context menus",
+    "failure_analysis": "Model failed because it never visited IMDB to get the Top 30 list. Instead, it copied all existing seen_movies to unseen_movies sheet. The cross-application comparison (Chrome + Calc) was too complex.",
+    "task_rationale": "Simplified to filtering by rating threshold (8.5+). No external website needed. The model demonstrated it can create sheets and sort data, so filtering by a numeric column is within its capabilities.",
+    "explanation": "Task requires creating a new sheet with movies rated 8.5+, sorted by rating descending. Evaluator checks: sheet exists with correct name, headers match, row count is 38, and data is sorted by ratings descending.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132_traj_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132_traj_verify_1/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "sheet_exists": "0.25 - Sheet 'top_rated' exists with correct name",
+      "headers_match": "0.25 - Headers match original (title, release year, ratings, description)",
+      "row_count": "0.25 - Contains exactly 38 movies with ratings >= 8.5",
+      "sort_order": "0.25 - Sorted by ratings from highest to lowest"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks all four key requirements: sheet name ('top_rated'), headers match, row count, and descending sort order by ratings.",
+        "Getter correctly reads the specific sheet using openpyxl, extracts headers from row 1, data rows from row 2+, and returns structured data (sheet_name, headers, rows, row_count).",
+        "Metric correctly handles expected parameter for type='rule' - accesses rules dict directly (e.g., expected.get('expected_sheet_name')).",
+        "Postconfig correctly activates window and saves file with Ctrl+S before evaluation, ensuring fresh file state.",
+        "Partial credit scoring (0.25 per check) is well-structured with reasonable tolerance on row count (±2 gives half credit).",
+        "Minor gap: evaluator does not verify that each individual row has a rating >= 8.5. It relies on row count (38) as an indirect proxy for correct filtering. An agent could theoretically include wrong rows that happen to total 38 and still pass the count check."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a check that verifies the minimum rating value in the 'ratings' column is >= 8.5, to confirm the filtering threshold was applied correctly rather than relying solely on row count."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

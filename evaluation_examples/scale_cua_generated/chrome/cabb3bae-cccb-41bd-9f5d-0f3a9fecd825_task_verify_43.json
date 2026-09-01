@@ -1,0 +1,115 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Browse Frozen toys for kids and sort by lowest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Frozen",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Frozen": "Frozen",
+        "frozen": "Frozen",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "frozen": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires browsing Frozen products in Kids/Toys category and sorting by price low-high (S=4). Follows same navigation pattern and complexity as original task. Reuses existing evaluator components.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator provides complete coverage of all instruction requirements: Frozen products, Toys category, Kids category, price sorting, and no unexpected filters",
+        "Multi-channel verification strategy using both HTML element extraction (breadcrumb, selector) and URL parameter checking (S=4) provides robust verification",
+        "Getter logic correctly uses 'class&url' category to extract breadcrumb navigation and sort selector elements",
+        "Expected values are semantically correct for kohls.com: breadcrumb should show Frozen>Toys>Kids path, sort selector should show 'Price Low-High', URL parameter S=4 represents price low-to-high sorting",
+        "Case-insensitive matching and multichoice URL parameter mapping provide flexible verification",
+        "Metric function check_direct_json_object correctly compares boolean values for each requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor concern: The dual verification approach (HTML elements + URL parameters) may have redundancy - if kohls.com changes their URL structure or HTML class names, one channel might fail while the other succeeds. Consider documenting which verification channel is primary",
+        "The class_multiObject_li extraction uses specific class names ('pmpSearch_breadcrumb', 'sbSelector') that are kohls.com-specific and may break if website updates. However, this is acceptable for a site-specific task",
+        "URL parameter 'S=4' is verified to represent 'Price Low-High' sorting - this assumption should be validated against actual kohls.com behavior, but the logic is sound"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

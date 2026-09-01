@@ -1,0 +1,102 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_56",
+  "snapshot": "chrome",
+  "instruction": "Could you help me turn off third-party cookies in Chrome settings to improve my privacy?",
+  "source": "https://support.google.com/chrome/answer/95647",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "third_party_cookies_blocked__ab79f9e8"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to navigate Chrome settings and disable third-party cookies. The getter function reads Chrome Preferences file to check if block_third_party_cookies is true. This is a common privacy setting similar to Do Not Track.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_0/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "task_category": "chrome_privacy_settings",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome Preferences file from OS-appropriate locations to extract block_third_party_cookies setting",
+        "Appropriate postconfig restarts Chrome to ensure settings are persisted to Preferences file and file is accessible for reading",
+        "Data flow is correct: getter returns string 'true'/'false', metric performs exact_match comparison, expected value is 'true'",
+        "Logic correctly navigates JSON path data['profile']['block_third_party_cookies'] which is the actual Chrome setting location",
+        "Complete coverage: instruction requires turning off third-party cookies, evaluator checks the definitive state in Preferences file",
+        "Expected value 'true' is semantically correct (block_third_party_cookies=true means cookies are blocked)",
+        "Error handling returns 'false' on exceptions, which is reasonable (treat unverifiable as disabled)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Linux ARM architecture uses snap/chromium path for Preferences but postconfig uses google-chrome command - consider environment consistency"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

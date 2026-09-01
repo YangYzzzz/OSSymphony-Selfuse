@@ -1,0 +1,97 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Please enable Safe Browsing protection in Chrome.",
+  "source": "https://support.google.com/chrome/answer/99020",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_safe_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling Safe Browsing security feature. Uses existing get_enable_safe_browsing getter which checks both standard and enhanced Safe Browsing settings, returns 'true' if either is enabled. Verified with exact_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing Chrome security settings getter. Same complexity as original - requires navigating to Chrome settings to enable a security feature.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement to enable Safe Browsing protection in Chrome",
+        "Getter function get_enable_safe_browsing correctly reads Chrome Preferences file and checks both 'safebrowsing.enhanced' and 'safebrowsing.enabled' settings",
+        "Getter returns 'true' if either standard or enhanced Safe Browsing is enabled, which matches Chrome's behavior (both are valid Safe Browsing protections)",
+        "Metric exact_match correctly receives rules={'expected': 'true'} (not wrapped in type/rules structure) and compares result string to expected string",
+        "Expected value 'true' is semantically correct for verifying Safe Browsing is enabled",
+        "Postconfig properly restarts Chrome to ensure settings are persisted and can be read from Preferences file",
+        "Complete coverage: evaluator checks the only requirement (Safe Browsing enabled) specified in the instruction",
+        "Data flow is correct: getter extracts boolean state from Chrome Preferences -> converts to 'true'/'false' string -> metric compares with expected 'true'"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

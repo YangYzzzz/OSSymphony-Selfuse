@@ -1,0 +1,103 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_7",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome to block the QUIC protocol, enforcing the use of TCP connections.",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_chrome_experiments_exact_match__d7481e87a8a6dde50669ce517c215edf",
+    "result": {
+      "type": "chrome_experiments_exact_match__d7481e87a8a6dde50669ce517c215edf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "experiment_names": [
+          "disable-quic"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires the user to disable the QUIC protocol in Chrome by navigating to chrome://flags and setting the 'Experimental QUIC protocol' flag to disabled. The evaluator checks that the enabled experiments list contains exactly ['disable-quic']. Similar difficulty to the original task which requires managing Chrome experiments.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_aug_13_task_verify_3/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_aug_13_task_verify_3/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: Properly reads Chrome's Local State file and extracts enabled_labs_experiments list across all platforms (Windows/macOS/Linux)",
+        "Metric logic is correct: Accurately compares the enabled experiments list against expected values using exact match with sorted lists",
+        "Expected parameter handling is correct: Metric directly accesses 'experiment_names' from the expected parameter (which is the rules dict returned by get_rule())",
+        "Complete coverage: The evaluator checks the exact requirement - that the 'disable-quic' flag is enabled",
+        "Expected value is correct: 'disable-quic' is the correct Chrome experiment flag for disabling QUIC protocol",
+        "Postconfig is appropriate: Restarts Chrome to ensure settings are persisted to Local State file and includes 3-second sleep for initialization",
+        "Data flow is correct: Getter extracts list of experiment names → Metric compares against expected list → Returns 1.0 for exact match",
+        "Practical feasibility: The getter can successfully access Chrome's Local State file which persists experiment settings"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "480bcfea-d68f-4aaa-a0a9-2589ef319381_aug_13_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

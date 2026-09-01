@@ -1,0 +1,122 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_19",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome to clear all cookies and site data every time the browser is closed.",
+  "source": "https://support.google.com/chrome/answer/95647",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_auto_delete_data__936eec5ac877849802aeaa5f0c43e44f",
+    "result": {
+      "type": "clear_cookies_on_exit__936eec5ac877849802aeaa5f0c43e44f"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires enabling automatic data deletion when closing Chrome. The evaluator uses a custom getter get_clear_cookies_on_exit__936eec5ac877849802aeaa5f0c43e44f to check the Preferences file for actual cookie clearing on exit settings (browser.clear_data.cookies_basic, profile.content_settings.exceptions.cookies with session_only, or default_content_setting_values.cookies = 4). Custom metric function check_auto_delete_data__936eec5ac877849802aeaa5f0c43e44f compares the result against expected value 'true'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly checks multiple Chrome Preferences locations for cookie clearing on exit settings",
+        "Line 59-62: Checks browser.clear_data.cookies_basic (valid for newer Chrome versions)",
+        "Line 64-76: Checks profile.content_settings.exceptions.cookies with session_only setting (valid approach)",
+        "Line 78-82: Correctly checks profile.default_content_setting_values.cookies == 4, where 4 = SESSION_ONLY (clear cookies on exit)",
+        "Line 85-90: Checks local_state.clear_browsing_data.cookies as additional fallback",
+        "Metric correctly compares result string against expected value 'true'",
+        "Postconfig appropriately restarts Chrome to verify setting persistence across browser restarts",
+        "Coverage is complete: evaluator verifies the exact requirement in the instruction (auto-clear cookies on exit)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Could add logging to indicate which specific setting location was found when returning 'true'",
+        "Optional: Consider adding a check for browser.clear_data.cookies_advanced as well for completeness"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

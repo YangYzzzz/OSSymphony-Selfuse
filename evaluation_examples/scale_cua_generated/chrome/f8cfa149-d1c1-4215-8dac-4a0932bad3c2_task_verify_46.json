@@ -1,0 +1,108 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Please copy the value from Cell B10 in the LibreOffice Calc spreadsheet and use Chrome to search for it on Google.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=fallon(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell B10 (value: 'Fallon') from the spreadsheet and search it in Chrome. Verified from Excel file: Row 10, Column B (0-indexed row 10) contains 'Fallon'. Evaluator checks if active tab URL matches Google search for 'fallon'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Evaluator only verifies the Google search (step 2) but does not verify that the value was actually copied from Cell B10 in LibreOffice Calc (step 1)",
+        "The instruction has two distinct steps: (1) Copy value from Cell B10, (2) Search on Google. Only step 2 is verified",
+        "No verification that LibreOffice Calc was opened or that the correct cell was accessed",
+        "Missing postconfig to ensure Chrome is active/visible when evaluation runs - the getter relies on accessibility tree which requires Chrome to be the active window",
+        "Positive: The core search verification logic is semantically correct - regex pattern properly checks for Google search URL with 'fallon' query parameter",
+        "Positive: Expected value 'fallon' matches the metadata-verified cell B10 content",
+        "Positive: Case-insensitive regex and flexible URL matching (http/https, with/without www) is appropriate"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for the copying step: Consider adding a getter to check clipboard contents or LibreOffice Calc state to verify the copy operation occurred",
+        "Add postconfig to activate/focus Chrome window before evaluation to ensure accessibility tree can read the active tab",
+        "Consider adding partial credit: 0.5 for correct search term even if clipboard verification isn't possible",
+        "If clipboard verification is not feasible, update instruction to focus only on the search step, or add documentation that only the search step is verified"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

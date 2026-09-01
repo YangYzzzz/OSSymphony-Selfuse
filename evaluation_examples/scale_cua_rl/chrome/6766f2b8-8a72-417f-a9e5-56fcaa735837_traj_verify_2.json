@@ -1,0 +1,91 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "6766f2b8-8a72-417f-a9e5-56fcaa735837_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Load the unpacked extension from /home/user/Desktop/helloExtension in Chrome's extension manager.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_6766f2b8-8a72-417f-a9e5-56fcaa735837_sid_1488312",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to unzip an already-extracted helloExtension directory, then navigated to chrome://extensions, enabled Developer mode, clicked Load unpacked, opened file picker to Desktop, but never completed selecting the folder. Spent 50 turns cycling between terminal and extensions page.",
+    "capability_extraction": "Can navigate Chrome to chrome:// URLs, open terminal and run shell commands, enable Developer mode on extensions page, interact with file picker dialog",
+    "failure_analysis": "Model was confused by instruction to 'unzip' an already-extracted directory (config already handled unzipping). After reaching the file picker in 'Load unpacked' flow, it could not complete the selection of the helloExtension folder and click Select.",
+    "task_rationale": "Simplified the original task by removing the confusing 'unzip' instruction. The config already extracts the extension, so the model only needs to load it as unpacked in chrome://extensions. Clearer instruction should help the model focus on the actual goal.",
+    "explanation": "Task requires loading an unpacked Chrome extension from /home/user/Desktop/helloExtension. Evaluator reads Chrome Preferences to find all unpacked extension paths and checks if the expected path is in the list. Same evaluator as original task but with clearer instruction.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "extension_loaded": "1.0 - Extension path found in Chrome preferences"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter 'find_unpacked_extension_path' correctly reads Chrome Preferences JSON and extracts all extension paths from data.extensions.settings[id].path, returning a list of paths.",
+        "Metric 'is_in_list' correctly receives the rules dict (with key 'expected') and checks if the expected path is contained in the result list using Python's 'in' operator.",
+        "The expected value '/home/user/Desktop/helloExtension' matches the instruction requirement exactly.",
+        "Single-requirement instruction (load unpacked extension) is fully covered by the evaluator.",
+        "Minor concern: path normalization differences (e.g., trailing slash) could theoretically cause a false negative, but Chrome typically stores the exact path provided during 'Load unpacked'."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider normalizing paths (stripping trailing slashes) in both the getter output and expected value for robustness against path format variations."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

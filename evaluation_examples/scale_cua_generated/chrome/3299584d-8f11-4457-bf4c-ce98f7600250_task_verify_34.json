@@ -1,0 +1,93 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Chrome keeps saving downloads to my Desktop and it's getting messy. I tried changing it but it keeps reverting. How do I permanently change the download location away from Desktop?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"download\":{\"default_directory\": \"/home/user/Desktop\"}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "postconfig": [],
+  "evaluator": {
+    "func": "check_download_location_changed__518a9ee4",
+    "result": {
+      "type": "chrome_download_location__518a9ee4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "old_pattern": "Desktop"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires user to change the download directory from Desktop to another location. The evaluator checks that default_directory in download preferences does not contain 'Desktop'. Verified by analyzing Chrome preferences download settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_5/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_5/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly and completely verifies the instruction requirement: changing download location away from Desktop",
+        "Getter correctly extracts the default_directory from Chrome's Preferences file across all OS platforms (Windows/Darwin/Linux) - chrome.py:23-41",
+        "Metric correctly checks that old_pattern ('Desktop') is NOT present in the new download location using case-insensitive comparison - chrome.py:36",
+        "Parameter handling is correct: metric receives rules dict directly as expected parameter when expected.type='rule', correctly accessing expected.get('old_pattern') on line 29",
+        "Data flow is semantically correct: getter extracts right state (download path from Preferences file) → metric compares right aspect (absence of old pattern) → returns correct score (1.0 if changed, 0.0 if not)",
+        "Expected value is semantically correct: old_pattern 'Desktop' matches the initial state configured in task setup (line 18: default_directory set to /home/user/Desktop)",
+        "Implementation includes robust edge case handling: empty result_state (lines 20-22), invalid absolute paths (lines 25-27), missing old_pattern in expected dict",
+        "Postconfig warning from static validator is a false positive: Chrome download preferences persist in the Preferences JSON file and can be read directly without reopening any UI dialog or settings page",
+        "Coverage is complete: instruction has single requirement (permanently change download location away from Desktop) which is fully verified by checking the Preferences file",
+        "Logic is runtime-ready: getter uses OS-aware path construction, metric uses defensive programming with proper logging"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

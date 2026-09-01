@@ -1,0 +1,113 @@
+{
+  "id": "a1af9f1c-50d5-4bc3-a51e-4d9b425ff638",
+  "new_id": "a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Set up an email account for test-user@outlook.com in Thunderbird using manual configuration with IMAP incoming server imap-mail.outlook.com.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/15c3b339-88f7-4a86-ab16-e71c58dcb01e/thunderbird-profile-blank.tar.gz",
+            "path": "/home/user/thunderbird-profile-blank.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile-blank.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "thunderbird"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_thunderbird_account_config__20583839ff43876dc06848262d06ce9a",
+    "result": {
+      "type": "thunderbird_account_settings__20583839ff43876dc06848262d06ce9a",
+      "path": "/home/user/.thunderbird/6ex3j72p.default-release/prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "email": "test-user@outlook.com",
+        "incoming_hostname": "imap-mail.outlook.com",
+        "server_type": "imap"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_sid_1488174",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to configure Thunderbird for sending emails without incoming service. It navigated Account Settings, added SMTP server (smtp-mail.outlook.com, port 587, STARTTLS), and set up account via manual/advanced configuration. Failed because the task was infeasible and model should have recognized that.",
+    "capability_extraction": "Can navigate Thunderbird Account Settings, add/edit SMTP servers with specific hostname/port/security settings, interact with Account Setup wizard, use manual and advanced configuration, fill form fields, handle dialog boxes",
+    "failure_analysis": "Original task was marked 'infeasible' - model should have reported inability but instead tried to configure the account. Model spent 50 turns actively setting up SMTP and account settings.",
+    "task_rationale": "The model demonstrated ability to set up an email account through the Account Setup wizard with manual IMAP configuration. This task tests that specific capability with a different email address.",
+    "explanation": "Task requires setting up an email account for test-user@outlook.com using IMAP. Evaluator kills Thunderbird to flush prefs.js, then checks identity email and incoming server hostname/type from prefs.js.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_sid_1488174_traj_verify_1/getters/thunderbird_account.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_a1af9f1c-50d5-4bc3-a51e-4d9b425ff638_sid_1488174_traj_verify_1/metrics/thunderbird_account.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 12,
+    "scoring_breakdown": {
+      "identity_email": "0.50 - Correct email identity (test-user@outlook.com)",
+      "incoming_hostname": "0.30 - Correct incoming server (imap-mail.outlook.com)",
+      "server_type": "0.20 - Correct server type (imap)"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly parses Thunderbird prefs.js to extract mail.identity.* (email addresses) and mail.server.* (server config) entries using the standard user_pref format",
+        "Metric correctly handles expected parameter - since expected.type='rule', it receives the rules dict directly and accesses expected.get('email'), expected.get('incoming_hostname'), expected.get('server_type') without wrapping errors",
+        "All three verifiable requirements from the instruction are checked: email identity (test-user@outlook.com, 0.5pts), incoming server hostname (imap-mail.outlook.com, 0.3pts), and server type (imap, 0.2pts)",
+        "Postconfig correctly kills Thunderbird before reading prefs.js to ensure preferences are flushed to disk",
+        "Server type check is correctly nested inside the hostname match loop, ensuring both properties belong to the same server entry",
+        "Partial credit scoring breakdown is reasonable and well-proportioned"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: 'manual configuration' is a process requirement that cannot be verified from final state - this is acceptable but could be noted in the explanation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

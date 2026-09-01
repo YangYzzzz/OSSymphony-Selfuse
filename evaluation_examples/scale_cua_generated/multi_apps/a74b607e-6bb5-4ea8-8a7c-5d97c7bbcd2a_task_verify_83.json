@@ -1,0 +1,119 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_83",
+  "snapshot": "multiapps",
+  "instruction": "Load the unpacked extension located in the helloExtension folder on Desktop into Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "pkill -TERM chrome; sleep 3",
+          "shell": true
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_min_extension_count__0f84311e",
+    "result": {
+      "type": "unpacked_extension_count__0f84311e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 1
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This variation verifies at least one unpacked extension is loaded in Chrome. The metric checks that the count of unpacked extensions is >= 1.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_5/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_5/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter logic is semantically correct: reads Chrome Preferences file and counts extensions with 'path' field (unpacked extensions are identified by having a local filesystem 'path' field)",
+        "Metric logic is correct: properly handles expected parameter as rules dict (directly accesses expected['min_count'], no anti-patterns like expected.get('rules') detected)",
+        "Expected value is correct: min_count=1 correctly matches instruction requirement to load at least one unpacked extension",
+        "Coverage is complete: evaluator checks the single requirement (unpacked extension loaded in Chrome)",
+        "Postconfig exists and addresses state persistence: kills Chrome (pkill -TERM), waits 3 seconds, relaunches Chrome, waits 2 more seconds. This forces Chrome to write Preferences file on shutdown.",
+        "Minor robustness concern: pkill -TERM with 3-second wait may be insufficient on slow systems or if Chrome is writing large state. However, this should work in most cases.",
+        "Alternative approach consideration: Using Chrome DevTools Protocol to query runtime extension state would be more direct and avoid file-based timing issues, but current file-based approach should work with the postconfig present."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing sleep time after pkill to 5 seconds for better robustness: 'pkill -TERM chrome; sleep 5'",
+        "Consider using SIGKILL if Chrome doesn't shutdown gracefully: 'pkill -TERM chrome; sleep 3; pkill -9 chrome; sleep 2'",
+        "Alternative: Rewrite getter to use Chrome DevTools Protocol (CDP) via env.controller to query chrome://extensions API directly for runtime state, which would eliminate file-based timing dependencies entirely"
+      ]
+    }
+  }
+}

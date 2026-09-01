@@ -1,0 +1,106 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_64",
+  "snapshot": "chrome",
+  "instruction": "Could you copy the value from Cell B18 in this Calc file and search for it using the Google search engine in Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=lauralee(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying cell B18 (first name 'Lauralee' from row 18) and searching it in Chrome. Evaluator verifies Google search URL contains 'lauralee' as query parameter. Verified by reading Excel file: cell B18 (row 18, col 1) contains 'Lauralee'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'get_active_tab_info' (chrome.py:803) correctly extracts active Chrome tab state by first getting URL from accessibility tree, then navigating to it via Playwright to retrieve full tab info (title, url, content)",
+        "Metric 'is_expected_search_query' (chrome.py:247) correctly handles expected parameter when type='rule' - receives rules dict directly and accesses rules['expect']['pattern'] without attempting rules['rules']",
+        "Expected regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=lauralee(?:&|$|#).*' is semantically correct - verifies Google search URL with 'lauralee' as query parameter",
+        "Pattern uses case-insensitive matching (?i) which handles 'Lauralee' vs 'lauralee', and correctly validates URL structure with proper query parameter boundaries",
+        "Expected value 'lauralee' verified from actual Excel data - metadata confirms cell B18 contains 'Lauralee' matching the instruction requirement",
+        "Evaluator verifies end-state (Google search URL with correct query term) which logically proves both required steps completed: (1) value was copied from B18, (2) value was searched in Google",
+        "Chrome remains open throughout task execution - get_active_tab_info connects to running Chrome instance via CDP (remote debugging port), no postconfig needed to reopen UI",
+        "Complete requirement coverage - task has 2 implicit steps (copy + search), evaluator checks final search URL which confirms both steps succeeded",
+        "No state timing issues - Chrome tab remains accessible, getter reads current active tab URL which reflects the search action performed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true,
+      "fix_summary": "False positive warning resolved: The heuristic warning about UI/state-dependent task was incorrect. Chrome remains open throughout task execution and get_active_tab_info accesses the active tab directly from the running Chrome instance via CDP connection. No postconfig is needed as confirmed by LLM judge analysis. Warning is acceptable and does not indicate a real issue."
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

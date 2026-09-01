@@ -1,0 +1,90 @@
+{
+  "id": "06fe7178-4491-4589-810f-2e2bc9502122",
+  "new_id": "06fe7178-4491-4589-810f-2e2bc9502122_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's history page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.lonelyplanet.com",
+          "https://www.airbnb.com",
+          "https://www.tripadvisor.com"
+        ]
+      }
+    },
+    {
+      "type": "chrome_close_tabs",
+      "parameters": {
+        "urls_to_close": [
+          "https://www.tripadvisor.com"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://history.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_06fe7178-4491-4589-810f-2e2bc9502122_sid_1488130",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to restore the last closed tab (TripAdvisor) using Ctrl+Shift+T. The tab visually appeared restored (3 tabs visible in screenshot), but the evaluator scored 0, likely due to URL mismatch at evaluation time.",
+    "capability_extraction": "Can use keyboard shortcuts (Ctrl+Shift+T), understand Chrome tab concepts, interact with browser tabs",
+    "failure_analysis": "Model correctly identified the action (Ctrl+Shift+T) and the tab appeared restored visually, but is_expected_tabs evaluator returned 0, possibly due to URL redirect or timing issue between tab restoration and evaluation.",
+    "task_rationale": "Simplified to navigating to Chrome's history page, which tests keyboard shortcuts (Ctrl+H) or menu navigation - capabilities the model demonstrated in the original trajectory.",
+    "explanation": "Task requires opening Chrome's history page. Evaluator checks if the active tab URL matches chrome://history pattern.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Instruction 'Open Chrome's history page' is fully covered by checking if active URL matches chrome://history.* pattern",
+        "Getter active_url_from_accessTree correctly extracts the current URL from Chrome's address bar via accessibility tree",
+        "Metric is_expected_url_pattern_match uses re.search which correctly matches the pattern as a substring, even with the https:// prefix prepended by the getter",
+        "Expected parameter handling is correct: metric receives rules dict directly and accesses rules['expected'] to get the pattern list",
+        "Minor concern: getter prepends default goto_prefix='https://' producing 'https://chrome://history' which is semantically incorrect, but re.search still finds the chrome://history.* pattern as a substring so it works in practice"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider setting goto_prefix to empty string in the getter config to avoid constructing an invalid URL like 'https://chrome://history'. While re.search makes it work, explicit config would be cleaner and more robust."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

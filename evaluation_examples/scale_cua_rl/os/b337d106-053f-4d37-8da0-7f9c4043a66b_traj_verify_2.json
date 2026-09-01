@@ -1,0 +1,98 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "b337d106-053f-4d37-8da0-7f9c4043a66b_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Set the default text editor to Vim by exporting EDITOR=vim in your .bashrc file.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "cat",
+        "/home/user/.bashrc"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "EDITOR=vim"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_b337d106-053f-4d37-8da0-7f9c4043a66b_sid_1488177",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent tried to search Google for Vim line numbers tutorial but hit SSL certificate error. Navigated to vimhelp.org successfully. Switched to terminal and ran curl, vim --help, man vim commands. Eventually opened a file in Vim but got stuck and never configured ~/.vimrc.",
+    "capability_extraction": "Can interact with terminal (type commands, execute shell commands), navigate Chrome to HTTP sites, switch between Chrome and Terminal windows",
+    "failure_analysis": "SSL certificate error on Google blocked web search. Model spent many turns retrying Google. When it switched to terminal, it opened Vim interactively and got stuck without exiting or writing to .vimrc.",
+    "task_rationale": "Exercises terminal config file editing (appending to .bashrc) which is similar to the original .vimrc editing but targets a different config file and setting. Tests the model's ability to modify shell configuration.",
+    "explanation": "Task requires adding 'export EDITOR=vim' to ~/.bashrc. Evaluator reads ~/.bashrc and checks that it contains 'EDITOR=vim'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "bashrc_contains_editor_vim": "1.0 - ~/.bashrc contains 'EDITOR=vim'"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly reads ~/.bashrc via 'cat /home/user/.bashrc' and returns file contents as string.",
+        "Metric check_include_exclude correctly receives rules dict and checks substring inclusion of 'EDITOR=vim' in file contents.",
+        "Instruction says 'exporting EDITOR=vim' but evaluator only checks for substring 'EDITOR=vim', not 'export EDITOR=vim'. A line like 'EDITOR=vim' without 'export' would pass even though it only sets a shell variable, not an environment variable.",
+        "Substring check could match commented-out lines like '# EDITOR=vim', producing a false positive.",
+        "Core verification logic is sound: if .bashrc contains 'export EDITOR=vim', the substring 'EDITOR=vim' will be found and the check passes."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change include list to ['export EDITOR=vim'] to verify the export keyword is present, matching the instruction requirement.",
+        "Alternatively, add a more specific pattern check to avoid matching commented-out lines."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

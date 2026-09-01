@@ -1,0 +1,104 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_53",
+  "snapshot": "chrome",
+  "instruction": "Make Yahoo my default search engine for internet searches.",
+  "source": "https://support.google.com/chrome/answer/95426?sjid=16867045591165135686-AP",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Yahoo",
+          "Yahoo!",
+          "Yahoo Search"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the user to change the default search engine to Yahoo. The evaluator uses the existing get_default_search_engine getter and match_in_list metric. Same complexity and steps as the original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very high - same type of task (search engine change), same number of steps, same interaction pattern",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts default search engine name from Chrome Preferences file (chrome.py:200-231)",
+        "Metric logic correctly checks if result is in the expected list of Yahoo variants using match_in_list (general.py:50-57)",
+        "Complete coverage: evaluator checks exactly what the instruction requires (Yahoo as default search engine)",
+        "Semantic compatibility: getter returns string (search engine name), metric expects string in list - perfect match",
+        "Expected values are correct: ['Yahoo', 'Yahoo!', 'Yahoo Search'] cover all valid Yahoo search engine name variants",
+        "Postconfig is appropriate: killing and restarting Chrome ensures Preferences file is flushed to disk with updated settings",
+        "State accessibility: Chrome Preferences file is accessible after Chrome restart, getter has proper error handling for different OS types",
+        "Edge cases handled: getter returns 'Google' on failure which would correctly fail the evaluation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

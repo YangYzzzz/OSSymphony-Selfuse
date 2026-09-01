@@ -1,0 +1,69 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_17",
+  "snapshot": "os",
+  "instruction": "Please create a new user named \"alice\" with password \"SecureP@ss123\" who has sudo privileges and uses /bin/bash as the default shell.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"alice\"; if ! id \"$USERNAME\" &>/dev/null; then echo 'FAIL: User does not exist'; exit 1; fi; SHELL_CHECK=$(getent passwd \"$USERNAME\" | awk -F: '{print $7}'); if [ \"$SHELL_CHECK\" != \"/bin/bash\" ]; then echo \"FAIL: Shell is $SHELL_CHECK, not /bin/bash\"; exit 1; fi; if ! sudo -l -U \"$USERNAME\" 2>&1 | grep -qE '(ALL.*ALL)|(sudo|wheel)'; then if ! groups \"$USERNAME\" | grep -qE '\\b(sudo|wheel)\\b'; then echo 'FAIL: User does not have sudo privileges'; exit 1; fi; fi; if ! sudo passwd -S \"$USERNAME\" 2>/dev/null | grep -qv 'L\\|NP'; then echo 'FAIL: Password not set or locked'; exit 1; fi; echo 'PASS: User alice exists with bash shell, sudo privileges, and password set'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "PASS: User alice exists with bash shell, sudo privileges, and password set"
+        ],
+        "exclude": [
+          "FAIL:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating user 'alice' with password 'SecureP@ss123', adding to sudoers, and setting bash shell. Evaluator verifies sudo privileges via 'sudo -l -U' and shell via getent passwd.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "User existence verification: Correctly uses 'id \"$USERNAME\"' to verify user alice exists",
+        "Shell verification: Correctly uses 'getent passwd \"$USERNAME\" | awk -F: '{print $7}' to extract and verify exact shell field is /bin/bash",
+        "Sudo privileges verification: Comprehensive check using both 'sudo -l -U' and fallback to 'groups' check for sudo/wheel group membership",
+        "Password set verification: Uses 'passwd -S' to verify password is set and not locked - semantically correct approach",
+        "Minor limitation: Cannot verify the EXACT password value 'SecureP@ss123' due to password hashing in Linux. Evaluator only verifies that a password exists, not that it matches the specified value. This is a practical limitation of the platform rather than a logic flaw."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Consider adding authentication test to verify the exact password works (e.g., using 'su' or 'sudo' with provided password), though this requires storing plaintext password temporarily which has security implications",
+        "Alternative: Document in task metadata that exact password verification is not feasible and only password existence is verified"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

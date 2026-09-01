@@ -1,0 +1,121 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_42",
+  "snapshot": "thunderbird",
+  "instruction": "Create a Thunderbird filter to copy all emails with subject containing 'Important' to a custom folder. Configure this locally in Thunderbird only.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter__07c1111d",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Copy to folder",
+            "condition": [
+              "AND (subject,contains,Important)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a filter to copy emails to a folder based on subject. The evaluator verifies an enabled filter with 'Copy to folder' action exists.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9b7bc335-06b5-4cd3-9119-1a649c478509_task_verify_4/metrics/check_thunderbird_filter__07c1111d.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "Evaluator checks Thunderbird filter configuration file for expected filter rules with appropriate action and enabled status.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all key requirements: enabled status (enabled='yes'), action type (action='Copy to folder'), and subject condition (condition=['AND (subject,contains,Important)'])",
+        "Custom folder verification is properly implemented in metric function (lines 68-80): checks that actionValue exists and is not a default folder (Inbox, Drafts, Sent, Trash, Junk, Archive, Templates)",
+        "Data flow is correct: getter retrieves filter config file from VM, metric parses filter rules and matches against expected pattern with additional custom folder validation",
+        "Postconfig appropriately closes Message Filters window to ensure stable state for file reading",
+        "Minor issue: Custom folder detection uses substring matching (line 74) which could incorrectly reject custom folders with names like 'My Inbox' or 'Important Inbox' that contain default folder names as substrings"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Improve custom folder detection to be more precise: instead of substring matching, parse the Thunderbird folder URI format and check if the final folder name (not the full path) matches default folders exactly",
+        "Consider documenting the custom folder validation logic in expected rules for transparency, or add a comment explaining that actionValue will be validated to ensure it's a custom folder",
+        "Add edge case handling for folder names that contain default folder names as substrings (e.g., use exact folder name matching after parsing the URI)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter__07c1111d first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

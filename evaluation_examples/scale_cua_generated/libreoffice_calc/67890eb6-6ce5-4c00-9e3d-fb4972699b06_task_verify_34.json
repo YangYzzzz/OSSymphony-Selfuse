@@ -1,0 +1,134 @@
+{
+  "id": "67890eb6-6ce5-4c00-9e3d-fb4972699b06",
+  "new_id": "task_verify_34",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Look up the ACL Anthology Best Long Paper Award winners for years 2019, 2020, 2021, and 2022. Fill in best_awards_acl.xlsx on the desktop with each paper's title, year, authors (comma-delimited), and PDF link from aclanthology.org.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/67890eb6-6ce5-4c00-9e3d-fb4972699b06/best_awards_acl.xlsx",
+            "path": "/home/user/Desktop/best_awards_acl.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/best_awards_acl.xlsx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://aclanthology.org/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "best_awards_acl.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_all_links_contain_domain__92cb77f43dd3910ea887405b81dd1a5a",
+    "result": {
+      "type": "xlsx_pdf_links__92cb77f43dd3910ea887405b81dd1a5a",
+      "path": "/home/user/Desktop/best_awards_acl.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "domain": "aclanthology.org"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires recording ACL Best Long Paper Award winners for 2019-2022 with title, year, authors, and PDF links. Evaluator extracts all four columns from the Excel file and verifies: (1) exactly 4 papers exist, (2) all titles are non-empty, (3) years are exactly 2019-2022, (4) all authors fields are non-empty, (5) all PDF links are valid aclanthology.org PDF URLs. Score is average of these 5 criteria. Custom getter extracts complete paper data as dict, metric performs comprehensive multi-field validation.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_aug_17_task_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_aug_17_task_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator provides comprehensive verification coverage across all 5 criteria",
+        "Getter correctly extracts all 4 required fields (title, year, authors, PDF link) from Excel file with proper header skipping",
+        "Metric verifies: (1) exactly 4 papers exist, (2) all titles non-empty, (3) years exactly {2019, 2020, 2021, 2022}, (4) all authors fields non-empty, (5) PDF links match valid aclanthology.org PDF URL pattern",
+        "Scoring logic is sound: returns average of 5 equally-weighted criteria scores, allowing partial credit",
+        "PDF link validation uses proper regex pattern 'https?://aclanthology\\.org/.+\\.pdf' (not just domain substring)",
+        "Edge case handling: properly handles empty papers list, None values, and missing fields",
+        "Postconfig is appropriate: activates LibreOffice window and saves file to ensure changes are persisted before evaluation",
+        "Minor issue: Year conversion in getter (line 42) uses str(year).isdigit() which could fail for float years from Excel, but unlikely to cause issues in practice",
+        "Minor issue: Authors validation accepts single authors without commas, which is technically valid but instruction says 'comma-delimited' (acceptable as edge case)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider more robust year conversion in getter: use isinstance(year, (int, float)) or try-except around int() conversion to handle Excel numeric types",
+        "Optional: Add explicit comma check for multi-author papers in authors validation if strict comma-delimited format is required"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

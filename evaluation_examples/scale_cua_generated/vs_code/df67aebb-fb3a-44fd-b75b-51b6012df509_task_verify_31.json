@@ -1,0 +1,128 @@
+{
+  "id": "df67aebb-fb3a-44fd-b75b-51b6012df509",
+  "new_id": "task_verify_31",
+  "snapshot": "vscode",
+  "instruction": "Find the bibtex entry for each cited paper in the thesis using DBLP (avoid arxiv sources if possible), and collect all entries in 'references.bib' with author, title, and year fields included.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://dblp.org/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "touch",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/df67aebb-fb3a-44fd-b75b-51b6012df509/references.docx",
+            "path": "/home/user/Desktop/references.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/references.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_bibtex_fields__15eb2c700df4ed2a0e8732ed92c43b5f",
+    "result": {
+      "type": "bibtex_fields__15eb2c700df4ed2a0e8732ed92c43b5f",
+      "path": "/home/user/Desktop/references.bib"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_valid_entries": 6
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding BibTeX entries on DBLP for all 6 papers. The evaluator checks that each BibTeX entry contains the required fields: author, title, and year. These are essential bibliographic fields that should be present in valid BibTeX entries from DBLP. Verification: Parses the BibTeX file and validates that at least 6 entries contain all three required fields (author=, title=, year=).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_1/getters/bibtex.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_1/metrics/bibtex.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 12,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter parsing logic is robust: uses regex pattern with nested brace tracking to properly identify BibTeX entry boundaries, excludes non-entry types (comment, preamble, string), and validates citation keys.",
+        "Field validation correctly checks for required fields (author, title, year) using pattern matching within entry content boundaries.",
+        "Metric function correctly handles 'expected' parameter as rules dictionary (follows guidance 5.1), comparing entries_with_required_fields >= min_valid_entries.",
+        "Data flow is semantically correct: reads file -> parses entries -> validates fields -> counts -> compares against threshold.",
+        "Incomplete coverage: evaluator doesn't verify that entries correspond to papers cited in the thesis document, or that entries are from DBLP (vs arxiv). Only checks that >= 6 valid entries exist, not which papers they represent.",
+        "Binary scoring provides no partial credit: finding 5 out of 6 valid entries yields 0.0 instead of proportional score.",
+        "The min_valid_entries=6 assumption depends on external knowledge of paper count in thesis, which isn't validated by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding partial credit scoring: return float(entries_with_fields) / min_valid instead of binary 1.0/0.0 to reward partial completion.",
+        "To verify DBLP source, could check for DBLP-specific patterns in URLs or DOIs (though this may be overly strict if manual editing occurred).",
+        "To verify correspondence with thesis papers, would need to extract paper titles from thesis document and match against BibTeX entry titles (significantly more complex).",
+        "Consider relaxing the exact threshold to account for cases where some papers legitimately cannot be found on DBLP."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

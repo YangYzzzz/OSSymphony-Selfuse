@@ -1,0 +1,94 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_61",
+  "snapshot": "chrome",
+  "instruction": "Navigate to discussions and open the thread that has been replied to the most times by users.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://discussions.flightaware.com/t/the-banter-thread/4412"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task instructs user to find and open the most-replied discussion thread. Evaluator validates navigation to the correct target URL.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic gap: Instruction requires finding 'the thread that has been replied to the most times', but evaluator only checks if user navigated to a hardcoded URL",
+        "Evaluator does not verify that the target thread actually has the most replies - it assumes the answer is '/t/the-banter-thread/4412' without validation",
+        "This is a dynamic verification task (reply counts change over time), but the evaluator uses a static expected URL",
+        "The getter 'active_tab_info' only retrieves URL/title/content - it does not extract or compare reply counts across threads",
+        "The metric 'is_expected_active_tab' only performs URL comparison - it cannot validate the 'most replied' requirement",
+        "Evaluator would incorrectly pass if user directly navigated to the hardcoded URL without actually checking reply counts",
+        "Evaluator would incorrectly fail if user correctly identified a different thread that genuinely has more replies"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use 'get_info_from_website' getter to scrape the discussions page and extract reply counts for all threads",
+        "Create a new metric function that compares reply counts and identifies the thread with the maximum replies",
+        "Expected value should be computed dynamically from actual discussion data, not hardcoded",
+        "Alternative: Change instruction to 'Navigate to discussions and open the thread at /t/the-banter-thread/4412' to match the static evaluator",
+        "Or use HTML parsing to extract reply counts from thread list elements and verify the opened thread has the highest count"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

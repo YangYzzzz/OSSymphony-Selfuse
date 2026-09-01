@@ -1,0 +1,80 @@
+{
+  "id": "3680a5ee-6870-426a-a997-eba929a0d25c",
+  "new_id": "task_verify_12",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Using command-line utilities, combine Desktop's file1.xlsx and file2.ods into a merged_data.csv file, then provide the total count of rows excluding the header.",
+  "source": "https://unix.stackexchange.com/questions/510850/how-to-open-calc-from-terminal-and-insert-files",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3680a5ee-6870-426a-a997-eba929a0d25c/file1.xlsx",
+            "path": "/home/user/Desktop/file1.xlsx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3680a5ee-6870-426a-a997-eba929a0d25c/file2.ods",
+            "path": "/home/user/Desktop/file2.ods"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "terminal"
+  ],
+  "evaluator": {
+    "func": "check_csv_merge__c66369e707b97de3ccd6da4699663fe6",
+    "result": {
+      "type": "csv_merge_data__c66369e707b97de3ccd6da4699663fe6",
+      "path": "/home/user/Desktop/merged_data.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "row_count": 10000,
+        "has_single_header": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires merging file1.xlsx (5001 rows including header) and file2.ods (5001 rows including header) into a CSV file. The merged file should contain 10,000 data rows (5000 from file1 + 5000 from file2, excluding the shared header). Verified by counting actual rows in source files with Python: file1.xlsx has 5001 total rows, file2.ods has 5001 total rows, so merged file should have 10,000 data rows + 1 header = 10,001 total rows, but we check data rows only (10,000).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/3680a5ee-6870-426a-a997-eba929a0d25c_aug_1_task_verify_0/getters/csv.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/3680a5ee-6870-426a-a997-eba929a0d25c_aug_1_task_verify_0/metrics/csv.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete verification coverage - Evaluator checks row count (10,000), header structure (single header), AND data integrity from both source files through unique value extraction and overlap verification.",
+        "Data integrity verification implemented - Getter extracts unique values from first column of both file1.xlsx and file2.ods, then metric verifies at least 50% of unique values from each source file are present in merged CSV. This prevents false positives where only one file is duplicated or arbitrary CSV is created.",
+        "Logical correctness - Data flow is sound: (1) getter reads merged CSV and extracts unique values, (2) getter reads source files using openpyxl/odfpy to extract their unique values, (3) metric compares overlap using set intersection, (4) requires 50% coverage from BOTH files to pass, (5) validates no excessive extra data (max 110% of expected unique values).",
+        "Practical feasibility - Implementation uses appropriate libraries (openpyxl for xlsx, odf for ods) and handles edge cases (missing files return empty sets, exceptions caught, encoding errors handled with 'ignore')."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The 50% coverage threshold is somewhat lenient - could be increased to 70-80% for stricter verification, but 50% is acceptable for detecting if both files contributed to the merge.",
+        "Optional: Could add column structure validation to verify merged CSV has expected column names/count matching source files, but this is not required by the instruction."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "3680a5ee-6870-426a-a997-eba929a0d25c_aug_1_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

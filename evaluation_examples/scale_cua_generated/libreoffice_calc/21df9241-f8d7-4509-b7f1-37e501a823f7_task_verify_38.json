@@ -1,0 +1,113 @@
+{
+  "id": "21df9241-f8d7-4509-b7f1-37e501a823f7",
+  "new_id": "task_verify_38",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Calculate what percentage each value in column \"Parameter\" represents of the total sum, and display these percentages in column B (rounded to one decimal place). Add the % symbol after each number.",
+  "source": "https://www.youtube.com/watch?v=p5C4V_AO1UU",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/21df9241-f8d7-4509-b7f1-37e501a823f7/Represent_in_millions_billions.xlsx",
+            "path": "/home/user/Represent_in_millions_billions.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Represent_in_millions_billions.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Represent_in_millions_billions.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_percentage_format__518c2872",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Represent_in_millions_billions.xlsx",
+      "dest": "Represent_in_millions_billions.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet": 0,
+        "values": {
+          "B2": "0.0%",
+          "B3": "0.0%",
+          "B4": "0.0%",
+          "B5": "0.0%",
+          "B6": "0.0%",
+          "B7": "1.0%",
+          "B8": "99.0%"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires calculating percentage of total for each value. Total=15151515161. Verified with Python: 1/total=0.0%, 150000000/total=1.0%, 15000000000/total=99.0%.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/21df9241-f8d7-4509-b7f1-37e501a823f7_task_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical data type mismatch: metric expects file bytes but get_vm_file returns file path string",
+        "Metric will crash at runtime when trying to write file path string as bytes (line 25: tmp.write(result))",
+        "Expected values format may not match actual Excel cell values - Excel stores percentages as decimals (0.01) not strings ('1.0%') when using data_only=True",
+        "Metric only verifies string match, not that percentages were actually calculated correctly from source data",
+        "Cannot verify that % symbol formatting was applied vs just typing text - doesn't check cell number format property"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix metric to accept file path string instead of bytes: use 'wb = openpyxl.load_workbook(result, data_only=True)' directly instead of writing to temp file",
+        "Change expected values to match actual cell value format - if data_only=True returns 0.01 for 1%, expected should be 0.01 not '1.0%'",
+        "Alternatively, use data_only=False and check both cell.value and cell.number_format to verify percentage formatting was actually applied",
+        "Consider reading column A values and verifying calculation logic: (cell_value / sum(column_A)) matches expected percentage"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

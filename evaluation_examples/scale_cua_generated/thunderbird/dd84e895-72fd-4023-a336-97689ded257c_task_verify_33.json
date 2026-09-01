@@ -1,0 +1,108 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_33",
+  "snapshot": "thunderbird",
+  "instruction": "Apply a star to every email within the Drafts folder.",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(distinct messageID) = (select count(*) from messages where folderID = 7) from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 7);"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires starring all 7 emails in Drafts folder (folderID=7). Evaluator checks if all messages in folder 7 have attributeID=58 (star) with value=1 by comparing the count of starred messages to the total count of messages in folder 7. Verified with database query: folder 7 contains 7 emails. Uses existing run_sqlite3 metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "SQL query logic is correct: Uses 'count(distinct messageID) = (select count(*) from messages where folderID = 7)' to verify ALL emails are starred",
+        "Complete coverage: Checks that the count of starred messages (attributeID=58, value=1) in folder 7 equals the total count of messages in folder 7",
+        "Correctly scoped to Drafts folder (folderID = 7) and uses proper star attribute (attributeID=58, value=1)",
+        "Proper postconfig: Closes Thunderbird and waits for database flush before evaluation",
+        "Previous critical issues have been fixed - the query now correctly verifies ALL emails are starred, not just checking if ANY email is starred"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Add error handling for case where database file doesn't exist (get_vm_file may return None), though this is a runtime consideration not a semantic logic issue"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "dd84e895-72fd-4023-a336-97689ded257c_aug_14_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

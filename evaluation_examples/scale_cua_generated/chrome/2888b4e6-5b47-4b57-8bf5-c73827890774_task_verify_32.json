@@ -1,0 +1,102 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Find all men's extra-large short-sleeve shirts with a discount of 50% or more.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "short_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "XL",
+          "Price_discount_range": "50_PERCENT_ off & more",
+          "short_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Variation 9: Changed size from L to XL, keeps short-sleeve and 50% discount. Maintains same complexity and interaction pattern as original task.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator checks all 5 requirements from instruction: men's clothing, shirts, XL size, short-sleeve, and 50% discount",
+        "Getter function correctly parses Macy's URL structure to extract search parameters",
+        "Metric function appropriately compares extracted values against expected values",
+        "Price discount range checking logic has a flaw (chrome.py:2550-2554): rejects valid results when multiple discount ranges are present (e.g., both 50% and 30% ranges)",
+        "No postconfig specified to ensure browser state is correct, though evaluator should work if search completes successfully"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix price discount logic at chrome.py:2550-2554 - should check if '50_PERCENT_ off & more' is in the list OR is the only/highest discount level, not reject when lower discount tiers are also present",
+        "Consider adding a postconfig step to ensure Chrome is in focus and the search results page is fully loaded before evaluation",
+        "Add more robust handling for cases where the URL might have different parameter orderings or encoding variations"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

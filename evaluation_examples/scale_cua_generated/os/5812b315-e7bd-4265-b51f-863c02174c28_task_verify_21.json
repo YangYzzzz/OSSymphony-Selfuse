@@ -1,0 +1,69 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_21",
+  "snapshot": "os",
+  "instruction": "Please create a new directory /var/webapp and create a user named \"webadmin\" with password \"W3b@dm1n!\" whose home directory is set to /var/webapp.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"webadmin\"; HOMEDIR=\"/var/webapp\"; PASSWORD=\"W3b@dm1n!\"; id \"$USERNAME\" &>/dev/null && ACTUAL_HOME=$(getent passwd \"$USERNAME\" | cut -d: -f6) && [ \"$ACTUAL_HOME\" = \"$HOMEDIR\" ] && [ -d \"$HOMEDIR\" ] && echo \"$PASSWORD\" | su -c \"exit\" \"$USERNAME\" 2>&1 | grep -q \"^$\" && echo 'User created with custom home directory and correct password' || echo 'Check failed'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "User created with custom home directory and correct password"
+        ],
+        "exclude": [
+          "Check failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating directory /var/webapp and user 'webadmin' with password 'W3b@dm1n!' and that custom home directory. Evaluator verifies user exists, home directory is set to /var/webapp via getent, directory exists, and password is set (verified by checking shadow file for non-empty password hash).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: directory creation, user creation, home directory assignment, and specific password",
+        "Command uses 'id \"$USERNAME\"' to verify user exists",
+        "Command uses 'getent passwd \"$USERNAME\" | cut -d: -f6' to extract actual home directory and compares it to expected '/var/webapp'",
+        "Command uses '[ -d \"$HOMEDIR\" ]' to verify directory exists",
+        "Command uses 'echo \"$PASSWORD\" | su -c \"exit\" \"$USERNAME\" 2>&1 | grep -q \"^$\"' to verify the SPECIFIC password 'W3b@dm1n!' works via authentication attempt",
+        "Logic flow is correct: all checks are chained with && so all must pass to return success message",
+        "Metric check_include_exclude correctly validates success/failure based on command output",
+        "Password verification is the only reliable way to check the specific password value (since shadow file stores hashes)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

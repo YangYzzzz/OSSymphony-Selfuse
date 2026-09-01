@@ -1,0 +1,122 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_16",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder named \"Social\" and set up an automatic filter to move emails containing \"friend\" in the subject from inbox to the Social folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Social",
+            "condition": [
+              "AND (subject,contains,friend)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation changes folder name to 'Social' and filter keyword to 'friend' (subject contains). Uses same evaluator structure as original with check_thunderbird_filter metric. Verified that filter format matches expected structure with enabled=yes, Move to folder action, and subject contains condition.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Incomplete coverage: The instruction has two requirements but evaluator only verifies one",
+        "Missing folder existence verification: Evaluator checks if filter exists pointing to 'Social' folder but does not verify the folder was actually created",
+        "Filter verification logic is correct: The expected filter structure correctly checks enabled=yes, action=Move to folder, actionValue=mailbox://nobody@Local%20Folders/Social, and condition=subject contains friend",
+        "Postconfig is appropriate: Closing Message Filters window ensures filter rules file is saved",
+        "Data flow is correct: Getter reads msgFilterRules.dat file and metric parses filter definitions correctly",
+        "Critical gap: Task could pass even if user only creates filter without creating the target folder, causing filter to fail at runtime when emails arrive"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second verification step to check that the 'Social' folder actually exists in Local Folders",
+        "Could check folder existence by reading Thunderbird's folder database or directory structure at /home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/",
+        "Consider using a getter to list local folders and verify 'Social' is present",
+        "Alternative: Use check_thunderbird_folder or similar metric to verify the folder exists",
+        "Implement multi-step evaluation with partial credit: 0.5 for filter creation, 0.5 for folder creation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

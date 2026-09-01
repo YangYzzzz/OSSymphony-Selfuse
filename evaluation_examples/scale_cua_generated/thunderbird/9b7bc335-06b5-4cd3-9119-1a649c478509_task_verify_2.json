@@ -1,0 +1,117 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local message filter in Thunderbird that marks all future emails from microsoft.com as read.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Mark read",
+            "condition": [
+              "AND (from,ends with,microsoft.com)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a message filter to mark emails as read from microsoft.com domain. The evaluator checks the msgFilterRules.dat file for a filter with enabled='yes', action='Mark read', and condition checking sender ends with 'microsoft.com'. Uses existing check_thunderbird_filter metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly reads the Thunderbird message filter configuration file (msgFilterRules.dat) to verify filter creation",
+        "Metric function check_thunderbird_filter properly parses filter file format and matches against expected rules",
+        "Expected values are semantically correct: enabled='yes', action='Mark read', condition='AND (from,ends with,microsoft.com)' accurately represent the instruction requirements",
+        "Complete coverage: evaluator checks all three critical aspects (enabled status, action type, filter condition)",
+        "Proper error handling: metric returns 0.0 when file retrieval fails (result is None)",
+        "Appropriate postconfig: closes Message Filters window and sleeps to ensure Thunderbird saves filter changes before verification",
+        "Data flow is correct: postconfig ensures clean state → getter retrieves saved filter file → metric verifies filter configuration"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor type compatibility warning exists (get_vm_file returns Union[Optional[str], List[Optional[str]]] but metric expects str), though runtime logic handles None correctly with explicit check at thunderbird.py:90-91"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "9b7bc335-06b5-4cd3-9119-1a649c478509_aug_15_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

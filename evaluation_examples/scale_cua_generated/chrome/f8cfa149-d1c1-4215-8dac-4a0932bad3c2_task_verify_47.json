@@ -1,0 +1,144 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "Please copy the first name from Cell B1 in the LibreOffice Calc spreadsheet and search for it using the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=dulce(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": [
+      {
+        "type": "open",
+        "parameters": {
+          "path": "/home/user/cell_search.xls"
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "socat",
+            "tcp-listen:9222,fork",
+            "tcp:localhost:1337"
+          ]
+        }
+      },
+      {
+        "type": "chrome_open_tabs",
+        "parameters": {
+          "urls_to_open": [
+            "https://en.wikipedia.org/wiki/Main_Page",
+            "https://pytorch.org/tutorials/",
+            "https://releases.ubuntu.com/"
+          ]
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying cell B1 (first name 'Dulce' from row 1) and searching it in Chrome. Evaluator verifies Google search URL contains 'dulce' as query parameter. Verified by reading Excel file: cell B1 (row 1, col 1) contains 'Dulce'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter get_active_tab_info (chrome.py:803) correctly extracts active Chrome tab state via accessibility tree + Playwright, returning dict with 'url', 'title', 'content' keys",
+        "Metric is_expected_search_query (chrome.py:247) correctly accesses rules['expect']['pattern'] and matches regex against active_tab_info['url']",
+        "Expected regex pattern (?i)https?://(?:www\\.)?google\\.com/search\\?q=dulce(?:&|$|#).* semantically correct: case-insensitive Google search URL verification for query parameter 'dulce'",
+        "Expected value 'Dulce' is semantically correct - task metadata confirms cell B1 contains 'Dulce' from the Excel file",
+        "Postconfig properly reopens Chrome and LibreOffice Calc to ensure evaluation environment is ready",
+        "Data flow is correct: getter extracts URL dict → metric accesses URL string → regex matches search query",
+        "Evaluator verifies the correct end state (Google search URL containing 'dulce') which confirms task completion",
+        "Minor limitation: Evaluator verifies end state (Google search for 'dulce') but cannot verify clipboard copying action itself - this is acceptable for practical verification as it confirms task completion",
+        "Minor concern: get_active_tab_info reloads page at chrome.py:852 which could affect URL if redirects occur, but Google search URLs are typically stable"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional optimization: Consider using get_active_url_from_accessTree (chrome.py:710) directly instead of get_active_tab_info to avoid page reload overhead, though current approach works correctly",
+        "Acceptable limitation: Cannot verify clipboard usage or copying mechanism, only verifies the end result. This is sufficient for practical task verification."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

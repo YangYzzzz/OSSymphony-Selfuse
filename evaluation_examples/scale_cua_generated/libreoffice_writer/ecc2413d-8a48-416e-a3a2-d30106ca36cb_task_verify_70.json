@@ -1,0 +1,99 @@
+{
+  "id": "ecc2413d-8a48-416e-a3a2-d30106ca36cb",
+  "new_id": "task_verify_70",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Add two consecutive blank pages at the end of the document.",
+  "source": "https://www.quora.com/How-can-I-insert-a-blank-page-on-libreoffice",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/ecc2413d-8a48-416e-a3a2-d30106ca36cb/Sample_Statutory_Declaration.docx",
+            "path": "/home/user/Desktop/Sample_Statutory_Declaration.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Sample_Statutory_Declaration.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Sample_Statutory_Declaration.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "contains_page_break",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "page_break_count": 6
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Sample_Statutory_Declaration.docx",
+      "dest": "Sample_Statutory_Declaration.docx"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires inserting two page breaks (two blank pages) at the end. Original document has 4 page breaks. After adding 2 more, total should be 6. Uses existing contains_page_break metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if page_break_count is 6, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification: The evaluator only checks the TOTAL COUNT of page breaks (6 total) but does not verify that the page breaks were added AT THE END of the document as required by the instruction",
+        "The instruction specifically requires 'Add two consecutive blank pages at the end of the document', but the metric contains_page_break only counts page breaks globally without checking their location",
+        "False positive risk: If a user adds 2 page breaks at the beginning or middle of the document, the evaluator would incorrectly pass (total count would still be 6)",
+        "The expected value (page_break_count: 6) is semantically correct based on the explanation, but the metric function cannot distinguish between page breaks at the end vs. page breaks anywhere in the document"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify the instruction to remove the 'at the end' requirement, e.g., 'Add two consecutive blank pages to the document' - this would match what the evaluator actually checks",
+        "OR create a new metric function that can verify page breaks were added at the end by checking the position of page breaks relative to document structure (e.g., count page breaks only after the last paragraph with non-empty text)",
+        "OR use a different approach: compare the modified document against the original to ensure new page breaks appear only after the original last page break"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "id": "04578141-1d42-4146-b9cf-6fab4ce5fd74",
+  "new_id": "task_verify_41",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Italicize the text in the three textboxes on slide 1, in top-to-bottom order.",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/04578141-1d42-4146-b9cf-6fab4ce5fd74/45_2.pptx",
+            "path": "/home/user/Desktop/45_2.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 5
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/45_2.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "45_2.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_pptx_text_italic__035b6187",
+    "result": {
+      "type": "pptx_text_italic_status__035b6187",
+      "pptx_path": "/home/user/Desktop/45_2.pptx",
+      "slide_index": 0,
+      "shape_indices": [
+        0,
+        1,
+        4
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "italic_pattern": [
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires italicizing all three textboxes on slide 1. Slide 1 has shapes at indices 0, 1, and 4. Evaluator checks italic status of all three shapes.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/04578141-1d42-4146-b9cf-6fab4ce5fd74_task_verify_1/getters/pptx__035b6187.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/04578141-1d42-4146-b9cf-6fab4ce5fd74_task_verify_1/metrics/pptx__035b6187.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical semantic logic issue in getter (pptx__035b6187.py:36-40): The getter checks if ANY run has italic=True and immediately sets is_italic=True, then breaks. This means it returns True even if only a single character or word is italic.",
+        "Instruction requires italicizing 'the text' in textboxes, which semantically means ALL text should be italic, not just some text.",
+        "The getter should verify that ALL runs in ALL paragraphs have italic=True, not just check if at least one run is italic.",
+        "This logic flaw means the evaluator would incorrectly pass if only partial text is italicized, failing to verify the complete requirement."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change getter logic from 'if any run is italic' to 'if all runs are italic': Instead of breaking when finding italic=True, check all runs and ensure ALL have italic=True (or italic is not False).",
+        "Modify lines 33-40 to: is_italic = True; for para in text_frame.paragraphs: for run in para.runs: if not run.font.italic: is_italic = False; break",
+        "Alternative approach: Count total runs vs italic runs, return True only if all runs are italic (handling None as non-italic).",
+        "Ensure edge case handling: empty text frames, runs with font.italic=None should be treated appropriately."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

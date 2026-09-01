@@ -83,8 +83,9 @@ class Task041(BaseTask):
         
         setup_controller.launch(["google-chrome", "--remote-debugging-port=1337"])
         setup_controller.launch(["socat", "tcp-listen:9222,fork", "tcp:localhost:1337"])
+        gitlab_url = os.environ.get("GITLAB_URL", "https://54.174.16.65.sslip.io")
         setup_controller._chrome_open_tabs_setup([
-            "https://54.174.16.65.sslip.io/",
+            gitlab_url.rstrip("/") + "/",
             "https://github.com/ThisisXXZ/Paper-Site-Template"
         ])
         

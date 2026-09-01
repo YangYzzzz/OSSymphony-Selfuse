@@ -1,0 +1,114 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "Pop-up ads are really annoying. Can you enable Chrome's pop-up blocker to prevent websites from opening unwanted pop-ups?",
+  "source": "https://support.google.com/chrome/answer/95472",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"profile\":{\"default_content_settings\":{\"popups\":1}}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "popup_blocker_enabled__980fd38b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to enable pop-up blocker in Chrome. The evaluator checks profile.default_content_settings.popups (1=allow, 2=block). Initial state: 1 (popups allowed). Expected state: 2 (popups blocked). Getter returns 'true' when blocked.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_7/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to enable Chrome's pop-up blocker",
+        "Getter logic is correct: reads profile.default_content_settings.popups from Chrome preferences and returns 'true' when popups==2 (blocked), 'false' when popups==1 (allowed)",
+        "Metric (exact_match) correctly compares the getter result against expected value 'true'",
+        "Expected value handling is correct: when expected.type='rule', get_rule returns config['rules'] directly, so exact_match receives {'expected': 'true'} and accesses rules['expected']",
+        "Complete coverage: evaluator checks the only requirement in the instruction",
+        "Postconfig is appropriate: kills and reopens Chrome to ensure preferences file is flushed to disk",
+        "Initial state correctly set to popups=1 (allowed) via setup config, final state should be popups=2 (blocked)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

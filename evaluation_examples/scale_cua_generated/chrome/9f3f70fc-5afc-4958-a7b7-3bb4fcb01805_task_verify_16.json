@@ -1,0 +1,109 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_16",
+  "snapshot": "chrome",
+  "instruction": "Find me women's Mitchell & Ness jackets with a minimum price over $70.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "over $70",
+          "women",
+          "jackets",
+          "mitchell & ness"
+        ]
+      },
+      "url_include_expected": [
+        "over $70",
+        "women",
+        "jackets",
+        "mitchell & ness"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "over $70": true,
+          "women": true,
+          "jackets": true,
+          "mitchell & ness": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering NBA store for women's Mitchell & Ness jackets over $70. Evaluator checks URL parameters and filter elements contain the correct filter values (over $70, women, jackets, mitchell & ness).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing get_active_tab_html_parse and check_direct_json_object functions. Similar complexity to original task with 4 filter criteria.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 filter requirements from the instruction: 'over $70', 'women', 'jackets', 'mitchell & ness'",
+        "The getter get_active_tab_html_parse extracts filter elements with class 'filter-selector-link' and checks URL parameters, which correctly captures applied filters on NBA.com",
+        "Semantic alignment between instruction and expected values is correct: instruction asks for 'minimum price over $70' and expected checks for 'over $70'",
+        "The category 'class&url' (lines 1879-2030 in chrome.py) performs both DOM element checking and URL parameter validation, providing robust dual verification",
+        "Case-insensitive partial matching (line 1884) is appropriate for filter text matching, as filter labels may vary slightly in capitalization",
+        "The 'is_other_exist' check ensures no unexpected filters are applied, validating that ONLY the required 4 filters are active",
+        "Minor score deduction: Evaluator assumes specific filter text format 'over $70' without verification of actual NBA.com filter label format"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying the actual filter label text on NBA.com to ensure 'over $70' is the exact text displayed (could be '$70+', '$70 & up', 'Over $70', etc.)",
+        "Add flexible matching patterns if NBA.com uses variations like '$70+' or '$70 and up' for the minimum price filter",
+        "Document the expected filter text format in metadata to clarify assumptions about NBA.com's UI"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_44",
+  "snapshot": "thunderbird",
+  "instruction": "Please back up all the emails in my inbox to the directory ~/saved_emails. Export each message separately in eml format.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/saved_emails"
+          ],
+          "stdout": "saved_emails.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "saved_emails.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "歡迎使用新的 Outlook.com 帳戶.*\\.eml",
+          "A Test E-mail.*\\.eml"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires exporting all inbox emails to ~/saved_emails folder in .eml format. Evaluator verifies that .eml files with expected email subjects are created. Uses existing check_list metric with regex patterns to match the known email subjects in the Thunderbird profile.",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires backing up 'all emails' but evaluator only checks for 2 specific email subjects",
+        "No verification of total email count: Cannot confirm if these 2 emails are indeed all the emails in the inbox",
+        "Assumption-based validation: Evaluator assumes the inbox contains only these 2 emails without explicit verification",
+        "The instruction's requirement of 'all emails' is not semantically verified - partial completion would pass"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification of total email count in inbox (e.g., check that exactly 2 .eml files exist, no more, no less)",
+        "Either: (1) Modify evaluator to verify the count matches the known inbox size, OR (2) Clarify in instruction that inbox contains exactly 2 emails",
+        "Consider adding 'unexpect' patterns to check for unexpected additional files that shouldn't be exported",
+        "Add metadata documenting that the Thunderbird profile contains exactly 2 emails in the inbox"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "id": "67890eb6-6ce5-4c00-9e3d-fb4972699b06",
+  "new_id": "task_verify_43",
+  "snapshot": "libreoffice_calc",
+  "instruction": "I am an NLP researcher compiling conference history. Look up ACL best paper awards from 2019 to 2022 on the ACL Anthology website and add all entries to the table best_awards_acl.xlsx on the desktop. For each award, record the title, year, complete author list (comma-separated), and ACL Anthology PDF link.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/67890eb6-6ce5-4c00-9e3d-fb4972699b06/best_awards_acl.xlsx",
+            "path": "/home/user/Desktop/best_awards_acl.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/best_awards_acl.xlsx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://aclanthology.org/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "best_awards_acl.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_multi_row_requirements__60b726f1",
+    "result": {
+      "type": "xlsx_multi_row_data__60b726f1",
+      "path": "/home/user/Desktop/best_awards_acl.xlsx",
+      "sheet": 0,
+      "start_row": 2,
+      "max_rows": 10
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_rows": 4,
+        "required_columns": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "year_range": {
+          "min": 2019,
+          "max": 2022
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 7: Task asks to add all ACL best paper awards from 2019-2022 (4 awards total). Evaluator extracts all data rows and provides partial credit: (1) 50% if at least some rows present but less than 4, (2) For each row, 70% credit for having all 4 columns filled, (3) 30% credit for year being in range 2019-2022. Final score averages across all rows found.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_task_verify_7/getters/xlsx_acl__60b726f1.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_task_verify_7/metrics/xlsx_acl__60b726f1.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "per_row": "70% for all columns filled + 30% for year in range",
+      "overall": "Average across all rows, with 50% penalty if fewer than min_rows"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts multi-row data from Excel file starting at row 2",
+        "Metric correctly checks all requirements: minimum 4 rows, 4 required columns (A, B, C, D), and year range (2019-2022)",
+        "Expected parameter handling is correct - directly accesses keys from expected dict without incorrect 'type' or 'rules' access",
+        "Postconfig is present and appropriate - activates LibreOffice window and saves file before verification",
+        "Partial credit logic is reasonable: 50% penalty for fewer than min_rows, per-row scoring for column completeness (70%) and year validation (30%)",
+        "Minor limitation: Evaluator only verifies structural requirements (columns filled, year in range) but cannot verify semantic correctness of content (whether titles/authors/links are actually correct ACL awards). This is inherent to the verification approach for web research tasks.",
+        "Edge case handling: Getter skips empty rows, metric handles missing/None values and conversion errors gracefully"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding validation for PDF link format (e.g., should contain 'aclanthology.org') to at least verify domain correctness",
+        "Consider checking if year column (B) contains numeric values before type conversion to improve robustness"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_multi_row_requirements__60b726f1 second parameter type (Any) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

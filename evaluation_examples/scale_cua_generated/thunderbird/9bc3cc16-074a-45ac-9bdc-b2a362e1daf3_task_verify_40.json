@@ -1,0 +1,105 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_40",
+  "snapshot": "thunderbird",
+  "instruction": "Please export all emails from my inbox to ~/inbox_archive folder. Save each email as a separate .eml file.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/inbox_archive"
+          ],
+          "stdout": "inbox_archive.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "inbox_archive.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "歡迎使用新的 Outlook.com 帳戶.*\\.eml",
+          "A Test E-mail.*\\.eml"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires exporting all inbox emails to ~/inbox_archive folder in .eml format. Evaluator verifies that .eml files with expected email subjects are created. Uses existing check_list metric with regex patterns to match the known email subjects in the Thunderbird profile.",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires exporting 'all emails' but evaluator only checks for 2 specific email subjects. Does not verify completeness of the export.",
+        "Filename pattern assumptions: Regex patterns assume .eml filenames will contain email subjects (e.g., '歡迎使用新的 Outlook.com 帳戶.*\\.eml'), but Thunderbird export may use different naming conventions (timestamps, message IDs, etc.).",
+        "No validation of file content: Evaluator only checks if filenames match patterns in ls output, but doesn't verify that files are actually valid .eml format (could be empty files or incorrectly formatted).",
+        "Missing verification of export completeness: No check to ensure ONLY inbox emails were exported or that all inbox emails are present (count verification)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a getter to count the actual number of emails in the Thunderbird inbox before export, then verify the same count of .eml files exist in ~/inbox_archive",
+        "Verify the actual naming convention used by Thunderbird's export function and adjust regex patterns accordingly",
+        "Consider adding a check to validate .eml file format (e.g., checking for valid email headers like 'From:', 'To:', 'Subject:' in the files)",
+        "Add metadata documenting the exact expected count of emails in the test inbox (currently assumes 2 emails but this is not verified)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

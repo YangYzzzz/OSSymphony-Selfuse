@@ -1,0 +1,113 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_22",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Use the pkill command in the terminal to close the frozen LibreOffice Writer application.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep \"pkill\"); if [ -z \"$output\" ]; then echo \"pkill not used\"; else echo \"pkill used\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "pkill used"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "pkill not used"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to terminate LibreOffice Writer specifically using the pkill command. Evaluator verifies: 1) LibreOffice process is no longer running, 2) pkill command was used (checked via bash history). This tests knowledge of specific process termination tools.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both task requirements: LibreOffice termination and pkill command usage",
+        "Getter logic appropriately checks process state using 'ps aux | grep [s]office' pattern",
+        "Bash history check correctly verifies the specific method (pkill) was used",
+        "Metric function check_include_exclude correctly handles expected parameter for type='rule'",
+        "Postconfig appropriately closes terminal to flush bash history",
+        "Expected values are semantically correct: 'no libreoffice is running' and 'pkill used'",
+        "Exclusion values appropriately negate the requirements"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor consideration: Bash history verification may fail if user runs command with leading space or if history is disabled, but this is acceptable for the task's pedagogical purpose"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_9_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

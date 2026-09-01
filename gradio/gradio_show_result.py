@@ -1423,6 +1423,68 @@ def get_result(target_dir):
               f"FEA: SR={sr_fea:<5} Stp={step_fea:<4} ({cnt_fea}) | "
               f"INF: SR={sr_inf:<5} Stp={step_inf:<4} ({cnt_inf})")
 
+    def aggregate_subset_stats(subset_tasks):
+        """
+        subset_tasks structure: {'domain': ['task_id', ...]}
+        returns: {'overall': stats, 'domains': {'domain': stats}}
+        """
+        subset_domain_stats = {}
+        subset_overall_stats = init_domain_stats()
+
+        for domain, task_ids in subset_tasks.items():
+            domain_tasks = all_result_for_analysis.get(domain, {})
+            domain_infeasible_ids = set(infeasible_task.get(domain, []))
+            if domain not in subset_domain_stats:
+                subset_domain_stats[domain] = init_domain_stats()
+
+            for task_id in task_ids:
+                task_data = domain_tasks.get(task_id)
+                if not task_data or task_data.get("score") is None:
+                    continue
+
+                score = task_data["score"]
+                step = task_data.get("step", 0)
+                task_type = "infeasible" if task_id in domain_infeasible_ids else "feasible"
+
+                for stats in (subset_domain_stats[domain], subset_overall_stats):
+                    stats[task_type]["scores"].append(score)
+                    stats[task_type]["steps"].append(step)
+                    stats["all"]["scores"].append(score)
+                    stats["all"]["steps"].append(step)
+
+        subset_domain_stats = {
+            domain: stats
+            for domain, stats in subset_domain_stats.items()
+            if stats["all"]["scores"]
+        }
+        return {"overall": subset_overall_stats, "domains": subset_domain_stats}
+
+    def score_rate(stats, category):
+        scores = stats[category]["scores"]
+        if not scores:
+            return None
+        return sum(scores) / len(scores) * 100
+
+    def print_difficulty_metrics(label, data_dict):
+        def get_stats(cat):
+            scores = data_dict[cat]["scores"]
+            steps = data_dict[cat]["steps"]
+            count = len(scores)
+            if count == 0:
+                return "N/A", "N/A", "N/A", 0
+            score_sum = sum(scores)
+            sr = score_sum / count * 100
+            avg_steps = sum(steps) / count
+            return f"{score_sum:.2f}/{count}", f"{sr:.2f}%", f"{avg_steps:.1f}", count
+
+        score_all, sr_all, step_all, cnt_all = get_stats("all")
+        score_fea, sr_fea, step_fea, cnt_fea = get_stats("feasible")
+        score_inf, sr_inf, step_inf, cnt_inf = get_stats("infeasible")
+        print(f"{label:<20} | "
+              f"ALL: Score={score_all:<12} SR={sr_all:<7} Stp={step_all:<5} ({cnt_all}) | "
+              f"FEA(no INF): Score={score_fea:<12} SR={sr_fea:<7} Stp={step_fea:<5} ({cnt_fea}) | "
+              f"INF: Score={score_inf:<12} SR={sr_inf:<7} Stp={step_inf:<5} ({cnt_inf})")
+
     # --- 打印表头 ---
     print("\n" + "="*120)
     print(f"{'Domain Analysis':<20} | {'All Tasks':<30} | {'Feasible Tasks':<30} | {'Infeasible Tasks':<30}")
@@ -1490,6 +1552,42 @@ def get_result(target_dir):
     
     print_metrics("OVERALL", overall_stats)
     print("=" * 120)
+
+    repo_root = Path(__file__).resolve().parent.parent
+    difficulty_subset_paths = [
+        ("easy", repo_root / "evaluation_examples/osworld/test_os_symphony2_easy.json"),
+        ("medium", repo_root / "evaluation_examples/osworld/test_os_symphony2_medium.json"),
+        ("hard", repo_root / "evaluation_examples/osworld/test_os_symphony2_hard.json"),
+    ]
+    difficulty_stats = {}
+
+    print("\n" + "="*140)
+    print("Difficulty Subset Score Analysis (x-axis order: easy, medium, hard)")
+    print("-" * 140)
+    for difficulty, subset_path in difficulty_subset_paths:
+        if not subset_path.exists():
+            print(f"{difficulty:<20} | Missing subset file: {subset_path}")
+            continue
+        try:
+            with open(subset_path, "r", encoding="utf-8") as f:
+                subset_tasks = json.load(f)
+        except Exception as e:
+            print(f"{difficulty:<20} | Failed to load subset file {subset_path}: {e}")
+            continue
+
+        difficulty_stats[difficulty] = aggregate_subset_stats(subset_tasks)
+        print_difficulty_metrics(difficulty, difficulty_stats[difficulty]["overall"])
+
+    print("-" * 140)
+    print("Difficulty Subset Score Analysis by Domain")
+    print("-" * 140)
+    for difficulty, _ in difficulty_subset_paths:
+        if difficulty not in difficulty_stats:
+            continue
+        print(f"[{difficulty}]")
+        for domain in sorted(difficulty_stats[difficulty]["domains"]):
+            print_difficulty_metrics(domain, difficulty_stats[difficulty]["domains"][domain])
+    print("=" * 140)
 
     # 计算 overall_rate 供 Plot 3 使用
     overall_rate = 0.0
@@ -1562,6 +1660,47 @@ def get_result(target_dir):
             for bar in bars: yval = bar.get_height(); plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1.5, f'{yval:.1f}%', ha='center', va='bottom')
             plt.tight_layout(); plt.savefig(save_path); plt.close(); print(f"Saved success rate plot to {save_path}")
         except Exception as e: print(f"Error generating success rate plot: {e}")
+
+    # Plot 3b: Difficulty Success Rate
+    if difficulty_stats:
+        try:
+            difficulty_labels = [difficulty for difficulty, _ in difficulty_subset_paths if difficulty in difficulty_stats]
+            x = np.arange(len(difficulty_labels))
+            save_path = os.path.join(target_dir, "difficulty_success_rates.png")
+            plt.figure(figsize=(max(10, len(difficulty_labels) * 2.0), 7))
+
+            all_rates = [score_rate(difficulty_stats[d]["overall"], "all") for d in difficulty_labels]
+            feasible_rates = [score_rate(difficulty_stats[d]["overall"], "feasible") for d in difficulty_labels]
+            plt.plot(x, all_rates, marker="o", linewidth=2.5, label="Overall")
+            plt.plot(x, feasible_rates, marker="s", linewidth=2.5, label="Overall (no infeasible)")
+
+            domain_names = sorted({
+                domain
+                for stats in difficulty_stats.values()
+                for domain in stats["domains"].keys()
+            })
+            for domain in domain_names:
+                rates = [
+                    score_rate(difficulty_stats[d]["domains"].get(domain, init_domain_stats()), "all")
+                    for d in difficulty_labels
+                ]
+                if all(rate is None for rate in rates):
+                    continue
+                plt.plot(x, rates, marker=".", linewidth=1.2, alpha=0.55, label=domain)
+
+            plt.xticks(x, difficulty_labels)
+            plt.ylabel("Success Rate (%)")
+            plt.xlabel("Difficulty")
+            plt.title("Success Rate by Difficulty")
+            plt.ylim(0, 110)
+            plt.grid(axis="y", linestyle="--", alpha=0.7)
+            plt.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=8)
+            plt.tight_layout()
+            plt.savefig(save_path, bbox_inches="tight")
+            plt.close()
+            print(f"Saved difficulty success rate plot to {save_path}")
+        except Exception as e:
+            print(f"Error generating difficulty success rate plot: {e}")
 
 
     # --- Plot 4: Step Distribution Histograms ---

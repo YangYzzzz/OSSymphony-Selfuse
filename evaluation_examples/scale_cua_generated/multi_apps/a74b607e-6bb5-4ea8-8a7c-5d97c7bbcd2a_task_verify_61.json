@@ -1,0 +1,103 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_61",
+  "snapshot": "multiapps",
+  "instruction": "Load the extension folder helloExtension from Desktop into Chrome and enable it.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_extension_enabled__1e533eef",
+    "result": {
+      "type": "extension_enabled_state__1e533eef",
+      "extension_name": "Hello Extensions"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension_name": "Hello Extensions",
+        "should_be_enabled": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This variation requires loading and enabling the extension. The evaluator checks that the extension 'Hello Extensions' is both installed and in enabled state (state=1) in Chrome preferences.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator correctly verifies both instruction requirements (load extension AND enable it)",
+        "Getter logic is semantically correct: reads Chrome Preferences file from OS-appropriate location, searches extensions.settings by name, extracts state field (1=enabled, 0=disabled)",
+        "Metric logic is semantically correct: verifies extension name match, installation status, and enabled state against expected values",
+        "Correct parameter handling: metric function correctly accesses expected_state.get('extension_name') and expected_state.get('should_be_enabled') - receives rules dict directly from get_rule() as per framework design",
+        "Data flow is correct: getter returns {extension_name, is_installed, is_enabled} -> metric compares against {extension_name, should_be_enabled} from rules",
+        "Edge cases handled: missing extension, file read errors, missing data fields all return appropriate default values",
+        "Postconfig appropriately includes 3-second sleep to allow Chrome to persist extension state to Preferences file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor limitation (not a flaw): Cannot verify the extension was loaded specifically from Desktop location, as Chrome Preferences only stores extension names/IDs, not source paths. This is acceptable given Chrome's data storage design."
+      ]
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37",
+  "new_id": "task_verify_65",
+  "snapshot": "chrome",
+  "instruction": "I want to change where VLC saves recordings. Currently recordings are saved to the default location, but I'd like to save them to my Desktop folder.\nCan you configure VLC to save recordings to the Desktop?",
+  "source": "https://www.reddit.com/r/Fedora/comments/rhljzd/how_to_run_multiple_instances_of_vlc_media_player/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "is_vlc_recordings_folder",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Desktop"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting VLC's recording folder to /home/user/Desktop (input-record-path=/home/user/Desktop). Uses existing is_vlc_recordings_folder metric function.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correct: get_vlc_config reads VLC configuration file from appropriate location (~/.config/vlc/vlcrc on Linux)",
+        "Metric logic correct: is_vlc_recordings_folder properly searches for 'input-record-path' setting and compares with expected value",
+        "Parameter handling correct: Metric uses rule['recording_file_path'] directly, not rule.get('rules', {})",
+        "Expected value correct: '/home/user/Desktop' matches instruction requirement to save recordings to Desktop",
+        "Complete coverage: Evaluator verifies the exact requirement stated in instruction",
+        "Postconfig appropriate: Kills and relaunches VLC to ensure config changes are persisted to vlcrc file",
+        "Data flow correct: Config file extraction → setting verification → comparison with expected path"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

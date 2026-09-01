@@ -1,0 +1,95 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_35",
+  "snapshot": "chrome",
+  "instruction": "Turn off the 'Do Not Track' setting in Chrome.",
+  "source": "https://support.google.com/chrome/answer/2790761",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling Do Not Track setting. Uses existing get_enable_do_not_track getter to check if setting is disabled (returns 'false'), verified with exact_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing Chrome privacy settings getter. Same complexity as original - navigate to Chrome settings and toggle a privacy option.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly reads Chrome Preferences file and extracts 'enable_do_not_track' setting, returning 'true' when enabled and 'false' when disabled",
+        "Expected value 'false' is semantically correct - instruction says 'Turn OFF' Do Not Track, so disabled state should return 'false'",
+        "Metric parameter handling is CORRECT - exact_match uses rules['expected'] directly, which is the proper pattern when expected.type='rule'",
+        "Postconfig appropriately kills and restarts Chrome to ensure Preferences file is persisted to disk before evaluation",
+        "Complete coverage - verifies the only requirement in the instruction (Do Not Track setting is disabled)",
+        "Data flow is correct: getter extracts RIGHT state → metric compares correctly → expected value matches task requirement"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

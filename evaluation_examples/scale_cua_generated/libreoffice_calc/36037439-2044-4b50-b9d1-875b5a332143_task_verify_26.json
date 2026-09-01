@@ -1,0 +1,87 @@
+{
+  "id": "36037439-2044-4b50-b9d1-875b5a332143",
+  "new_id": "task_verify_26",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Show me the Google Scholar profile for the corresponding author in Chrome.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/36037439-2044-4b50-b9d1-875b5a332143/shi17a.pdf",
+            "path": "/home/user/Desktop/shi17a.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/shi17a.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-40)"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "?hl=en&",
+        "expected": [
+          "https://scholar.google.com/citations",
+          "user=qRAQ5BsAAAAJ"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Paraphrase using imperative 'Show me' form. The PDF paper has 5 authors: Tianlin (Tim) Shi, Andrej Karpathy, Linxi (Jim) Fan, Jonathan Hernandez, and Percy Liang. The corresponding author is Tianlin (Tim) Shi (indicated by 'Correspondence to' in the footer with email tianlin@cs.stanford.edu). Task requires: (1) identifying corresponding author from PDF, (2) searching Google Scholar, (3) opening profile page. Evaluator uses existing is_expected_url_pattern_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_instruction",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical data structure mismatch: The metric 'is_expected_url_pattern_match' expects rules['expected'] to be a list of regex patterns, but the evaluator provides rules['expected']['rules']['expected']. The metric will access rules['expected'] and get a dict {'type': 'rule', 'rules': {...}} instead of the pattern list, causing runtime failure.",
+        "The 'url' field ('?hl=en&') in the expected structure is never used by the metric function, indicating confusion about the evaluator structure.",
+        "Regex patterns are not properly escaped: 'https://scholar.google.com/citations' contains special regex characters (dots, slashes) that should be escaped for literal matching. While re.search() may accidentally work, this is semantically incorrect for regex-based matching.",
+        "Insufficient verification coverage: The evaluator only checks if the final URL matches expected patterns, but cannot verify (1) whether the user identified the corresponding author by reading the PDF, (2) whether the user searched Google Scholar vs. direct navigation, or (3) whether this is actually the correct author's profile based on the paper content. The evaluator would pass even if the user directly typed the URL without reading the PDF."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix the expected structure to match what is_expected_url_pattern_match expects: Change expected to be a flat dict with 'expected' key directly containing the pattern list, e.g., {'type': 'url', 'expected': ['https://scholar.google.com/citations', 'user=qRAQ5BsAAAAJ']}",
+        "Escape special regex characters in patterns, or use literal string matching instead of regex if exact substring matching is intended.",
+        "Consider adding the '?hl=en&' pattern to the expected patterns list if it's important to verify language parameter, or remove it if unnecessary.",
+        "For more robust verification, consider adding checks for: (1) PDF file being opened/read in the config, (2) intermediate search page URLs before landing on the profile, or (3) page content verification to confirm the profile belongs to 'Tianlin Shi' or matches the paper title/co-authors."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

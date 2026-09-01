@@ -1,0 +1,140 @@
+{
+  "id": "68a25bd4-59c7-4f4d-975e-da0c8509c848",
+  "new_id": "68a25bd4-59c7-4f4d-975e-da0c8509c848_traj_verify_0",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Sort the papers in the spreadsheet by publication date from oldest to newest.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/68a25bd4-59c7-4f4d-975e-da0c8509c848/rsc-ebook-collection-2023.xlsx",
+            "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "rsc-ebook-collection-2023.xlsx",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_sorted_order__4841f866c3a0d68d763e22faff3652cb",
+    "result": {
+      "type": "xlsx_sorted_titles__4841f866c3a0d68d763e22faff3652cb",
+      "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_titles": [
+          "Attention Is All You Need",
+          "Deep Contextualized Word Representations",
+          "GLUE: A Multi-Task Benchmark and Analysis Platform for Natural Language Understanding",
+          "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "TinyBERT: Distilling BERT for Natural Language Understanding"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent read the spreadsheet, attempted to download PDFs via curl (got HTML instead), tried pdftotext extraction, eventually opened BERT PDF in Chrome and saved it via save dialog. Never completed the citation analysis or ans.docx creation. Ran out of 50 turns.",
+    "capability_extraction": "Can read/interact with LibreOffice Calc cells, use terminal commands (curl, apt-get, grep, ls), navigate Chrome, open URLs, use Chrome save dialog",
+    "failure_analysis": "Model failed due to multi-app complexity: curl downloaded HTML instead of PDF from arxiv, spent many turns troubleshooting PDF extraction, eventually succeeded downloading via Chrome but ran out of turns before citation analysis and docx creation.",
+    "task_rationale": "Decomposed original multi-app task into a single-app spreadsheet sorting task within model's demonstrated LibreOffice Calc interaction capability.",
+    "explanation": "Task requires sorting 5 papers by publication date (oldest first) in LibreOffice Calc. Getter reads titles from A2:A6 after sort. Metric checks each title position with partial credit (0.2 per correct position). [Fixed: replaced invalid 12-char MD5 suffix with correct 32-char MD5 hash computed from task_id|variation_index]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344_traj_verify_0/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344_traj_verify_0/metrics/xlsx.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "title_position_0": "0.2 - Attention Is All You Need in A2",
+      "title_position_1": "0.2 - Deep Contextualized Word Representations in A3",
+      "title_position_2": "0.2 - GLUE in A4",
+      "title_position_3": "0.2 - BERT in A5",
+      "title_position_4": "0.2 - TinyBERT in A6"
+    },
+    "variation_index": 0,
+    "fix_history": [
+      "Fix 1: Replaced invalid 12-char MD5 suffix '93a7ca8d510f' with correct 32-char MD5 hash '4841f866c3a0d68d763e22faff3652cb' (computed from '68a25bd4-59c7-4f4d-975e-da0c8509c848|0') in getter, metric, and evaluator config"
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads titles from column A rows 2-6 using openpyxl and returns {'titles': [...]} structure that the metric expects.",
+        "Metric correctly handles expected parameter for type='rule' — accesses expected.get('expected_titles') directly, which is correct since get_rule returns config['rules'].",
+        "Partial credit scoring (0.2 per correct position) is well-implemented with case-insensitive comparison.",
+        "Postconfig properly activates the window, saves the file (Ctrl+S), and waits before getter reads — ensures file state is fresh.",
+        "Expected title ordering is chronologically correct: Attention Is All You Need (2017) → ELMo (2018) → GLUE (Sep 2018) → BERT (Oct 2018) → TinyBERT (2019).",
+        "Minor concern: getter hardcodes rows 2-6, assuming exactly 5 papers. If the actual spreadsheet has more rows, the evaluator only validates the first 5 positions rather than the full sort. Cannot verify expected titles match actual spreadsheet content without accessing the file."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making the getter dynamic — read all non-empty rows in column A rather than hardcoding rows 2-6, to handle spreadsheets with varying numbers of papers.",
+        "If the spreadsheet has a header row with 'Publication Date' or similar, the getter could also verify the date column exists to provide a more robust check."
+      ]
+    }
+  }
+}

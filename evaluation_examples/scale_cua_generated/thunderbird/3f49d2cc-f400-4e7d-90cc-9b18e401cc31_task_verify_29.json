@@ -1,0 +1,116 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "task_verify_29",
+  "snapshot": "thunderbird",
+  "instruction": "I always want to send a copy of my emails to myself. Can you help me configure Thunderbird to automatically add a BCC field to all my outgoing messages so I can add my own address?",
+  "source": "https://www.reddit.com/r/Thunderbird/comments/182dg5p/unified_inbox_howto/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "prefs.js"
+    },
+    "func": "check_thunderbird_prefs",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.doBcc": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic BCC field for outgoing messages in Thunderbird. The evaluator checks prefs.js for mail.identity.id1.doBcc set to true. Verified in sample prefs.js that this setting exists with value false, so task requires changing it to true. Similar complexity to original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified in sample prefs.js that mail.identity.id1.doBcc is currently set to false. Task requires changing it to true to enable automatic BCC field in compose window.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks the Thunderbird preference file (prefs.js) which is the right location for preference storage",
+        "The preference key 'mail.identity.id1.doBcc' is the correct setting that controls BCC field visibility in compose windows",
+        "Postconfig appropriately closes Thunderbird to ensure preferences are flushed to disk before verification",
+        "The metric function 'check_thunderbird_prefs' correctly parses prefs.js format using regex and json.loads for boolean values",
+        "Expected value 'true' correctly matches the requirement to enable the BCC field",
+        "The evaluator verifies what is technically feasible in Thunderbird - enabling the BCC UI field (Thunderbird does not support auto-populating BCC with a preset address via preferences)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The instruction phrasing 'send a copy of my emails to myself' could be clarified to 'enable the BCC field so I can manually add my address', as Thunderbird doesn't support automatic BCC with preset addresses via this preference alone"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "b4f95342-463e-4179-8c3f-193cd7241fb2_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Search for 'Diamond' campground on recreation.gov and open its detail page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          ".*recreation\\.gov/camping/campgrounds/233869.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_b4f95342-463e-4179-8c3f-193cd7241fb2_sid_1488101",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to recreation.gov, searched for 'Diamond', clicked on Diamond Campground in Uinta-Wasatch-Cache National Forest (URL: recreation.gov/camping/campgrounds/233869). Then spent remaining turns scrolling through availability calendar and clicking 'Next Available' button repeatedly without producing the expected HTML content.",
+    "capability_extraction": "Can navigate Chrome to recreation.gov, use the site search box, click on autocomplete results, navigate to campground detail pages, scroll and interact with page elements",
+    "failure_analysis": "Model got stuck in a loop clicking 'Next Available' and scrolling through the availability calendar for 50 turns. The evaluator expected specific HTML class content (camp-sortable-column-header) that the model never produced. The original task required interpreting and extracting specific calendar data, which was too complex.",
+    "task_rationale": "Simplified to just the navigation sub-task that the model successfully demonstrated in the trajectory. Verifies URL-based navigation to the Diamond Campground page.",
+    "explanation": "Task requires searching for 'Diamond' campground on recreation.gov and navigating to its detail page. Evaluator checks if the active tab URL matches the Diamond Campground page pattern using regex.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "navigation": "1.0 - Active tab URL matches recreation.gov/camping/campgrounds/233869"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active tab URL from Chrome's accessibility tree address bar, returning a string URL with the configured 'https://www.' prefix.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict (due to expected.type='rule') and accesses rules['expected'] to get the regex patterns list. It iterates over patterns and uses re.search for matching.",
+        "The regex pattern '.*recreation\\.gov/camping/campgrounds/233869.*' correctly identifies the Diamond Campground detail page URL, with campground ID 233869 confirmed from trajectory data.",
+        "The instruction requires navigating to the Diamond Campground detail page, and checking the active tab URL is a complete and sufficient verification strategy for this navigation task.",
+        "Data flow is correct: getter returns a string URL -> metric receives it as 'result' parameter and performs regex matching against expected patterns."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

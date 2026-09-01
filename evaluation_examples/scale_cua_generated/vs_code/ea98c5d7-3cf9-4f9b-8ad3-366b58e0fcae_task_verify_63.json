@@ -1,0 +1,92 @@
+{
+  "id": "ea98c5d7-3cf9-4f9b-8ad3-366b58e0fcae",
+  "new_id": "task_verify_63",
+  "snapshot": "vscode",
+  "instruction": "How do I disable the Ctrl+P shortcut for Quick Open in VS Code? It's interfering with my workflow.",
+  "source": [
+    "https://superuser.com/questions/1748097/vs-code-disable-tree-view-find-explorer-search",
+    "https://superuser.com/questions/1417361/how-to-disable-file-filtering-in-vs-code-sidebar-explorer?rq=1"
+  ],
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Visual Studio Code"
+        }
+      }
+    ],
+    "func": "check_json_keybindings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "key": "ctrl+p",
+          "command": "-workbench.action.quickOpen"
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/keybindings.json",
+      "dest": "keybindings.json"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling the Ctrl+P shortcut for Quick Open. The evaluator uses the existing check_json_keybindings function to verify that the keybindings.json file contains the expected configuration with command '-workbench.action.quickOpen'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: checking for disabled Ctrl+P shortcut in VS Code keybindings",
+        "Getter (get_vm_file) correctly fetches the keybindings.json file from the VM user config directory at /home/user/.config/Code/User/keybindings.json at file.py:110",
+        "Metric (check_json_keybindings) correctly loads the JSON file using open(actual) at vscode.py:21,30 and checks if expected keybinding dict is in the list at vscode.py:43",
+        "Expected value is semantically correct: {\"key\": \"ctrl+p\", \"command\": \"-workbench.action.quickOpen\"} where minus prefix disables the keybinding in VS Code",
+        "Data flow is correct: get_vm_file returns local cache file path → check_json_keybindings receives path as 'actual' parameter → loads JSON as list → checks membership",
+        "Complete coverage: instruction asks to disable Ctrl+P for Quick Open, evaluator verifies exactly this configuration exists in keybindings.json",
+        "Parameter handling is correct: when expected.type='rule', get_rule returns config['rules'], so metric receives {\"expected\": {...}} and correctly extracts nested key at vscode.py:42",
+        "Postconfig closes VS Code window which is appropriate: keybindings.json persists to disk automatically, no need to reopen UI for verification",
+        "Static validator warnings about file reading are false positives: metric DOES read the file via open(actual) in helper functions direct_load_json() and skip_first_line_load_json() at vscode.py:19-34"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "rule_validation_notes": "Static validator warnings are false positives. The metric correctly reads the file via open(actual) in nested helper functions direct_load_json() and skip_first_line_load_json() at vscode.py:19-34. The static analyzer cannot detect file operations in nested helper functions.",
+      "validation_passed": true
+    }
+  }
+}

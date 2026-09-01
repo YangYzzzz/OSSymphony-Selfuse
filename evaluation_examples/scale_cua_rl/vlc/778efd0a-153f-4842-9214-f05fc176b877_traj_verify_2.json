@@ -1,0 +1,99 @@
+{
+  "id": "778efd0a-153f-4842-9214-f05fc176b877",
+  "new_id": "778efd0a-153f-4842-9214-f05fc176b877_traj_verify_2",
+  "snapshot": "vlc",
+  "instruction": "Set VLC media player's maximum volume to 200% in its preferences.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/Minimalist_Business_Slides.pptx",
+            "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/planet.mp4",
+            "path": "/home/user/Desktop/planet.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/planet.mp4",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "-f",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": 200
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_778efd0a-153f-4842-9214-f05fc176b877_sid_1488189",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened terminal, found planet.mp4 on Desktop, successfully extracted audio to planet.wav using ffmpeg, then attempted to insert it into LibreOffice Impress as background music but inserted the video file instead and failed to configure audio playback across slides.",
+    "capability_extraction": "Can open terminal (Ctrl+Alt+T), use find/ffmpeg/ls commands, navigate between VLC and LibreOffice Impress, use Insert menu in Impress, navigate file browser dialogs, access View > Animation and Slide Show menus",
+    "failure_analysis": "Model successfully extracted audio but failed at the second part: inserting audio as background music. It inserted the video as a media object instead of properly embedding the WAV audio, then spent remaining turns trying to configure cross-slide playback without success.",
+    "task_rationale": "Model demonstrated ability to interact with VLC (clicking on it, viewing its title bar). Setting max volume in VLC preferences is a focused settings task that exercises menu navigation within VLC.",
+    "explanation": "Task requires opening VLC preferences (Tools > Preferences) and setting the maximum volume to 200%. Evaluator closes VLC via postconfig to save the config, then reads vlcrc and checks the qt-max-volume setting using the existing check_qt_max_volume metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "max_volume_set": "1.0 - qt-max-volume set to 200 in vlcrc"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads the VLC config file (vlcrc) from the VM, providing the config path to the metric function.",
+        "Metric (check_qt_max_volume) correctly parses vlcrc for 'qt-max-volume=' key and compares against expected value 200 (converted to string '200'). Parameter handling is correct: rule['expected_qt_max_volume'] directly accesses the rules dict passed by get_rule.",
+        "Postconfig correctly kills VLC before reading config, ensuring VLC saves its settings to vlcrc on exit. The 3-second sleep provides adequate time for the process to terminate and flush config.",
+        "Expected value of 200 is semantically correct for 200% maximum volume in VLC's qt-max-volume config setting.",
+        "Complete coverage: the single instruction requirement (set max volume to 200%) is fully verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

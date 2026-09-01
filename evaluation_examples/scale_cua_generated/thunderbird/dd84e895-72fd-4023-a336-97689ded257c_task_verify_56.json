@@ -1,0 +1,112 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_56",
+  "snapshot": "thunderbird",
+  "instruction": "Add a star to every email in the local INBOX folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select sum(1) > 0 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 1);"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "task_variation_id": 4,
+    "original_task_id": "dd84e895-72fd-4023-a336-97689ded257c",
+    "explanation": "Task requires adding star to all emails in INBOX folder (folderID=1). The evaluator checks if attributeID=58 (star attribute) is set to value=1 for messages in INBOX. Verified from database: INBOX has 2 emails.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical logic error: SQL query only checks if at least one email is starred (sum(1) > 0), not if ALL emails are starred",
+        "Instruction requires 'Add a star to every email' but evaluator will pass even if only 1 out of 2 emails is starred",
+        "Incomplete coverage: Missing verification that all 2 emails in INBOX have stars",
+        "Expected logic should verify: count(starred emails in INBOX) == count(all emails in INBOX), i.e., 2 == 2"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change SQL query to verify ALL emails are starred, e.g.: 'select (select count(*) from messages where folderID = 1) = (select count(distinct messageID) from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 1));'",
+        "Alternative fix: 'select count(distinct messageID) = 2 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 1);' (hardcoded 2 emails)",
+        "Alternative fix: Use a more robust query that compares counts: 'select case when (select count(*) from messages where folderID = 1) = (select count(distinct ma.messageID) from messageAttributes ma join messages m on ma.messageID = m.id where m.folderID = 1 and ma.attributeID = 58 and ma.value = 1) then 1 else 0 end;'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

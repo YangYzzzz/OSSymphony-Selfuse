@@ -1,0 +1,108 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_69",
+  "snapshot": "chrome",
+  "instruction": "Access the data file and locate cell B15. Copy its content and look it up on Google using Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=marcel(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Google Chrome"
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B15 value 'Marcel' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'marcel' (case-insensitive). Verified by reading complete Excel file: B15 contains 'Marcel' at row 14, column 1 (0-indexed).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter logic is correct: active_tab_info (chrome.py:803-890) extracts the active Chrome tab's URL from accessibility tree, then navigates to that URL to get full tab info including 'url', 'title', and 'content' fields",
+        "Metric logic is correct: is_expected_search_query (chrome.py:247-256) receives the active_tab_info dict, extracts the 'url' field (line 253), and applies regex pattern matching to verify it's a Google search URL",
+        "Expected value is semantically correct: The regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=marcel(?:&|$|#).*' correctly matches Google search URLs with query parameter q=marcel (case-insensitive). Metadata confirms cell B15 contains 'Marcel', so the expected search term is accurate",
+        "Data flow is correct: active_tab_info returns dict → is_expected_search_query receives dict → extracts 'url' field → matches against pattern. The result type (dict with 'url' key) matches what the metric expects",
+        "Postconfig is appropriate: Activates Chrome window before evaluation to ensure active tab state is accessible",
+        "Partial coverage is acceptable: Evaluator uses outcome-based verification (checks final Google search URL) rather than process-based verification (checking each intermediate step). While this means a user could type 'marcel' directly instead of copying from B15, this is a common and acceptable evaluation approach in OSWorld that verifies task completion rather than exact workflow adherence"
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stricter workflow verification, could add intermediate checks: (1) verify LibreOffice Calc window is open with the file, (2) check clipboard content matches 'Marcel', though this would make evaluation more complex and brittle"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

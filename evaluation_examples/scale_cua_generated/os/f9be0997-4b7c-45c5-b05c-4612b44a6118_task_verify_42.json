@@ -1,0 +1,70 @@
+{
+  "id": "f9be0997-4b7c-45c5-b05c-4612b44a6118",
+  "new_id": "task_verify_42",
+  "snapshot": "os",
+  "instruction": "Enable automatic screen brightness adjustment in Ubuntu's power settings.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/power.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled false",
+        "shell": true
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "wmctrl -c :ACTIVE: || true",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true\n"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling automatic brightness in Ubuntu power settings. The config disables it first (sets to false), and the evaluator checks that the agent changed it to true. Uses standard GNOME power settings schema.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vm_command_line) correctly executes gsettings command to read ambient-enabled setting - extracts exactly the right state for verification",
+        "Metric (exact_match) correctly performs strict equality comparison between result and expected value - appropriate for boolean setting verification",
+        "Expected value 'true\\n' is semantically correct - properly includes newline from gsettings output format",
+        "Evaluator verifies the exact requirement: ambient-enabled setting must be true after agent completes the task",
+        "Complete coverage - single requirement (enable automatic brightness adjustment) is fully verified with no missing aspects",
+        "Logic flow is sound and complete: config disables (false) → agent enables (true) → evaluator verifies enabled state",
+        "No state timing issues - gsettings changes are persistent and immediately readable via CLI",
+        "No UI dependency - verification reads system setting via CLI (gsettings), not UI state, so postconfig window closing doesn't affect verification",
+        "Rule validation warning about UI dependency is a false positive - task uses gsettings (CLI-based) not UI state extraction"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

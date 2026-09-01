@@ -1,0 +1,95 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "Find the discussion forum and select the topic that has received the most responses.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "verify_most_popular_discussion_thread",
+    "result": {
+      "type": "flightaware_discussion_thread_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_responses": 1000,
+        "expected_url_pattern": "discussions.flightaware.com/t/"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation focusing on finding the discussion with most responses. Uses custom getter to extract thread response counts and verify the selected thread has the most responses.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/tmp_funcs/a96b564e-dbe9-42c3-9ccf-b4498073438a_task_verify_3/getters/flightaware_discussion_thread.py",
+      "/home/lvbowen/project/AutoGen/tmp_funcs/a96b564e-dbe9-42c3-9ccf-b4498073438a_task_verify_3/metrics/flightaware_discussion_thread.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Custom getter extracts selected thread URL and response count from active tab, then scrapes the discussion forum main page to extract all thread response counts. The getter compares the selected thread's response count against all other threads to determine if it's the most popular (with 5% tolerance for timing differences). Metric verifies the thread has sufficient responses (>= 1000 minimum threshold) and validates the is_most_popular flag. Dynamic verification compares actual response counts rather than hardcoding specific URLs, allowing for website content changes over time.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly implements dynamic verification by comparing selected thread's response count against all threads in the forum",
+        "Getter extracts response count from selected thread using CSS selector '.topic-map .replies .number'",
+        "Getter scrapes forum main page to extract all thread response counts and compares them",
+        "Logic correctly identifies if selected thread is most popular using 5% tolerance for timing differences",
+        "Metric correctly verifies the 'is_most_popular' flag and minimum response threshold (>= 1000)",
+        "Expected values are used as rules (min_responses, url_pattern) rather than hardcoded specific threads",
+        "Fallback heuristic provides graceful degradation when forum scraping fails"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding more robust CSS selectors or multiple selector fallbacks in case FlightAware changes their HTML structure",
+        "The fallback heuristic (threads >= 1000 are considered most popular) could give false positives if multiple threads exceed this threshold - consider adding a warning log when fallback is used",
+        "Consider adding validation that the forum page was successfully loaded before extracting response counts (check for empty forum_data)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

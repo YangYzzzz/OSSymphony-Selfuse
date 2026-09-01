@@ -1,0 +1,96 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_63",
+  "snapshot": "chrome",
+  "instruction": "Set up the Chrome extension from the zip archive at /home/user/Desktop/. Confirm the extension description is configured as 'Base Level Extension'.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_extension_description__db4e5321",
+    "result": {
+      "type": "extension_description__db4e5321",
+      "extension_path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Base Level Extension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task verifies the extension description field in manifest.json. Expected description is 'Base Level Extension' as confirmed from the original manifest file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_6/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_6/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction requires 'Set up the Chrome extension' but evaluator only checks if manifest.json has correct description field, not whether extension is actually installed/loaded in Chrome",
+        "Wrong state verification: Evaluator reads source manifest.json from extracted folder (/home/user/Desktop/helloExtension), not from Chrome's extension installation directory, so it verifies source file rather than successful extension setup",
+        "Missing verification: No check for whether extension is actually loaded, enabled, or visible in chrome://extensions/",
+        "Evaluator would pass even if extension installation failed, as long as the source manifest.json file exists with correct description"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option 1: Simplify instruction to only verify manifest description (remove 'Set up' requirement) - change to: 'Confirm the extension manifest at /home/user/Desktop/helloExtension has description configured as Base Level Extension'",
+        "Option 2: Add verification that extension is actually installed in Chrome by checking chrome://extensions/ accessibility tree for the extension with matching description",
+        "Option 3: Add postconfig to navigate to chrome://extensions/ and add getter to verify extension appears there with correct description field",
+        "Option 4: Check Chrome's extension installation directory (e.g., ~/.config/google-chrome/Default/Extensions/) to verify extension was actually installed"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

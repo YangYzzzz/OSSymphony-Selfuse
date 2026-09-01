@@ -1,0 +1,132 @@
+{
+  "id": "d1acdb87-bb67-4f30-84aa-990e56a09c92",
+  "new_id": "task_verify_62",
+  "snapshot": "libreoffice_calc",
+  "instruction": "I'm particularly interested in Ming Pavilion restaurant. Could you search for it on Google Maps and fill in its address, phone number, and website in my Excel file? Please make sure to complete all the information for this restaurant.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Desktop/restaurants.txt",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d1acdb87-bb67-4f30-84aa-990e56a09c92/restaurants.txt"
+          },
+          {
+            "path": "/home/user/Desktop/MUST_VISIT.xlsx",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d1acdb87-bb67-4f30-84aa-990e56a09c92/MUST_VISIT.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/MUST_VISIT.xlsx"
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/restaurants.txt"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 5
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "restaurants.txt (~/Desktop) - gedit",
+        "strict": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/d1acdb87-bb67-4f30-84aa-990e56a09c92",
+  "related_apps": [
+    "os",
+    "chrome",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "MUST_VISIT.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "check_specific_restaurant__70dfc91b",
+    "result": {
+      "type": "xlsx_specific_restaurant__70dfc91b",
+      "path": "/home/user/Desktop/MUST_VISIT.xlsx",
+      "restaurant_name": "Ming Pavilion"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation focuses on a single restaurant (Ming Pavilion) and checks that all its information is filled in. The evaluator finds the restaurant by name and verifies all 4 fields are present (0.25 per field).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/d1acdb87-bb67-4f30-84aa-990e56a09c92_task_verify_5/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/d1acdb87-bb67-4f30-84aa-990e56a09c92_task_verify_5/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.25 per field filled for Ming Pavilion (name, address, phone, website)",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Critical logic flaw in metrics/xlsx.py:26-34: Empty string checking is insufficient - getter converts None/empty cells to empty strings '', but metric checks 'if result.get(field)' which returns True for empty strings",
+        "Example failure case: If user finds restaurant but doesn't fill address field (leaves it blank), getter returns address='', metric incorrectly awards 0.25 points because empty string '' is truthy in Python",
+        "The metric should check both existence AND non-emptiness: 'if result.get(field) and result.get(field).strip()' to properly validate that fields are actually filled with data",
+        "Coverage is complete: All 4 required fields (name, address, phone, website) are checked",
+        "Postconfig is appropriate: File is saved before verification to ensure data persistence"
+      ],
+      "llm_judge_fix_suggestions": [
+        "In metrics/xlsx.py lines 22-35, change all field checks from 'if result.get(\"field\")' to 'if result.get(\"field\") and result.get(\"field\").strip()' to ensure empty strings don't count as filled data",
+        "Alternatively, modify getter in getters/xlsx.py lines 46-49 to return None instead of empty string when cells are empty: 'str(value).strip() if value and str(value).strip() else None'",
+        "Add explicit validation logic to reject empty/whitespace-only values as incomplete data"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

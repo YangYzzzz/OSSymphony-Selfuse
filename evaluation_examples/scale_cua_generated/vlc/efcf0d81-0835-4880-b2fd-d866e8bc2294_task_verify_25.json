@@ -1,0 +1,99 @@
+{
+  "id": "efcf0d81-0835-4880-b2fd-d866e8bc2294",
+  "new_id": "task_verify_25",
+  "snapshot": "base_setup",
+  "instruction": "Capture a screenshot from the currently playing video and save it to your Pictures folder",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/efcf0d81-0835-4880-b2fd-d866e8bc2294/Interstellar%20Movie%20-%20Official%20Trailer.mp4",
+            "path": "/home/user/Desktop/Interstellar Movie - Official Trailer.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_file_exists__dd9409c8",
+    "result": {
+      "type": "vlc_snapshot_exists__dd9409c8",
+      "path": "/home/user/Pictures/vlc-snap.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "exists": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires taking a video snapshot in VLC and saving it to Pictures folder. Default VLC snapshot location is /home/user/Pictures/ with filename pattern vlc-snap*.png. Evaluator uses glob pattern to find any vlc-snap*.png files, validates they are valid PNG images with non-zero size (>1KB), and checks file modification timestamp to ensure the snapshot was created recently (within 5 minutes) to distinguish from pre-existing files.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/efcf0d81-0835-4880-b2fd-d866e8bc2294_task_verify_0/getters/vlc_snapshot.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/efcf0d81-0835-4880-b2fd-d866e8bc2294_task_verify_0/metrics/vlc_snapshot.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification is comprehensive and correct: evaluator can definitively verify that a VLC snapshot was successfully captured and saved",
+        "Complete coverage of instruction requirements: checks file existence in Pictures folder, validates PNG format, ensures meaningful content (>1KB), and verifies recency",
+        "Getter logic correctly extracts all needed state: uses glob pattern to find vlc-snap*.png files, validates format with 'file' command, checks size, and validates timestamp",
+        "Metric comparison logic is sound: properly validates all conditions (existence, recency, size >=1KB) and handles dict return type correctly",
+        "Robust edge case handling: handles missing files, invalid/corrupted PNGs, pre-existing snapshots (via recency check), and multiple snapshot files",
+        "Clock skew issue properly addressed: uses VM time ('date +%s') for consistent time source between current time and file mtime",
+        "Data flow is correct: getter extracts {exists, file_path, file_size, is_recent} → metric validates all aspects → expected value is semantically correct",
+        "No postconfig needed: file persists to disk after task completion without requiring UI interaction"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixes_applied": {
+        "timestamp": "2025-12-20",
+        "changes": [
+          "Updated getter to use glob pattern (find command) to search for any vlc-snap*.png files instead of checking exact path",
+          "Added file modification timestamp validation to ensure file was created recently (within 5 minutes)",
+          "Added content validation: verifies file size > 1KB to ensure meaningful content",
+          "Added PNG format validation using 'file' command to verify it's a valid PNG image",
+          "Changed getter return type from boolean to dict with detailed info (exists, file_path, file_size, is_recent)",
+          "Updated metric to validate all conditions: existence, recency, and valid size",
+          "CRITICAL FIX: Replaced time.time() with VM time using 'date +%s' command to avoid clock skew between host and VM",
+          "Removed unused 'time' import from getter"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

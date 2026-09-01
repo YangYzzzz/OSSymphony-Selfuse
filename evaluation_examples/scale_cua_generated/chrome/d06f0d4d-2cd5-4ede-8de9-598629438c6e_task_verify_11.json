@@ -1,0 +1,88 @@
+{
+  "id": "d06f0d4d-2cd5-4ede-8de9-598629438c6e",
+  "new_id": "task_verify_11",
+  "snapshot": "chrome",
+  "instruction": "Set up VLC so that double-clicking a media file launches a separate VLC window rather than reusing the existing one.",
+  "source": "https://superuser.com/questions/1039392/changing-colour-of-vlc-volume-slider",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": "0"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling one-instance mode in VLC by setting one-instance-when-started-from-file=0 in the VLC configuration file. The existing metric function check_one_instance_when_started_from_file validates this setting. Default value is 1 (enabled), so the agent must change it to 0 (disabled) to allow multiple VLC instances.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts VLC config file (vlcrc) from OS-specific location",
+        "Metric function correctly checks the one-instance-when-started-from-file setting in the config file",
+        "Expected value '0' is semantically correct for disabling one-instance mode (default is '1')",
+        "Postconfig correctly kills and relaunches VLC to ensure fresh state for verification",
+        "Complete coverage: instruction requires disabling one-instance mode, evaluator checks exactly that setting",
+        "Metric function correctly handles expected parameter as rules dictionary (directly accesses rule['expected_one_instance_when_started_from_file'])",
+        "Logic flow is sound: read config file -> search for setting -> compare with expected -> return 1 if match"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "d06f0d4d-2cd5-4ede-8de9-598629438c6e-2_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

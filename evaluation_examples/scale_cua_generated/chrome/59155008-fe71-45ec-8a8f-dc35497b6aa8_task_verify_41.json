@@ -1,0 +1,97 @@
+{
+  "id": "59155008-fe71-45ec-8a8f-dc35497b6aa8",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "Look up names similar to Olivia",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.babycenter.com/child"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "https://www\\.babycenter\\.com/baby-names/details/olivia-"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation that asks to find similar names to Olivia. Uses pattern matching to verify navigation to Olivia's name details page. Pattern matches URLs starting with 'https://www.babycenter.com/baby-names/details/olivia-' regardless of the specific ID.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Uses existing is_expected_url_pattern_match metric for robust URL checking without needing exact name IDs.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Semantic mismatch between instruction and verification logic",
+        "Instruction asks to 'Look up names similar to Olivia' (find related names like Olive, Oliviana, Livia, etc.)",
+        "Evaluator checks if user navigated to Olivia's OWN name details page (https://www.babycenter.com/baby-names/details/olivia-*)",
+        "The evaluator does NOT verify that the user found names SIMILAR TO Olivia - it only verifies navigation to Olivia's page itself",
+        "This is a fundamental semantic error: the task requires finding related/similar names, but the evaluator checks if the user went to the source name's page",
+        "Getter logic is correct: active_url_from_accessTree can extract the active tab URL",
+        "Metric logic is correct: is_expected_url_pattern_match can perform regex pattern matching",
+        "But the expected pattern verifies the WRONG outcome for this instruction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option 1: Change the instruction to match the evaluator - 'Look up information about the name Olivia' or 'Navigate to Olivia's name details page'",
+        "Option 2: Change the evaluator to verify that the user found similar names - check for URLs containing 'similar', 'related', or other name pages",
+        "Option 3: Use HTML content parsing to verify that similar names are displayed on the page (e.g., check for names like Olive, Oliviana, Livia in the page content)",
+        "Option 4: Verify navigation to multiple name detail pages that are similar to Olivia, not just Olivia's own page",
+        "The current evaluator cannot verify the instruction as written - it only checks if the user went to Olivia's page, not if they found similar names"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

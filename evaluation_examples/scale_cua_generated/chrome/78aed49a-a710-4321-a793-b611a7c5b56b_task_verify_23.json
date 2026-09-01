@@ -1,0 +1,146 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's bookmarks manager and add a bookmark for https://arxiv.org with the title 'ArXiv Papers'.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_chrome_bookmark_exists__b5b6115e",
+    "result": {
+      "type": "chrome_bookmarks__b5b6115e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "url": "arxiv.org",
+        "title": "ArXiv Papers"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "explanation": "Task requires adding a bookmark for arxiv.org with title 'ArXiv Papers'. Evaluator uses existing get_bookmarks getter and checks if bookmark exists with correct URL and title.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_task_verify_7/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_task_verify_7/metrics/chrome.py"
+    ],
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical data structure mismatch: Official get_bookmarks() returns a nested dict (bookmark tree structure with 'roots', 'bookmark_bar', etc.) but the metric expects a flat list of bookmarks and iterates with 'for bookmark in result'. This will cause runtime errors.",
+        "Missing bookmark tree traversal: Chrome bookmarks are stored in a hierarchical folder structure. The getter returns the raw tree structure but doesn't flatten it, and the metric doesn't recursively search through folders to find bookmarks.",
+        "The metric will fail at runtime when trying to iterate over a dict as if it were a list, making it unable to verify the instruction requirements."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify the getter to recursively traverse the bookmark tree structure and return a flat list of all bookmarks (each bookmark as a dict with 'url' and 'name' fields).",
+        "Alternatively, modify the metric to accept the nested dict structure and implement recursive traversal to search all bookmark folders.",
+        "Add proper error handling for cases where the bookmark structure is unexpected or empty."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_chrome_bookmark_exists__b5b6115e second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

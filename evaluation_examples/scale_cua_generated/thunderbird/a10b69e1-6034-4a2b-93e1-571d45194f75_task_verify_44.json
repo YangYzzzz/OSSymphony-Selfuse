@@ -1,0 +1,110 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_44",
+  "snapshot": "thunderbird",
+  "instruction": "Create local folders for CUSTOMERS and VENDORS in Thunderbird.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bCUSTOMERS\\.msf\\b",
+          "\\bCUSTOMERS/?(?!\\.msf)",
+          "\\bVENDORS\\.msf\\b",
+          "\\bVENDORS/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating two local folders in Thunderbird (CUSTOMERS and VENDORS). Evaluator checks for both folder files and .msf metadata files. Same complexity as original task with different folder names.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator checks for CUSTOMERS and VENDORS folders and their .msf files using regex patterns.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator uses correct approach: ls -R on Thunderbird Local Folders directory to check folder creation",
+        "Complete coverage: checks both required folders (CUSTOMERS and VENDORS)",
+        "Comprehensive verification: checks both folder files and .msf metadata files that Thunderbird creates",
+        "Correct data flow: get_cache_file retrieves ls output, check_list processes with regex patterns",
+        "Appropriate postconfig: ls command runs during evaluation to get fresh state",
+        "Regex patterns are functional but overly complex: patterns like '\\bCUSTOMERS/?(?!\\.msf)' use negative lookahead which works but is fragile",
+        "Patterns will likely match correctly in typical ls -R output showing both folder names and .msf files"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Simplify regex patterns to be more robust: instead of '\\bCUSTOMERS/?(?!\\.msf)', consider '\\bCUSTOMERS\\b(?!\\.msf)' or '\\bCUSTOMERS:?' to match folder markers",
+        "Alternative approach: use two simpler patterns per folder - one for the .msf file (current pattern works) and one for the folder name without .msf (e.g., '\\bCUSTOMERS\\s' or '\\bCUSTOMERS:')",
+        "Consider edge cases in ls -R output format - test patterns against actual Thunderbird folder listing output to ensure robustness"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_22",
+  "snapshot": "os",
+  "instruction": "Change the permission of all regular files under current directory tree to 600 (owner read-write only)",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_5_eval.sh",
+              "path": "eval.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x eval.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "All files have 600 permissions."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing all file permissions to 600 (rw-------). Evaluator verifies all files in testDir have exactly 600 permissions (owner read-write only).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_5/eval.sh"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified with bash script logic - evaluator checks file permissions using stat -c %a to get octal permission mode. Setup creates 3 files: file1.txt (755), file2.txt (644), file3.txt (777). Script finds all regular files recursively using 'find testDir -type f' and verifies each has exactly 600 permissions.",
+    "eval_script_note": "The eval.sh script has been implemented and needs to be uploaded to the HuggingFace cache location specified in postconfig. Script behavior: (1) finds all regular files in testDir recursively, (2) checks each file's permissions using stat -c %a, (3) verifies each has exactly 600 permissions, (4) outputs 'All files have 600 permissions.' only if all files pass, otherwise outputs 'X out of Y files have 600 permissions.' for partial credit.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: eval.sh script properly finds all regular files using 'find testDir -type f' and checks each has exactly 600 permissions using 'stat -c %a'",
+        "Getter logic is correct: get_vm_command_line executes the eval.sh script which extracts the actual permission state from the filesystem",
+        "Expected value is semantically correct: the script outputs 'All files have 600 permissions.' only when all files have 600 permissions, matching the include rule",
+        "Script handles edge cases: checks if testDir exists, verifies there are files, and properly iterates through all regular files recursively",
+        "Minor issue - Partial credit design mismatch: eval.sh outputs 'X out of Y files have 600 permissions.' for partial completion, but check_include_exclude metric returns 0.0 for any output not matching the exact include string, so partial credit isn't actually scored",
+        "Minor issue - Binary scoring limitation: While the verification logic is sound for full completion, the metric cannot provide granular scoring for partial completion scenarios"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a metric that can parse and score the partial credit output format 'X out of Y files have 600 permissions.' to provide scores like X/Y instead of binary 0.0/1.0",
+        "Alternatively, simplify eval.sh to only output the success message and remove the partial credit logic, since it's not being utilized by the current metric"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

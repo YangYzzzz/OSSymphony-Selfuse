@@ -1,0 +1,132 @@
+{
+  "id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "new_id": "task_verify_71",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Find and bookmark the personal sites of authors affiliated with Columbia University, grouping them into a folder named 'Columbia Team'.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a82b78bb-7fde-4cb3-94a4-035baf10bcf0/2206.08853.pdf",
+            "path": "/home/user/Desktop/2206.08853.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/2206.08853.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-20)"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "liked_authors_websites_urls",
+        "names": [
+          "Columbia Team"
+        ],
+        "urls": [
+          [
+            "https://scholar.google.com/citations?user=yuncongyang",
+            "https://www.linkedin.com/in/yuncong-yang/"
+          ],
+          [
+            "https://www.linkedin.com/in/andrew-tang-columbia/"
+          ]
+        ]
+      }
+    }
+  },
+  "trajectory": "trajectories/a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "related_apps": [
+    "chrome",
+    "pdf"
+  ],
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+    "variation_index": 5,
+    "explanation": "Task verified: requires identifying Columbia University-affiliated authors (Yuncong Yang, Andrew Tang) from the affiliation information in the PDF and bookmarking their websites in a folder named 'Columbia Team'.",
+    "new_functions_paths": [
+      "tmp_funcs/a82b78bb-7fde-4cb3-94a4-035baf10bcf0_aug_5_task_verify_5"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "task_type": "bookmark_author_websites",
+    "verification_method": "Checked author names and affiliations from PDF (page 1). The evaluator reuses the existing is_expected_bookmarks function which validates bookmark folder names and URLs.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "CRITICAL SEMANTIC ERROR: The metric function is_expected_bookmarks (chrome.py:218-242) hardcodes the folder name as 'Liked Authors' on line 221, but the instruction explicitly requires a folder named 'Columbia Team'",
+        "The rule['names'] parameter containing ['Columbia Team'] is provided in expected.rules but is completely IGNORED by the metric - the function never reads or uses the names parameter at all",
+        "The evaluator will ALWAYS FAIL regardless of agent behavior because it searches for 'Liked Authors' folder while the instruction requires 'Columbia Team' folder - complete semantic mismatch",
+        "This is a fundamental logic error, NOT a coverage issue. Even if the agent perfectly completes the task by creating 'Columbia Team' folder with correct bookmarks, the evaluator will incorrectly mark it as failed",
+        "The URL verification logic (lines 229-239) appears semantically correct - uses itertools.product to check URL combinations properly, would work if folder name issue was fixed",
+        "Getter function (get_bookmarks) correctly retrieves bookmark data from Chrome bookmark file - no issues with state extraction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "CRITICAL FIX REQUIRED: Modify is_expected_bookmarks function at chrome.py:218-242 to read the folder name from rule['names'] parameter instead of hardcoding 'Liked Authors'",
+        "Suggested fix for line 221: expected_folder_name = rule.get('names', ['Liked Authors'])[0] if rule.get('names') else 'Liked Authors'",
+        "Then replace 'Liked Authors' with expected_folder_name in the folder lookup: liked_authors_folder = next((bookmark for bookmark in bookmarks['bookmark_bar']['children'] if bookmark['type'] == 'folder' and bookmark['name'] == expected_folder_name), None)",
+        "Alternatively, rename variable from 'liked_authors_folder' to 'target_folder' for better generality",
+        "This fix would make the metric reusable for different folder names by reading from rule specification instead of hardcoded values"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

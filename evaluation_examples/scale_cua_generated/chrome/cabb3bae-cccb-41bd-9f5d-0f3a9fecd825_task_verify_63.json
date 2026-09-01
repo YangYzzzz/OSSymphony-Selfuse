@@ -1,0 +1,110 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_63",
+  "snapshot": "chrome",
+  "instruction": "Look up Hot Wheels cars for boys and arrange them starting with the lowest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Hot Wheels",
+          "Cars",
+          "Boys"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Hot Wheels": "Hot Wheels",
+        "hot wheels": "Hot Wheels",
+        "Cars": "Cars",
+        "Boys": "Boys",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "hot wheels": true,
+          "cars": true,
+          "boys": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Hot Wheels cars for boys on kohls.com and sorting by price low-high. Matches original task complexity with different toy category. Uses check_direct_json_object evaluator.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both filtering (Hot Wheels, Cars, Boys) and sorting (Price Low-High) requirements",
+        "Getter 'get_active_tab_html_parse' with category 'class&url' appropriately extracts breadcrumb navigation and sorting selector text",
+        "Metric 'check_direct_json_object' correctly compares extracted values against expected values",
+        "Coverage is complete: checks product category filters via breadcrumbs AND price sorting via both selector text and URL parameters",
+        "Case sensitivity is handled correctly: getter converts to lowercase before comparison",
+        "URL parameter checking (S=4 -> Price Low-High) provides additional verification of sorting state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator relies on specific CSS classes ('pmpSearch_breadcrumb', 'sbSelector') which may change if kohls.com updates their HTML structure. Consider adding fallback selectors or making the task more robust to HTML changes.",
+        "Minor: The 'is_other_exist' check ensures no unexpected filter is applied, which is good for precision but might be overly strict if the website shows additional UI elements in those classes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

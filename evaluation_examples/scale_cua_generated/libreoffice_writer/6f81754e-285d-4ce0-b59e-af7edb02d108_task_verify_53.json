@@ -1,0 +1,114 @@
+{
+  "id": "6f81754e-285d-4ce0-b59e-af7edb02d108",
+  "new_id": "task_verify_53",
+  "snapshot": "libreoffice_writer",
+  "instruction": "I need to analyze the train record file on my desktop to count how many times each train appears. Each line has: time, train_id, station_id, platform_no. Please create a summary at the end showing each train ID and its total number of appearances.",
+  "source": "https://superuser.com/questions/789473/remove-duplicate-lines-in-libreoffice-openoffice-writer",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/6f81754e-285d-4ce0-b59e-af7edb02d108/HK_train_record.docx",
+            "path": "/home/user/Desktop/HK_train_record.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/HK_train_record.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "HK_train_record.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_docx_train_count__648bef4a",
+    "result": {
+      "type": "docx_train_count__648bef4a",
+      "path": "/home/user/Desktop/HK_train_record.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "train_counts": {
+          "E201": 15,
+          "E209": 13,
+          "E221": 13,
+          "E205": 11,
+          "E213": 13,
+          "E217": 14,
+          "E225": 11,
+          "E229": 10
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires counting occurrences of each train ID. Verified with Python: E201=15, E209=13, E221=13, E205=11, E213=13, E217=14, E225=11, E229=10 from 100 total records. Evaluator uses partial credit (correct_count/total_trains).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/6f81754e-285d-4ce0-b59e-af7edb02d108_task_verify_1/getters/docx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/6f81754e-285d-4ce0-b59e-af7edb02d108_task_verify_1/metrics/docx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter explicitly searches for summary section using multiple detection methods: keywords ('summary', 'total', 'count', 'appearances'), empty line transitions, and position heuristics",
+        "Getter returns empty dict if no summary found, and metric correctly returns 0.0 in that case - properly fails if user doesn't create summary",
+        "Metric function correctly handles expected parameter: uses 'expected.get('train_counts')' directly without incorrectly accessing 'rules' key",
+        "Expected train counts are accurate per metadata: E201=15, E209=13, E221=13, E205=11, E213=13, E217=14, E225=11, E229=10 from 100 records",
+        "Partial credit mechanism is logically sound: correct_count / total_trains allows gradual scoring",
+        "Regex pattern (E\\d+)\\s*[:,-]?\\s*(\\d+) flexibly matches various summary formats (E201: 15, E201 - 15, E201, 15, E201 15)",
+        "Summary detection is somewhat heuristic-based (keyword matching, empty line counting) but will work for most reasonable implementations",
+        "Position validation uses threshold 'i > original_data_count * 0.8' to prefer summary section in later part of document"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider strengthening summary position validation: explicitly verify summary content appears AFTER all original data lines (e.g., track last original data line index)",
+        "Improve robustness: handle edge case where user creates valid summary without keywords by also checking for structural patterns (e.g., grouped train ID + count pairs)",
+        "Add fallback detection: if no keywords found, look for concentration of E\\d+ pattern matches in document's final section",
+        "Document assumption: summary detection assumes user will use common keywords or clear formatting - may miss unconventional but valid summaries"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

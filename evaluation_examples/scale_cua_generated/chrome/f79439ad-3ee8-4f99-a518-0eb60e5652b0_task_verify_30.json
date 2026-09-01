@@ -1,0 +1,118 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "Search for a round trip flight from Milan to Brussels departing on 5th next month and returning on 12th next month for 2 adults and 1 child.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object_with_time__f79439ad",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "tpEndDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time_from",
+        "tpEndDate": "time_to"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relativeTime": {
+          "from": "5th next month",
+          "to": "12th next month"
+        },
+        "expected": {
+          "originIata": "BGY",
+          "destinationIata": "CRL",
+          "tpAdults": "2",
+          "tpTeens": "0",
+          "tpChildren": "1",
+          "time_from": "{Year}-{Month0D}-{DayD}",
+          "time_to": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "true"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 2: Round-trip flight with children passengers. Route changed from Dublin-Vienna to Milan (Bergamo/BGY) - Brussels (Charleroi/CRL), both major Ryanair hubs. Changed from 2 adults only to 2 adults and 1 child. Departure date is 5th next month, return is 12th next month. Uses custom metric check_direct_json_object_with_time__f79439ad to process relative time and validate URL parameters.",
+    "new_functions_paths": [
+      "tmp_funcs/f79439ad-3ee8-4f99-a518-0eb60e5652b0_task_verify_2/metrics/flight_check__f79439ad.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very similar - same website (Ryanair), same interaction pattern (flight search), similar complexity. Only differences are: round-trip vs one-way, different cities, includes children passengers.",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "CORRECTION: Previous judgment was incorrect. The metric function CORRECTLY handles the expected parameter. When expected.type='rule', get_rule() returns config['rules'] directly, so 'expected' parameter IS the rules dict {'relativeTime': {...}, 'expected': {...}}. Line 137 correctly uses 'expected.get(\"expected\", {})' to access the expected values nested inside the rules dict.",
+        "Evaluator provides complete coverage of instruction requirements: checks origin airport (BGY for Milan), destination airport (CRL for Brussels), passenger counts (2 adults, 1 child, 0 teens), round-trip flag (isReturn=true), and both departure date (5th next month) and return date (12th next month).",
+        "Expected airport codes are semantically correct: BGY (Milan Bergamo/Orio al Serio) and CRL (Brussels Charleroi) are the correct Ryanair airport codes for Milan and Brussels respectively. Ryanair primarily uses these secondary airports rather than main airports (LIN/MXP for Milan, BRU for Brussels).",
+        "Relative time processing logic is semantically correct: metric calculates '5th next month' and '12th next month' by determining next month (lines 92-94, 116-118), then formats dates using template strings (lines 106-110, 130-134). Date calculation handles year rollover (when current month is December).",
+        "Getter logic (get_active_tab_url_parse from chrome.py:2258-2288) correctly extracts URL query parameters and applies 'replace' config to rename tpStartDate->time_from and tpEndDate->time_to before comparison, which aligns with the metric's expected field names.",
+        "Data flow is semantically correct: Ryanair URL structure uses query parameters (originIata, destinationIata, tpAdults, tpChildren, tpTeens, tpStartDate, tpEndDate, isReturn), getter extracts these, metric compares with expected values after processing relative time templates.",
+        "Minor issue: Metric relies on IP-based timezone detection (line 78) which may not match VM timezone, potentially causing off-by-one-day errors for date calculations. However, this is a practical robustness issue, not a logical correctness issue. The timezone detection fallback to UTC is reasonable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding explicit timezone configuration to task JSON under rules.timezone (e.g., 'Europe/Brussels' or 'Europe/Rome' or 'UTC') to ensure deterministic date calculations regardless of IP geolocation. This would improve test reproducibility across different network environments."
+      ]
+    }
+  }
+}

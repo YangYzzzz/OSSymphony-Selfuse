@@ -1,0 +1,77 @@
+{
+  "id": "4e60007a-f5be-4bfc-9723-c39affa0a6d3",
+  "new_id": "task_verify_23",
+  "snapshot": "vscode",
+  "instruction": "Please help me install the Docker extension in VS Code.",
+  "source": "https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/4e60007a-f5be-4bfc-9723-c39affa0a6d3_task_verify_6",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "is_extension_installed",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "code",
+        "--list-extensions",
+        "|",
+        "grep",
+        "ms-azuretools.vscode-docker"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contain",
+        "expected": "ms-azuretools.vscode-docker"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing the Docker extension (ms-azuretools.vscode-docker) in VS Code. Evaluator verifies installation by checking if 'code --list-extensions' output contains the extension ID. Uses existing is_extension_installed metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical shell execution issue: The command uses pipe '|' and 'grep' but does not set 'shell: true' in the config",
+        "The get_vm_command_line getter expects shell operations to have shell=true, otherwise pipe characters are treated as literal arguments to 'code' command",
+        "The command array ['code', '--list-extensions', '|', 'grep', 'ms-azuretools.vscode-docker'] will fail because without shell=true, the pipe won't function as a pipe operator",
+        "Semantically, the verification logic is correct IF the command worked: listing extensions and checking for the specific extension ID is the right approach",
+        "The metric is_extension_installed with type='contain' correctly verifies if the extension ID is in the output"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'shell': true to the result config to enable shell processing of pipes: {\"type\": \"vm_command_line\", \"command\": [...], \"shell\": true}",
+        "Alternative fix: Remove the pipe/grep and use only 'code --list-extensions', then let the metric check if output contains the extension ID (this works with current config)",
+        "Recommended: Use command array ['code', '--list-extensions'] without pipe/grep, and rely on the is_extension_installed metric's 'contain' logic to find the extension ID in the full output"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

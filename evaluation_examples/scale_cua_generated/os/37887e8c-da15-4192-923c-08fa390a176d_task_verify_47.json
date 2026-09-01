@@ -1,0 +1,106 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_47",
+  "snapshot": "os",
+  "instruction": "Change the permissions of all files in the \"/tmp/test_files\" directory tree that were last modified 30 days ago to read-only (444)",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'OLD_RO=$(find /tmp/test_files/old_files -type f -perm 444 2>/dev/null | wc -l); NEW_RW=$(find /tmp/test_files/new_files -type f -perm -200 2>/dev/null | wc -l); if [ \"$OLD_RO\" -eq 2 ] && [ \"$NEW_RW\" -eq 2 ]; then echo \"Success: Old files set to read-only, new files remain writable\"; else echo \"Fail: OLD_RO=$OLD_RO NEW_RW=$NEW_RW\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files set to read-only, new files remain writable"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires changing permissions of old files (30+ days) to read-only (444) while preserving new files' writable permissions. Verification checks that 2 files in old_files have permission 444 and 2 files in new_files remain writable (have write permission). Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Evaluator assumes hardcoded directory structure (/tmp/test_files/old_files and /tmp/test_files/new_files) that is not specified in the instruction",
+        "Does not verify the actual requirement: files modified 30 days ago. Instead relies on indirect assumption that files in 'old_files' directory are 30+ days old",
+        "Uses hardcoded file count (exactly 2 old files, exactly 2 new files) instead of verifying 'all files' as stated in instruction",
+        "Missing verification that file selection was based on modification time - the core requirement of the task",
+        "Evaluator only checks subset of files in specific subdirectories, not 'all files in the directory tree' as required",
+        "Logic gap: doesn't verify files outside old_files/new_files subdirectories were handled correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use 'find /tmp/test_files -type f -mtime +30' to identify files actually modified 30+ days ago, not rely on directory structure",
+        "Verify permissions on ALL files found by the time-based query, not hardcoded count of 2",
+        "Add verification that files modified less than 30 days ago retain their original permissions",
+        "Remove hardcoded directory structure assumptions (old_files/new_files) and work with actual file timestamps",
+        "Use dynamic count validation: check that all files matching the time criterion have permission 444"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

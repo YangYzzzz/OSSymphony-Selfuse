@@ -1,0 +1,104 @@
+{
+  "id": "ac9bb6cb-1888-43ab-81e4-a98a547918cd",
+  "new_id": "task_verify_32",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Access the Slide Master by clicking View > Master > Slide Master, locate the slide number, and change its font color to black",
+  "source": "https://superuser.com/questions/1674211/how-to-change-colour-of-slide-number-in-libre-office",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/ac9bb6cb-1888-43ab-81e4-a98a547918cd/saa-format-guide.pptx",
+            "path": "/home/user/Desktop/saa-format-guide.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/saa-format-guide.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "saa-format-guide.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_page_number_colors",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/saa-format-guide.pptx",
+      "dest": "saa-format-guide.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "color": "black"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing slide number color to black in the slide master. The evaluator uses the existing check_page_number_colors function which parses the slide master XML to verify the color of the page number placeholder. Verified that check_page_number_colors supports 'black' color check.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The check_page_number_colors function from slides.py (lines 876-920) parses the slide master XML to find the color of the page number placeholder. It checks the second-to-last solidFill/srgbClr element in the slide master and verifies it matches the expected color using threshold-based RGB comparison (red: R > G+50 and R > B+50, blue: B > G+50 and B > R+50, green: G > R+50 and G > B+50, black: R < 50 and G < 50 and B < 50).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the main requirement: slide number color changed to black in slide master",
+        "Metric function check_page_number_colors properly parses slide master XML and extracts color information",
+        "Color matching logic for 'black' is appropriate (R<50 AND G<50 AND B<50 threshold-based comparison)",
+        "Expected parameter handling is correct - directly accesses rules['color'] without incorrect nested access patterns",
+        "Postconfig appropriately saves the file (Ctrl+S) before evaluation to ensure state persistence",
+        "Data flow is semantically correct: VM file → downloaded PPTX → XML parsing → color verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "The hardcoded color_elems[-2] index (second-to-last solidFill element) is brittle and assumes specific XML structure. Consider adding validation to ensure the correct element is being checked, or add metadata explaining why this index is reliable for this specific presentation template.",
+        "Consider adding error handling if the slide master XML structure differs from expected (e.g., fewer than 2 solidFill elements)",
+        "The function could be more robust by searching for the page number placeholder by name/type rather than relying on element position"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

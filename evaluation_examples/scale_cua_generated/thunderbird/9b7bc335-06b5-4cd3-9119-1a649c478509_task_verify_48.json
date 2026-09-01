@@ -1,0 +1,122 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_48",
+  "snapshot": "thunderbird",
+  "instruction": "Set up a Thunderbird filter to add 'Personal' tag to all emails sent only to you (not CC'd). Configure this locally in Thunderbird only.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter__af973420",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Add tag",
+            "actionValue": "Personal",
+            "condition": {
+              "has_to_field": true,
+              "excludes_cc": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a filter to tag emails based on recipient conditions. The evaluator verifies an enabled filter with 'Add tag' action and 'Personal' tag value exists.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9b7bc335-06b5-4cd3-9119-1a649c478509_task_verify_7/metrics/check_thunderbird_filter__af973420.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Evaluator checks Thunderbird filter configuration file for expected filter rules with appropriate action and enabled status.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: filter enabled status, 'Add tag' action, 'Personal' tag value, and condition checking",
+        "Expected rules properly specify condition requirements: has_to_field=true (emails sent TO you) and excludes_cc=true (not CC'd)",
+        "Metric function _match_filter_with_conditions() correctly implements condition checking logic at lines 68-126",
+        "Condition verification uses appropriate regex patterns to detect 'to' field presence and CC exclusion in Thunderbird filter syntax",
+        "Getter get_vm_file correctly extracts msgFilterRules.dat from VM filesystem",
+        "Postconfig properly closes Message Filters window to ensure clean state for file reading"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: CC exclusion logic at lines 114-124 accepts implicit exclusion (no CC condition present), which may be slightly permissive but acceptable for most use cases"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter__af973420 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

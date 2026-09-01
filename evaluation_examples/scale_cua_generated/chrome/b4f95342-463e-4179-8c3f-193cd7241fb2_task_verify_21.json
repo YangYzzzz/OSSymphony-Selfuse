@@ -1,0 +1,88 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_21",
+  "snapshot": "chrome",
+  "instruction": "Locate the closest available campsite for Cedar Breaks.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_recreation_html_element__ed948b8fac72e2c98dd5028aabd38bf3",
+    "result": {
+      "type": "recreation_cedarbreaks_html__ed948b8fac72e2c98dd5028aabd38bf3"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "cedar_breaks_found": true,
+        "has_campsite_results": true,
+        "closest_identified": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation changes the location from 'Albion Basin' to 'Cedar Breaks' and uses different wording ('locate the closest available campsite' vs 'locate the nearest open slot') while maintaining the same complexity and interaction pattern. The task requires the agent to search for camping availability on recreation.gov for Cedar Breaks and identify the closest available campsite. The evaluator verifies: (1) Cedar Breaks was searched for (appears in page content), (2) campsite results are displayed, and (3) the closest campsite was identified (typically the first result when sorted by distance).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b4f95342-463e-4179-8c3f-193cd7241fb2_aug_13_task_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b4f95342-463e-4179-8c3f-193cd7241fb2_aug_13_task_verify_2/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three requirements from the instruction 'Locate the closest available campsite for Cedar Breaks': (1) Cedar Breaks found in page content (chrome.py:86-89), (2) campsite results displayed (chrome.py:105-106), and (3) closest AVAILABLE campsite identified (chrome.py:144-160).",
+        "Availability verification is now properly implemented: The getter explicitly checks if the first campsite is available (chrome.py:148). If unavailable, it filters to available campsites and identifies the first available one (chrome.py:154-156). The metric function provides redundant verification by checking that at least one available campsite exists (general.py:68-71).",
+        "Complete coverage of instruction requirements: Cedar Breaks verification is robust (checks both 'cedar breaks' and 'cedar-breaks' formats). Campsite extraction uses multiple HTML parsing strategies (cards, table rows, list items) to ensure broad compatibility. Availability status is extracted and used in decision logic.",
+        "Edge cases are handled correctly: No campsites → closest_identified=False. First unavailable → finds first available. No available campsites → closest_identified=False. Multiple verification checkpoints in both getter and metric prevent false positives.",
+        "Minor assumption with reasonable justification: The logic assumes recreation.gov's typical default sorting by distance, which is a reasonable practical assumption for this web-based task. The getter attempts to extract distance information (chrome.py:136-138) and handles both sorted and unsorted scenarios by filtering to available campsites when needed."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could add explicit verification of sort order by checking for sort indicators in HTML (e.g., active sort column, sort direction icons) or by parsing and comparing distance values to confirm ascending order.",
+        "Optional enhancement: Could log extracted distance values for debugging purposes to make the 'closest' determination more transparent."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

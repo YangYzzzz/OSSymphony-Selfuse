@@ -1,0 +1,122 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_31",
+  "snapshot": "thunderbird",
+  "instruction": "Set up Thunderbird to automatically download full message bodies for all folders when checking for new mail by enabling offline synchronization.",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.default.autosync_offline_stores": {
+            "method": "eq",
+            "ref": true
+          },
+          "mail.server.default.offline_download": {
+            "method": "eq",
+            "ref": true
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling offline synchronization in Thunderbird to automatically download all message bodies. The evaluator checks that mail.server.default.autosync_offline_stores and mail.server.default.offline_download are both set to true in prefs.js. Uses existing check_thunderbird_prefs metric function with vm_file getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same application, similar configuration complexity, similar number of settings to modify",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vm_file extracts the Thunderbird prefs.js file from VM and returns a file path",
+        "Metric logic is correct: check_thunderbird_prefs parses prefs.js using regex and validates preferences against expected rules",
+        "Complete instruction coverage: Both preferences (mail.server.default.autosync_offline_stores and mail.server.default.offline_download) are semantically correct for enabling offline synchronization and downloading message bodies",
+        "Postconfig is appropriate: Closes Thunderbird window to ensure prefs.js is flushed to disk before verification, includes 0.5s sleep for file system sync",
+        "Expected values are correct: Both preferences should be set to true (boolean) with exact match comparison",
+        "Type compatibility is handled correctly: Metric checks for None case (line thunderbird.py:41-42) and returns 0.0 if file retrieval fails",
+        "Parameter handling is correct: Metric function uses 'rule' parameter (not 'expected') and correctly accesses rule.get('expect', {}) and rule.get('unexpect', {})"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "08c73485-7c6d-4681-999d-919f5c32dcfa_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

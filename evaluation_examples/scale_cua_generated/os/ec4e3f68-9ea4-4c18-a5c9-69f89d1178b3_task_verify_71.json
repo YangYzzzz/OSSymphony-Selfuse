@@ -1,0 +1,87 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_71",
+  "snapshot": "os",
+  "instruction": "Keep only Google Chrome in the favorites list and remove all other applications.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "postconfig": [],
+  "evaluator": {
+    "func": "check_gnome_favorites_exact_single__e2063f4a",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "app": "google-chrome.desktop"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires keeping only google-chrome.desktop and removing thunderbird and vim. Original: ['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop'], expected: ['google-chrome.desktop']. Evaluator checks for exactly one app matching google-chrome.desktop.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_12_task_verify_9/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "postconfig_note": "Postconfig is intentionally empty - gsettings command-line query does not require UI to be open. The rule validation warning is a false positive heuristic.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vm_command_line executes 'gsettings get org.gnome.shell favorite-apps' which directly queries the dconf database to extract the current favorites list state",
+        "Metric logic is semantically correct: check_gnome_favorites_exact_single__e2063f4a checks BOTH 'len(apps) == 1' (verifies all other apps removed) AND 'apps[0] == expected_app' (verifies only Chrome remains)",
+        "Complete coverage: instruction has 2 requirements ('keep only Google Chrome' + 'remove all other applications') and evaluator verifies both requirements with single atomic check",
+        "Expected value is semantically correct: 'app': 'google-chrome.desktop' is the correct desktop entry name for Google Chrome in GNOME",
+        "Metric function correctly handles expected parameter: when expected.type='rule', metric receives rules dict directly as 'rule' parameter and correctly accesses 'rule[\"app\"]' without nested structure errors",
+        "Data flow is correct: gsettings command returns string representation like \"['google-chrome.desktop']\" -> getter returns raw string -> metric parses with eval() to list -> strict comparison returns 1.0 or 0.0",
+        "Postconfig is correctly empty: gsettings is a command-line tool that queries dconf database directly without requiring GNOME Shell UI or desktop session to be active. Static validation warning about UI dependency is a false positive heuristic.",
+        "Edge cases handled robustly: metric correctly handles empty list (0 apps), single wrong app, single correct app, and multiple apps scenarios with strict length and equality checks"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

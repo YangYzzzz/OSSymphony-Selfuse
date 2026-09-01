@@ -1,0 +1,117 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_56",
+  "snapshot": "thunderbird",
+  "instruction": "I want Thunderbird to automatically check for new mail at startup. Could you help me enable automatic mail checking when Thunderbird launches?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.server1.check_new_mail": {
+            "method": "eq",
+            "ref": true
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic new mail checking for the mail server. Original task had 'check_new_mail' set to false. Evaluator verifies that mail.server.server1.check_new_mail is set to true in prefs.js.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Checked cache prefs.js - mail.server.server1.check_new_mail is currently false, task requires changing it to true",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Semantic mismatch: Instruction requests 'automatically check for new mail at startup', but evaluator checks 'mail.server.server1.check_new_mail' which controls periodic mail checking, not startup checking specifically",
+        "The setting 'check_new_mail' enables periodic automatic checking while the server is running, which is different from 'check at startup' (usually controlled by preferences like 'mail.startup.enabledMailCheckOnce')",
+        "These are semantically distinct features in Thunderbird: startup checking vs periodic checking",
+        "While related, the evaluator verifies a different user requirement than what the instruction explicitly asks for"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify the correct Thunderbird preference for 'check mail at startup' (likely 'mail.startup.enabledMailCheckOnce' or similar startup-specific preference)",
+        "Update evaluator to check the actual startup mail checking preference instead of the periodic checking preference",
+        "Alternative: Clarify the instruction to match what's being verified (e.g., 'enable periodic automatic mail checking' rather than 'at startup')"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

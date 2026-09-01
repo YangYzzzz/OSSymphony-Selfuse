@@ -1,0 +1,102 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "Please configure Chrome to block third-party cookies to prevent cross-site tracking.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_block_third_party_cookies__327d732b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires blocking third-party cookies in Chrome privacy settings. Custom getter get_chrome_block_third_party_cookies__327d732b checks Chrome Preferences for block_third_party_cookies flag and cookie_controls_mode setting. Returns 'true' when third-party cookies are blocked.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/99146c54-4f37-4ab8-9327-5f3291665e1e_task_verify_4/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Custom getter verifies block_third_party_cookies flag or cookie_controls_mode >= 1 in Chrome Preferences profile section.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "CRITICAL SEMANTIC ERROR: Getter logic at chrome.py:45 uses 'cookie_controls_mode >= 1' which incorrectly accepts Incognito-only blocking (mode=1). Instruction requires blocking third-party cookies 'to prevent cross-site tracking' which implies ALL browsing contexts, not just Incognito.",
+        "False positive scenario: If user only sets 'Block third-party cookies in Incognito' (cookie_controls_mode=1), evaluator incorrectly returns 'true' and marks task as complete, even though normal browsing still allows third-party cookies.",
+        "Correct logic should check 'cookie_controls_mode == 2' (block all third-party) or 'cookie_controls_mode >= 2' if future modes exist, not '>= 1'.",
+        "All other aspects are correct: postconfig properly restarts Chrome, file path logic covers all OS types, exact_match metric is appropriate, and data types match correctly."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change chrome.py:45 from 'return \"true\" if (block_third_party or cookie_controls_mode >= 1) else \"false\"' to 'return \"true\" if (block_third_party or cookie_controls_mode == 2) else \"false\"'",
+        "Alternatively, if Chrome's cookie_controls_mode semantics allow values >2 for stronger blocking, use 'cookie_controls_mode >= 2' to future-proof the logic",
+        "Add a comment explaining: cookie_controls_mode values: 0=allow all, 1=block in Incognito only, 2=block all third-party cookies"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

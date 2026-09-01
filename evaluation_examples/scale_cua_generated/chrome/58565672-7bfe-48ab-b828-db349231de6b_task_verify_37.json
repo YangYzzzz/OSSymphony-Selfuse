@@ -1,0 +1,130 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_37",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the link in the most recent Bills email and make it the active Chrome tab.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "wmctrl",
+          "-a",
+          "Google Chrome"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.amazon.com/"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires opening the Amazon link from Bills email and ensuring it becomes the active tab. The evaluator checks that the currently active tab is Amazon. Uses existing functions: is_expected_active_tab (metric) and get_active_tab_info (getter).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification complete: evaluator correctly verifies both instruction requirements - (1) navigating to Amazon link from Bills email, and (2) making it the active Chrome tab",
+        "Getter logic correct (chrome.py:803-890): get_active_tab_info extracts active tab URL from accessibility tree using get_active_url_from_accessTree (chrome.py:710-800), connects to Chrome via CDP, returns complete tab info dict containing title, URL, and content",
+        "Metric logic correct (chrome.py:18-38): is_expected_active_tab compares active tab URL with expected URL using compare_urls() utility function, returns 1.0 for match and 0.0 for mismatch",
+        "Parameter handling correct: when expected.type='rule', framework calls get_rule() (misc.py:88-92) which returns config['rules'] directly. Metric correctly accesses rule['type'] (line 25) and rule['url'] (line 28) without incorrect wrapping patterns",
+        "Expected value semantically correct: URL 'https://www.amazon.com/' is the correct Amazon link that would be present in Bills email based on Thunderbird profile setup (config line 41-43)",
+        "Data flow logically sound: get_active_tab_info extracts active tab state -> is_expected_active_tab compares URL against expected -> returns 1.0 if task completed correctly",
+        "Postconfig addresses UI state dependency: wmctrl -a 'Google Chrome' (line 80-83) focuses Chrome window before evaluation, ensuring active tab can be reliably read from accessibility tree. This resolves the static validation warning about UI/state-dependent tasks",
+        "Runtime feasibility verified: getter can access Chrome via CDP on port 1337, accessibility tree provides active tab URL via address bar selector (either 'Chromium' or 'Google Chrome' based on architecture), metric can compare URLs using utility function"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "rule_validation_notes": "Static validation warning about UI/state-dependent task has been addressed - postconfig is present and correct (wmctrl -a 'Google Chrome')",
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

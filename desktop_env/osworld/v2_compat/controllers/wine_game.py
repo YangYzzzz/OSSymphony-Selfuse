@@ -69,8 +69,8 @@ wine --version | grep -Eq {version_regex_arg}
     setup_controller._execute_with_verification_setup(
         ["bash", "-lc", "true"],
         verification={"command_success": f"wine --version | grep -Eq {version_regex_arg}"},
-        max_wait_time=5,
-        check_interval=1.0,
+        max_wait_time=60,
+        check_interval=2.0,
     )
 
 

@@ -1,0 +1,97 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Locate gasoline vehicles under $20,000 within 35 miles of 85001.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "20000",
+          "maximum_distance": "35",
+          "zip": "85001",
+          "fuel_slugs[]": "gasoline"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires searching for gasoline vehicles with price ≤ $20,000 within 35 miles of Phoenix (85001). Evaluator validates URL parameters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: evaluator checks all 4 requirements (price limit, distance, zip code, fuel type)",
+        "Correct getter logic: active_tab_url_parse properly extracts URL query parameters from active tab",
+        "Correct metric logic: check_direct_json_object performs exact string comparison for all key-value pairs",
+        "Data flow correctness: getter extracts URL parameters as strings, expected values are strings, metric compares correctly",
+        "Practical feasibility: getter can access URL state from accessibility tree without needing postconfig",
+        "Proper error handling: getter returns None if required parameters missing, correctly failing evaluation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

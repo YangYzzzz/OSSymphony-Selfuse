@@ -1,0 +1,130 @@
+{
+  "id": "df67aebb-fb3a-44fd-b75b-51b6012df509",
+  "new_id": "task_verify_58",
+  "snapshot": "vscode",
+  "instruction": "From references.docx, obtain DBLP BibTeX entries for the papers (published preferred), and write them to 'references.bib' ensuring DOI fields are included for at least 3 papers.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://dblp.org/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "touch",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/df67aebb-fb3a-44fd-b75b-51b6012df509/references.docx",
+            "path": "/home/user/Desktop/references.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/references.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_bib_dois__d2014158",
+    "result": {
+      "type": "bib_dois__d2014158",
+      "path": "/home/user/Desktop/references.bib"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_doi_count": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Checks for DOI presence. Verified from gold file: 4 entries have DOI fields (Spider, SParC, CoSQL, BERT).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_3_task_verify_7/getters/bib_file.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_3_task_verify_7/metrics/bib_file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly parses BibTeX entries using regex pattern matching @type{key, ...} structure",
+        "Getter validates entry types against standard BibTeX types (article, inproceedings, book, etc.) - prevents false positives from non-BibTeX content",
+        "Getter extracts DOI fields from entry bodies using proper regex, ensuring DOIs are within valid entry blocks",
+        "Metric implements three-level validation: (1) entries_with_dois_count >= min_doi_count, (2) total_valid_entries >= min_doi_count, (3) len(valid_entries_with_dois) >= min_doi_count",
+        "Metric correctly handles expected parameter (uses expected.get('min_doi_count') directly, not expected.get('rules'))",
+        "The evaluator successfully verifies the core instruction requirement: 'ensuring DOI fields are included for at least 3 papers' by checking for at least 3 valid BibTeX entries with DOI fields",
+        "Edge cases handled: empty file returns zero counts, invalid entries excluded from count",
+        "Minor note: Getter extracts has_dblp_url field but metric doesn't validate DBLP source - however, 'DBLP' in instruction is task guidance (how to obtain entries), not a strict verification requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could use the has_dblp_url field in metric to verify entries are from DBLP, though this is not strictly required by the instruction's verifiable requirements",
+        "Optional enhancement: Could verify at least some entries match paper titles/authors from references.docx, though this would require complex NLP and may be overly strict"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_bib_dois__d2014158 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

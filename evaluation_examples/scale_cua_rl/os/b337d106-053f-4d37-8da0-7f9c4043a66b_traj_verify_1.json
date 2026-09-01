@@ -1,0 +1,97 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "b337d106-053f-4d37-8da0-7f9c4043a66b_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Enable syntax highlighting in Vim by default so it persists across sessions.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "cat",
+        "/home/user/.vimrc"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "syntax on"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_b337d106-053f-4d37-8da0-7f9c4043a66b_sid_1488177",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent tried to search Google for Vim line numbers tutorial but hit SSL certificate error. Navigated to vimhelp.org successfully. Switched to terminal and ran curl, vim --help, man vim commands. Eventually opened a file in Vim but got stuck and never configured ~/.vimrc.",
+    "capability_extraction": "Can interact with terminal (type commands, execute shell commands), navigate Chrome to HTTP sites, switch between Chrome and Terminal windows",
+    "failure_analysis": "SSL certificate error on Google blocked web search. Model spent many turns retrying Google. When it switched to terminal, it opened Vim interactively and got stuck without exiting or writing to .vimrc.",
+    "task_rationale": "Similar to the original Vim configuration task but with a different setting (syntax highlighting instead of line numbers). Removes the web search requirement to focus on terminal-based config file editing.",
+    "explanation": "Task requires adding 'syntax on' to ~/.vimrc. Evaluator reads ~/.vimrc and checks that it contains 'syntax on'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "vimrc_contains_syntax_on": "1.0 - ~/.vimrc contains 'syntax on'"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads ~/.vimrc via 'cat /home/user/.vimrc' using vm_command_line, which extracts the right state for verifying persistent Vim configuration.",
+        "Metric check_include_exclude correctly checks for substring 'syntax on' in the file content, which is the canonical Vim command for enabling syntax highlighting.",
+        "Parameter handling is correct: expected.type='rule' means the metric receives the rules dict directly with 'include' and 'exclude' keys, matching check_include_exclude's access pattern (rules.get('include'), rules.get('exclude')).",
+        "Coverage is complete: the single instruction requirement (persistent syntax highlighting) is fully verified by checking .vimrc content.",
+        "Minor note: 'syntax enable' is an alternative Vim command that also enables syntax highlighting but would not be detected. However, 'syntax on' is the standard and most commonly documented approach, so this is acceptable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider also accepting 'syntax enable' as a valid alternative (e.g., add it as a second evaluator or use regex matching), though this is a minor enhancement and not a correctness issue."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

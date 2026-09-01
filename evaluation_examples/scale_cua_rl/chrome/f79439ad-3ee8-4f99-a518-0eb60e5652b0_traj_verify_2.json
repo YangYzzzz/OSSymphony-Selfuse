@@ -1,0 +1,114 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Search for a one way flight from London Stansted to Barcelona on 5th next month for 2 adults and 1 child on Ryanair.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "5th next month"
+        },
+        "expected": {
+          "originIata": "STN",
+          "destinationIata": "BCN",
+          "tpAdults": "2",
+          "tpTeens": "0",
+          "tpChildren": "1",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f79439ad-3ee8-4f99-a518-0eb60e5652b0_sid_1488250",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully searched for a one-way flight from Dublin to Vienna on 10th next month for 2 adults on Ryanair. Accepted cookies, selected one-way, set origin/destination airports, date, passengers, and clicked search to reach flight results.",
+    "capability_extraction": "Can navigate Ryanair website, handle cookie dialogs, select one-way trips, change origin/destination airports via country/airport picker, set travel dates, modify passenger counts, and submit flight search",
+    "task_rationale": "Same flight search pattern but uses the default origin (London Stansted) so the model can skip changing origin. Different destination (Barcelona), earlier date (5th), and adds a child passenger which tests a new dimension not covered in the original.",
+    "explanation": "Task requires searching Ryanair for a one-way London Stansted to Barcelona flight on 5th next month with 2 adults and 1 child. Evaluator parses URL parameters to verify origin/destination IATA codes, passenger counts including children, date, and trip type.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 12,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter active_tab_url_parse correctly extracts Ryanair URL query parameters (originIata, destinationIata, tpAdults, tpTeens, tpChildren, tpStartDate, isReturn) and renames tpStartDate to 'time' for matching.",
+        "Expected values are semantically correct: STN=London Stansted, BCN=Barcelona, tpAdults=2, tpTeens=0, tpChildren=1, isReturn=false - all match the instruction requirements.",
+        "get_rule_relativeTime correctly handles '5th next month' as a special case and computes the absolute date.",
+        "check_direct_json_object correctly accesses rules['expected'] and compares each key against the getter result.",
+        "Potential date format mismatch: template '{Year}-{Month0D}-{DayD}' produces non-zero-padded day (e.g., '2026-03-5'), but Ryanair URLs typically use zero-padded dates (e.g., '2026-03-05'). The original task used 10th (always 2 digits) so this issue was not caught. Should use {Day0D} instead of {DayD}.",
+        "All instruction requirements are covered: origin, destination, date, passenger counts (adults + children), trip type (one-way)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change date format template from '{Year}-{Month0D}-{DayD}' to '{Year}-{Month0D}-{Day0D}' to ensure zero-padded day values that match Ryanair's URL format for single-digit days like the 5th."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

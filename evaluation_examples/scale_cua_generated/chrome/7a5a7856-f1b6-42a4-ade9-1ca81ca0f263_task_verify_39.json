@@ -1,0 +1,110 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Create a new folder called 'NLP Research' on the bookmarks bar.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_folders_names",
+        "names": [
+          "NLP Research"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a bookmark folder named 'NLP Research' in the bookmarks bar. Uses the existing is_expected_bookmarks metric with bookmark_bar_folders_names type. Same pattern as variations 2-3-5 with different name.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_bookmarks reads Chrome's Bookmarks file and returns the complete bookmark structure including bookmark_bar",
+        "Metric logic is correct: is_expected_bookmarks with type 'bookmark_bar_folders_names' correctly filters bookmark_bar children for folders (type=='folder'), extracts folder names, and uses subset check to verify 'NLP Research' exists",
+        "Expected parameter handling is correct: When expected.type='rule', get_rule returns config['rules'] directly, and metric correctly accesses rule['type'] and rule['names'] without errors",
+        "Complete instruction coverage: Evaluator verifies exactly what the instruction requires - that a folder named 'NLP Research' exists on the bookmarks bar",
+        "Appropriate postconfig: Restarts Chrome to ensure bookmarks are persisted to disk and reloaded, with 3 second sleep for Chrome initialization",
+        "Correct data flow: Bookmarks file → get_bookmarks → is_expected_bookmarks → filter folders → check 'NLP Research' in folder names → return 1.0 or 0.0",
+        "Robust edge case handling: Returns 0.0 for empty bookmarks, 1.0 if folder exists (idempotent), uses subset check allowing other folders to exist"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "task_verify_68",
+  "snapshot": "os",
+  "instruction": "Append the text 'COPIED' to file 'log.txt' in each of directories 'dir1', 'dir2', 'dir3'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "rm -rf dir1 dir2 dir3 && mkdir dir1 dir2 dir3 && echo 'Log entry 1' > dir1/log.txt && echo 'Log entry 2' > dir2/log.txt && echo 'Log entry 3' > dir3/log.txt",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'for d in dir1 dir2 dir3; do if grep -q \"COPIED\" \"$d/log.txt\" 2>/dev/null; then echo \"Success: COPIED appended to log.txt in $d.\"; else echo \"Failure: COPIED not found in log.txt in $d.\"; fi; done'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: COPIED appended to log.txt in dir1.",
+          "Success: COPIED appended to log.txt in dir2.",
+          "Success: COPIED appended to log.txt in dir3."
+        ],
+        "exclude": [
+          "Failure"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires appending text 'COPIED' to existing log.txt files in three directories. The evaluator uses grep to check that 'COPIED' appears in each log.txt file. This verifies file modification across multiple directories.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking bash script logic: the script uses grep to search for 'COPIED' in each log.txt file. The evaluator confirms all success messages are present and no failure messages exist.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks all three directories (dir1, dir2, dir3) for the presence of 'COPIED' text",
+        "The bash command logic is sound: uses for loop with grep to verify 'COPIED' appears in each log.txt file",
+        "The check_include_exclude metric correctly verifies all success messages are present and no failure messages exist",
+        "Minor semantic weakness: evaluator only checks if 'COPIED' exists in the file, not if it was truly appended (original content preserved). However, this is acceptable for practical verification as the task is simple and unlikely to result in file replacement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stricter verification, could enhance the bash command to verify both original content AND 'COPIED' are present (e.g., grep for both 'Log entry' and 'COPIED')",
+        "Could add verification that original content remains intact by checking for expected patterns like 'Log entry 1', 'Log entry 2', 'Log entry 3' in addition to 'COPIED'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

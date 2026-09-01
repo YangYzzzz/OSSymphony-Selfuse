@@ -1,0 +1,92 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_62",
+  "snapshot": "multiapps",
+  "instruction": "Convert the blog pages currently open in Chrome to PDF format and save them to /home/user/Documents/WebPages directory.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_pdf_files_non_empty__99e94d1a",
+    "result": {
+      "type": "pdf_file_sizes__99e94d1a",
+      "directory": "/home/user/Documents/WebPages"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 2,
+        "min_size_bytes": 1000
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires converting blog pages to PDFs and saving to WebPages directory. Evaluator verifies at least 2 PDF files exist and each is at least 1KB in size (non-empty files).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_3/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_3/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Evaluator only verifies that 2+ PDFs exist in target directory, but cannot verify they are the correct blog pages",
+        "No content verification: Cannot distinguish between correct PDFs from the specified URLs vs any random PDFs",
+        "No filename verification: Does not check if PDF names are derived from blog page titles or URLs",
+        "Size threshold (1000 bytes) too low: Real blog page PDFs would be 50KB+, corrupted/incomplete PDFs could pass",
+        "Incomplete coverage: Only checks location and count, not task correctness",
+        "Logic will execute correctly at runtime but has significant semantic verification gap"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add filename pattern verification (e.g., check if filenames contain keywords from URLs like 'agent' or 'human-data-quality')",
+        "Increase min_size_bytes to realistic value like 10000 (10KB) or 50000 (50KB) for blog page PDFs",
+        "Consider adding metadata verification using pdfinfo/pdftotext to check if PDFs contain expected content keywords",
+        "Add URL/title verification by extracting PDF metadata (Creator, Title, Subject fields may contain URL)",
+        "Alternative: Use Chrome DevTools Protocol getter to verify Print-to-PDF actions were performed on the correct URLs"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

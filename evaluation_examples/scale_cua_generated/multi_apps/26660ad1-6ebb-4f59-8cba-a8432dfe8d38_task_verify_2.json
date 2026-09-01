@@ -1,0 +1,106 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_2",
+  "snapshot": "multiapps",
+  "instruction": "Test your network speed at speedtest.net, then export all results with ISP info to ~/Documents/connection_report.txt.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Documents/connection_report.txt",
+      "dest": "connection_report.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Download",
+          "Upload",
+          "ISP"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires running a speed test on speedtest.net and exporting comprehensive results including ISP information. The evaluator checks if connection_report.txt in Documents contains Download, Upload metrics and ISP information, ensuring the user completed the test and saved complete network details.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary scoring: 1.0 if all required keywords (Download, Upload, ISP) are present in the file, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator logic is fundamentally sound - getter correctly fetches the file from expected location and metric checks for relevant keywords",
+        "Good semantic alignment - checking for 'Download', 'Upload', 'ISP' keywords reasonably verifies that speed test results with ISP info were exported",
+        "Coverage is adequate - the three keywords cover the main requirements (speed metrics + ISP information)",
+        "Case-sensitive keyword matching could cause false negatives if speedtest.net uses different capitalization (e.g., 'download' vs 'Download')",
+        "Keyword matching is somewhat brittle - speedtest.net might format results differently (e.g., 'Download Speed:', 'DL:', 'Internet Service Provider' instead of exact keywords)",
+        "No validation that keywords appear in meaningful context - they could theoretically appear in headers/instructions rather than actual results"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making keyword matching case-insensitive by converting file_text to lowercase before checking",
+        "Consider using more flexible keyword matching (e.g., checking if 'download' appears anywhere in lowercase text, or using regex patterns)",
+        "Optionally add checks for presence of numeric values near keywords to ensure actual test results are present (not just labels)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38_aug_2_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

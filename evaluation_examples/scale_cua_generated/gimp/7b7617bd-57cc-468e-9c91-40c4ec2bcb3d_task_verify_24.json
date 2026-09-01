@@ -1,0 +1,89 @@
+{
+  "id": "7b7617bd-57cc-468e-9c91-40c4ec2bcb3d",
+  "new_id": "task_verify_24",
+  "snapshot": "gimp",
+  "instruction": "Set GIMP's default grid spacing to 20 pixels for both horizontal and vertical.",
+  "source": "https://www.youtube.com/watch?v=G_PjQAy0iiU",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "key-value",
+        "key": [
+          "default-grid",
+          "spacing"
+        ],
+        "value": "20.000000"
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to navigate to GIMP preferences and set the default grid spacing to 20 pixels. The evaluator checks the gimprc config file for 'default-grid spacing 20.000000'. Uses existing check_config_status metric and get_gimp_config_file getter with two-part key.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if default-grid spacing is set to 20.000000, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction explicitly requires setting spacing for BOTH horizontal AND vertical dimensions ('20 pixels for both horizontal and vertical'), but evaluator only checks a single 'default-grid spacing' value",
+        "GIMP grid configuration typically uses separate settings for horizontal (xspacing) and vertical (yspacing) dimensions, or may use a unified 'spacing' that sets both - the evaluator should verify BOTH dimensions are correctly set to 20",
+        "The current check may pass even if only one dimension is set correctly, failing to catch cases where horizontal and vertical are set to different values",
+        "Postconfig logic is correct (closes GIMP to ensure config is flushed to disk before checking file)",
+        "Value format assumption ('20.000000' string) appears correct based on GIMP config file format"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify evaluator to check BOTH horizontal and vertical grid spacing settings in gimprc (e.g., check both 'default-grid xspacing' and 'default-grid yspacing' are set to '20.000000')",
+        "Alternative: If 'default-grid spacing' sets both dimensions uniformly, add verification that GIMP doesn't also have separate xspacing/yspacing overrides with different values",
+        "Consider using a multi-check evaluator structure that verifies both dimensions independently for complete coverage"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

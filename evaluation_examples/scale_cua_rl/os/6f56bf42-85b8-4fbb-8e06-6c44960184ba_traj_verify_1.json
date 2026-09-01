@@ -1,0 +1,109 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Rename file1 to data.txt, then copy data.txt into each of dir1, dir2, and dir3.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/6f56bf42-85b8-4fbb-8e06-6c44960184ba/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_rename_copy__25257c2d579c2a114cd376d84d920386",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c '[ ! -e /home/user/file1 ] && echo \"FILE1_GONE:YES\" || echo \"FILE1_GONE:NO\"; [ -f /home/user/dir1/data.txt ] && echo \"DATA_IN_DIR1:YES\" || echo \"DATA_IN_DIR1:NO\"; [ -f /home/user/dir2/data.txt ] && echo \"DATA_IN_DIR2:YES\" || echo \"DATA_IN_DIR2:NO\"; [ -f /home/user/dir3/data.txt ] && echo \"DATA_IN_DIR3:YES\" || echo \"DATA_IN_DIR3:NO\"'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file1_gone": true,
+        "data_in_dir1": true,
+        "data_in_dir2": true,
+        "data_in_dir3": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_6f56bf42-85b8-4fbb-8e06-6c44960184ba_sid_1488213",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully copied file1 to dir1, dir2, dir3 using cp commands with && chaining, then verified with ls -la. Completed in 9 turns.",
+    "capability_extraction": "Can use terminal, execute file operations (cp, ls, mv), chain commands with &&, verify results",
+    "task_rationale": "Varies original copy task by adding a rename step (mv) before copying, testing the model's ability to chain rename + copy operations",
+    "explanation": "Task requires renaming file1 to data.txt (mv file1 data.txt), then copying data.txt to dir1, dir2, dir3. Evaluator checks: (1) file1 no longer exists in home, (2-4) data.txt exists in each directory. Partial credit: 0.25 per check.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_6f56bf42-85b8-4fbb-8e06-6c44960184ba_sid_1488213_traj_verify_1/metrics/check_rename_copy__25257c2d579c2a114cd376d84d920386.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "file1_gone": "0.25 - file1 no longer exists (was renamed)",
+      "data_in_dir1": "0.25 - data.txt exists in dir1",
+      "data_in_dir2": "0.25 - data.txt exists in dir2",
+      "data_in_dir3": "0.25 - data.txt exists in dir3"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter command correctly checks all 4 conditions: file1 removed (rename verified), data.txt present in dir1/dir2/dir3 (copy verified)",
+        "Metric correctly parses structured YES/NO output and awards 0.25 partial credit per condition, summing to 1.0 for full completion",
+        "Coverage is complete: both rename (file1 gone) and copy (data.txt in 3 directories) are verified",
+        "Minor issue: metric ignores the expected parameter entirely - the rules dict is passed but never referenced; metric hardcodes expected behavior via YES marker checks",
+        "Minor gap: does not verify data.txt exists in /home/user/ after rename, though this is implicitly validated by the copy checks succeeding"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider having the metric reference the expected rules dict to determine which conditions to check, rather than hardcoding all 4 checks",
+        "Optionally add a check that /home/user/data.txt exists to fully verify the rename operation produced the expected file"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

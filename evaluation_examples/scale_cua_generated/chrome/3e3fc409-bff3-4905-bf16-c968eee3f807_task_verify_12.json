@@ -1,0 +1,166 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_12",
+  "snapshot": "chrome",
+  "instruction": "Create a 'top_rated' sheet in the movies Excel file and transfer all movies with ratings of at least 9.0, preserving the column headers.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "movies.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_func__864e927cd0113eb6d9476a9e8ebce88d",
+    "result": {
+      "type": "dummy"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "conj": "and",
+        "include": [
+          {
+            "func": "check_xlsx_row_count__864e927cd0113eb6d9476a9e8ebce88d",
+            "result": {
+              "type": "xlsx_sheet_row_count__864e927cd0113eb6d9476a9e8ebce88d",
+              "path": "/home/user/Desktop/movies.xlsx",
+              "sheet": "top_rated"
+            },
+            "expected": {
+              "type": "rule",
+              "rules": {
+                "count": 7
+              }
+            }
+          },
+          {
+            "func": "check_movies_rating_threshold__864e927cd0113eb6d9476a9e8ebce88d",
+            "result": {
+              "type": "xlsx_sheet_movies_with_ratings__864e927cd0113eb6d9476a9e8ebce88d",
+              "path": "/home/user/Desktop/movies.xlsx",
+              "sheet": "top_rated"
+            },
+            "expected": {
+              "type": "rule",
+              "rules": {
+                "min_rating": 9.0,
+                "count": 7
+              }
+            }
+          },
+          {
+            "func": "check_headers_match__864e927cd0113eb6d9476a9e8ebce88d",
+            "result": {
+              "type": "xlsx_sheet_headers__864e927cd0113eb6d9476a9e8ebce88d",
+              "path": "/home/user/Desktop/movies.xlsx",
+              "sheet": "top_rated"
+            },
+            "expected": {
+              "type": "xlsx_sheet_headers__864e927cd0113eb6d9476a9e8ebce88d",
+              "path": "/home/user/Desktop/movies.xlsx",
+              "sheet": 0
+            }
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a new sheet 'top_rated' with movies having rating >= 9.0. Verified with Python: 7 movies meet this criteria (The Shawshank Redemption 9.3, The Godfather 9.2, 12th Fail 9.1, Schindler's List 9.0, LOTR: Return of the King 9.0, Dune: Part Two 9.0, The Godfather Part II 9.0). Evaluator checks if the new sheet has exactly 7 data rows.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_aug_19_task_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_aug_19_task_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three instruction requirements: (1) new sheet 'top_rated' created with correct row count, (2) all movies filtered by rating >= 9.0, (3) column headers maintained from original sheet.",
+        "Parameter handling is CORRECT: check_include_func__864e927cd0113eb6d9476a9e8ebce88d (metrics/xlsx.py:20-21) correctly accesses expected parameter directly with 'expected.get(\"conj\")' and 'expected.get(\"include\")', following the framework pattern where expected IS the rules dict when expected.type='rule'.",
+        "Getter logic is semantically correct: get_xlsx_sheet_movies_with_ratings intelligently finds title/rating columns by header names (getters/xlsx.py:97-110), handling flexible column ordering. Extraction logic correctly reads all movie data with ratings.",
+        "Metric logic correctly validates requirements: check_movies_rating_threshold verifies ALL movies have rating >= 9.0 (metrics/xlsx.py:148-156) and count matches expected (line 144), ensuring complete filtering verification.",
+        "Expected values are semantically correct: 7 movies with rating >= 9.0 matches metadata explanation listing the specific movies (The Shawshank Redemption 9.3, The Godfather 9.2, etc.).",
+        "Postconfig is appropriate: includes file save (Ctrl+S) and window activation, ensuring fresh file state for verification.",
+        "Minor issue (score -0.05): Row counting uses first cell check (getters/xlsx.py:52-54) which could theoretically fail if title column has None values, but this is unlikely in practice for movie data with proper headers."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "3e3fc409-bff3-4905-bf16-c968eee3f807_aug_19_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

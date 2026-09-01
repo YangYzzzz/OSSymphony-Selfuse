@@ -1,0 +1,92 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "I want VLC to automatically resume playback from where I left off when I reopen a video. Could you help me configure VLC to always continue playback without asking?",
+  "source": "https://superuser.com/questions/776056/how-to-hide-bottom-toolbar-in-vlc",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_continue__a10b6972",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_continue": 1
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic playback resumption in VLC. The evaluator checks the qt-continue setting in VLC config file. Expected value is 1 (always continue). Default is 0 (ask user). Uses custom check_qt_continue__a10b6972 metric function.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_task_verify_5/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Created custom metric function check_qt_continue__a10b6972 that reads vlcrc file and verifies qt-continue=1. qt-continue controls resume behavior: 0=ask, 1=always continue, 2=never. Task requires setting it to 1.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts VLC config file using get_vlc_config getter",
+        "Metric function check_qt_continue__a10b6972 correctly reads vlcrc and extracts qt-continue setting",
+        "Metric correctly handles expected parameter - directly accesses rules dict with expected.get('expected_qt_continue')",
+        "Expected value qt-continue=1 is semantically correct for 'always continue without asking' requirement",
+        "Postconfig appropriately kills and relaunches VLC to ensure config is persisted to disk before evaluation",
+        "Metric handles edge cases (file not found, missing setting defaults to '0', exceptions)",
+        "Complete coverage: instruction requires automatic resume without asking, evaluator verifies qt-continue=1 which implements exactly this behavior"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

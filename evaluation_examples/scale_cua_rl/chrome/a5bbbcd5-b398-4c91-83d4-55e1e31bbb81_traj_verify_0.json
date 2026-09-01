@@ -1,0 +1,88 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Remove the orange traffic cone logo that VLC displays when no media is loaded.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_bgcone",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_bgcone": 0
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_sid_1488184",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated VLC > Tools > Preferences > Interface, checked 'Start in minimal view mode', saved preferences, and restarted VLC to verify persistence.",
+    "capability_extraction": "Can launch VLC, navigate to Tools > Preferences, find and toggle checkbox settings in Interface tab, save preferences",
+    "task_rationale": "Same interaction pattern (toggle VLC preference setting) but different target: disable the background cone logo instead of enabling minimal view. Both are checkboxes in the same Interface preferences panel.",
+    "explanation": "Task requires disabling the VLC background cone (orange traffic cone logo shown when no media is loaded). Evaluator reads vlcrc config file and checks that qt-bgcone=0. Default is 1 (enabled), so agent must uncheck the option in Preferences > Interface.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads the vlcrc config file from the VM, which is the right source for VLC preference settings.",
+        "Metric (check_qt_bgcone) correctly parses the vlcrc file for the 'qt-bgcone' key and compares against expected value 0 (disabled).",
+        "Expected value handling is correct: get_rule returns {\"expected_qt_bgcone\": 0}, and the metric accesses rule['expected_qt_bgcone'] directly — proper parameter handling for type='rule'.",
+        "Postconfig correctly kills VLC (forcing config write to disk) then relaunches it, ensuring vlcrc reflects the saved preferences.",
+        "The qt-bgcone setting is the correct VLC config key controlling the orange traffic cone background logo. Value 0 means disabled, matching the instruction to remove it.",
+        "Complete coverage: single-requirement instruction (remove cone logo) is fully verified by checking qt-bgcone=0."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

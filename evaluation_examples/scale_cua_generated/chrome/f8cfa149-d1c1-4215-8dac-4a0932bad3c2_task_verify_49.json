@@ -1,0 +1,108 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "Copy the text from Cell C3 in this Calc spreadsheet and look it up on Google using Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=gent(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell C3 (Last Name column, row 3) from the spreadsheet and search it in Chrome. Verified from Excel file: Row 3, Column C contains 'Gent'. Evaluator checks if active tab URL matches Google search for 'gent'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Getter 'get_active_tab_info' reloads the active tab page (line 852: page.goto(active_tab_url)), which can alter the verification state",
+        "Page reload on dynamic search pages may trigger redirects or change URL parameters, potentially causing false negatives",
+        "Getter documentation explicitly warns: 'This function will reload the target-url page' and 'If the target url has cache or cookie, this function may reload to another page'",
+        "No postconfig present to ensure search state remains accessible after agent task completion",
+        "Metric logic is correct: regex pattern properly matches Google search URL with query parameter 'q=gent'",
+        "Expected value is semantically correct: verified that cell C3 contains 'Gent' from source data",
+        "Coverage is complete: evaluator checks the main requirement (Google search for the cell content)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace 'get_active_tab_info' with 'get_active_url_from_accessTree' to avoid page reload - this getter only reads the URL from accessibility tree without navigating",
+        "Update evaluator.result.type from 'active_tab_info' to 'active_tab_url' to match the simpler getter",
+        "Alternative: Add postconfig to reopen/refresh Chrome to ensure search state is still active before verification",
+        "Alternative: Use a getter that doesn't reload the page, such as reading URL directly from browser state"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

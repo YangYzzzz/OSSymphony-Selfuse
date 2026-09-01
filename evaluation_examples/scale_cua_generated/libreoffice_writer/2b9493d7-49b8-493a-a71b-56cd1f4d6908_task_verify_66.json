@@ -1,0 +1,115 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_66",
+  "snapshot": "libreoffice_writer",
+  "instruction": "I can't close LibreOffice Writer normally - it's stuck with a large document open. Please use the terminal to force quit it. I'm on Ubuntu and don't want to lose my other open applications.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep \"kill\"); if [ -z \"$output\" ]; then echo \"not killed from terminal\"; else echo \"killed from terminal\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "killed from terminal"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "not killed from terminal"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires force quitting stuck LibreOffice Writer using terminal. Evaluator verifies that soffice process is no longer running and kill command was executed from terminal.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Process termination check is correct: Uses 'ps aux | grep \"[s]office\"' to verify LibreOffice is no longer running, with proper pattern to avoid grep self-matching",
+        "Terminal usage verification is logically sound: Checks bash history for kill commands to confirm the terminal was used",
+        "Complete coverage of main requirements: Verifies both that the process was terminated AND that a kill command was used from terminal",
+        "Metric logic is correct: check_include_exclude properly verifies all required strings are present and unwanted strings are absent",
+        "Postconfig appropriately kills terminal server which should flush bash history before evaluation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Bash history check has timing/reliability concerns: History may not be written to ~/.bash_history until the shell closes. The postconfig kills gnome-terminal-server which should flush history, but there could be race conditions",
+        "Generic kill pattern could match false positives: Searching for 'kill' in history could match 'killall', 'pkill', or even comments containing 'kill', not just the specific LibreOffice kill command. Consider more specific pattern like 'kill.*office' or 'pkill.*office'",
+        "Minor: Instruction mentions 'don't want to lose other open applications' but evaluator doesn't verify other apps remain running (though this is a secondary concern)",
+        "Consider adding explicit history flush command before evaluation (e.g., 'history -a' or small sleep delay) to ensure bash history is written"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

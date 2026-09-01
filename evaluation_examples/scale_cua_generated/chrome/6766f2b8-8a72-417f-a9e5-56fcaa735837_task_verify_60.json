@@ -1,0 +1,98 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_60",
+  "snapshot": "chrome",
+  "instruction": "Extract the extension file from /home/user/Desktop/ and load it into Chrome's extensions. Ensure the extension name is properly configured as 'Hello Extensions'.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_extension_name__e5eabc9a",
+    "result": {
+      "type": "extension_manifest_name__e5eabc9a",
+      "extension_path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Hello Extensions"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task verifies that the extension is properly configured by checking the extension name in manifest.json. The expected name is 'Hello Extensions' as verified from the original manifest file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_0/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction requires TWO steps: (1) extract and load extension into Chrome, (2) ensure extension name is 'Hello Extensions'. Evaluator only verifies manifest file content, not Chrome runtime state.",
+        "Missing Chrome runtime verification: Does not verify that the extension was actually loaded into Chrome (chrome://extensions/). Only checks manifest.json file on disk.",
+        "File-only verification insufficient: Current approach verifies file system state but not actual Chrome extension state. Task could pass even if extension failed to load in Chrome.",
+        "Missing postconfig for UI state: Static validation correctly flagged need for postconfig. To verify extension is loaded, evaluator needs to open chrome://extensions/ page, which requires postconfig step.",
+        "Main requirement unverified: The primary instruction 'load it into Chrome's extensions' is completely unverified by the current evaluator logic."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add Chrome extension runtime verification: Use Chrome DevTools Protocol or accessibility tree to check chrome://extensions/ page and verify extension is loaded and enabled.",
+        "Add postconfig to reopen chrome://extensions/: Include postconfig step to navigate Chrome to extensions management page before verification.",
+        "Consider using official Chrome getters: Check if official getters can read Chrome extension state via CDP (Chrome DevTools Protocol).",
+        "Alternative approach: Verify both manifest content AND extension appears in Chrome's loaded extensions list to cover both instruction requirements.",
+        "If Chrome runtime verification is not feasible, simplify instruction to only require manifest verification (remove 'load it into Chrome' requirement)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

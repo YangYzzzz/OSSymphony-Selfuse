@@ -1,0 +1,146 @@
+{
+  "id": "386dbd0e-0241-4a0a-b6a2-6704fba26b1c",
+  "new_id": "task_verify_25",
+  "snapshot": "chrome",
+  "instruction": "I'm studying with VLC playing music files. Every time I double-click a new music file, it opens another VLC window instead of using the existing one, which clutters my screen. Could you configure VLC to use only one instance and enqueue new files in the existing player?",
+  "source": "https://superuser.com/questions/1708415/pause-and-play-vlc-in-background?rq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/386dbd0e-0241-4a0a-b6a2-6704fba26b1c/lecture_pdf.pdf",
+            "path": "/home/user/Desktop/lecture.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/386dbd0e-0241-4a0a-b6a2-6704fba26b1c/Colorful-Flowers%28chosic.com%29.mp3",
+            "path": "/home/user/Desktop/Colorful-Flowers.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=10 /home/user/Desktop/Colorful-Flowers.mp3",
+        "shell": true
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/lecture.pdf"
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "lecture.pdf — 6.006 Introduction to Algorithms, Lecture 2: Data Structures",
+        "strict": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; pyautogui.press('f11');"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 1
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to enable VLC's one instance mode (one-instance-when-started-from-file=1). The evaluator uses existing check_one_instance_when_started_from_file metric to verify the setting in VLC config file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified using existing check_one_instance_when_started_from_file function. Expected value: one-instance-when-started-from-file=1 (enabled). Default is 1.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Evaluator logic is technically correct and will work at runtime - it properly reads VLC config file and checks the one-instance-when-started-from-file setting",
+        "Getter (get_vlc_config) correctly retrieves VLC config file from appropriate OS-specific path",
+        "Postconfig appropriately kills and relaunches VLC to ensure clean state",
+        "CRITICAL ISSUE: Metadata states 'Default is 1' and metric code defaults to '1' when setting is not found (vlc.py:509), meaning the expected behavior is already the default",
+        "Task semantic issue: If default is already 1 (one-instance enabled), the task would pass without user action, making verification ineffective",
+        "The instruction implies user needs to change something ('configure VLC...'), but if default matches expected, no configuration change is needed",
+        "This creates a verification paradox: evaluator cannot distinguish between 'user correctly configured' vs 'user did nothing and default is correct'"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify the actual VLC default for one-instance-when-started-from-file setting - if it's NOT 1 by default, update metadata to reflect correct default",
+        "If default is indeed 1, consider changing task to test opposite behavior (disable one-instance mode, expected=0) or test a different VLC setting",
+        "Alternative: Add preconfig step that explicitly sets one-instance-when-started-from-file=0 to ensure user must actively change it to 1",
+        "Consider testing the actual behavior (e.g., verify only one VLC window exists after opening multiple files) rather than just config file value"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "3299584d-8f11-4457-bf4c-ce98f7600250_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Chrome is set to open funbrain.com on startup. Change the startup setting to 'Continue where you left off'.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_chrome_startup_setting__8434e9ea78e4611ce770a316aad99fa9",
+    "result": {
+      "type": "chrome_startup_setting__8434e9ea78e4611ce770a316aad99fa9"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_restore_on_startup": 1
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to Chrome Settings > On start-up, found funbrain.com configured as startup page, clicked context menu > Remove, resulting in 'Open the New Tab page' being selected. Evaluator returned 0 despite UI showing correct state.",
+    "capability_extraction": "Can open Chrome three-dot menu, navigate to Settings, find On start-up section, interact with radio buttons and context menus to modify startup configuration",
+    "failure_analysis": "Model appeared to complete the task (removed funbrain.com, 'Open the New Tab page' selected) but evaluator returned 0.0, likely due to Chrome preferences file not being synced or the new_startup_page getter checking a different condition than what the UI showed.",
+    "task_rationale": "Simplified to changing startup setting to a specific option ('Continue where you left off') rather than the more ambiguous original task. The model demonstrated it can navigate to and interact with On start-up settings.",
+    "explanation": "Task requires changing Chrome's startup behavior from 'Open a specific page' (funbrain.com) to 'Continue where you left off'. Evaluator reads Chrome Preferences file and checks restore_on_startup value equals 1.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417_traj_verify_0/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417_traj_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "startup_setting": "1.0 - restore_on_startup changed to 1 (Continue where you left off)"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome Preferences file from /home/user/.config/google-chrome/Default/Preferences and extracts session.restore_on_startup value",
+        "Metric correctly accesses expected parameter directly (expected.get('expected_restore_on_startup')) — proper handling of type='rule' expected parameter",
+        "Expected value of 1 correctly corresponds to Chrome's 'Continue where you left off' startup setting",
+        "Config correctly sets initial state with restore_on_startup=4 (Open specific pages) and funbrain.com URL, matching the instruction precondition",
+        "Full instruction coverage: the only requirement is changing the startup setting, and the evaluator checks exactly that"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_19",
+  "snapshot": "chrome",
+  "instruction": "Open a new Chrome tab and navigate to https://github.com, then close the stackoverflow.com tab.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "tabs": [
+          {
+            "url": [
+              "contains",
+              "github.com"
+            ]
+          },
+          {
+            "url": [
+              "contains",
+              "paperswithcode.com"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "explanation": "Task requires opening github.com in a new tab and closing stackoverflow.com tab. Evaluator uses existing is_expected_tabs metric to check that only github.com and paperswithcode.com tabs remain open.",
+    "new_functions_paths": [],
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical data structure mismatch: The evaluator's expected field uses a nested rules structure with 'tabs' containing URL matching rules (e.g., ['contains', 'github.com']), but the is_expected_tabs metric expects a flat structure with rule['type']='url' and rule['urls'] as a simple list of URL strings.",
+        "The metric function at chrome.py:120-140 checks for rule['type'] == 'url' and expects rule['urls'], but the JSON provides rule['tabs'] with nested ['contains', ...] format that the metric cannot process.",
+        "At runtime, the metric will likely fail with KeyError when trying to access rule['urls'] or rule['type'], or will return 0.0 due to the unrecognized structure.",
+        "Coverage is incomplete: Even if the structure were correct, the evaluator does not verify the ORDER of operations - it cannot distinguish between 'opened github.com then closed stackoverflow.com' vs 'closed stackoverflow.com then failed to open github.com'."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix the expected field structure to match metric expectations: change 'rules.tabs' to 'type: url' and 'urls: [full_github_url, full_paperswithcode_url]' as simple strings",
+        "Use full URLs in the expected list (e.g., 'https://github.com/', 'https://paperswithcode.com/') instead of partial matching rules",
+        "Consider that is_expected_tabs uses are_lists_equal with compare_urls, which handles URL variations but expects exact string URLs, not ['contains', 'url'] rule format",
+        "The current nested rules structure with 'contains' matching is not supported by is_expected_tabs - either simplify to exact URLs or create a custom metric that supports rule-based matching"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

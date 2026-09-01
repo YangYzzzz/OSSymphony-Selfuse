@@ -1,0 +1,120 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Make a local 'Deals' folder and set a rule that moves any inbox email with 'sale' in the subject line to this folder.",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Deals",
+            "condition": [
+              "AND (subject,contains,sale)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation creates a filter for emails with 'sale' in the subject line, moving them to a 'Deals' folder. The evaluator uses the existing check_thunderbird_filter metric to verify the filter configuration in the msgFilterRules.dat file. The task maintains the same complexity level as the original, requiring folder creation and filter setup with subject-based matching.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all filter configuration requirements: enabled status, action type, destination folder, and subject-based condition",
+        "The metric check_thunderbird_filter properly parses msgFilterRules.dat and uses _match_record to verify expected filter properties",
+        "Postconfig appropriately closes the Message Filters window to ensure state is saved before verification",
+        "Expected values are semantically correct: actionValue='mailbox://nobody@Local%20Folders/Deals' verifies the Deals folder destination, condition='AND (subject,contains,sale)' verifies subject filtering",
+        "Metric correctly handles the expected parameter when type='rule' - directly accesses rules.get('expect', []) without incorrectly looking for rules['rules']",
+        "The static warning about type mismatch (str vs Union) is a false positive - get_vm_file with default parameters returns a single string path, and the metric handles None correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator only verifies filter configuration, not explicit folder existence. However, this is acceptable because Thunderbird's UI requires the folder to exist when configuring the filter (actionValue must reference an existing folder)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "5203d847-2572-4150-912a-03f062254390_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

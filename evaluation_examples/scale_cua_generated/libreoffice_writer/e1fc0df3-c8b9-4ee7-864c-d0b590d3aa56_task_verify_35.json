@@ -1,0 +1,86 @@
+{
+  "id": "e1fc0df3-c8b9-4ee7-864c-d0b590d3aa56",
+  "new_id": "task_verify_35",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Add the Template Changer extension to my LibreOffice installation for managing document templates",
+  "source": "augmented",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome",
+    "libreoffice",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "bash",
+            "-c",
+            "grep -Eri 'template[_\\-\\s]*changer|TemplateChanger|Template[_\\-]Changer' /home/user/.config/libreoffice/4/user/uno_packages/cache/uno_packages/ 2>/dev/null || find /home/user/.config/libreoffice/4/user/uno_packages/cache/uno_packages/ -type f -name 'description.xml' -exec grep -li 'template.*changer' {} \\; 2>/dev/null"
+          ],
+          "stdout": "template_extension_search.out"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "template_extension_search.out"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "template[_\\-\\s]*changer|TemplateChanger|Template[_\\-]Changer"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing Template Changer extension for LibreOffice. The evaluator uses a two-pronged search approach: first grep for pattern variations, then fallback to searching description.xml manifest files. Uses standard check_list metric with regex pattern matching.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Searches LibreOffice extensions cache for template-related extension. Pattern matches 'template[_\\-\\s]*changer', 'TemplateChanger', or 'Template[_\\-]Changer' to verify installation. Falls back to searching extension manifest files if direct grep fails.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly searches LibreOffice extension cache directory (/home/user/.config/libreoffice/4/user/uno_packages/cache/uno_packages/) where extensions are installed",
+        "Uses appropriate two-pronged search: primary grep searches file contents for pattern variations, fallback searches description.xml manifest files",
+        "check_list metric correctly applies regex pattern matching to verify extension presence",
+        "Pattern 'template[_\\-\\s]*changer|TemplateChanger|Template[_\\-]Changer' covers common naming variations for Template Changer extension",
+        "Complete coverage: evaluator checks the single requirement (extension installation)",
+        "Minor inefficiency: fallback grep uses looser pattern 'template.*changer' which might produce output that doesn't match the stricter expected pattern, but this is unlikely to cause false negatives in practice since extension names typically appear in consistent formats",
+        "Data flow is correct: grep output → cache file → check_list regex matching",
+        "No postconfig needed since extension files persist after installation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider aligning the fallback grep pattern with the expected pattern for consistency: use same pattern in both grep commands",
+        "Alternative approach: Use 'find' to search directory/file names in addition to file contents for more robust detection: 'find /home/user/.config/libreoffice/4/user/uno_packages/cache/uno_packages/ -type d -o -type f | grep -Ei \"template[_\\-\\s]*changer\"'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixed": true,
+      "fix_summary": "Updated grep command to search for actual pattern with variations (template[_\\-\\s]*changer|TemplateChanger|Template[_\\-]Changer). Added fallback to search description.xml manifest files. This addresses inefficiency and reduces false negatives."
+    }
+  }
+}

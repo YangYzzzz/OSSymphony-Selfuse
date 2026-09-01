@@ -1,0 +1,155 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_4",
+  "snapshot": "chrome",
+  "instruction": "Create a backup of all emails in the Thunderbird \"Bills\" folder. Save them to Google Drive in a folder named \"Bills_Backup\" with .eml format, using the email subjects as filenames.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'Bills_Backup' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_files__b0d15a73736689e26424d81f759f1528",
+    "result": {
+      "type": "gdrive_file_list__b0d15a73736689e26424d81f759f1528",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_path": [
+        "Bills_Backup"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_files": [
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml",
+          "Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+    "variation_index": 3,
+    "explanation": "Task requires backing up emails from Thunderbird Bills folder to Google Drive folder named 'Bills_Backup'. Evaluator checks if the two expected .eml files exist with subject-based filenames. Verified from cache: Bills folder contains 2 emails with subjects matching the expected filenames.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_3/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_3/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "0.5": "One of the two emails backed up correctly",
+      "1.0": "Both emails backed up to Bills_Backup with correct subject-based filenames"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly navigates to Google Drive folder 'Bills_Backup' and extracts list of filenames",
+        "Metric correctly handles expected parameter as rules dict (not nested structure) and performs proper file existence checks",
+        "Evaluator provides appropriate partial credit scoring (0.5 for 1/2 files, 1.0 for 2/2 files)",
+        "Expected filenames match verified email subjects from Thunderbird Bills folder cache",
+        "All key requirements verified: files in Google Drive, correct folder location, subject-based .eml filenames",
+        "Data flow is correct: getter extracts filenames -> metric compares against expected list -> returns proportional score"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Evaluator uses exact string matching which may be fragile if special characters in email subjects are handled differently during file save operations",
+        "Minor: No validation of actual .eml file format/content, only filename extension (acceptable for this verification level)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

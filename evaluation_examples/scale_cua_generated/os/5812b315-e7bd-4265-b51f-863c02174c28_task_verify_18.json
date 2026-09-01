@@ -1,0 +1,94 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_18",
+  "snapshot": "os",
+  "instruction": "Please create an SSH user named \"grace\" with password \"Gr@ce$Secure123\" on Ubuntu who is only allowed to access the folder \"/home/backup1\".",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/backup1",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get install -y expect",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > check_password.sh << 'EOFSCRIPT'\n#!/bin/bash\n\nUSERNAME=$1\nPASSWORD=$2\n\n# Verify the user exists\nif ! id \"$USERNAME\" &>/dev/null; then\n    echo \"User does not exist\"\n    exit 1\nfi\n\n# Check if expect is installed\nif ! command -v expect &>/dev/null; then\n    echo \"expect is not installed\"\n    exit 1\nfi\n\n# Test SSH password using expect\nexpect << EOF\nset timeout 10\nspawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $USERNAME@localhost\nexpect {\n    \"password:\" {\n        send \"$PASSWORD\\r\"\n        expect {\n            \"$ \" { exit 0 }\n            \"# \" { exit 0 }\n            timeout { exit 1 }\n            eof { exit 1 }\n        }\n    }\n    timeout { exit 1 }\n    eof { exit 1 }\n}\nEOF\n\nexit $?\nEOFSCRIPT\n",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x check_password.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"grace\"; HOMEDIR=\"/home/backup1\"; PASSWORD=\"Gr@ce$Secure123\"; ./check_password.sh \"$USERNAME\" \"$PASSWORD\" && [ \"$(getent passwd \"$USERNAME\" | cut -d: -f6)\" = \"$HOMEDIR\" ] && [ $(stat -c \"%A\" \"$HOMEDIR\" | cut -b 3) = \"w\" ] && echo \"Password, home directory, and write permission check passed\" || echo \"Check failed\"",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Password, home directory, and write permission check passed"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task creates SSH user 'grace' with password 'Gr@ce$Secure123' restricted to folder '/home/backup1'. Evaluator verifies: (1) SSH password authentication works, (2) home directory is set to /home/backup1, (3) user has write permission to the folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5812b315-e7bd-4265-b51f-863c02174c28_task_verify_5/scripts/check_password.sh"
+    ],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical coverage gap: Instruction requires user be 'only allowed to access' folder /home/backup1, but evaluator does NOT verify access restriction/confinement. Setting home directory to /home/backup1 does not restrict user access to other parts of the filesystem.",
+        "Logic error in write permission check: stat -c '%A' | cut -b 3 checks position 3 (group write permission), not position 2 (user write permission). The check verifies wrong permission bit.",
+        "Missing restriction verification: Evaluator does not check for chroot jail, restricted shell (rbash), sshd_config ForceCommand, or any other mechanism that would actually restrict the user to /home/backup1 only.",
+        "False positive risk: Evaluator will pass for any user created with correct password and home directory /home/backup1, even if user has full system access (can cd to /etc, /tmp, /var, etc).",
+        "Semantic mismatch: The instruction's source URL (superuser.com/questions/149404) is specifically about restricting SSH user access to specific folders, implying actual confinement, not just home directory setting."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for actual access restriction mechanism: Check for chroot configuration in /etc/ssh/sshd_config (Match User grace with ChrootDirectory), or verify restricted shell is set (check if user shell is /bin/rbash or custom restricted shell).",
+        "Fix write permission check: Change 'cut -b 3' to 'cut -b 2' to check user write permission (position 2) instead of group write permission (position 3).",
+        "Add comprehensive permission verification: Check that user owns /home/backup1 or has appropriate permissions, not just that group write bit is set.",
+        "Consider testing actual access restriction: After user creation, test that user cannot access directories outside /home/backup1 (e.g., attempt to cd /etc and verify it fails).",
+        "Alternative: If the task intention is only to set home directory (not full restriction), clarify the instruction wording to remove 'only allowed to access' phrasing, or verify the actual implementation includes restriction mechanisms."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

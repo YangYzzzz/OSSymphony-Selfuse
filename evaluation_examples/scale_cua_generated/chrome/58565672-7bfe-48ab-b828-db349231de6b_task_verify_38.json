@@ -1,0 +1,122 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Open the link embedded in the latest Bills folder email in a new tab in Chrome.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 3: Emphasizing 'embedded link' and 'new tab'. Task asks to open the first hyperlink from the latest Bills email as a new Chrome tab. Evaluator checks that the amazon.com URL is added to the existing tabs.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Semantic mismatch: Evaluator uses exact list matching for all tabs, but instruction only requires adding ONE new tab (amazon.com). This is overly strict.",
+        "Fragile verification: Will fail if initial tabs are closed, reordered, or if extra tabs exist - even though the core requirement (opening amazon.com in new tab) was completed.",
+        "The metric is_expected_tabs uses are_lists_equal which requires exact tab list match [apple.com, scholar.google.com, amazon.com], not just checking if amazon.com was added.",
+        "Expected value (amazon.com) appears correct based on metadata explanation, but cannot be independently verified from task JSON."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use a metric that checks 'amazon.com tab is present among open tabs' rather than requiring exact list matching of all tabs.",
+        "Consider subset-based verification: Check that amazon.com is in the tab list, optionally verify initial tabs (apple.com, scholar.google.com) are still present.",
+        "Alternative: Check tab count is 3 (initial 2 + new 1) AND amazon.com is one of them, allowing for tab order flexibility.",
+        "Clarify task requirement: Does the task require initial tabs to remain open, or only that amazon.com is opened in a new tab?"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

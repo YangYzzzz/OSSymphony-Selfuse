@@ -1,0 +1,121 @@
+{
+  "id": "c867c42d-a52d-4a24-8ae3-f75d256b5618",
+  "new_id": "task_verify_50",
+  "snapshot": "thunderbird",
+  "instruction": "Export Thunderbird's Personal Address Book as contacts.csv on the Desktop. Then open the CSV file in LibreOffice Calc, find the contact with the last name that comes last alphabetically, and write that last name in cell G1. Save the file as contacts_last.xlsx on the Desktop.",
+  "source": "https://www.sync.blue/en/sync/mozilla-thunderbird/google-sheets/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/c867c42d-a52d-4a24-8ae3-f75d256b5618/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "--recursive-unlink",
+          "-xz",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; import subprocess; subprocess.run(['wmctrl', '-a', 'LibreOffice Calc']); time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_cell_value__0c221862",
+    "result": {
+      "type": "xlsx_cell_value__0c221862",
+      "path": "/home/user/Desktop/contacts_last.xlsx",
+      "sheet": 0,
+      "cell": "G1"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": "Wright",
+        "verify_csv_export": true,
+        "verify_contact_data": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting Thunderbird contacts to CSV, then finding the last name that comes last alphabetically. Verified with Python script: Sorted all 30 last names alphabetically, 'Wright' (Travis Wright) is the last.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c867c42d-a52d-4a24-8ae3-f75d256b5618_aug_19_task_verify_2/getters/xlsx_cell__0c221862.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c867c42d-a52d-4a24-8ae3-f75d256b5618_aug_19_task_verify_2/metrics/xlsx_cell__0c221862.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 5 instruction steps: (1) CSV export via csv_exists check, (2) CSV opened in Calc via contact data verification, (3) alphabetically last name via expected value 'Wright', (4) written to G1 via cell value check, (5) saved as .xlsx via file path check",
+        "Getter logic is correct: Extracts cell G1 value, checks contacts.csv existence, verifies xlsx contains substantial contact data (>=2 rows, >=2 cols) to prevent manual 'Wright' typing without actual CSV processing",
+        "Metric parameter handling is CORRECT for type='rule': Expected parameter receives rules dict directly {'value': 'Wright', 'verify_csv_export': True, 'verify_contact_data': True} and correctly accesses expected.get('value'), not expected.get('rules')",
+        "Postconfig is robust: Uses wmctrl to focus LibreOffice Calc window before Ctrl+S, then sleeps to ensure save completes - more reliable than blind clicks",
+        "Expected value 'Wright' is semantically correct per metadata: verified by Python script as alphabetically last among 30 last names in Thunderbird contacts",
+        "Minor limitation: Cannot verify user actually performed alphabetical analysis (could know 'Wright' from metadata), but this is inherent to output-based verification and does not constitute a logic flaw"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing postconfig sleep after Ctrl+S from 1s to 2s to ensure file is fully written on slower systems",
+        "Optional: Add getter check for minimum row count (e.g., >=10 rows) to more strictly verify full contact export vs partial data"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

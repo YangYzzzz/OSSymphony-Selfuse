@@ -1,0 +1,110 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_23",
+  "snapshot": "thunderbird",
+  "instruction": "Enable automatic compaction prompts in Thunderbird for offline folders exceeding 20MB.",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2.0
+        }
+      }
+    ],
+    "func": "check_thunderbird_compact_folders__e06bf170da6e0042eda0ceb7f1f9f833",
+    "result": {
+      "type": "thunderbird_prefs__e06bf170da6e0042eda0ceb7f1f9f833",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "prompt_purge_enabled": false,
+        "purge_threshold_mb": 20
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Thunderbird to prompt for folder compaction. Evaluator checks mail.prompt_purge_threshhold (should be false to enable prompting - double negative logic) and mail.purge_threshhold_mb (should be 20 MB). Note: Thunderbird uses 'threshhold' spelling (typo in original preference name). The preference mail.prompt_purge_threshhold=false means 'do NOT skip the prompt' (i.e., prompting IS enabled).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/08c73485-7c6d-4681-999d-919f5c32dcfa_aug_9_task_verify_0/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/08c73485-7c6d-4681-999d-919f5c32dcfa_aug_9_task_verify_0/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks both requirements: mail.prompt_purge_threshhold (prompting control) and mail.purge_threshhold_mb (size threshold)",
+        "Getter logic is sound: downloads prefs.js from VM and saves to temporary file for parsing",
+        "Metric logic correctly parses prefs.js using regex and compares both preferences",
+        "Partial credit scoring (0.5 per preference) is appropriate for this two-part configuration task",
+        "Postconfig includes 2-second sleep after closing Thunderbird, adequate for prefs.js flush to disk",
+        "Expected parameter handling is CORRECT: with type='rule', expected receives rules dict directly, and metric correctly uses expected.get('prompt_purge_enabled') and expected.get('purge_threshold_mb')",
+        "Minor semantic issue: Expected key 'prompt_purge_enabled': false is confusing due to double-negative logic (the key name suggests 'is enabled' but value false means enabled). However, this is documented in metric function comments and task metadata, so evaluator will function correctly at runtime."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider renaming expected key from 'prompt_purge_enabled' to 'prompt_purge_threshhold_disabled' to better reflect the double-negative semantics (false = prompting enabled)",
+        "Verify with actual Thunderbird installation that 'threshhold' (typo spelling) is indeed the correct preference name used by Thunderbird",
+        "Add explicit verification in instruction or metadata that these preferences control 'offline folders' specifically (instruction mentions 'offline folders' but preference names don't clearly indicate this scope)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "08c73485-7c6d-4681-999d-919f5c32dcfa_aug_9_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "id": "22a4636f-8179-4357-8e87-d1743ece1f81",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "Take the document \"Meeting-Agenda.docx\" on the Desktop, convert it to PDF format, and save it to the 'meetings' folder in my Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "mkdirs"
+        ],
+        "args": [
+          {
+            "query": "title = 'Meeting-Agenda.docx' or title = 'Meeting-Agenda.pdf'",
+            "trash": false
+          },
+          {
+            "path": [
+              "meetings"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/22a4636f-8179-4357-8e87-d1743ece1f81/Meeting-Agenda.docx",
+            "path": "/home/user/Desktop/Meeting-Agenda.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/Meeting-Agenda.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_pdf_exists__f7d1f102",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path": [
+        "meetings",
+        "Meeting-Agenda.pdf"
+      ],
+      "dest": "Meeting-Agenda.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "exists": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires converting Meeting-Agenda.docx to PDF and uploading to Google Drive meetings folder. Evaluator simply checks if the file exists in the correct location.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/22a4636f-8179-4357-8e87-d1743ece1f81_task_verify_2/metrics/gdrive_pdf.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Simple existence check - verifies the file was successfully converted and uploaded to Google Drive.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Evaluator only checks file existence, not PDF format validity - cannot distinguish between properly converted PDF and renamed .docx file",
+        "Missing verification that the file is actually a valid PDF document (not just a .docx renamed to .pdf)",
+        "File location verification is correct - properly checks for 'meetings' folder and 'Meeting-Agenda.pdf' filename",
+        "Getter logic can successfully download file from Google Drive using correct path",
+        "Expected value is semantically correct for existence check"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add PDF format validation to the metric function using file magic numbers or PDF library to verify the file is actually a valid PDF",
+        "Consider checking PDF metadata or attempting to parse the PDF to ensure it's not a renamed DOCX file",
+        "Add mimetype verification to ensure the file downloaded from Google Drive has correct PDF mimetype"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_exists__f7d1f102 first parameter type (str) may not match getter get_googledrive_file return type (Any)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

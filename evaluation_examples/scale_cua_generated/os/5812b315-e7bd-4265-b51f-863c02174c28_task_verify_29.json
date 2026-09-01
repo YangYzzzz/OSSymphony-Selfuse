@@ -1,0 +1,70 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_29",
+  "snapshot": "os",
+  "instruction": "Please create a user named \"bob\" with password \"MyP@ssw0rd!\" and ensure the user's home directory /home/bob has read-only permissions (no write access) for the user.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"bob\"; id \"$USERNAME\" &>/dev/null && HOMEDIR=$(getent passwd \"$USERNAME\" | cut -d: -f6) && PERMS=$(stat -c '%A' \"$HOMEDIR\") && [[ \"$PERMS\" =~ ^dr-x...... ]] && PASSWD_STATUS=$(passwd -S \"$USERNAME\" 2>/dev/null | awk '{print $2}') && [[ \"$PASSWD_STATUS\" == \"P\" ]] && echo 'User exists with password and read-only home directory' || echo 'Check failed'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "User exists with password and read-only home directory"
+        ],
+        "exclude": [
+          "Check failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating user 'bob' with password 'MyP@ssw0rd!' and setting home directory to read-only (dr-x). Evaluator checks user exists and home directory permissions start with 'dr-x' (no write bit).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies user 'bob' exists using 'id \"$USERNAME\"' command",
+        "Evaluator correctly extracts home directory path using 'getent passwd' and verifies it exists",
+        "Evaluator correctly verifies home directory permissions with pattern '^dr-x......' which ensures: d=directory, r=owner read, -=NO owner write (critical requirement), x=owner execute",
+        "Evaluator correctly verifies password is set using 'passwd -S \"$USERNAME\"' which returns status, then checks if status is 'P' (password set)",
+        "Command uses proper error handling with '&>/dev/null' and logical AND chaining, so if any check fails, it outputs 'Check failed'",
+        "The metric 'check_include_exclude' correctly checks for success message in include and failure message in exclude",
+        "Minor limitation: Cannot verify the EXACT password value 'MyP@ssw0rd!' (only that SOME password is set), but this is a practical limitation of post-creation verification without compromising security - the instruction is effectively verified as completely as possible"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a comment in metadata explaining that exact password value cannot be verified post-creation for security reasons, only that a password is set"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

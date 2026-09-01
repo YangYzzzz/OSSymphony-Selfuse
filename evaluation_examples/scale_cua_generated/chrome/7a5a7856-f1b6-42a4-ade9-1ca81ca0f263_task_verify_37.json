@@ -1,0 +1,109 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_37",
+  "snapshot": "chrome",
+  "instruction": "Save the EleutherAI blog article to my bookmarks bar so I can find it easily.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://blog.eleuther.ai/rotary-embeddings/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires bookmarking the EleutherAI blog post (first tab) to the bookmark bar. Uses the existing is_expected_bookmarks metric. Same difficulty as variation 1 with different instruction wording.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic (get_bookmarks) correctly reads Chrome Bookmarks file and extracts bookmark_bar structure",
+        "Metric logic (is_expected_bookmarks) correctly handles 'bookmark_bar_websites_urls' type, extracting URLs from bookmark_bar children and using subset check",
+        "Complete coverage: instruction requires bookmarking ONE specific URL to bookmark bar, evaluator checks for exactly that URL",
+        "Expected value is semantically correct: 'https://blog.eleuther.ai/rotary-embeddings/' matches the first tab in config, which is the EleutherAI blog article referenced in instruction",
+        "Postconfig appropriately restarts Chrome to ensure bookmarks are flushed to disk (necessary for reliable verification)",
+        "Practical feasibility: getter can access Bookmarks file, metric can parse and compare data correctly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

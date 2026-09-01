@@ -1,0 +1,97 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_48",
+  "snapshot": "chrome",
+  "instruction": "Please change my default search engine to Brave Search.",
+  "source": "https://support.google.com/chrome/answer/95426",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Brave Search",
+          "Brave"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Chrome to use Brave Search as the default search engine. Uses existing getter get_default_search_engine and metric match_in_list to verify the configuration. Accepts both 'Brave Search' and 'Brave' as valid names.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_default_search_engine reads Chrome Preferences JSON file and extracts 'default_search_provider_data.template_url_data.short_name', which is the correct path for the default search engine setting",
+        "Metric logic is correct: match_in_list checks if the extracted search engine name is in the expected list ['Brave Search', 'Brave'], using exact string matching",
+        "Expected values are semantically correct: Accepts both 'Brave Search' and 'Brave' as valid names since Chrome may use either variation",
+        "Complete coverage: Evaluator verifies exactly what the instruction requires - that the default search engine has been changed to Brave Search",
+        "Postconfig is appropriate: Killing and restarting Chrome ensures the Preferences file is written to disk and can be read by the getter",
+        "Practical feasibility: Getter can access the Preferences file at OS-specific paths, file is persistently stored, and JSON path is correct for Chrome's data structure"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

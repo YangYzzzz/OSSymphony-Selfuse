@@ -1,0 +1,109 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "Browse youth Adidas jackets between $50 and $100.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "$50 - $100",
+          "youth",
+          "jackets",
+          "adidas",
+          "is_other_exist"
+        ]
+      },
+      "url_include_expected": [
+        "youth",
+        "jackets",
+        "adidas"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "$50 - $100": true,
+          "youth": true,
+          "jackets": true,
+          "adidas": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation of NBA store filtering task. User must apply 4 filters: youth category, Adidas brand, jackets type, and $50-$100 price range. Evaluator checks all filters are present in HTML and URL, with no additional filters applied.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing check_direct_json_object metric and get_active_tab_html_parse getter. Pattern matches original task structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Core logic is sound: The evaluator correctly uses get_active_tab_html_parse with category='class&url' to extract filter information from both HTML class elements and URL parameters. The check_direct_json_object metric then validates these extracted values match expected filter states.",
+        "Complete requirement coverage: The evaluator checks all 4 required filters (youth, adidas, jackets, $50-$100 price range) plus verifies no unexpected filters are applied via 'is_other_exist' check. This covers the full instruction requirements.",
+        "Getter logic is appropriate: The 'class&url' category (lines 1879-2030 in chrome.py) searches for filter elements by class name and validates their presence in URL parameters, which is a reasonable verification approach for e-commerce filter UIs that typically update both DOM and URL.",
+        "Case-insensitive matching: The getter correctly applies case-insensitive matching (lines 1884, 2000 in chrome.py), converting both expected keys and extracted text to lowercase before comparison, which handles variations in text casing.",
+        "Minor fragility concern: The dual validation approach (checking both HTML classes AND URL parameters) may be overly strict if the website only updates one or the other, but this is more of a robustness consideration than a correctness issue. For most modern e-commerce sites, both should be updated consistently."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a fallback mode: If strict dual validation (class+URL) proves too fragile in practice, consider allowing the evaluator to pass if EITHER HTML class elements OR URL parameters contain all required filters (not necessarily both).",
+        "URL encoding handling: Ensure the getter can handle URL-encoded characters in price parameters (e.g., '%2450' for '$50'). The unquote usage in normalize_url (line 1592) suggests this is already handled, but verify for numeric parameters."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

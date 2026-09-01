@@ -1,0 +1,88 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "82279c77-8fc6-46f6-9622-3ba96f61b477_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's bookmark manager page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "chrome://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://bookmarks.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_82279c77-8fc6-46f6-9622-3ba96f61b477_sid_1488099",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to find electric cars on cars.com but encountered ERR_HTTP2_PROTOCOL_ERROR. Spent all 50 turns trying to access cars.com via Chrome, Firefox, curl, and Python requests. Investigated proxy settings but could not bypass the connection issue.",
+    "capability_extraction": "Can open Chrome, type URLs in address bar, open terminal, run bash/curl/Python commands, open Firefox, navigate Chrome UI menus, investigate system settings",
+    "failure_analysis": "cars.com was inaccessible due to HTTP/2 protocol errors through the configured proxy. The model could not complete the original task because the target website was unreachable, not due to agent capability limitations.",
+    "task_rationale": "Tests Chrome internal page navigation. The model demonstrated ability to type URLs and use Chrome address bar. chrome://bookmarks is always accessible and tests basic Chrome navigation without external network dependency.",
+    "explanation": "Task requires navigating to Chrome's bookmark manager (chrome://bookmarks). Evaluator uses official is_expected_url_pattern_match metric with active_url_from_accessTree getter to verify the active tab URL matches chrome://bookmarks.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "navigation": "1.0 - Active tab URL matches chrome://bookmarks"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active tab URL from Chrome's accessibility tree, using goto_prefix='chrome://' to reconstruct internal chrome:// URLs",
+        "Metric is_expected_url_pattern_match correctly receives the rules dict (with 'expected' key) and performs regex matching against the URL pattern 'chrome://bookmarks.*'",
+        "Expected pattern 'chrome://bookmarks.*' correctly matches the Chrome bookmark manager URL (chrome://bookmarks or chrome://bookmarks/)",
+        "Single instruction requirement (open bookmark manager page) is fully covered by the URL verification",
+        "No postconfig needed since the bookmark manager page remains open as the active tab for the getter to read"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

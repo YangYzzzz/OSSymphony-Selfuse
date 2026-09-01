@@ -1,0 +1,111 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "f201fbc3-44e6-46fc-bcaa-432f9815454c_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Enable the graphical indicator for quoted messages in Thunderbird's advanced configuration editor.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.quoted_graphical": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_f201fbc3-44e6-46fc-bcaa-432f9815454c_sid_1488402",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened Thunderbird hamburger menu, navigated to Settings > Composition, then Account Settings > Composition & Addressing, then Config Editor. Searched 'mail.quote' and toggled mail.quoteasblock to true, but needed to set mail.identity.id1.auto_quote to false.",
+    "capability_extraction": "Can open Thunderbird menus, navigate Settings sections (General, Composition), open Account Settings, open Config Editor, search preferences, toggle boolean values",
+    "failure_analysis": "Model found Config Editor and searched 'mail.quote', seeing mail.quoted_graphical=false in results. It toggled the wrong preference. This task targets the exact preference the model saw but didn't toggle.",
+    "task_rationale": "The model already navigated to Config Editor and searched 'mail.quote', finding mail.quoted_graphical=false in the results list. This task asks the model to toggle that specific preference, which it demonstrated the ability to find.",
+    "explanation": "Task requires toggling mail.quoted_graphical from false to true in Config Editor. The model already found this preference during the original trajectory. Evaluator checks mail.quoted_graphical is true in prefs.js.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vm_file) correctly fetches prefs.js from the Thunderbird profile directory, providing the file path to the metric.",
+        "Metric (check_thunderbird_prefs) correctly parses prefs.js line by line using regex, extracts key-value pairs, and checks mail.quoted_graphical equals true via _match_value_to_rule.",
+        "Expected value 'mail.quoted_graphical = true' is semantically correct for enabling the graphical indicator for quoted messages.",
+        "Postconfig correctly closes Thunderbird before reading prefs.js, ensuring preferences are flushed to disk.",
+        "Complete coverage: the single instruction requirement (enable graphical indicator) is fully verified by checking the corresponding preference.",
+        "The expected type='rule' is handled correctly: get_rule returns config['rules'] directly, and check_thunderbird_prefs receives this as the 'rule' parameter, accessing rule.get('expect', {}) — no incorrect nesting."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

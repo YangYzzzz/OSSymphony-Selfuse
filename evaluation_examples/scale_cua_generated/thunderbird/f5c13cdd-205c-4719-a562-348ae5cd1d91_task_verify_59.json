@@ -1,0 +1,134 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_59",
+  "snapshot": "thunderbird",
+  "instruction": "I've drafted a payment reminder email. From the tuition spreadsheet, please add only the first two students who haven't paid (alphabetically by name) to the recipient field.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"fox@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"iron@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]"
+          ],
+          "count": 2
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires adding only the first two unpaid students alphabetically (Fox, Iron) to the recipient field. Verified with Python: unpaid students are Fox, Iron, Nancy, Stella. Alphabetically sorted: Fox, Iron, Nancy, Stella. The evaluator checks for Fox and Iron emails in the To field AND verifies that there are exactly 2 address pills total (ensuring no other students like Nancy or Stella are added).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all requirements: Rules 1-2 check that Fox and Iron emails are present in the To field address pills",
+        "Rule 3 with count=2 ensures exclusivity by verifying exactly 2 address pills total, preventing additional recipients like Nancy or Stella from being added",
+        "The combination of specific email presence checks + exact count verification semantically guarantees that ONLY the first two unpaid students (Fox, Iron) are in the To field",
+        "Selectors correctly target Thunderbird compose window's To field address pill elements with appropriate XPath syntax"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

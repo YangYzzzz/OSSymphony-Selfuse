@@ -1,0 +1,88 @@
+{
+  "id": "7b7617bd-57cc-468e-9c91-40c4ec2bcb3d",
+  "new_id": "task_verify_2",
+  "snapshot": "gimp",
+  "instruction": "Adjust GIMP's grid settings so that the horizontal and vertical spacing is set to 20 pixels by default.",
+  "source": "https://www.youtube.com/watch?v=G_PjQAy0iiU",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "key-value",
+        "key": [
+          "default-grid",
+          "(spacing"
+        ],
+        "value": "20"
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires configuring GIMP's default grid spacing to 20 pixels. The evaluator reuses the existing check_config_status metric and get_gimp_config_file getter to verify that the gimprc file contains the line '(default-grid (spacing 20))'. The key is a list ['default-grid', '(spacing'] to match the parsed format (lstrip('(') only removes the outermost opening paren, so nested '(spacing' retains its paren). The value is '20' to match the parsed last item after rstrip(')\n'). This is similar in difficulty to the original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "The task modifies default-grid spacing setting. In GIMP's gimprc file, grid settings are stored as '(default-grid (spacing 20))'. The check_config_status parsing logic at gimp.py:530 strips '(' from left and ')\n' from right, then splits, producing items=['default-grid', '(spacing', '20']. The expected key ['default-grid', '(spacing'] and value '20' match this parsed format correctly.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the GIMP grid spacing setting. The check_config_status parsing logic (gimp.py:530) strips '(' from left and ')\\n' from right, then splits. For line '(default-grid (spacing 20))', this produces items=['default-grid', '(spacing', '20'].",
+        "Expected key ['default-grid', '(spacing'] correctly matches the parsed format where items[0]='default-grid' and items[1]='(spacing' (retaining the opening parenthesis).",
+        "Expected value '20' correctly matches items[-1]='20' after rstrip(')\n') removes the closing parenthesis.",
+        "The instruction requires setting grid spacing to 20 pixels for both horizontal and vertical. In GIMP's gimprc format, (spacing X) applies uniformly to both dimensions, so checking this single value is sufficient and semantically correct.",
+        "Postconfig correctly closes GIMP with Ctrl+Q to ensure settings are flushed to the gimprc file before verification.",
+        "The evaluator logic at gimp.py:535-537 will correctly match when items[0]=='default-grid', items[1]=='(spacing', and items[-1]=='20'."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "7b7617bd-57cc-468e-9c91-40c4ec2bcb3d_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

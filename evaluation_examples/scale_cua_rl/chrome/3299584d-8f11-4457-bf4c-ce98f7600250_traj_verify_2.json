@@ -1,0 +1,99 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "3299584d-8f11-4457-bf4c-ce98f7600250_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Enable the 'Send a Do Not Track request' option in Chrome's privacy and security settings.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_do_not_track__fef997178e549d845fc31b37602ff4d0",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_enabled": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to Chrome Settings > On start-up, found funbrain.com configured as startup page, clicked context menu > Remove, resulting in 'Open the New Tab page' being selected. Evaluator returned 0 despite UI showing correct state.",
+    "capability_extraction": "Can open Chrome three-dot menu, navigate to Settings, find specific settings sections, interact with toggles and UI controls",
+    "failure_analysis": "Model appeared to complete the original task but evaluator returned 0.0. Model demonstrated strong Chrome settings navigation capability.",
+    "task_rationale": "Leverages model's demonstrated ability to navigate Chrome settings. Privacy settings require similar navigation skills (Settings sidebar) but involves a toggle switch instead of radio buttons.",
+    "explanation": "Task requires navigating to Chrome Settings > Privacy and security and enabling the 'Send a Do Not Track request' toggle. Evaluator uses official enable_do_not_track getter with custom metric checking string or boolean true. [Fixed: metric now handles string return type from getter]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "do_not_track": "1.0 - Do Not Track toggle enabled"
+    },
+    "fix_history": [
+      "Fix 1: Metric check_do_not_track now handles string return type from get_enable_do_not_track getter (was only checking isinstance(result, bool), now also handles isinstance(result, str) by comparing result.lower() == 'true')"
+    ],
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter get_enable_do_not_track correctly reads Chrome Preferences file and returns 'true'/'false' string for the enable_do_not_track setting.",
+        "Metric correctly handles both string and bool return types: isinstance(result, str) branch converts to bool via result.lower() == 'true' and compares against expected_enabled.",
+        "Expected parameter handling is correct: with type='rule', metric receives {'expected_enabled': true} directly and accesses it via expected.get('expected_enabled', True).",
+        "Single-requirement instruction (enable Do Not Track) is fully covered by the single getter+metric pair.",
+        "Postconfig sleep(2) provides time for Chrome to flush Preferences to disk before getter reads it."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true
+    }
+  }
+}

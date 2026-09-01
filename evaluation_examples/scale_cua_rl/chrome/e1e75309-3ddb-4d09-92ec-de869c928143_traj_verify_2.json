@@ -1,0 +1,85 @@
+{
+  "id": "e1e75309-3ddb-4d09-92ec-de869c928143",
+  "new_id": "e1e75309-3ddb-4d09-92ec-de869c928143_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Save this webpage as a PDF to the Desktop, but only include pages 1 through 5.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_pdf_page_count__a8da1aa98de37fa62b8d321ad0589eaf",
+    "result": {
+      "type": "pdf_page_info__a8da1aa98de37fa62b8d321ad0589eaf",
+      "path": "/home/user/Desktop/LLM Powered Autonomous Agents _ Lil'Log.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_pages": 5
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_e1e75309-3ddb-4d09-92ec-de869c928143_sid_1488311",
+    "trajectory_success_score": 0.9628033463160564,
+    "trajectory_summary": "Agent successfully saved the current webpage as PDF to Desktop with no margins. Used Ctrl+P to open print dialog, expanded More Settings, changed margins to None, navigated to Desktop in file save dialog, and saved with default filename. Then verified file existence via Files app.",
+    "capability_extraction": "Can use Ctrl+P for print dialog, navigate print settings (margins, layout, pages), use file save dialog to choose destination folder, interact with Chrome browser, search and open desktop applications",
+    "task_rationale": "Tests the same print-to-PDF workflow but requires changing the page range instead of margins. The model demonstrated ability to navigate print settings; specifying a page range is a related interaction in the same dialog.",
+    "explanation": "Task requires saving the webpage as PDF with only pages 1-5. Custom getter extracts page count from the saved PDF file. Custom metric checks that the file exists (0.5) and that the page count equals 5 (0.5).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_e1e75309-3ddb-4d09-92ec-de869c928143_sid_1488311_traj_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_e1e75309-3ddb-4d09-92ec-de869c928143_sid_1488311_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "scoring_breakdown": {
+      "file_exists": "0.5 - PDF file exists on Desktop with default filename",
+      "page_count": "0.5 - PDF has exactly 5 pages"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly fetches PDF from VM via env.controller.get_file(), writes to temp file, and uses PyPDF2/pypdf to extract page count — appropriate for verifying page range requirement",
+        "Metric correctly handles expected parameter for type='rule': accesses expected.get('expected_pages', 5) directly, consistent with get_rule returning rules dict",
+        "Both instruction requirements are verified: file existence on Desktop (0.5 points) and page count equals 5 (0.5 points)",
+        "Error handling is sound: getter returns error dict on failure, metric returns 0.0 on error or missing file",
+        "No postconfig needed since getter reads a saved file from disk, not UI state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The hardcoded PDF filename assumes Chrome's default naming from the page title. If the page title changes or Chrome formats it differently, the path may not match. Consider a glob-based approach to find PDF files on the Desktop as a fallback."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

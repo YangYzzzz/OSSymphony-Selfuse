@@ -1,0 +1,115 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "d38192b0-17dc-4e1d-99c3-786d0117de77_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Change the recipient to treasurer@outlook.com and add manager@outlook.com in the CC field.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/aws-bill.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Thunderbird",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_compose_recipients__9a5e3321e7daf20a2f35cb35407bc19e",
+    "result": {
+      "type": "compose_recipients__9a5e3321e7daf20a2f35cb35407bc19e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_to": "treasurer@outlook.com",
+        "expected_cc": "manager@outlook.com"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_d38192b0-17dc-4e1d-99c3-786d0117de77_sid_1488373",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully attached aws-bill.pdf to Thunderbird compose email in 5 turns. Clicked Attach button, navigated to Home directory, selected aws-bill.pdf, clicked Open.",
+    "capability_extraction": "Can interact with Thunderbird compose window UI: toolbar buttons, file dialogs, file selection. Navigates file browser and attaches files.",
+    "task_rationale": "Harder variation combining two compose window edits: changing the To recipient and adding a CC. Tests the agent's ability to perform multiple field modifications in a single task. Partial credit allows scoring each sub-task independently.",
+    "explanation": "Task requires changing the To field and adding a CC recipient. Evaluator reads the accessibility tree and checks for both email addresses, awarding 0.5 partial credit for each correctly set field.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_d38192b0-17dc-4e1d-99c3-786d0117de77_sid_1488373_traj_verify_2/getters/thunderbird_compose.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_d38192b0-17dc-4e1d-99c3-786d0117de77_sid_1488373_traj_verify_2/metrics/thunderbird_compose.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 6,
+    "scoring_breakdown": {
+      "to_field": "0.5 - To field contains 'treasurer@outlook.com'",
+      "cc_field": "0.5 - CC field contains 'manager@outlook.com'"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter correctly retrieves the accessibility tree from the Thunderbird compose window, which will contain To and CC field values.",
+        "Metric correctly handles the expected parameter for type='rule' — directly accesses expected.get('expected_to') and expected.get('expected_cc').",
+        "Both instruction requirements (change To recipient and add CC recipient) are checked, with appropriate 0.5 partial credit each.",
+        "Expected values ('treasurer@outlook.com' and 'manager@outlook.com') match the instruction exactly.",
+        "Postconfig activates Thunderbird window and sleeps, appropriate for accessibility tree reading.",
+        "MINOR ISSUE: Metric performs field-agnostic checking — it searches for email addresses anywhere in the accessibility tree text rather than verifying they appear specifically in the To vs CC fields. If the agent swapped the recipients (treasurer in CC, manager in To), the evaluator would still score 1.0. In practice this is unlikely but represents an imprecise verification."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Improve metric to parse the accessibility tree structure and verify that 'treasurer@outlook.com' appears specifically in the To field context (e.g., near a 'To' label) and 'manager@outlook.com' appears specifically in the CC field context, rather than doing a global substring search.",
+        "Alternatively, the getter could parse the accessibility tree and return structured data like {'to': '...', 'cc': '...'} so the metric can check field-specific values."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

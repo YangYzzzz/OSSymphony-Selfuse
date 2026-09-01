@@ -1,0 +1,99 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "af630914-714e-4a24-a7bb-f9af687d3b91_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default search engine to DuckDuckGo.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_search_engine__29a0b35353e6c09dfbb5b1666d07a250",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_engine": "DuckDuckGo"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_af630914-714e-4a24-a7bb-f9af687d3b91_sid_1488225",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Chrome menu -> Settings -> Appearance -> Font size dropdown and selected 'Very large' in 7 turns.",
+    "capability_extraction": "Can open Chrome menu, navigate to Settings, find specific settings sections, interact with dropdowns and select options.",
+    "task_rationale": "Related Chrome settings task: changing the search engine requires similar navigation to Settings but in a different section (Search engine). Tests the model's ability to generalize settings navigation.",
+    "explanation": "Task requires navigating to Chrome Settings -> Search engine and changing the default to DuckDuckGo. Evaluator uses official default_search_engine getter with a custom metric that compares the result string (case-insensitive).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_af630914-714e-4a24-a7bb-f9af687d3b91_sid_1488225_traj_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 1,
+    "scoring_breakdown": {
+      "search_engine": "1.0 - Default search engine changed to DuckDuckGo"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'default_search_engine' correctly reads Chrome's Preferences JSON file and extracts the search engine short_name, which is the right state for this task.",
+        "Custom metric correctly handles the expected parameter by directly accessing expected.get('expected_engine'), consistent with get_rule returning the rules dict.",
+        "Case-insensitive comparison is appropriate for matching search engine names.",
+        "Postconfig kills and relaunches Chrome, ensuring preferences are flushed to disk before the getter reads them.",
+        "Expected value 'DuckDuckGo' matches Chrome's internal short_name for DuckDuckGo.",
+        "Single instruction requirement (change default search engine) is fully covered by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

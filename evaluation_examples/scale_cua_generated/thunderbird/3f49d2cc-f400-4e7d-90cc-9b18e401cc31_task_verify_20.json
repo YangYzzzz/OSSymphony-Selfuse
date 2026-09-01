@@ -1,0 +1,120 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "task_verify_20",
+  "snapshot": "thunderbird",
+  "instruction": "I want to switch my Thunderbird folder view to compact mode to save screen space. Can you help me change the folder pane to show folders in a more condensed format?",
+  "source": "https://www.reddit.com/r/Thunderbird/comments/182dg5p/unified_inbox_howto/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/xulstore.json",
+      "dest": "xulstore.json"
+    },
+    "func": "check_json",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "chrome://messenger/content/messenger.xhtml",
+              "folderTree",
+              "mode"
+            ],
+            "method": "re",
+            "ref": "\\bcompact\\b"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires switching Thunderbird folder pane to compact mode. The evaluator checks xulstore.json for folderTree.mode set to 'compact'. Similar complexity to original task (changing a view mode setting).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that xulstore.json stores folderTree mode settings. The check_json metric with regex match is appropriate for verifying the mode is set to 'compact'.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks xulstore.json which stores Thunderbird UI state including folderTree mode",
+        "The key path ['chrome://messenger/content/messenger.xhtml', 'folderTree', 'mode'] is correct for accessing folder pane mode setting",
+        "Regex pattern '\\\\bcompact\\\\b' appropriately checks for exact 'compact' value using word boundaries",
+        "Postconfig appropriately closes Thunderbird window to ensure settings are persisted to disk before verification",
+        "Complete coverage: instruction requires compact mode, evaluator checks exactly that requirement",
+        "Data flow is sound: file getter retrieves correct config file, check_json parses and navigates JSON structure correctly, regex validates the expected value",
+        "No edge cases or runtime issues identified - the logic will work correctly at execution time"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

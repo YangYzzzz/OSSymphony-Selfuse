@@ -1,0 +1,81 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_34",
+  "snapshot": "os",
+  "instruction": "Please configure my terminal to always open with 120 columns wide and 40 rows tall by default.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5); pyautogui.write('stty size'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "40 120"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires setting terminal default window size to 120x40. Evaluator opens a new terminal and checks that 'stty size' outputs '40 120' (rows columns). Uses existing check_include_exclude metric and get_vm_terminal_output getter. This is a similar terminal configuration task with different dimension values than the original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies terminal dimensions using 'stty size' command which outputs 'rows columns' format",
+        "Postconfig appropriately opens a new terminal (Ctrl+Alt+T) to test if default configuration is applied",
+        "Metric check_include_exclude correctly checks for '40 120' (40 rows, 120 columns) in terminal output",
+        "Getter get_vm_terminal_output appropriately captures terminal output",
+        "Minor limitation: evaluator tests one new terminal instance as proxy for 'default' configuration, but cannot definitively verify persistence across reboots or all future terminals - however, this is a reasonable practical verification given framework constraints"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider testing multiple terminal instances if framework supports it to strengthen default configuration verification",
+        "Could add verification that configuration files (e.g., ~/.bashrc, ~/.profile, or terminal emulator config) contain the size settings for stronger persistence verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

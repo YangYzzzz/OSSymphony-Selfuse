@@ -1,0 +1,86 @@
+{
+  "id": "8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f",
+  "new_id": "task_verify_58",
+  "snapshot": "base_setup",
+  "instruction": "Mute the audio in VLC media player.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f/Optimus%20-%20Gen%202.mp4",
+            "path": "/home/user/Desktop/Gen 2.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=15 '/home/user/Desktop/Gen 2.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_vlc_audio_muted__b5c6209b",
+    "result": {
+      "type": "vlc_audio_muted__b5c6209b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires muting audio in VLC. Agent can use keyboard shortcut 'M' or Audio > Mute menu. Custom getter checks volume level from VLC HTTP status.xml (volume=0 indicates muted), metric compares boolean result.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_4/getters/vlc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_4/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "VLC mute: When muted, volume is set to 0. Getter checks <volume> element from status.xml, returns true if volume=0.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "The getter conflates 'volume=0' with 'muted state', which are distinct concepts in VLC media player",
+        "VLC has a separate mute toggle independent of volume level - a user can have volume=50 and still be muted, or volume=0 without being in mute state",
+        "This could lead to false positives (volume=0 but not actually muted) or false negatives (volume>0 but muted via mute button)",
+        "The verification logic checks the wrong state indicator and won't correctly capture whether the mute button/command was activated",
+        "VLC is launched with '--no-audio' flag which may affect how mute state is represented in status.xml"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Investigate VLC's status.xml structure to identify the actual mute state element (likely a boolean field or flag separate from the volume element)",
+        "Update the getter to check the correct mute state indicator instead of assuming volume==0 means muted",
+        "Test the actual VLC status.xml response when mute button is pressed vs when volume is set to 0 to understand the difference",
+        "Consider checking both volume level AND a dedicated mute flag if VLC maintains both states independently"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "id": "236833a3-5704-47fc-888c-4f298f09f799",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Access the HuggingFace daily papers page and locate the paper list for March 1st, 2024. Add at least one additional paper entry to the opened .docx document following the same format as the existing two entries (Title, Authors, Abstract, Arxiv PDF).",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://huggingface.co/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/236833a3-5704-47fc-888c-4f298f09f799/raw_paper_reading_2024_03_01.docx",
+            "path": "/home/user/Desktop/paper_reading_2024_03_01.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/paper_reading_2024_03_01.docx"
+        ]
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python3",
+          "-c",
+          "import pyautogui; import time; time.sleep(1); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_paper_count__742a2629",
+    "result": {
+      "type": "docx_paper_count__742a2629",
+      "path": "/home/user/Desktop/paper_reading_2024_03_01.docx",
+      "dest": "paper_reading_2024_03_01.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 3
+      }
+    },
+    "options": {
+      "min_count": 3
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to find papers from HuggingFace daily papers (March 1, 2024) and add at least one more paper entry to the docx file. Original file has 2 complete papers. Evaluator counts complete paper entries (each must have Title, Authors, Abstract, Arxiv PDF). Expected: at least 3 complete papers. Verified source file has 2 papers initially.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/236833a3-5704-47fc-888c-4f298f09f799_task_verify_0/getters/docx_content__742a2629.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/236833a3-5704-47fc-888c-4f298f09f799_task_verify_0/metrics/docx_check__742a2629.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Metric logic flaw: The instruction requires 'at least one additional paper' (result >= 3), but the metric only passes for exactly 3 papers",
+        "Min/max range logic bug: The range check requires BOTH min_count AND max_count to be set, but only min_count=3 is provided. If agent adds 2+ papers (result=4+), evaluation will fail",
+        "The metric first checks exact match (result == 3), then checks range only if both min_count and max_count are set. This means result=4 will return 0.0 even though instruction says 'at least one'",
+        "Getter logic is correct: Properly counts complete papers by checking all 4 required components (Title, Authors, Abstract, Arxiv PDF) using min() approach",
+        "Postconfig is appropriate: Saves file with Ctrl+S before verification",
+        "Expected value is semantically correct: 3 papers (2 original + 1 added) matches the minimum requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix metric logic to handle >= comparison: Change line 26-31 to check 'if min_count is not None: if result >= min_count: return 1.0'",
+        "Alternative fix: Set max_count in evaluator options (e.g., max_count: 10) to activate the range check, ensuring results >= 3 pass",
+        "The instruction says 'at least one additional', so the metric should accept any count >= 3, not just exactly 3"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

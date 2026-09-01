@@ -1,0 +1,90 @@
+{
+  "id": "7f52cab9-535c-4835-ac8c-391ee64dc930",
+  "new_id": "7f52cab9-535c-4835-ac8c-391ee64dc930_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's settings page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://shopping.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://settings"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_7f52cab9-535c-4835-ac8c-391ee64dc930_sid_1488078",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to search for drip coffee makers on Google Shopping but encountered SSL cert error (NET::ERR_CERT_COMMON_NAME_INVALID). Navigated to Amazon instead, searched 'drip coffee maker', applied color/price/deals filters, scrolled results. Later tried Google Shopping URL but landed on Best Buy. Failed after 50 turns.",
+    "capability_extraction": "Can navigate Chrome address bar, type URLs, search products on Amazon, use search filters (color, price, deals), scroll through results, interact with web elements",
+    "failure_analysis": "Google Shopping inaccessible due to SSL certificate error. Model could not bypass the cert error and tried alternative shopping sites instead. Evaluator expected Google Shopping-specific URL and filter states.",
+    "task_rationale": "Decomposed original complex shopping task into a simple Chrome settings navigation task. Model demonstrated ability to type URLs in address bar throughout the trajectory, so navigating to chrome://settings is within capability and avoids SSL issues.",
+    "explanation": "Task requires navigating to Chrome's settings page (chrome://settings). Evaluator uses URL pattern matching to verify the active tab URL contains 'chrome://settings'. Uses official getter active_url_from_accessTree and metric is_expected_url_pattern_match.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "navigation": "1.0 - URL matches chrome://settings"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Instruction requires opening Chrome's settings page. Evaluator checks if active tab URL matches 'chrome://settings' pattern — this correctly and fully verifies the requirement.",
+        "Getter active_url_from_accessTree extracts the current URL from the accessibility tree address bar, which is the right state to check for navigation tasks.",
+        "Metric is_expected_url_pattern_match uses re.search to find the pattern 'chrome://settings' in the result URL, which correctly verifies the URL contains the settings path.",
+        "Metric parameter handling is correct: expected.type='rule' means the metric receives rules dict directly, and it accesses rules['expected'] which contains the pattern list.",
+        "Minor concern: getter prepends default goto_prefix='https://' to the address bar text, producing 'https://chrome://settings'. However, re.search (not fullmatch) finds 'chrome://settings' within this string, so verification still succeeds.",
+        "No postconfig needed — URL state is persistent and accessible without reopening any UI."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider setting goto_prefix to empty string in the getter config to avoid the spurious 'https://' prefix on chrome:// URLs, e.g. {\"type\": \"active_url_from_accessTree\", \"goto_prefix\": \"\"}. While the current setup works due to re.search, an exact match scenario would fail."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

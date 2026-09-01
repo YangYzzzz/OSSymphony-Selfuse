@@ -1,0 +1,148 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "Access the invoice.pdf from Google Drive, extract the table data, and create a LibreOffice Calc file named 'invoice.xlsx' on the Desktop. In the spreadsheet, calculate the sum of all Unit Prices (column C) and place this sum in cell C10.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_value__44acfd64",
+    "result": {
+      "type": "xlsx_cell__44acfd64",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0,
+      "cell": "C10"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 1315.0
+      }
+    },
+    "options": {
+      "tolerance": 0.01
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires summing all unit prices from the invoice table. Verified with Python: 500+150+200+100+15+50+300=1315.0. The evaluator reads cell C10 and checks if the value matches the expected value.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_0/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_0/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if C10 contains 1315.0 (±0.01), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the primary requirement: cell C10 contains the sum value 1315.0",
+        "Getter logic is correct: reads xlsx file with data_only=True to get calculated values from C10",
+        "Metric logic is correct: compares numeric value with tolerance (±0.01)",
+        "Expected value is semantically correct: 1315.0 is the verified sum of unit prices (500+150+200+100+15+50+300)",
+        "Postconfig appropriately saves the file before reading to ensure fresh state",
+        "Data flow is sound: getter extracts cell value → metric compares with expected → returns 1.0 or 0.0"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor incompleteness: evaluator only verifies final result in C10, not whether data was actually extracted from invoice.pdf into other cells",
+        "Consider verifying presence of formula in C10 vs hardcoded value (though this may be beyond scope for outcome-based verification)",
+        "Could verify filename matches 'invoice.xlsx' explicitly in getter or add file existence check"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

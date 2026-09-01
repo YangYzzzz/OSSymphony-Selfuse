@@ -1,0 +1,82 @@
+{
+  "id": "bedcedc4-4d72-425e-ad62-21960b11fe0d",
+  "new_id": "task_verify_75",
+  "snapshot": "os",
+  "instruction": "Switch the sound theme to no sounds in accessibility settings.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "gsettings",
+          "set",
+          "org.gnome.desktop.sound",
+          "event-sounds",
+          "true"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "gsettings",
+        "get",
+        "org.gnome.desktop.sound",
+        "event-sounds"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false\n"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling system event sounds by setting event-sounds to false. The evaluator verifies the gsettings value is 'false'. Uses existing exact_match metric and vm_command_line getter. No postconfig needed - gsettings reads system state directly without UI dependencies.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "no_postconfig_needed": true,
+    "no_postconfig_reason": "Task uses gsettings command-line tool to read system configuration directly from dconf database. No UI state dependencies, no dialogs to reopen. Heuristic warning about 'settings' in instruction is false positive.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vm_command_line (general.py:8-22) executes 'gsettings get org.gnome.desktop.sound event-sounds' which directly reads the GNOME system setting controlling event sounds. This is the correct state to verify for 'no sounds' sound theme",
+        "Metric logic is correct: exact_match (general.py:41-48) performs strict comparison 'result == rules[\"expected\"]' which is semantically appropriate for verifying boolean gsettings output",
+        "Metric parameter handling is CORRECT: exact_match(result, rules) directly accesses rules['expected']. Since expected.type='rule', the framework calls get_rule (misc.py:88-92) which returns config['rules'] directly. No incorrect patterns like 'rules.get(\"rules\")' or 'expected.get(\"type\")'",
+        "Expected value is accurate: 'false\\n' correctly matches gsettings output format. The 'gsettings get' command returns boolean values followed by newline, so when event-sounds is disabled, output is exactly 'false\\n'",
+        "Complete instruction coverage: instruction requires 'switch sound theme to no sounds' which semantically means disabling event sounds. The evaluator verifies event-sounds=false, which is the correct and complete verification",
+        "Data flow is semantically correct: get_vm_command_line executes command via HTTP POST to VM → returns response.json()['output'] (stdout) → exact_match compares result string to 'false\\n' → returns 1.0 when sounds are disabled",
+        "No state accessibility issues: gsettings reads persistent system configuration directly from dconf database via command-line tool. No UI/dialog dependencies, no file I/O timing issues, no postconfig needed",
+        "Static warning is false positive: heuristic triggers on 'settings' keyword in instruction, but task uses command-line gsettings tool (not UI-based settings dialog). The system configuration is immediately accessible via gsettings without UI reopening"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_notes": "Rule-based warning is a false positive. The task uses gsettings command to read system state directly - no UI reopening needed. LLM judge confirms: 'No state freshness issues: gsettings command reads current system state directly, no UI/dialog dependencies, no postconfig needed'. The heuristic warning triggers on the word 'settings' in the instruction but is not applicable here."
+    }
+  }
+}

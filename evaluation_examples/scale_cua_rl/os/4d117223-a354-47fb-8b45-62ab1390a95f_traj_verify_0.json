@@ -1,0 +1,107 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "4d117223-a354-47fb-8b45-62ab1390a95f_traj_verify_0",
+  "snapshot": "os",
+  "instruction": "Change the permission of all directories under the current directory tree to 700.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd ~/testDir && if [ $(find . -type d -mindepth 1 ! -perm 700 | wc -l) -eq 0 ]; then echo 'All directories have the correct permissions.'; else echo 'Some directories do not have the correct permissions.'; find . -type d -mindepth 1 ! -perm 700 -exec stat -c '%a %n' {} \\;; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "All directories have the correct permissions."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_4d117223-a354-47fb-8b45-62ab1390a95f_sid_1488273",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully changed all regular file permissions to 644 using 'find . -type f -exec chmod 644 {} +' in 5 turns.",
+    "capability_extraction": "Can use terminal, find command with -type and -exec flags, chmod with numeric permissions, navigate directory structure.",
+    "task_rationale": "Variation targets directories instead of files, testing the same find+chmod pattern with -type d instead of -type f.",
+    "explanation": "Task requires changing all directory permissions under the current directory tree to 700. Evaluator runs a bash check that counts directories without permission 700 and outputs a success or failure message. Uses check_include_exclude to verify the success message is present.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'find . -type d -mindepth 1 ! -perm 700' to identify directories without 700 permissions, which directly verifies the instruction requirement.",
+        "Metric check_include_exclude correctly receives the rules dict (include/exclude) and checks for the success message in the command output.",
+        "The evaluator command hardcodes 'cd ~/testDir' which is consistent with the setup config that navigates the terminal to testDir.",
+        "Using -mindepth 1 appropriately excludes the current directory itself, focusing on subdirectories as the instruction implies.",
+        "Complete coverage: the single instruction requirement (all directories → 700) is fully verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

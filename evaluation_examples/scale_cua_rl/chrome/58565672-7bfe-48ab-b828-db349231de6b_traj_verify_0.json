@@ -1,0 +1,119 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "58565672-7bfe-48ab-b828-db349231de6b_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's settings page in a new tab.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://settings"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_58565672-7bfe-48ab-b828-db349231de6b_sid_1488089",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated Thunderbird Bills folder, opened latest X/Twitter email, found link (help.twitter.com), right-clicked 'Open Link in Browser' to open in Chrome. The link timed out (ERR_TIMED_OUT) and model spent remaining turns retrying. Evaluator expected amazon.com in tabs but got help.twitter.com which was unreachable.",
+    "capability_extraction": "Can navigate Thunderbird folder tree, open/select emails, read email content, identify links, use right-click context menu 'Open Link in Browser', switch between apps, interact with Chrome tabs",
+    "failure_analysis": "Model opened the wrong link (help.twitter.com from X/Twitter email instead of amazon.com from AWS email) and the URL was unreachable in the VM environment (ERR_TIMED_OUT). Model spent 12+ turns waiting and retrying the unreachable URL.",
+    "task_rationale": "Simplified to Chrome-only navigation to an internal page (chrome://settings) which doesn't depend on external URL accessibility. Tests model's ability to open a new tab and navigate to a specific Chrome page.",
+    "explanation": "Task requires opening Chrome settings in a new tab. Evaluator uses is_expected_url_pattern_match to verify the active tab URL contains 'chrome://settings'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "navigation": "1.0 - Active tab URL matches chrome://settings"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "URL pattern matching logic is correct: re.search('chrome://settings', result_url) will find a match even with the default 'https://' prefix prepended by the getter, since re.search checks for substring presence.",
+        "Getter get_active_url_from_accessTree correctly extracts the active tab URL from the accessibility tree and returns it as a string, which the metric handles properly.",
+        "Expected value is semantically correct: 'chrome://settings' is the correct URL pattern for Chrome's settings page.",
+        "Incomplete coverage: instruction says 'in a new tab' but evaluator only verifies the active tab URL matches chrome://settings. It does not verify that original tabs (apple.com, scholar.google.com) still exist, so navigating an existing tab to chrome://settings would also pass.",
+        "Config includes unnecessary Thunderbird setup (download, extract, launch) that is irrelevant to this Chrome-only task, though this does not affect evaluator correctness."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second evaluator step using is_expected_tabs or similar metric to verify that the original tabs (apple.com, scholar.google.com) still exist alongside the new settings tab, ensuring 'in a new tab' is verified.",
+        "Consider adding 'goto_prefix': '' in the getter config to avoid prepending 'https://' to chrome:// URLs, even though regex search still works with the double prefix.",
+        "Remove unnecessary Thunderbird config steps (download, extract, launch) since this task only involves Chrome."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

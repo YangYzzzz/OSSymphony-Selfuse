@@ -1,0 +1,92 @@
+{
+  "id": "a728a36e-8bf1-4bb6-9a03-ef039a5233f0",
+  "new_id": "task_verify_65",
+  "snapshot": "chrome",
+  "instruction": "Navigate to find information about DMV office locations",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.dmv.virginia.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "^https://(www\\.)?dmv\\.virginia\\.gov/(services|general|about)/(locations|offices|office-locator|find-office)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires navigating from Virginia DMV homepage to the office locations page. Uses the same evaluator pattern as original (URL regex match via accessibility tree). Similar complexity - requires 1-2 navigation clicks. Regex allows for path variations.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts active URL from accessibility tree",
+        "Metric function correctly applies regex pattern matching to verify URL",
+        "Expected regex pattern is syntactically valid and covers multiple reasonable URL path variations",
+        "Data flow is correct: URL extraction -> regex matching -> binary pass/fail result",
+        "Minor concern: regex pattern assumes two-level path structure (/category/page) which may be too restrictive - actual Virginia DMV office locations might use different URL structures not covered by the pattern (e.g., /dmv-select, /locations, etc.)",
+        "Pattern allows variations in first segment (services/general/about) and second segment (locations/offices/office-locator/find-office) but may miss other valid office location pages"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider broadening the regex pattern to be more flexible, e.g., allowing single-level paths like /locations or /office-locator",
+        "Consider adding pattern alternatives that don't require the two-level structure, such as: ^https://(www\\.)?dmv\\.virginia\\.gov/.*(location|office|dmv-select)",
+        "Validate the regex against the actual Virginia DMV website structure to ensure it matches the real office locator page URL"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

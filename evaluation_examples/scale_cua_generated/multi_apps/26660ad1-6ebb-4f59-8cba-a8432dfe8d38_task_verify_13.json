@@ -1,0 +1,106 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_13",
+  "snapshot": "multiapps",
+  "instruction": "Run a speed test on speedtest.net and save the results as a CSV file at ~/Test/Speed/speedtest_results.csv (create the directory if needed).",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "check_csv_has_columns__50006736ce024a92878da0e4240e2bb0",
+    "result": {
+      "type": "speedtest_csv_data__50006736ce024a92878da0e4240e2bb0",
+      "path": "/home/user/Test/Speed/speedtest_results.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "required_columns": [
+          "Server",
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires running speedtest.net and saving results as CSV with standard columns (Server, Ping, Download, Upload). The evaluator checks if the CSV file contains all required columns with data. Custom getter extracts CSV data into a dict, custom metric verifies required columns are present.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_aug_18_task_verify_0/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_aug_18_task_verify_0/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly reads CSV file from the specified path, parses header and data rows, and returns a dict mapping column names to values",
+        "Metric function correctly handles the expected parameter when type='rule' - directly accesses expected.get('required_columns') as the rules dict is passed directly",
+        "Evaluator provides appropriate coverage by verifying that all required columns (Server, Ping, Download, Upload) exist in the CSV with non-empty values",
+        "Partial credit scoring is implemented correctly - each required column contributes proportionally to the final score",
+        "Getter handles edge cases: checks file existence, handles empty/invalid files, and safely parses CSV with bounds checking",
+        "Path specification is correct: instruction uses ~/Test/Speed/speedtest_results.csv which expands to /home/user/Test/Speed/speedtest_results.csv in the config",
+        "Minor limitation: Getter only checks first data row, but this is acceptable for speedtest results which typically have one result row",
+        "Minor limitation: Does not validate data types (e.g., numeric values for Ping/Download/Upload), but this is a reasonable trade-off as speedtest output format may vary"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could validate that Ping, Download, Upload columns contain numeric values to ensure valid speedtest data",
+        "Optional enhancement: Could add more robust CSV parsing to handle edge cases like quoted fields or escaped commas"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -577,6 +577,39 @@ def _wait_for_http_ok(url: str, timeout: int = 300) -> None:
     raise RuntimeError(f"Timed out waiting for {url}: {last_error}")
 
 
+def _run_vm_python_json(setup_controller: "SetupController", code: str, timeout: int = 120) -> Dict[str, Any]:
+    script = "python3 - <<'PY'\n" + code.rstrip() + "\nPY"
+    raw = setup_controller.execute(["bash", "-lc", script], quiet=True, timeout=timeout)
+    if not raw:
+        raise RuntimeError("VM Python helper returned no output")
+    last_line = raw.strip().splitlines()[-1]
+    return json.loads(last_line)
+
+
+def _wait_for_vm_http_ok(setup_controller: "SetupController", url: str, timeout: int = 300) -> None:
+    deadline = time.time() + timeout
+    last_error: Optional[str] = None
+    probe = f"""
+import json
+import urllib.request
+try:
+    with urllib.request.urlopen({url!r}, timeout=5) as resp:
+        print(json.dumps({{"ok": 200 <= resp.status < 400, "status": resp.status}}))
+except Exception as exc:
+    print(json.dumps({{"ok": False, "error": str(exc)}}))
+"""
+    while time.time() < deadline:
+        try:
+            result = _run_vm_python_json(setup_controller, probe, timeout=15)
+            if result.get("ok"):
+                return
+            last_error = result.get("error") or f"HTTP {result.get('status')}"
+        except Exception as exc:
+            last_error = str(exc)
+        time.sleep(2)
+    raise RuntimeError(f"Timed out waiting inside VM for {url}: {last_error}")
+
+
 def _write_cookie_file(cache_dir: str, cookie_file: str, source_url: str, user_id: str) -> None:
     payload = {
         "entries": [
@@ -808,6 +841,162 @@ class Task082(BaseTask):
         "instance_id": instance["id"],
     }
 
+
+    def _seed_aws_console_via_vm(self, setup_controller: "SetupController") -> Dict[str, str]:
+        payload = {
+            "aws_port": AWS_PORT,
+            "aws_user_id": AWS_USER_ID,
+            "key_pair_name": KEY_PAIR_NAME,
+            "local_key_dir": LOCAL_KEY_DIR,
+            "instance_name": INSTANCE_NAME,
+            "ami_tag": AMI_TAG,
+            "ami_id": AMI_ID,
+            "ami_name": AMI_NAME,
+            "aws_region": AWS_REGION,
+            "user_name": USER_NAME,
+            "user_email": USER_EMAIL,
+            "aws_account_id": AWS_ACCOUNT_ID,
+            "security_group_id": SECURITY_GROUP_ID,
+            "security_group_name": SECURITY_GROUP_NAME,
+        }
+        code = f"""
+import json
+import os
+import urllib.request
+
+cfg = json.loads({json.dumps(payload)!r})
+base = f"http://localhost:{{cfg['aws_port']}}"
+cookie_query = f"?cookie={{cfg['aws_user_id']}}"
+
+def request(method, path, data=None, timeout=90):
+    body = None if data is None else json.dumps(data).encode('utf-8')
+    req = urllib.request.Request(
+        base + path + cookie_query,
+        data=body,
+        method=method,
+        headers={{'Content-Type': 'application/json'}},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read().decode('utf-8')
+    return json.loads(raw) if raw else {{}}
+
+try:
+    request('DELETE', '/api/state', timeout=60)
+except Exception:
+    pass
+state_data = request('GET', '/api/state', timeout=30)['state']['data']
+keypair_payload = request('POST', '/api/ec2/keypairs', {{'name': cfg['key_pair_name'], 'type': 'RSA'}}, timeout=60)
+keypair_meta = keypair_payload['keyPair']
+private_key = keypair_payload['privateKey']
+os.makedirs(cfg['local_key_dir'], exist_ok=True)
+key_path = os.path.join(cfg['local_key_dir'], cfg['key_pair_name'] + '.pem')
+with open(key_path, 'w', encoding='utf-8') as handle:
+    handle.write(private_key)
+os.chmod(key_path, 0o600)
+instance = request('POST', '/api/ec2/instances', {{
+    'name': cfg['instance_name'],
+    'amiTag': cfg['ami_tag'],
+    'amiId': cfg['ami_id'],
+    'amiName': cfg['ami_name'],
+    'instanceType': 't3.medium',
+    'platform': 'Linux/UNIX',
+    'tags': [{{'Key': 'Name', 'Value': cfg['instance_name']}}],
+    'keyPair': cfg['key_pair_name'],
+    'region': cfg['aws_region'],
+}}, timeout=90)['instance']
+amis = request('GET', '/api/ec2/amis', timeout=30).get('amis', [])
+state_data['amis'] = amis
+state_data['user'] = {{
+    'name': cfg['user_name'],
+    'email': cfg['user_email'],
+    'accountId': cfg['aws_account_id'],
+    'region': cfg['aws_region'],
+    'accountAlias': 'northstar-prod',
+    'role': 'admin',
+}}
+state_data['keyPairs'] = [keypair_meta]
+state_data['ec2'] = [instance]
+state_data['securityGroups'] = [{{
+    'id': cfg['security_group_id'],
+    'name': cfg['security_group_name'],
+    'description': 'Legacy bastion access rules',
+    'vpcId': instance.get('vpcId', 'vpc-0abc1234def56789'),
+    'ownerId': cfg['aws_account_id'],
+    'inboundRules': [{{
+        'type': 'SSH',
+        'protocol': 'TCP',
+        'port': '22',
+        'portRange': '22',
+        'source': '0.0.0.0/0',
+        'description': 'Temporary SSH access from anywhere',
+    }}],
+    'outboundRules': [{{
+        'type': 'All traffic',
+        'protocol': '-1',
+        'portRange': 'All',
+        'source': '0.0.0.0/0',
+        'description': 'Allow all outbound traffic',
+    }}],
+}}]
+state_data['volumes'] = [{{
+    'id': 'vol-0incident300root',
+    'name': cfg['instance_name'] + '-root',
+    'size': 16,
+    'volumeType': 'gp3',
+    'state': 'in-use',
+    'iops': 3000,
+    'throughput': 125,
+    'az': instance.get('az', cfg['aws_region'] + 'a'),
+    'attachedTo': instance['id'],
+    'device': '/dev/xvda',
+    'created': '2025-06-07T11:45:00Z',
+    'encrypted': False,
+    'snapshotId': '',
+}}]
+state_data['notifications'] = [{{
+    'title': 'Trust & Safety escalation',
+    'message': 'Investigate abuse report for ' + instance['id'],
+    'type': 'warning',
+    'service': 'EC2',
+}}]
+state_data['flash'] = []
+request('PUT', '/api/state', {{'data': state_data, 'note': 'Task 300 incident scenario'}}, timeout=90)
+print(json.dumps({{'instance_id': instance['id']}}))
+"""
+        result = _run_vm_python_json(setup_controller, code, timeout=180)
+        _write_cookie_file(
+            cache_dir=setup_controller.cache_dir,
+            cookie_file=AWS_COOKIE_FILE,
+            source_url=_host_aws_base_url(setup_controller.vm_ip),
+            user_id=AWS_USER_ID,
+        )
+        return {"instance_id": str(result["instance_id"])}
+
+    def _fetch_aws_state_via_vm(self, env: "DesktopEnv") -> Optional[Dict[str, Any]]:
+        code = f"""
+import json
+import urllib.request
+req = urllib.request.Request(
+    'http://localhost:{AWS_PORT}/api/state?cookie={AWS_USER_ID}',
+    headers={{'Content-Type': 'application/json', 'Cookie': 'user_id={AWS_USER_ID}'}},
+)
+with urllib.request.urlopen(req, timeout=30) as resp:
+    payload = json.loads(resp.read().decode('utf-8'))
+print(json.dumps(payload.get('state', payload)))
+"""
+        try:
+            state = _run_vm_python_json(env.setup_controller, code, timeout=60)
+        except Exception as exc:
+            logger.error("Task082 VM AWS state fetch failed: %s", exc)
+            return None
+        state_path = os.path.join(env.cache_dir, "awsconsole_state.json")
+        try:
+            with open(state_path, "w", encoding="utf-8") as handle:
+                json.dump(state, handle, indent=2)
+        except Exception as exc:
+            logger.warning("Task082 could not save VM-fetched AWS state: %s", exc)
+        return state
+
     def setup(self, setup_controller: "SetupController", use_proxy: bool = False) -> None:
 
         install_cmd = (
@@ -844,8 +1033,13 @@ class Task082(BaseTask):
         )
         setup_controller.execute(["bash", "-lc", compose_cmd], timeout=2400)
 
-        _wait_for_http_ok(f"{_host_aws_base_url(setup_controller.vm_ip)}/health", timeout=420)
-        aws_context = self._seed_aws_console(setup_controller)
+        try:
+            _wait_for_http_ok(f"{_host_aws_base_url(setup_controller.vm_ip)}/health", timeout=30)
+            aws_context = self._seed_aws_console(setup_controller)
+        except Exception as exc:
+            logger.warning("Task082 host-side AWS console setup failed, using VM-local fallback: %s", exc)
+            _wait_for_vm_http_ok(setup_controller, f"http://localhost:{AWS_PORT}/health", timeout=420)
+            aws_context = self._seed_aws_console_via_vm(setup_controller)
 
         mailhub_urls = prepare_stateful_website_urls(
             app="mailhub",
@@ -887,6 +1081,9 @@ class Task082(BaseTask):
                 "return_type": "json",
             },
         )
+        if not isinstance(aws_state, dict):
+            logger.warning("Task082 host-side AWS state fetch failed, using VM-local fallback")
+            aws_state = self._fetch_aws_state_via_vm(env)
         mailhub_state = get_state_with_cookie(
             env,
             {

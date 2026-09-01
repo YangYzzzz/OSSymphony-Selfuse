@@ -1,0 +1,97 @@
+{
+  "id": "b7895e80-f4d1-4648-bee0-4eb45a6f1fa8",
+  "new_id": "b7895e80-f4d1-4648-bee0-4eb45a6f1fa8_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Find New York City hotels on TripAdvisor and sort the results by price, lowest first.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.tripadvisor.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_hotel_search_sort__472d035cab9ac094961bab26b2de0108",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "xpath",
+      "xpathObject": {
+        "//h2[@data-automation='header_geo_title']": "city",
+        "//button[contains(@aria-label,'PRICE_LOW_TO_HIGH: Price (low to high)') or contains(@aria-label,'PRICE')]//div[contains(@class,'biGQs') and contains(@class,'SewaP')]": "rank"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_city": "New York City Hotels",
+        "expected_rank": "Price (low to high)"
+      }
+    }
+  },
+  "metadata": {
+    "source_trajectory": "task_chrome_b7895e80-f4d1-4648-bee0-4eb45a6f1fa8_sid_1488280",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent spent 5 turns passing TripAdvisor verification slider, then searched for NYC hotels and reached the hotel listing page. Opened calendar to change dates but got confused about day-of-week mapping. Never sorted by price. Ran out of turns with malformed final action.",
+    "capability_extraction": "Can pass TripAdvisor verification slider, search for cities in TripAdvisor search box, navigate to hotel listing pages, interact with date picker calendar",
+    "failure_analysis": "Model wasted too many turns on verification slider (5 of 13 turns). After reaching hotel page, struggled with date selection in calendar and never attempted to sort by price. Final turn produced malformed tool call.",
+    "augmentation_type": "traj_verify",
+    "explanation": "Removes date/guest complexity from original task, keeping only hotel search + sort by price. Custom metric awards partial credit: 0.5 for reaching NYC hotel page, 0.5 for sorting by price low to high. XPath selectors reuse original task's verified patterns.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_b7895e80-f4d1-4648-bee0-4eb45a6f1fa8_sid_1488280_traj_verify_2/metrics/chrome.py"
+    ],
+    "task_rationale": "Original task failed because model couldn't complete all 4 sub-tasks (search, dates, guests, sort). This variation tests 2 sub-tasks (search + sort) with partial credit, matching the model's demonstrated navigation capability.",
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "city_check": "0.5 - NYC hotel listing page reached (header shows 'New York City Hotels')",
+      "sort_check": "0.5 - Results sorted by Price (low to high)"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Metric correctly handles expected parameter for type='rule' - directly accesses expected.get('expected_city') and expected.get('expected_rank') from the rules dict",
+        "Both instruction requirements are covered: NYC hotel search (0.5 pts) and price sort (0.5 pts) with appropriate partial credit",
+        "XPath for geo title header (data-automation='header_geo_title') is a reasonable selector for verifying the hotel search destination",
+        "Metric uses substring 'in' check which provides appropriate flexibility for matching page content",
+        "Minor concern: the sort button XPath has a broad fallback condition (contains(@aria-label,'PRICE')) that could match the price sort option even when not actively selected; the metric then checks if 'Price (low to high)' appears in the button text, which may yield a false positive if TripAdvisor always shows this text regardless of active sort state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a more specific XPath that checks for the active/selected state of the sort button (e.g., an aria-selected='true' attribute or a CSS class indicating active state) to avoid false positives when price sort is available but not applied"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

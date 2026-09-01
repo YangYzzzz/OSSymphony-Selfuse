@@ -1,0 +1,72 @@
+{
+  "id": "3ce045a0-877b-42aa-8d2c-b4a863336ab8",
+  "new_id": "task_verify_69",
+  "snapshot": "os",
+  "instruction": "I find it hard to double-click quickly enough. Could you slow down the double-click speed so I have more time between clicks?",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/a11y-font-size.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "CLICK_DELAY=$(timeout 10 gsettings get org.gnome.settings-daemon.peripherals.mouse double-click 2>/dev/null | grep -oE \"[0-9]+\" | head -1); if [ -z \"$CLICK_DELAY\" ]; then CLICK_DELAY=$(timeout 10 gsettings get org.gnome.desktop.peripherals.mouse double-click 2>/dev/null | grep -oE \"[0-9]+\" | head -1); fi; if [ -n \"$CLICK_DELAY\" ] && [ \"$CLICK_DELAY\" -ge 500 ]; then echo \"Slow double-click enabled (delay: $CLICK_DELAY ms)\"; else echo \"Default double-click speed\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Slow double-click enabled"
+        ],
+        "exclude": [
+          "Default double-click speed",
+          "error"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires increasing double-click delay via Settings > Mouse > Double-Click Speed. Evaluator checks if double-click delay >= 500ms (default ~400ms). Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts double-click delay from gsettings using vm_command_line getter",
+        "Command logic properly checks both gnome.settings-daemon.peripherals.mouse (legacy) and gnome.desktop.peripherals.mouse (modern) schemas with fallback",
+        "Threshold of 500ms is reasonable for 'slowed down' verification (default ~400ms)",
+        "check_include_exclude metric correctly verifies success message and excludes error cases",
+        "Minor semantic issue: evaluator checks absolute threshold (>= 500ms) rather than verifying relative increase from initial state, which means pre-existing slow settings would pass without agent action",
+        "However, without preconfig to capture initial state, the absolute threshold approach is a practical compromise"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding preconfig to capture initial double-click delay, then verify the delay was actually increased (not just >= 500ms)",
+        "Alternative: add a more conservative threshold (e.g., >= 600ms) to reduce false positives from pre-existing slow settings"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

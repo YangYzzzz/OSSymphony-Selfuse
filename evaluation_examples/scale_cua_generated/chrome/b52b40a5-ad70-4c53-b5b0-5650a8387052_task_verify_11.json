@@ -1,0 +1,163 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_11",
+  "snapshot": "chrome",
+  "instruction": "Create a readable merged PDF from all attachments in the 'Paper Recommendation' email in Thunderbird and save it as attachment_full.pdf on Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_pdf_validity__90edd5864af08865c892a3ecd6659029",
+    "result": {
+      "type": "pdf_validity__90edd5864af08865c892a3ecd6659029",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "query": [
+        "title = 'attachment_full.pdf' and trashed = false and 'root' in parents"
+      ],
+      "dest": "attachment_full.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "require_valid": true,
+        "min_pages": 50,
+        "require_text": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "hard",
+    "explanation": "Variation checks PDF file integrity with partial credit scoring: 40% for valid PDF structure (not corrupted), 30% for sufficient pages (at least 50 pages), 30% for readable text content. The gold PDF has 75 pages with extractable text. This ensures the merge operation produced a well-formed, readable document.",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "valid_pdf_structure": 0.4,
+      "sufficient_pages": 0.3,
+      "has_text_content": 0.3
+    },
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_4/getters/pdf.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_4/metrics/pdf.py"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "CORRECTION: Previous judgment incorrectly flagged metric lines 54-56. The actual logic at lines 57-59 correctly preserves partial credit - it only returns 0.0 when score==0.0 (no valid structure AND no pages AND no text), not when score>0. A valid PDF with 50+ pages but no text correctly scores 0.7.",
+        "Improved text verification: Getter now samples multiple pages (first, last, middle, quarter, three-quarter pages) instead of just page 0, providing more comprehensive text detection for the 75-page merged PDF.",
+        "Partial credit correctly implemented: Metric awards 0.4 for valid structure, 0.3 for page count, 0.3 for text. These are cumulative and preserved correctly.",
+        "Minor limitation: Evaluator cannot verify that PDFs were actually merged from Thunderbird 'Paper Recommendation' email attachments. It only validates the final PDF properties (valid, 50+ pages, readable text). Could theoretically pass with any qualifying PDF uploaded to Google Drive.",
+        "Minor limitation: Text sampling of 5 pages out of 75 may miss edge cases, but is reasonable for practical verification that the PDF has extractable text content.",
+        "Static validation warning about type (Any) vs (Dict) is a false positive - the metric correctly handles expected as the rules dict per framework convention."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Add more comprehensive text checking by calculating total text length across all sampled pages and requiring minimum character threshold (e.g., >1000 chars) to ensure substantial text content.",
+        "Optional enhancement: Consider checking PDF metadata (creation date, modification date) to verify recent creation, though this is not foolproof as metadata can be manipulated.",
+        "Documentation clarification: Add comment explaining that evaluator verifies final PDF properties but cannot trace the merge operation from Thunderbird email attachments."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_validity__90edd5864af08865c892a3ecd6659029 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "9b7bc335-06b5-4cd3-9119-1a649c478509_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Set up a Thunderbird filter to automatically flag all incoming emails for the Outlook account.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Mark flagged",
+            "condition": [
+              "ALL"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_9b7bc335-06b5-4cd3-9119-1a649c478509_sid_1488202",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created a message filter in Thunderbird to forward all emails from anonym-x2024@outlook.com to anonym-x2024@gmail.com. Opened Message Filters dialog, created new filter named 'Forward to Gmail' with 'Match all messages' condition and 'Forward Message to' action.",
+    "capability_extraction": "Can navigate Thunderbird UI, open Message Filters dialog, create new filters, select match conditions (Match all messages), change action types from dropdown, enter values, save filters",
+    "task_rationale": "Tests the same filter creation capability but with a different action type (Mark flagged instead of Forward). Agent demonstrated ability to navigate the filter creation dialog and select actions from the dropdown.",
+    "explanation": "Task requires creating a message filter that flags all incoming emails. Evaluator reads msgFilterRules.dat and checks for a filter with action 'Mark flagged' and condition ALL.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads msgFilterRules.dat from the Outlook account's IMAP directory, which is the correct location for Thunderbird message filters for that account.",
+        "Metric check_thunderbird_filter correctly parses the filter rules file and checks for enabled=yes, action=Mark flagged, condition=ALL - all matching the instruction to flag all incoming emails.",
+        "Expected values are semantically correct: 'Mark flagged' is Thunderbird's internal action name for flagging/starring, 'ALL' matches 'all incoming emails', and 'enabled=yes' ensures the filter is active.",
+        "Data flow is correct: get_vm_file returns a file path (str), check_thunderbird_filter receives it as the result parameter and opens the file. Expected type 'rule' means get_rule returns the rules dict directly to the metric.",
+        "Postconfig appropriately closes the Message Filters dialog before reading the file, ensuring the filter configuration is saved to disk.",
+        "Full instruction coverage: all requirements (filter creation, flagging action, all messages, Outlook account) are verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "id": "f3b19d1e-2d48-44e9-b4e1-defcae1a0197",
+  "new_id": "task_verify_82",
+  "snapshot": "chrome",
+  "instruction": "Locate the FAQ page regarding event cancellations.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://premier.ticketek.com.au/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Cancellation|Cancel"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the agent to navigate from the Ticketek homepage to the FAQ page about event cancellations. The evaluator checks if the active tab URL contains 'Cancellation' or 'Cancel' pattern, using the existing is_expected_url_pattern_match metric with active_tab_info getter. This is similar to the original task but targets cancellation policies.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Case-sensitive regex pattern: The pattern 'Cancellation|Cancel' is case-sensitive and will fail if the actual FAQ URL uses lowercase (e.g., '/faq/cancellation' or '/cancel'). This creates a high risk of false negatives.",
+        "Overly permissive URL matching: The evaluator only checks if 'Cancellation' or 'Cancel' appears anywhere in the URL, without verifying it's actually an FAQ page. This could match unrelated pages like 'Cancel Order', 'Cancellation Policy' (refunds), or checkout cancellation pages.",
+        "No content verification: The instruction specifically asks for 'FAQ page regarding event cancellations', but the evaluator doesn't verify page content contains FAQ-related information. The getter retrieves page content but the metric doesn't use it.",
+        "Incomplete requirement coverage: The instruction has two key requirements: (1) FAQ page, and (2) about event cancellations. The evaluator only partially verifies requirement (2) through URL pattern matching, but doesn't verify requirement (1) at all."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Make the regex pattern case-insensitive by using a case-insensitive flag or updating the pattern to '[Cc]ancellation|[Cc]ancel' to handle both uppercase and lowercase variations.",
+        "Add additional URL pattern checks to ensure it's an FAQ page, such as requiring 'faq' or 'help' to also appear in the URL (e.g., pattern should match both 'faq' AND 'cancel').",
+        "Consider using the page content verification in addition to URL matching to confirm the page actually contains FAQ-related content about event cancellations (e.g., check for keywords like 'frequently asked questions', 'event cancellation policy', etc.).",
+        "Narrow the URL pattern to be more specific to event cancellations FAQ pages on the Ticketek domain, rather than accepting any page with 'cancel' in the URL."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

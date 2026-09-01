@@ -1,0 +1,109 @@
+{
+  "id": "36037439-2044-4b50-b9d1-875b5a332143",
+  "new_id": "task_verify_23",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Could you please search for OpenAI on Google in Chrome?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/36037439-2044-4b50-b9d1-875b5a332143/shi17a.pdf",
+            "path": "/home/user/Desktop/shi17a.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/shi17a.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-40)"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/36037439-2044-4b50-b9d1-875b5a332143",
+  "related_apps": [
+    "OS",
+    "Chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "",
+        "expected": [
+          "google.com/search",
+          "(?i)OpenAI"
+        ]
+      }
+    },
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import subprocess; import time; subprocess.Popen(['wmctrl', '-a', 'Chrome']); time.sleep(0.5)"
+          ]
+        }
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires finding the second affiliation (OpenAI) from the PDF author list and searching for 'OpenAI' on Google. The evaluator checks if the URL contains both 'google.com/search' and 'OpenAI'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified from PDF that multiple authors are affiliated with OpenAI (marked as superscript 2). Task maintains similar difficulty by requiring information extraction and web search.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter logic correct (chrome.py:710-800): get_active_url_from_accessTree reads address bar content from accessibility tree, which accurately reflects the active Chrome tab URL at evaluation time. Uses CSS selector to find 'Address and search bar' element and extracts text content.",
+        "Metric logic correct (chrome.py:70-99): is_expected_url_pattern_match correctly iterates through all patterns in rules['expected'] list and returns 0.0 if ANY pattern missing, 1.0 if ALL patterns match using re.search(). Implements proper AND logic for multi-pattern verification.",
+        "Pattern semantics correct: 'google.com/search' verifies user is on Google search results page (not just Google homepage), '(?i)OpenAI' uses case-insensitive regex flag to match 'OpenAI' anywhere in the URL (typically appears in query parameters as q=OpenAI).",
+        "Complete coverage: evaluator verifies BOTH requirements from instruction - (1) search on Google (google.com/search in URL), and (2) search query is 'OpenAI' ((?i)OpenAI in URL). No missing requirements.",
+        "Data flow semantically sound: accessibility tree → extract address bar text → prepend prefix 'https://' → regex pattern matching on all patterns → return 1.0 only if all patterns match, else 0.0.",
+        "State accessibility confirmed: postconfig (line 65-76) focuses Chrome window using wmctrl before evaluation, ensuring accessibility tree reflects current active tab state. This is necessary because other apps may be focused after task execution.",
+        "Edge cases handled: Case-insensitive regex (?i) handles URL encoding variations of 'OpenAI' (openai, OPENAI, OpenAi, etc.). Metric handles both string URLs and dict with 'url' field (lines 79-87).",
+        "Runtime correctness verified: The getter will successfully extract URL from Chrome's active tab via accessibility tree, and the metric will correctly evaluate whether both patterns exist in that URL."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Evaluator is semantically correct and robust - no fixes needed for verification logic. Score is 0.95 (not 1.0) because the evaluator relies on the search query appearing in the URL, which is specific to Google's URL structure. However, since the instruction explicitly mentions 'Google', this is appropriate and not a flaw."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

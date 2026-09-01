@@ -1,0 +1,96 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "3299584d-8f11-4457-bf4c-ce98f7600250_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Change the default search engine in Chrome to Bing.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_search_engine__3898b17c9447f0df83eb7e4316fa07a5",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_engine": "Bing"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to Chrome Settings > On start-up, found funbrain.com configured as startup page, clicked context menu > Remove, resulting in 'Open the New Tab page' being selected. Evaluator returned 0 despite UI showing correct state.",
+    "capability_extraction": "Can open Chrome three-dot menu, navigate to Settings, find specific settings sections, interact with dropdowns and UI controls",
+    "failure_analysis": "Model appeared to complete the original task but evaluator returned 0.0. Model demonstrated strong Chrome settings navigation capability.",
+    "task_rationale": "Leverages model's demonstrated ability to navigate Chrome settings. Search engine setting is in the same settings page, requiring similar navigation skills but a different section.",
+    "explanation": "Task requires navigating to Chrome Settings > Search engine and changing default search engine to Bing. Evaluator uses official default_search_engine getter with custom metric for case-insensitive string comparison.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_3299584d-8f11-4457-bf4c-ce98f7600250_sid_1488417_traj_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "search_engine": "1.0 - Default search engine changed to Bing"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'default_search_engine' correctly reads Chrome Preferences file and extracts 'default_search_provider_data.template_url_data.short_name', which is the correct field for the default search engine name.",
+        "Metric correctly handles expected parameter as the rules dict directly, accessing expected.get('expected_engine') without incorrectly wrapping in expected.get('rules').",
+        "Case-insensitive string comparison is appropriate for matching search engine names (e.g., 'Bing' vs 'bing').",
+        "Expected value 'Bing' is semantically correct for the instruction 'Change the default search engine in Chrome to Bing'.",
+        "Single-step instruction is fully covered by a single getter+metric pair — complete verification coverage.",
+        "Postconfig sleep(2) is sufficient since the getter reads the Preferences file directly (no UI state dependency)."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

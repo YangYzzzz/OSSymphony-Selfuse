@@ -1,0 +1,113 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_40",
+  "snapshot": "chrome",
+  "instruction": "Filter and view men's Adidas shorts under $40.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "under $40",
+          "men",
+          "shorts",
+          "adidas"
+        ]
+      },
+      "url_include_expected": [
+        "under $40",
+        "men",
+        "shorts",
+        "adidas"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "under $40": true,
+          "men": true,
+          "shorts": true,
+          "adidas": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation of NBA store filtering task. User must apply 4 filters: men's category, Adidas brand, shorts type, and under $40 price. Evaluator checks that all filters are present in HTML class elements and URL parameters, with no extra filters applied (is_other_exist: false).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing check_direct_json_object metric and get_active_tab_html_parse getter. Pattern matches original task structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses category 'class&url' to check both HTML elements and URL for filter presence",
+        "All 4 instruction requirements (men, Adidas, shorts, under $40) are verified in the expected rules",
+        "The is_other_exist check appropriately ensures no unexpected filters are applied",
+        "Getter extracts filter text from class 'filter-selector-link' which is a standard pattern for e-commerce filters",
+        "URL verification provides additional validation that filters are actually applied to the search",
+        "Minor concern: Text matching is case-insensitive but may not handle variations in spacing or formatting",
+        "Minor concern: The getter relies on specific class name 'filter-selector-link' which may vary across different websites",
+        "Overall logic flow is sound: extract filters from HTML and URL, then compare against expected set"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding flexibility for text variations (e.g., 'Under $40' vs 'under $40', '$40 & Under' vs 'under $40')",
+        "Could benefit from fuzzy matching for filter text to handle minor formatting differences",
+        "Consider documenting that this evaluator is designed for NBA store or similar e-commerce sites with similar filter structures"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_9",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Terminate all running LibreOffice Writer processes from the command line, ensuring no zombie processes remain.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_zombie_processes__3cb05241b4c4339174465aa00f9f30ef",
+    "result": {
+      "type": "zombie_check__3cb05241b4c4339174465aa00f9f30ef",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(ps aux | grep \"[Zz].*soffice\"); if [ -z \"$output\" ]; then echo \"no zombie processes\"; else echo \"zombie processes found\"; fi; output=$(cat ~/.bash_history | grep \"[k]ill\"); if [ -z \"$output\" ]; then echo \"not terminated from terminal\"; else echo \"terminated from terminal\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "no zombie processes",
+          "terminated from terminal"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "zombie processes found",
+          "not terminated from terminal"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires terminating LibreOffice Writer from terminal and verifying no zombie processes remain. Evaluator checks: (1) no LibreOffice process is running, (2) no zombie processes exist, and (3) kill command was used in bash history. Tests thorough process cleanup.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_4/getters/terminal.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_4/metrics/terminal.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: LibreOffice shutdown, no zombie processes, and command-line termination",
+        "Getter logic correctly extracts process state via ps commands and bash history check",
+        "Metric function correctly handles 'type: rule' - directly accesses expected.get('include') and expected.get('exclude')",
+        "Data flow is semantically correct: bash script output -> pattern matching -> score",
+        "Postconfig appropriately kills gnome-terminal-server to enable clean state verification",
+        "Complete coverage: checks both process termination AND absence of zombie processes AND method of termination"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Bash history check has potential timing issues - history may not be flushed to disk immediately after command execution",
+        "Pattern '[k]ill' in grep is very broad and could match unrelated commands (killall, pkill, etc.), though this is acceptable for verification purposes",
+        "Consider that history sync depends on shell settings (HISTCONTROL, HISTSIZE, etc.) which may vary across environments"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

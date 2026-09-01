@@ -1,0 +1,94 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome's default font size to Large.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_bb5e4c0d-f964-439c-97b6-bdb9747de3f4_sid_1488114",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated to Chrome settings > Search engine section and changed default search engine from Google to Microsoft Bing in 7 turns.",
+    "capability_extraction": "Can open Chrome settings, navigate to specific settings sections, use dialogs/dropdowns to change setting values",
+    "task_rationale": "Tests same settings-navigation capability in the Appearance section (font size) instead of Search engine section",
+    "explanation": "Task requires changing Chrome font size to Large (20px). Uses official chrome_font_size getter and check_font_size metric. Postconfig restarts Chrome to ensure settings are persisted before reading preferences.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'chrome_font_size' correctly reads Chrome Preferences JSON and extracts 'webkit.webprefs' dict containing 'default_font_size' — the right state for this task.",
+        "Metric 'check_font_size' correctly extracts 'default_font_size' from the getter result and compares it against rule['value'] (20) using exact equality — appropriate for a discrete font size setting.",
+        "Expected value of 20 correctly corresponds to Chrome's 'Large' font size preset (default is 16/Medium, Large is 20).",
+        "Postconfig properly kills and restarts Chrome to ensure preferences are flushed to disk before the getter reads the Preferences file.",
+        "Single-requirement instruction ('set font size to Large') is fully covered by the single evaluator check — no missing verification steps.",
+        "Data flow is correct: expected.type='rule' means metric receives {'type': 'value', 'value': 20} as the 'rule' parameter, and check_font_size accesses rule['type'] and rule['value'] directly — no parameter handling errors."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "id": "2c9fc0de-3ee7-45e1-a5df-c86206ad78b5",
+  "new_id": "task_verify_40",
+  "snapshot": "os",
+  "instruction": "Stage all changes in the binder project and make a commit with the message \"code release\", then synchronize it to the remote main branch.",
+  "source": "https://nikki-ricks.medium.com/how-to-use-git-add-commit-and-push-in-vs-code-and-command-line-35c0e8c47b62",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2c9fc0de-3ee7-45e1-a5df-c86206ad78b5/binder.zip",
+            "path": "/home/user/Downloads/binder.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "git config --global user.name \"xlang\" && git config --global user.email \"xlang2024anonym@gmail.com\" && mkdir -p /home/user/projects/remote_project && cd /home/user/projects/remote_project && git init --initial-branch=main && git config receive.denyCurrentBranch ignore "
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "unzip -q /home/user/Downloads/binder.zip -d /home/user/projects/ && cd /home/user/projects/binder && git init --initial-branch main && git remote add origin /home/user/projects/remote_project"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/projects/binder",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "cd /home/user/projects/remote_project && git log --oneline | head -n 1 | awk '{for (i=2; i<=NF; i++) {printf \"%s%s\", $i, (i==NF ? \"\" : \" \")}; print \"\"}'; remote_id=$(git log --oneline | head -n 1 | awk '{print $1}'); cd /home/user/projects/binder && local_id=$(git log --oneline | head -n 1 | awk '{print $1}'); if [ \"${local_id}\" = \"${remote_id}\" ]; then echo \"repo is synchronous\"; else echo \"repo is not synchronous\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "code release",
+          "repo is synchronous"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires staging all files, committing with message 'code release', and pushing to remote. The evaluator verifies the commit message appears in remote repository and that local/remote are synchronized.",
+    "new_functions_paths": [],
+    "verification": "Tested evaluator logic: Command checks remote commit message and compares commit IDs between local and remote repositories.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: The instruction requires 'stage ALL changes', but the evaluator only verifies that a commit with message 'code release' exists and was pushed successfully",
+        "Missing verification: Does not check whether all changes in the working directory were actually staged and committed (could pass even if some files were left unstaged)",
+        "The evaluator correctly verifies: (1) commit message is 'code release', (2) local and remote repositories are synchronized via commit ID comparison",
+        "Logic is correct for what it checks: The bash command properly extracts commit message from remote repo and compares commit IDs to verify synchronization"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that git status shows no unstaged changes after the commit to ensure ALL changes were staged",
+        "Consider adding a check like: 'cd /home/user/projects/binder && git status --porcelain | wc -l' should return 0 to verify clean working directory",
+        "Alternatively, compare the file tree snapshot before and after to ensure all modified/added files were included in the commit"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "terminal"
+  ],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

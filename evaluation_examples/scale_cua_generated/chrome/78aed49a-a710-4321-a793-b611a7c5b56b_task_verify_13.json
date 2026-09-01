@@ -1,0 +1,142 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_13",
+  "snapshot": "chrome",
+  "instruction": "Select the most recent message from Bills in Local Folders and move it to the 'have_seen' subfolder.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_folder_counts__856f6f3499821b31f240098182dcc479",
+    "result": {
+      "type": "thunderbird_folder_counts__856f6f3499821b31f240098182dcc479",
+      "paths": [
+        "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/Bills",
+        "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/have_seen"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_counts": {
+          "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/Bills": 1,
+          "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/have_seen": 1
+        },
+        "expected_moved_message": "Confirm your email to get started on X"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires moving the newest message (X/Twitter email from Jan 12, 2024, verified from cache data) from Bills to have_seen folder. Bills initially has 2 messages. After moving the newest message, Bills should have 1 message remaining (the AWS email from Jan 3) and have_seen should have 1 message (the moved X/Twitter email). Evaluator verifies: (1) folder counts match expected values, and (2) the message in have_seen is the correct one (X/Twitter confirmation email with subject 'Confirm your email to get started on X').",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_2/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies ALL instruction requirements: (1) folder count changes indicate a message was moved, and (2) the specific message in have_seen matches the expected most recent message subject",
+        "Getter logic is semantically correct: parses mbox files, extracts Date headers from emails using email.utils.parsedate_to_datetime, sorts messages by date to identify most recent, and captures subjects from have_seen folder (thunderbird.py:10-115)",
+        "Metric logic is semantically correct: verifies folder counts match expected values AND checks that the message in have_seen is the expected message 'Confirm your email to get started on X' (thunderbird.py:8-86, lines 60-75)",
+        "Expected values are correct: Bills should have 1 remaining (AWS email from Jan 3), have_seen should have 1 (X/Twitter email from Jan 12), and the moved message subject is correctly specified as the X/Twitter confirmation email",
+        "Data flow is correct: Getter extracts have_seen_subjects list → Metric verifies have_seen has exactly 1 message AND that message matches expected_moved_message → Returns 1.0 only if both conditions met",
+        "Edge cases handled: Metric checks for None result (line 21-23), empty have_seen folder (line 84-85), wrong count (line 80-82), and wrong message moved (line 74-75)",
+        "The evaluator can distinguish correct from incorrect executions: if wrong message moved, metric returns 0.0 (line 74-75); if correct message moved with correct counts, returns 1.0 (line 72)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

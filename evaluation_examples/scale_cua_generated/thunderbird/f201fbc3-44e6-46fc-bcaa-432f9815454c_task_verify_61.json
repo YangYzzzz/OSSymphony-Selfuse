@@ -1,0 +1,111 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_61",
+  "snapshot": "thunderbird",
+  "instruction": "Change the reply position setting to place my replies below the quoted text instead of on top.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.reply_on_top": {
+            "method": "eq",
+            "ref": 0
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing reply position from top (1) to bottom (0). The evaluator checks if mail.identity.id1.reply_on_top is set to 0. Original profile has reply_on_top=1, so this requires modification. Uses existing check_thunderbird_prefs metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts Thunderbird preferences file (prefs.js) where reply position setting is stored",
+        "Metric function check_thunderbird_prefs correctly parses prefs.js and matches mail.identity.id1.reply_on_top against expected value",
+        "Expected value is semantically correct: reply_on_top=0 means place replies below quoted text (vs reply_on_top=1 for above)",
+        "Complete coverage: instruction has one requirement (change reply position to below) and evaluator checks exactly this",
+        "Postconfig correctly closes Thunderbird to ensure settings are flushed to prefs.js file before reading",
+        "Parameter handling is correct: metric receives rules dict directly from get_rule, accesses rule.get('expect', {})",
+        "Edge cases handled: returns 0.0 if file is None or if preference key is not found in file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "3e3fc409-bff3-4905-bf16-c968eee3f807_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "In the opened movies spreadsheet, create a new sheet called 'movies_90s' containing only movies released between 1990 and 1999. Keep the same column headers and sort the results by ratings from highest to lowest.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "movies.xlsx",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's'); import time; time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_filtered_sheet__c2e2ad1d381d1d27297ba9392b0d9cea",
+    "result": {
+      "type": "xlsx_sheet_data__c2e2ad1d381d1d27297ba9392b0d9cea",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "movies_90s"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_sheet_name": "movies_90s",
+        "expected_headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "expected_row_count": 30,
+        "year_key": "release year",
+        "year_range_min": 1990,
+        "year_range_max": 1999,
+        "sort_key": "ratings",
+        "sort_order": "desc"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent created an 'unseen_movies' sheet but copied ALL seen_movies data instead of finding unseen IMDB Top 30 movies. Never visited IMDB website. Attempted to sort data in the new sheet.",
+    "capability_extraction": "Can create new sheets in LibreOffice Calc, copy data between sheets, use sort dialog, navigate between sheet tabs, right-click context menus",
+    "failure_analysis": "Model failed because it never visited IMDB to get the Top 30 list. Instead, it copied all existing seen_movies to unseen_movies sheet. The cross-application comparison (Chrome + Calc) was too complex.",
+    "task_rationale": "Simplified to a single-app LibreOffice Calc task: filter movies by decade. No external website needed. Within model's demonstrated capability of sheet creation and data manipulation.",
+    "explanation": "Task requires creating a new sheet with 1990s movies sorted by rating. Evaluator checks: sheet exists with correct name, headers match, row count is 30, all rows have release year in [1990,1999], and data is sorted by ratings descending. [Fixed: normalized getter row dict keys to lowercase for case-insensitive sort_key/year_key lookup; added year range verification check]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132_traj_verify_0/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132_traj_verify_0/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "sheet_exists": "0.25 - Sheet 'movies_90s' exists with correct name",
+      "headers_match": "0.25 - Headers match original (title, release year, ratings, description)",
+      "row_count": "0.125 - Contains expected number of rows",
+      "year_range": "0.125 - All rows have release year between 1990 and 1999",
+      "sort_order": "0.25 - Sorted by ratings from highest to lowest"
+    },
+    "variation_index": 0,
+    "fix_history": [
+      "Fix 1: Normalized getter row dict keys to lowercase to fix case-sensitive sort_key/year_key lookup bug",
+      "Fix 2: Added year range verification (1990-1999) to metric with 0.125 weight",
+      "Fix 3: Rebalanced scoring: row_count reduced from 0.25 to 0.125, year_range added at 0.125"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "All 4 instruction requirements are verified: (1) sheet name 'movies_90s' checked case-insensitively (0.25), (2) year range [1990,1999] verified for all rows (0.125), (3) headers match checked case-insensitively (0.25), (4) descending sort by ratings verified (0.25).",
+        "Getter correctly normalizes row dict keys to lowercase, ensuring consistent lookup for year_key='release year' and sort_key='ratings' regardless of original header capitalization.",
+        "Expected parameter handling is correct: metric receives the rules dict directly (type='rule') and accesses fields like expected.get('expected_sheet_name') without nesting errors.",
+        "Postconfig properly activates the window and saves the file (Ctrl+S) before evaluation, ensuring fresh file state is read.",
+        "Minor note: expected_row_count=30 is unverifiable without the source data, but the logic itself is sound and the row count check provides reasonable partial credit with a tolerance of ±2."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

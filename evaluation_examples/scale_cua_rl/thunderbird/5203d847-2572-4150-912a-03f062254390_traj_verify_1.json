@@ -1,0 +1,114 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "5203d847-2572-4150-912a-03f062254390_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder called \"Receipts\" and set up a filter to automatically move inbox emails with \"receipt\" in the subject to that folder.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Receipts",
+            "condition": [
+              "AND (subject,contains,receipt)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_5203d847-2572-4150-912a-03f062254390_sid_1488181",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created 'Promotions' local folder, opened Message Filters dialog, created a filter named 'Discount to Promotions' with condition 'Subject contains discount' and action 'Move to Local Folders/Promotions'. Completed in 16 turns.",
+    "capability_extraction": "Can create local folders in Thunderbird, navigate to Message Filters dialog, create new filters with subject/sender conditions and move-to-folder actions.",
+    "task_rationale": "Variation changes both the folder name ('Receipts') and condition value ('receipt') to test generalization of the same folder-creation + subject-filter workflow with a different domain concept.",
+    "explanation": "Task requires creating a 'Receipts' local folder and a filter that moves emails with 'receipt' in the subject to it. Evaluator checks msgFilterRules.dat for correct filter with subject-contains condition and move action to Local Folders/Receipts.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly fetches msgFilterRules.dat which is the standard Thunderbird filter definition file.",
+        "Metric check_thunderbird_filter correctly parses the filter file format and uses _match_record to verify expected filter properties.",
+        "Expected values are semantically correct: enabled=yes, action=Move to folder, actionValue points to Local Folders/Receipts with proper mailbox URI encoding, and condition checks subject contains 'receipt'.",
+        "Expected type handling is correct: type=rule causes get_rule to return the rules dict directly, and the metric correctly accesses rules.get('expect', []).",
+        "Postconfig appropriately closes the Message Filters dialog before file extraction.",
+        "Minor coverage gap: The instruction requires both (1) creating a local folder 'Receipts' and (2) setting up the filter. The evaluator only verifies the filter configuration, not the folder's existence directly. However, in Thunderbird the filter action target folder must exist when configuring the filter, so a correctly configured filter strongly implies the folder was created."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a second evaluation step to explicitly verify the 'Receipts' folder exists under Local Folders (e.g., check for the folder file at the local mail directory), though this is a minor concern since a valid filter pointing to the folder implies its existence."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

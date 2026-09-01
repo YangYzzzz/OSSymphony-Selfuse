@@ -1,0 +1,133 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_26",
+  "snapshot": "thunderbird",
+  "instruction": "I've drafted an email reminder for tuition payment. Please check the payment record and add emails of students Stella and Nancy who haven't paid to the receiver field.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"stella@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"nancy@someuniversity.edu\"]"
+          ]
+        }
+      ]
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "explanation": "Task requires reading tuition_payment.xlsx to find specific students (Stella and Nancy) and verify they haven't paid, then adding their email addresses to the To field in Thunderbird. Verified with Python: Stella (row 20) and Nancy (row 15) both have payment status 'No'. Evaluator checks for their presence in the To field using accessibility tree selectors. Uses existing check_accessibility_tree metric.",
+    "new_functions_paths": [],
+    "verification_details": "Processed complete Excel file (27 rows): Verified Stella and Nancy are among the 4 unpaid students with emails stella@someuniversity.edu and nancy@someuniversity.edu.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses accessibility tree to verify email recipients in Thunderbird compose window",
+        "Accessibility tree selectors properly target the To field email address pills (tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"])",
+        "Complete coverage: checks for both required email addresses (stella@someuniversity.edu and nancy@someuniversity.edu)",
+        "Expected values are verified from actual Excel data: Stella (row 20) and Nancy (row 15) confirmed as unpaid students",
+        "Postconfig includes 10-second sleep to allow Thunderbird UI to stabilize before accessibility tree extraction",
+        "Getter (get_accessibility_tree) and metric (check_accessibility_tree) are correctly paired for UI state verification",
+        "Selectors use name*= (contains) which is appropriate since name attributes may include additional text beyond email"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The postconfig only uses sleep for state stability. While acceptable, consider whether the compose window state is guaranteed to be preserved during agent execution"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

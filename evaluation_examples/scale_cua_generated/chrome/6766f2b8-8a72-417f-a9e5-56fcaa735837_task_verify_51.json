@@ -1,0 +1,93 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Extract helloExtension.zip on the Desktop to the Desktop and then import the unpacked extension into Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation with direct imperative instruction style. Task requires extracting the extension archive and loading it into Chrome as an unpacked extension. Uses standard Chrome evaluator pattern: get_find_unpacked_extension_path queries Chrome preferences for all loaded extensions, is_in_list validates the expected path appears in the results.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: Chrome Preferences file in .config/google-chrome/Default/Preferences contains extension settings with path field, getter extracts all paths, metric checks list membership.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both extraction and loading requirements by checking Chrome Preferences file for unpacked extension path",
+        "Getter function get_find_unpacked_extension_path properly reads Chrome Preferences at .config/google-chrome/Default/Preferences and extracts all extension paths from extensions.settings.{id}.path",
+        "Metric function is_in_list correctly performs list membership check",
+        "Expected path '/home/user/Desktop/helloExtension' is semantically correct and matches the extraction location defined in setup config (line 23: unzip to /home/user/Desktop/)",
+        "Complete coverage: checking if extension path exists in Preferences verifies both extraction AND loading steps, since path only appears when extension is loaded via 'Load unpacked'",
+        "No postconfig needed: Chrome Preferences file is persistent and doesn't require reopening UI to read",
+        "Data flow is correct: setup extracts zip → user loads unpacked extension → Chrome writes to Preferences → getter reads Preferences → metric checks list membership"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

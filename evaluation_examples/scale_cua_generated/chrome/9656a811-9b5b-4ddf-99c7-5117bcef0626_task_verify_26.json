@@ -1,0 +1,117 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_26",
+  "snapshot": "chrome",
+  "instruction": "For testing purposes, I need to disable Chrome's Safe Browsing protection. Can you turn off this security feature?",
+  "source": "https://support.google.com/chrome/answer/99020",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"safebrowsing\":{\"enabled\":true,\"enhanced\":false}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_safe_browsing_disabled__91eeefcaab634cdde028dfc8cb17c95e",
+    "result": {
+      "type": "enable_safe_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires disabling Safe Browsing in Chrome (opposite of original task). The evaluator uses the existing get_enable_safe_browsing getter to check the Preferences file and verify that both safebrowsing.enabled and safebrowsing.enhanced are false. Custom metric function check_safe_browsing_disabled__91eeefcaab634cdde028dfc8cb17c95e compares the result against expected value 'false'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_3/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 3,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement to disable Safe Browsing",
+        "Getter get_enable_safe_browsing properly extracts both safebrowsing.enabled and safebrowsing.enhanced from Chrome Preferences file",
+        "Getter returns 'true' if EITHER enhanced OR enabled is true, 'false' only when BOTH are false - this is semantically correct for checking if Safe Browsing is disabled",
+        "Metric correctly compares result against expected value 'false' (Safe Browsing disabled)",
+        "Postconfig properly restarts Chrome to ensure fresh state reading",
+        "Expected value 'false' is semantically correct - means Safe Browsing is fully disabled (both enabled and enhanced are false)",
+        "Initial config setup correctly initializes safebrowsing.enabled=true to create a testable starting state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a comment in the metric explaining that when expected.type='rule', the expected parameter receives the rules dict directly (not wrapped)",
+        "The metric could be more explicit about validating both safebrowsing.enabled and safebrowsing.enhanced are false, though the getter already handles this logic"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

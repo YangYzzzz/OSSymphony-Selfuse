@@ -1,0 +1,86 @@
+{
+  "id": "c1fa57f3-c3db-4596-8f09-020701085416",
+  "new_id": "c1fa57f3-c3db-4596-8f09-020701085416_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the bag tracker page on United Airlines.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.united.com/en/us"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "united\\.com.*(bag.?track|bagtrack|trackyourbag|track.*bag)"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_c1fa57f3-c3db-4596-8f09-020701085416_sid_1488096",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated from United Airlines homepage to the baggage fee calculator in 5 turns. Path: homepage → 'Changed bag rules' link → checked bags page → 'Calculate bag fees' button → fee calculator page.",
+    "capability_extraction": "Can navigate United Airlines website, find and click navigation links, locate specific tools/pages from homepage through intermediate pages.",
+    "task_rationale": "Bag tracker is a related link visible on the checked bags page sidebar. This tests the same baggage-section navigation but targets a different utility page, at similar difficulty.",
+    "explanation": "Task requires navigating to the bag tracker page from United Airlines homepage. The 'Bag tracker' link is visible as a Related Link on the checked bags page (screenshots 2-3). Evaluator checks URL matches bag-tracking patterns on united.com.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (active_tab_info) correctly extracts active tab URL from accessibility tree with goto_prefix='https://www.' and returns dict with 'url' field.",
+        "Metric (is_expected_url_pattern_match) correctly handles dict result by extracting result['url'], and accesses rules['expected'] directly from the rules dict — proper handling for expected.type='rule'.",
+        "Regex pattern 'united\\.com.*(bag.?track|bagtrack|trackyourbag|track.*bag)' is reasonable for matching bag tracker page URLs on united.com.",
+        "Single-step instruction ('navigate to bag tracker page') is fully covered by URL pattern verification — complete coverage.",
+        "Minor concern: get_active_tab_info reloads the page via Playwright navigation, which could cause redirects on dynamic sites like united.com, potentially changing the URL. However, the URL is still captured even on timeout."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using get_active_url_from_accessTree directly instead of active_tab_info to avoid page reload side effects, since only the URL is needed for this verification."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

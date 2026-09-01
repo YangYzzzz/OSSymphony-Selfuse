@@ -1,0 +1,119 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_52",
+  "snapshot": "thunderbird",
+  "instruction": "Create a Thunderbird filter to automatically move all emails from sender 'spam@example.com' to the Junk folder. Configure this locally in Thunderbird only.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter__2de049a0",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Junk",
+            "condition": [
+              "AND (from,contains,spam@example.com)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a filter to move emails from a specific sender to Junk folder. The evaluator verifies that an enabled filter exists with 'Move to folder' action pointing to the Junk folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9b7bc335-06b5-4cd3-9119-1a649c478509_task_verify_0/metrics/check_thunderbird_filter__2de049a0.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Evaluator checks Thunderbird filter configuration file for expected filter rules with appropriate action and enabled status.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: (1) filter is enabled, (2) action is 'Move to folder', (3) destination is Junk folder, (4) condition filters emails from 'spam@example.com'",
+        "The expected rules include 'condition': ['AND (from,contains,spam@example.com)'] which correctly specifies the sender filtering requirement",
+        "The metric function check_thunderbird_filter__2de049a0 properly parses the filter file, extracts conditions using regex pattern, and uses _match_record to compare all fields",
+        "The postconfig correctly closes the Message Filters window before evaluation to ensure the file state is saved",
+        "The evaluator reads from the correct Thunderbird profile path for filter rules (msgFilterRules.dat)",
+        "All semantic requirements are covered: enabled status, action type, target folder, and sender condition"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter__2de049a0 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

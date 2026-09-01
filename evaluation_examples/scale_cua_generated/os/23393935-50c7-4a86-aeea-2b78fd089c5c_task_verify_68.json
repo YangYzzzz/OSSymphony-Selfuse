@@ -1,0 +1,151 @@
+{
+  "id": "23393935-50c7-4a86-aeea-2b78fd089c5c",
+  "new_id": "task_verify_68",
+  "snapshot": "os",
+  "instruction": "Find all image files in the 'photos' directory that are larger than 100KB and copy them into a directory named 'large_images'.",
+  "source": "https://superuser.com/questions/91307/copying-only-jpg-from-a-directory-structure-to-another-location-linux",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p ~/Desktop/photos && mkdir -p ~/Desktop/large_images",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p ~/Desktop/photos/vacation && mkdir -p ~/Desktop/photos/family && mkdir -p ~/Desktop/photos/events",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p ~/Desktop/photos/vacation/thailand && mkdir -p ~/Desktop/photos/vacation/hk",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/23393935-50c7-4a86-aeea-2b78fd089c5c/monk252520thailand252520wat252520arun252520scaled25255B225255D.jpg",
+            "path": "/home/user/Desktop/photos/vacation/thailand/monk252520thailand252520wat252520arun252520scaled25255B225255D.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/23393935-50c7-4a86-aeea-2b78fd089c5c/hong-kong-china.jpg",
+            "path": "/home/user/Desktop/photos/vacation/hk/hong-kong-china.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/23393935-50c7-4a86-aeea-2b78fd089c5c/hk_group_photo.jpg",
+            "path": "/home/user/Desktop/photos/vacation/hk/hk_group_photo.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/23393935-50c7-4a86-aeea-2b78fd089c5c/us_3.png",
+            "path": "/home/user/Desktop/photos/family/us_3.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/23393935-50c7-4a86-aeea-2b78fd089c5c/emnlp2023.jpg",
+            "path": "/home/user/Desktop/photos/events/emnlp2023.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_large_file_count__b9976565",
+    "result": {
+      "type": "large_file_count__b9976565",
+      "path": "/home/user/Desktop/large_images",
+      "min_size_kb": 100
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 1
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding and copying image files larger than 100KB. Without exact file sizes, this evaluator checks that at least 1 file was moved to large_images directory. The actual number will depend on which images exceed 100KB threshold.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/23393935-50c7-4a86-aeea-2b78fd089c5c_task_verify_8/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/23393935-50c7-4a86-aeea-2b78fd089c5c_task_verify_8/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Getter logic is completely broken - get_large_file_count__b9976565 receives min_size_kb parameter but completely ignores it, just counting ALL files in directory regardless of size",
+        "CRITICAL: Getter does not actually filter by file size - it calls len(result['children']) without checking any file's size property against the 100KB threshold",
+        "CRITICAL: Evaluator does not verify that copied files are actually image files (could be any file type)",
+        "CRITICAL: Evaluator does not verify that files actually exceed 100KB size threshold (the core requirement)",
+        "MAJOR: Expected value is too weak - checking for min_count >= 1 means ANY single file would pass, not verifying the actual set of large images",
+        "MODERATE: No verification that files originated from the photos directory (could be copied from anywhere)",
+        "The evaluator cannot semantically verify that 'all image files larger than 100KB' were found and copied - it would pass even if small non-image files were copied"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix getter logic: Iterate through result['children'] and check each file's size field against config['min_size_kb'], only counting files that exceed the threshold",
+        "Add file extension validation: Filter for image extensions (.jpg, .jpeg, .png, .gif, etc.) to verify only image files are counted",
+        "Enhance getter to return actual file sizes or validate sizes: Access size metadata from get_vm_directory_tree results and compare against threshold",
+        "Improve expected value: Either calculate exact expected count based on setup files, or add additional verification steps to check file sizes and types",
+        "Consider adding a second verification step: Check that files in large_images actually have size > 100KB using file metadata",
+        "Add content verification: Verify that files in large_images are actually images (check file extensions or MIME types)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

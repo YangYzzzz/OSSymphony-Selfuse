@@ -1,0 +1,121 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_5",
+  "snapshot": "thunderbird",
+  "instruction": "Create a folder named 'Important' and configure an email rule to automatically move all inbox emails with 'urgent' in the subject to this folder.",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Important",
+            "condition": [
+              "AND (subject,contains,urgent)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation creates a filter for emails with 'urgent' in the subject line, moving them to an 'Important' folder. The evaluator uses the existing check_thunderbird_filter metric to verify the filter configuration in the msgFilterRules.dat file. The task maintains the same complexity level as the original, requiring folder creation and filter setup with subject-based matching.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the email filter configuration by checking the msgFilterRules.dat file where Thunderbird stores filter rules",
+        "Expected values are semantically correct: filter enabled, action is 'Move to folder', actionValue uses correct Thunderbird local folder URI format 'mailbox://nobody@Local%20Folders/Important', and condition syntax 'AND (subject,contains,urgent)' matches Thunderbird's filter format",
+        "The check_thunderbird_filter metric properly parses filter definitions and matches them against expected rules using _match_record utility",
+        "Coverage is complete: verifies filter configuration with correct action, target folder, and subject-based condition matching the instruction requirements",
+        "Postconfig appropriately closes Message Filters window to ensure clean state for verification",
+        "Metric handles None return gracefully (returns 0.0 if file doesn't exist), which is semantically correct for task failure",
+        "The evaluator indirectly verifies folder existence (filter actionValue references the Important folder - if folder didn't exist, the filter configuration would be incomplete/invalid)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor type mismatch: get_vm_file returns Union[Optional[str], List[Optional[str]]] but check_thunderbird_filter expects str. This is handled correctly at runtime (metric returns 0.0 for None), but for cleaner typing, consider documenting that None is expected when file doesn't exist"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "5203d847-2572-4150-912a-03f062254390_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

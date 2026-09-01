@@ -1,0 +1,137 @@
+{
+  "id": "67890eb6-6ce5-4c00-9e3d-fb4972699b06",
+  "new_id": "task_verify_40",
+  "snapshot": "libreoffice_calc",
+  "instruction": "In the best_awards_acl.xlsx file on the desktop, apply a background color to all cells in the header row (row 1) to make it stand out from the data rows.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/67890eb6-6ce5-4c00-9e3d-fb4972699b06/best_awards_acl.xlsx",
+            "path": "/home/user/Desktop/best_awards_acl.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/best_awards_acl.xlsx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://aclanthology.org/"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "best_awards_acl.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_row_has_fill__9ecbf6bf",
+    "result": {
+      "type": "xlsx_row_has_fill__9ecbf6bf",
+      "file_path": "/home/user/Desktop/best_awards_acl.xlsx",
+      "sheet": 0,
+      "row": 1
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_fill": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires applying background color to all cells in the header row (row 1). The evaluator checks if all cells in row 1 have a fill color (any color other than white or no fill).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_task_verify_6/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_task_verify_6/metrics/xlsx.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Getter only checks cells with content (line 39: 'if cell.value:'), but instruction requires 'all cells in the header row' to have background color",
+        "Empty cells in row 1 will be skipped by the evaluator, allowing incomplete tasks to pass verification",
+        "Example failure: If header has empty cells (e.g., A1='Name', B1='', C1='Score'), agent could skip coloring B1 and still pass",
+        "The color check treats white (FFFFFFFF) as 'no fill', which is semantically questionable - white background doesn't make header 'stand out' as instruction requires",
+        "Critical logic flaw: Evaluator will return false positives (marking incomplete tasks as complete)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove the 'if cell.value:' condition to check ALL cells in row 1, not just cells with content",
+        "Change loop logic to: 'for cell in ws[row_num]: if not cell.fill or cell.fill.start_color.rgb in [None, '00000000', 'FFFFFFFF']: return False'",
+        "Consider whether white background should be rejected (doesn't make header stand out) or define a minimum contrast threshold",
+        "Consider determining the actual column range in use (e.g., using ws.max_column) to ensure all relevant cells are checked"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

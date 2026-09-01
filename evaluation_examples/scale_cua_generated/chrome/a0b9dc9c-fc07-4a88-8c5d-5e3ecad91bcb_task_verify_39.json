@@ -1,0 +1,167 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Export all emails from the 'Bills' folder in Thunderbird as .eml files named after their subjects, and upload them to Google Drive under 'Backups/Thunderbird/Bills'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'Backups' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_nested_files__688ade84b6705b21f2a27dc4863ba216",
+    "result": {
+      "type": "gdrive_nested_files__688ade84b6705b21f2a27dc4863ba216",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "file_paths": [
+        [
+          "Backups",
+          "Thunderbird",
+          "Bills",
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml"
+        ],
+        [
+          "Backups",
+          "Thunderbird",
+          "Bills",
+          "Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_paths": [
+          "Backups/Thunderbird/Bills/Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml",
+          "Backups/Thunderbird/Bills/Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+    "variation_index": 1,
+    "explanation": "Task requires exporting emails from Thunderbird Bills folder to Google Drive with a nested folder structure (Backups/Thunderbird/Bills). Evaluator checks if the two expected .eml files exist in the correct nested folder path. Verified from cache: Bills folder contains 2 emails with subjects matching the expected filenames.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_1/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_1/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "0.5": "One of the two emails exported to correct nested folder",
+      "1.0": "Both emails exported to Backups/Thunderbird/Bills/ with correct filenames"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly navigates through nested Google Drive folder structure (Backups/Thunderbird/Bills) and returns formatted file paths",
+        "Metric correctly handles expected parameter - uses expected.get('expected_paths') to directly access the rules dict (proper for type='rule')",
+        "Complete coverage of all instruction requirements: verifies folder structure, file format (.eml), filenames (email subjects), and all expected files",
+        "Partial credit logic is appropriate (0.5 per file found, 1.0 for both files)",
+        "Expected values are semantically correct - match actual email subjects from Bills folder as verified in metadata",
+        "Getter can successfully access Google Drive state using PyDrive2 API",
+        "Metric comparison logic is correct - uses exact string match on full file paths"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

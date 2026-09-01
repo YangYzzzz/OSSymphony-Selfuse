@@ -1,0 +1,149 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Compose a reply to the 'Paper Recommendation' email in Thunderbird thanking the sender and export it as recommendation_reply.txt to /home/user/Documents/.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_substring_exists__acd75d14",
+    "result": {
+      "type": "text_file_content__acd75d14",
+      "path": "/home/user/Documents/recommendation_reply.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "substring": "thank"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires composing a reply email in Thunderbird and exporting to text file. Evaluator checks if the exported file contains proper email structure (headers/reply indicators), 'thank' content, and references 'Paper Recommendation' to verify it's a complete thank-you reply to the correct email. Partial credit: 0.4 for email structure, 0.3 for 'thank', 0.3 for 'recommendation' reference. Custom getter reads the text file, custom metric performs multi-aspect verification.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_4/getters/text_file_content__acd75d14.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_4/metrics/check_substring_exists__acd75d14.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both required steps: (1) compose a reply thanking the sender, and (2) export to recommendation_reply.txt. The instruction does NOT require saving a draft - the previous judge misread the instruction.",
+        "Getter logic is correct: Reads the exported file content from /home/user/Documents/recommendation_reply.txt, which is the exact location specified in the instruction.",
+        "Metric logic is comprehensive and semantically correct: Checks email structure (0.4), 'thank' content (0.3), and 'Paper Recommendation' reference (0.3). This properly verifies it's a complete thank-you reply to the correct email.",
+        "Partial credit breakdown is logical: Email structure ensures it's formatted as a reply, 'thank' verifies the thanking requirement, 'recommendation' reference ensures it's replying to the correct email.",
+        "Edge cases handled: Getter returns empty string if file doesn't exist or is corrupted, metric returns 0.0 for empty/invalid content."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor limitation: The evaluator cannot distinguish between a reply composed in Thunderbird vs. a manually created file with correct content. However, this is a minor issue as the instruction context implies using Thunderbird, and the end result is correctly verified."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

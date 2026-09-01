@@ -1,0 +1,85 @@
+{
+  "id": "7b7617bd-57cc-468e-9c91-40c4ec2bcb3d",
+  "new_id": "task_verify_20",
+  "snapshot": "gimp",
+  "instruction": "Configure GIMP to use 500 MiB for the tile cache size.",
+  "source": "https://www.youtube.com/watch?v=G_PjQAy0iiU",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "key-value",
+        "key": "tile-cache-size",
+        "value": "500m"
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to navigate to GIMP preferences and set the tile cache size to 500 MiB. The evaluator checks the gimprc config file for 'tile-cache-size 500m'. Uses existing check_config_status metric and get_gimp_config_file getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if tile-cache-size is set to 500m, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical expected value format mismatch: The gimprc file stores values with quotes (e.g., '(tile-cache-size \"500m\")'), but the expected value is '500m' without quotes",
+        "The check_config_status metric parses lines by splitting and compares items[-1] which will be '\"500m\"' (with quotes) against the expected '500m' (without quotes), causing the check to always fail",
+        "The evaluator logic is otherwise correct: proper postconfig to close GIMP, correct getter to retrieve gimprc file, and appropriate metric function",
+        "The instruction coverage is complete - only one requirement (tile cache size) needs to be checked"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change the expected value from '500m' to '\"500m\"' (with escaped quotes) to match the gimprc file format",
+        "Alternatively, modify the check_config_status metric to strip quotes from values before comparison (e.g., items[-1].strip('\"'))",
+        "Test with actual gimprc file content to verify the exact format and quote handling"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

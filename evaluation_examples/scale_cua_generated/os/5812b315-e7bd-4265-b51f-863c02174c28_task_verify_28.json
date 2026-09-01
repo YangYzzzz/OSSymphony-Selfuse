@@ -1,0 +1,92 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_28",
+  "snapshot": "os",
+  "instruction": "Please create an SSH user named \"bob\" with password \"P@ssw0rd!987\" on Ubuntu who is only allowed to access the folder \"/home/project1\".",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/project1",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get install -y expect",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > check_password.sh << 'EOFSCRIPT'\n#!/bin/bash\n\nUSERNAME=$1\nPASSWORD=$2\n\n# Verify the user exists\nif ! id \"$USERNAME\" &>/dev/null; then\n    echo \"User does not exist\"\n    exit 1\nfi\n\n# Check if expect is installed\nif ! command -v expect &>/dev/null; then\n    echo \"expect is not installed\"\n    exit 1\nfi\n\n# Test SSH password using expect\nexpect << EOF\nset timeout 10\nspawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $USERNAME@localhost\nexpect {\n    \"password:\" {\n        send \"$PASSWORD\\r\"\n        expect {\n            \"$ \" { exit 0 }\n            \"# \" { exit 0 }\n            timeout { exit 1 }\n            eof { exit 1 }\n        }\n    }\n    timeout { exit 1 }\n    eof { exit 1 }\n}\nEOF\n\nexit $?\nEOFSCRIPT\n",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x check_password.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"bob\"; HOMEDIR=\"/home/project1\"; PASSWORD=\"P@ssw0rd!987\"; ./check_password.sh \"$USERNAME\" \"$PASSWORD\" && [ \"$(getent passwd \"$USERNAME\" | cut -d: -f6)\" = \"$HOMEDIR\" ] && [ $(stat -c \"%A\" \"$HOMEDIR\" | cut -b 3) = \"w\" ] && echo \"Password, home directory, and write permission check passed\" || echo \"Check failed\"",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Password, home directory, and write permission check passed"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task creates SSH user 'bob' with password 'P@ssw0rd!987' restricted to folder '/home/project1'. Evaluator verifies: (1) SSH password authentication works, (2) home directory is set to /home/project1, (3) user has write permission to the folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5812b315-e7bd-4265-b51f-863c02174c28_task_verify_1/scripts/check_password.sh"
+    ],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL: Incomplete verification of core requirement - Instruction requires user 'only allowed to access' /home/project1 (access restriction), but evaluator only checks home directory and write permission, not actual access restriction",
+        "The evaluator would pass for unrestricted user with correct home directory - Missing verification of SSH chroot configuration, restricted shell (rssh/scponly), or sshd_config Match user settings with ForceCommand/ChrootDirectory",
+        "Semantic mismatch: Evaluator checks 'write permission' but instruction only says 'access' which could be read-only or read-write",
+        "The check_password.sh script verifies SSH login works and home directory is set, but does not verify confinement/restriction to that directory"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for SSH access restriction mechanisms: check sshd_config for ChrootDirectory or Match User block with ForceCommand internal-sftp",
+        "Add test to verify user CANNOT access directories outside /home/project1 (e.g., try to cd to /etc or /var and verify failure)",
+        "Consider checking for restricted shell in /etc/passwd (user shell should be rssh, scponly, or /usr/sbin/nologin with sftp-only access)",
+        "Remove or justify the write permission check if instruction doesn't explicitly require write access"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

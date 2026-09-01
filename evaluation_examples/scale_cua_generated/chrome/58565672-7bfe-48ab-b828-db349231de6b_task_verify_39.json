@@ -1,0 +1,138 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Extract and open the first hyperlink from the newest Bills email in Chrome, then close all other tabs.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.amazon.com/"
+        ]
+      }
+    },
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "socat",
+            "tcp-listen:9222,fork",
+            "tcp:localhost:1337"
+          ]
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires opening the Amazon link from Bills email and closing all other tabs (Apple and Google Scholar). The evaluator checks that exactly 1 tab remains: Amazon. Uses existing functions.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 6,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies BOTH requirements: (1) Amazon link is opened AND (2) all other tabs are closed",
+        "Metric 'is_expected_tabs' uses are_lists_equal which checks both content and count - returns 1.0 only if exactly 1 tab with Amazon URL exists",
+        "Getter 'get_open_tabs_info' reliably extracts all open Chrome tabs via Playwright CDP connection, returning list of tab URLs",
+        "Expected value ['https://www.amazon.com/'] is semantically correct - this is the hyperlink from Bills email per task setup",
+        "Complete verification coverage: checking for exactly 1 Amazon tab implicitly verifies that Apple and Google Scholar tabs were closed",
+        "Postconfig appropriately restarts Chrome connection for getter to read fresh tab state"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

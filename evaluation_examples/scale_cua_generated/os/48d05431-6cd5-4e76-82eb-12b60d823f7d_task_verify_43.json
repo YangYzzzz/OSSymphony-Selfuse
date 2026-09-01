@@ -1,0 +1,92 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_43",
+  "snapshot": "os",
+  "instruction": "I need to set my default text editor to vim for command-line operations. Could you configure the EDITOR environment variable in my shell configuration so that vim is used by default?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'export EDITOR=.*vim' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting EDITOR environment variable to vim in .bashrc. Evaluator checks if export EDITOR line with vim exists. Similar to original - configuring shell environment variables.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts the required state: executes grep command to check for 'export EDITOR=.*vim' pattern in ~/.bashrc",
+        "Metric function (exact_match) correctly handles the expected parameter for type='rule' (accesses rules['expected'] directly, not rules['rules'])",
+        "Data flow is correct: command outputs '1\\n' if found, '0\\n' if not found, compared against expected '1\\n'",
+        "Complete instruction coverage: evaluator checks for EDITOR environment variable set to vim in shell configuration",
+        "Regex pattern 'export EDITOR=.*vim' is flexible enough to match common variants (vim, /usr/bin/vim, \"vim\") while being restrictive enough to avoid false negatives",
+        "State accessibility is guaranteed: ~/.bashrc is readable after task completion, no postconfig needed"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The regex pattern 'export EDITOR=.*vim' could theoretically match edge cases like 'export EDITOR=not_vim' or 'export EDITOR=/usr/bin/nvim'. Consider using a more precise pattern like 'export EDITOR=[^#]*\\bvim\\b' if stricter matching is needed, though current pattern is acceptable for practical usage."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

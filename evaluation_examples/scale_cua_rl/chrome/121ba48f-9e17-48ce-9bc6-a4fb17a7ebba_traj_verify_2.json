@@ -1,0 +1,93 @@
+{
+  "id": "121ba48f-9e17-48ce-9bc6-a4fb17a7ebba",
+  "new_id": "121ba48f-9e17-48ce-9bc6-a4fb17a7ebba_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Search for 'Dota 2 Soundtrack' on the Steam Store.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.dota2.com/home",
+          "https://store.steampowered.com"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "store\\.steampowered\\.com/search",
+          "[Dd]ota.*2.*[Ss]oundtrack|[Dd]ota\\+2\\+[Ss]oundtrack|[Dd]ota%202%20[Ss]oundtrack"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_121ba48f-9e17-48ce-9bc6-a4fb17a7ebba_sid_1488161",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Steam Store, found Dota 2, browsed DLC section (Official Soundtrack at /app/1241930/ and Remixes EP at /app/652720/), added the Soundtrack to cart, and ended on the cart page.",
+    "capability_extraction": "Can navigate Steam Store, search for games, find and navigate to DLC pages, add items to cart, use search bar, scroll pages",
+    "task_rationale": "Tests the Steam Store search capability. The agent demonstrated search skills during the trajectory. This variation focuses on using the search bar with a specific query, a different interaction pattern than direct navigation.",
+    "explanation": "Task requires searching for 'Dota 2 Soundtrack' on Steam Store. Evaluator checks the active tab URL matches the Steam search page with a query containing 'Dota 2 Soundtrack' using two regex patterns (both must match).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "search_page": "0.5 - URL contains store.steampowered.com/search",
+      "search_query": "0.5 - URL contains Dota 2 Soundtrack query terms"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active Chrome tab URL from the accessibility tree, which is the right state to verify a search action.",
+        "Metric 'is_expected_url_pattern_match' correctly requires ALL patterns to match the URL (AND logic), ensuring both the correct domain/path and search terms are verified.",
+        "Pattern 1 'store\\.steampowered\\.com/search' correctly verifies the user is on the Steam Store search results page.",
+        "Pattern 2 covers multiple URL encoding variants of 'Dota 2 Soundtrack' (raw text with .* wildcards, + encoding, %20 encoding), providing good coverage of how search terms appear in URLs.",
+        "Metric parameter handling is correct: with expected.type='rule', the framework passes the rules dict directly, and the metric accesses rules['expected'] to get the patterns list.",
+        "Full instruction coverage: the single requirement (search for 'Dota 2 Soundtrack' on Steam Store) is fully verified by checking both the domain/path and query terms."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The scoring_breakdown mentions partial credit (0.5 each for domain and query), but the metric returns 1.0 only if ALL patterns match (no partial credit). Consider updating the scoring_breakdown description to reflect the all-or-nothing scoring, or accept that partial credit is not supported by this metric."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

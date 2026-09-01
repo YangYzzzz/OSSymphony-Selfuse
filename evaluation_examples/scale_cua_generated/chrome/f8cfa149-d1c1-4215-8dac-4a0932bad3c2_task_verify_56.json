@@ -1,0 +1,116 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_56",
+  "snapshot": "chrome",
+  "instruction": "Copy the text from Cell C9 in the LibreOffice Calc document and perform a search for it in the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    },
+    {
+      "type": "focus_app",
+      "parameters": {
+        "app_name": "Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=weiland(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying cell C9 (last name 'Weiland' from row 9) and searching it in Chrome. Evaluator verifies Google search URL contains 'weiland' as query parameter. Verified by reading Excel file: cell C9 (row 9, col 2) contains 'Weiland'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic (get_active_tab_info) is correct: Extracts active Chrome tab URL from accessibility tree (chrome.py:710-800), then uses Playwright to navigate to that URL and retrieve full tab info including URL, title, and content (chrome.py:803-890)",
+        "Metric logic (is_expected_search_query) is correct: Takes active_tab_info dict, extracts pattern from rules['expect']['pattern'], and performs regex match against active_tab_info['url'] (chrome.py:247-256). Returns 1.0 if pattern matches, 0.0 otherwise",
+        "Expected value is semantically correct: Regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=weiland(?:&|$|#).*' correctly matches Google search URLs with 'weiland' as query parameter, case-insensitive. Metadata confirms cell C9 contains 'Weiland'",
+        "Complete instruction coverage: Instruction requires (1) copy from cell C9 and (2) search in Chrome. Evaluator verifies both steps implicitly - if active tab URL is a Google search for 'weiland', both steps must have been completed successfully",
+        "Data flow is correct and efficient: Accessibility tree provides active tab URL -> get_active_url_from_accessTree extracts URL -> get_active_tab_info navigates to URL via Playwright -> returns dict with 'url' field -> is_expected_search_query regex-matches URL -> returns 1.0 if pattern found",
+        "Runtime feasibility is high: postconfig includes 'focus_app' for Chrome to ensure active tab is accessible (task.json:67-72); getter has retry logic (max_retries=2) and timeout handling (timeout_ms=60000); metric is simple regex matching with no complex dependencies",
+        "Postconfig properly addresses UI state dependency: The static validation warning about UI/state-dependent tasks is addressed - postconfig reopens the Excel file and focuses Chrome to ensure correct active tab state before evaluation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

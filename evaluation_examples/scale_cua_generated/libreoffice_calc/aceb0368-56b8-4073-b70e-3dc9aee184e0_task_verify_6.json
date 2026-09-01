@@ -1,0 +1,130 @@
+{
+  "id": "aceb0368-56b8-4073-b70e-3dc9aee184e0",
+  "new_id": "task_verify_6",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Mark each exam by comparing student responses to the reference, score each question as 1 or 0, total the scores per student, and compute the average score for the class.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/aceb0368-56b8-4073-b70e-3dc9aee184e0/exam.zip",
+            "path": "/home/user/exam.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "unzip",
+          "/home/user/exam.zip",
+          "-d",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/exam/ReferenceAnswers.docx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/exam/grades.xlsx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/exam/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "libreoffice_writer",
+    "nautilus"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "grades.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_average_grade__87dbcf1ac8bba281b9a6ae03e300562f",
+    "result": {
+      "type": "xlsx_average_grade__87dbcf1ac8bba281b9a6ae03e300562f",
+      "path": "/home/user/exam/grades.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "average_grade": 73.0
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires grading all student answer sheets and recording scores. Expected grades verified by Python: [70,70,70,80,80,60,60,90,50,100]. Average grade: 730/10 = 73.0. Evaluator calculates average of all total grades. Includes postconfig to save file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_aug_4_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_aug_4_task_verify_3/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 15,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all 4 instruction requirements: (1) individual questions marked as 1/0 via all_scores_valid flag, (2) total scores computed correctly via totals_match validation, (3) class average calculated and compared",
+        "Strong semantic verification: Getter validates that all question scores are 0 or 1 (xlsx.py:55), calculates expected totals from individual scores (xlsx.py:66), and verifies totals match (xlsx.py:69-70)",
+        "Correct metric logic: Metric checks all_scores_valid, totals_match, and average_grade with appropriate tolerance (0.1), preventing false passes",
+        "Metric correctly handles expected parameter: Directly accesses expected.get('average_grade') without incorrect .get('rules') pattern",
+        "Expected value (73.0) is semantically correct based on metadata calculation: average of [70,70,70,80,80,60,60,90,50,100] = 730/10 = 73.0",
+        "Postconfig appropriately saves file with Ctrl+S before verification",
+        "Minor assumption: Getter assumes each question worth 10 points (line 66: sum(valid_scores) * 10), which is consistent with expected grades [70,70,70...] but not explicitly stated in instruction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making the points-per-question value (currently hardcoded as 10) a configurable parameter or adding a comment explaining the assumed scoring scheme",
+        "Minor: Could add edge case handling for students with all None scores (currently handled implicitly but not explicitly documented)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "aceb0368-56b8-4073-b70e-3dc9aee184e0_aug_4_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

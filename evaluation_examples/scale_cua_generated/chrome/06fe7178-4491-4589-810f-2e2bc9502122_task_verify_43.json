@@ -1,0 +1,101 @@
+{
+  "id": "06fe7178-4491-4589-810f-2e2bc9502122",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Re-establish the tab that was previously closed in the browser.",
+  "source": "https://www.wikihow.com/Switch-Tabs-in-Chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.facebook.com",
+          "https://www.twitter.com",
+          "https://www.linkedin.com"
+        ]
+      }
+    },
+    {
+      "type": "chrome_close_tabs",
+      "parameters": {
+        "urls_to_close": [
+          "https://www.linkedin.com"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.facebook.com",
+          "https://www.twitter.com",
+          "https://www.linkedin.com"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires agent to reopen the last closed tab (linkedin.com) using Ctrl+Shift+T. Evaluator verifies all 3 social media websites are present in open tabs.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.65,
+      "llm_judge_reasons": [
+        "Evaluator uses is_expected_tabs which checks both tab presence AND order via are_lists_equal",
+        "Instruction only requires 're-establishing' the closed tab, not maintaining specific tab order",
+        "Browser behavior for Ctrl+Shift+T is non-deterministic - reopened tab position varies by browser version and settings",
+        "The reopened linkedin tab could appear at position 2 (original), position 3 (end), or as active tab in different order",
+        "Order-sensitive comparison creates false negatives when tab is successfully reopened but in different position",
+        "Getter (open_tabs_info) correctly extracts tab information",
+        "Expected values are semantically correct (all 3 URLs should be present)",
+        "Core verification logic works but is over-constrained"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change evaluator to use set-based comparison instead of list equality (check tab presence, not order)",
+        "Use a custom metric that verifies all expected URLs exist in open tabs regardless of order",
+        "Alternative: Update expected value structure to indicate order doesn't matter",
+        "Or: Add postconfig to verify tab order if order is actually important to the task"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

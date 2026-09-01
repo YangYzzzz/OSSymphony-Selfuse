@@ -465,7 +465,6 @@ QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE = json.dumps(
   {
     "type": "function",
     "function": {
-      "name_for_human": "computer_use",
       "name": "computer_use",
       "description": "Use a mouse and keyboard to interact with a computer, and take screenshots.\n* This is an interface to a desktop GUI. You do not have access to a terminal or applications menu. You must click on desktop icons to start applications.\n* Some applications may take time to start or process actions, so you may need to wait and take successive screenshots to see the results of your actions. E.g. if you click on Firefox and a window doesn't open, try wait and taking another screenshot.\n* The screen's resolution is 1000x1000.\n* Whenever you intend to move the cursor to click on an element like an icon, you should consult a screenshot to determine the coordinates of the element before moving the cursor.\n* If you tried clicking on a program or link but it failed to load even after waiting, try adjusting your cursor position so that the tip of the cursor visually falls on the element that you want to click.\n* Make sure to click any buttons, links, icons, etc with the cursor tip in the center of the element. Don't click boxes on their edges unless asked.",
       "parameters": {
@@ -483,43 +482,60 @@ QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE = json.dumps(
               "right_click",
               "middle_click",
               "double_click",
+              "triple_click",
+              "hscroll",
               "scroll",
               "wait",
               "terminate"
             ],
-            "description": "* `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.\n* `type`: Type a string of text on the keyboard.\n* `mouse_move`: Move the cursor to a specified (x, y) pixel coordinate on the screen.\n* `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen.\n* `left_click_drag`: Click and drag the cursor to a specified (x, y) pixel coordinate on the screen.\n* `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.\n* `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.\n* `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.\n* `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action).\n* `scroll`: Performs a scroll of the mouse scroll wheel.\n* `hscroll`: Performs a horizontal scroll (mapped to regular scroll).\n* `wait`: Wait specified seconds for the change to happen.\n* `terminate`: Terminate the current task and report its completion status."
-          },
-          "keys": {
-            "type": "array",
-            "description": "Required only by `action=key`."
-          },
-          "text": {
-            "type": "string",
-            "description": "Required only by `action=type`."
-          },
-          "coordinate": {
-            "type": "array",
-            "description": "The x,y coordinates for mouse actions."
-          },
-          "pixels": {
-            "type": "number",
-            "description": "The amount of scrolling."
-          },
-          "time": {
-            "type": "number",
-            "description": "The seconds to wait."
-          },
-          "status": {
-            "type": "string",
-            "enum": ["success", "failure"],
-            "description": "The status of the task."
-          }
+            "description": textwrap.dedent("""
+                The type of operation to perform: 
+                * `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.
+                * `type`: Type a string of text on the keyboard.
+                * `mouse_move`: Move the cursor to a specified (x, y) pixel coordinate on the screen.
+                * `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                * `left_click_drag`: Click and drag the cursor to a specified (x, y) pixel coordinate on the screen.
+                * `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen.
+                * `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen.
+                * `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                * `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen.
+                * `scroll`: Performs a vertical scroll of the mouse scroll wheel.
+                * `hscroll`: Performs a horizontal scroll of the mouse scroll wheel.
+                * `wait`: Wait specified seconds for the change to happen.
+                * `terminate`: Terminate the current task and report its completion status.
+                """),          
+            },
+            "keys": {
+                "type": "array",
+                "description": "Required only by `action=key`."
+            },
+            "text": {
+                "type": "string",
+                "description": "Required only by `action=type`."
+            },
+            "coordinate": {
+                "type": "array",
+                "description": "The x,y coordinates for mouse actions."
+            },
+            "pixels": {
+                "type": "number",
+                "description": "The amount of scrolling."
+            },
+            "time": {
+                "type": "number",
+                "description": "The seconds to wait."
+            },
+            "status": {
+                "type": "string",
+                "enum": ["success", "failure"],
+                "description": "The status of the task."
+            }
         }
-      },
-      "args_format": "Format the arguments as a JSON object."
+      }
     }
   }
-]
+],
+ensure_ascii=False,
 )
 
 QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_TRAIN = textwrap.dedent("""
@@ -586,16 +602,16 @@ QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE_WITHOUT_CODE = textwrap
 # Role & Goal
 You are a powerful GUI Agent and are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
 Your goal is to complete tasks with MAXIMUM efficiency and MINIMUM steps.
-                                                                                
+
 # Environment & Screen
 - The user's home directory is "/home/user".
 - The user's sudo password is "password".
 - The screen's resolution is represented on a 1000x1000 relative coordinate grid.
-                                                                                
+
 # Output Contract
 Before each tool call, briefly explain your reasoning: why this action is needed and what you expect to happen.
 
-Do NOT skip this reasoning block, and do NOT call the tool without it appearing immediately above.                                                    
+Do NOT skip this reasoning block, and do NOT call the tool without it appearing immediately above.
 """)
 
 KIMI_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE = textwrap.dedent("""

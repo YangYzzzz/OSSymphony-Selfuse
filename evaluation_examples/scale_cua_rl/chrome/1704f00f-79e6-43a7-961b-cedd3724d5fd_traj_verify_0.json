@@ -1,0 +1,85 @@
+{
+  "id": "1704f00f-79e6-43a7-961b-cedd3724d5fd",
+  "new_id": "1704f00f-79e6-43a7-961b-cedd3724d5fd_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's settings page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.rentalcars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "chrome://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://settings.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_1704f00f-79e6-43a7-961b-cedd3724d5fd_sid_1488050",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent was blocked by CAPTCHA on rentalcars.com for all 50 turns. Repeatedly attempted to solve image CAPTCHAs (buckets, curtains, bags, chairs) but always failed verification. Never reached the rental car search page.",
+    "capability_extraction": "Can interact with Chrome UI elements (click images, buttons), type in address bar, navigate between pages",
+    "failure_analysis": "Model completely blocked by CAPTCHA human verification on rentalcars.com. Spent all 50 turns clicking CAPTCHA images and getting 'Incorrect. Please try again.' errors. Could not bypass the bot detection.",
+    "task_rationale": "Simplified to a basic Chrome navigation task (opening settings) that avoids external website CAPTCHA issues entirely. Tests the model's ability to navigate away from a blocked page to an internal Chrome URL.",
+    "explanation": "Task requires navigating to chrome://settings. Evaluator checks that the active tab URL matches the chrome://settings pattern using active_url_from_accessTree getter and is_expected_url_pattern_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active tab URL from Chrome's accessibility tree with goto_prefix 'chrome://' to handle internal Chrome URLs",
+        "Metric (is_expected_url_pattern_match) correctly receives rules dict directly (type='rule') and accesses rules['expected'] to get the pattern list, then uses re.search for matching",
+        "Expected pattern 'chrome://settings.*' correctly matches chrome://settings and any sub-pages",
+        "Complete instruction coverage: the single requirement (open settings page) is fully verified by checking the active tab URL",
+        "No postconfig needed as the settings page remains open after navigation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_31",
+  "snapshot": "chrome",
+  "instruction": "Activate Enhanced Safe Browsing in Chrome to maximize my browsing protection.",
+  "source": "https://support.google.com/chrome/answer/9890866",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"safebrowsing\":{\"enabled\":false,\"enhanced\":false}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enhanced_safe_browsing__ef79380fdcf7b5423e3660cab0b160fc",
+    "result": {
+      "type": "enable_enhanced_safety_browsing__ef79380fdcf7b5423e3660cab0b160fc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires enabling Enhanced Safe Browsing in Chrome for maximum protection. The evaluator uses a custom getter get_enable_enhanced_safety_browsing__ef79380fdcf7b5423e3660cab0b160fc (fixed to use False instead of {} as default value) to check the Preferences file and verify that safebrowsing.enhanced is set to true. Custom metric function check_enhanced_safe_browsing__ef79380fdcf7b5423e3660cab0b160fc compares the result against expected value 'true'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_4/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts safebrowsing.enhanced field from Chrome Preferences file at chrome.py:49",
+        "Getter uses correct default value False (not {}) to avoid truthy empty dict bug",
+        "Metric function correctly handles expected parameter for type='rule' by directly accessing expected.get('expected') at chrome.py:18",
+        "Postconfig appropriately restarts Chrome to ensure Preferences file is written to disk before verification",
+        "Expected value is semantically correct - expects 'true' for Enhanced Safe Browsing enabled",
+        "Complete coverage - instruction has one requirement (enable Enhanced Safe Browsing) and evaluator checks exactly that",
+        "Logic will work correctly at runtime - getter extracts right state, metric compares correctly, expected value is accurate"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_45",
+  "snapshot": "thunderbird",
+  "instruction": "I want to archive all my inbox emails to ~/archived_mail directory. Please save them as separate .eml files.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/archived_mail"
+          ],
+          "stdout": "archived_mail.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "archived_mail.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "歡迎使用新的 Outlook.com 帳戶.*\\.eml",
+          "A Test E-mail.*\\.eml"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires exporting all inbox emails to ~/archived_mail folder in .eml format. Evaluator verifies that .eml files with expected email subjects are created. Uses existing check_list metric with regex patterns to match the known email subjects in the Thunderbird profile.",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses postconfig to capture directory state via 'ls -R' command",
+        "Metric 'check_list' appropriately reads the directory listing and matches regex patterns",
+        "Expected regex patterns correctly match .eml files with known email subjects from the Thunderbird profile",
+        "Data flow is correct: postconfig captures ls output -> getter retrieves cache file -> metric validates patterns",
+        "Regex patterns include proper .eml extension checking"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification that files are non-empty or contain valid email headers",
+        "The evaluator only checks for 2 specific emails - ensure this matches all emails in the test inbox (appears correct based on metadata)",
+        "Could add 'unexpect' rules to check that no other file types are present in the archived_mail directory"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

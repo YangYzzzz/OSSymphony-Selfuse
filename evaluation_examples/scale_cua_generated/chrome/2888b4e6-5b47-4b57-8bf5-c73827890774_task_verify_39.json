@@ -1,0 +1,103 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Show me all men's extra-large long-sleeve shirts with a discount of 30% or more.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "long_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "XL",
+          "Price_discount_range": "30_PERCENT_ off & more",
+          "long_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Variation 5: Changed size from L to XL, discount from 50% to 30%, changed sleeve type from short to long. Maintains same complexity and interaction pattern as original task.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical missing logic: The getter function 'get_macys_product_url_parse' (chrome.py:2499-2567) does NOT extract or verify 'long_sleeve' parameter, but the expected values require 'long_sleeve: true'",
+        "The getter only checks for 'short_sleeve' flag (lines 2522, 2538-2539) but never sets or returns 'long_sleeve' in the result dictionary",
+        "The instruction requires verifying 'long-sleeve shirts' but the getter cannot extract this requirement from the URL",
+        "Incomplete discount validation: The discount logic only checks for '50_PERCENT_' specifically and returns 'not_50_PERCENT_ off & more' for all other cases, rather than properly validating if '30_PERCENT_ off & more' is actually present in the URL",
+        "The evaluator will fail at runtime because it expects a 'long_sleeve' key in the result that the getter never provides"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add logic to 'get_macys_product_url_parse' to extract and set 'long_sleeve' parameter, similar to how 'short_sleeve' is handled (check for 'long-sleeve' in path and 'Long Sleeve' in Sleeve_length value)",
+        "Fix discount validation logic to properly parse and validate the specific discount range ('30_PERCENT_ off & more') instead of just checking for '50_PERCENT_'",
+        "Ensure all parse_keys in config are actually extracted and returned by the getter function",
+        "Add 'long_sleeve' to the parse_keys configuration if it should be extracted from URL parameters"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

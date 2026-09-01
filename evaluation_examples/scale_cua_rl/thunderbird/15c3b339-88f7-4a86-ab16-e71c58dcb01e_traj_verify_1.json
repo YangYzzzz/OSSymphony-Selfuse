@@ -1,0 +1,102 @@
+{
+  "id": "15c3b339-88f7-4a86-ab16-e71c58dcb01e",
+  "new_id": "15c3b339-88f7-4a86-ab16-e71c58dcb01e_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Fill in the Thunderbird account setup with name 'Test Account' and email address 'anonym-x2024@outlook.com'.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/15c3b339-88f7-4a86-ab16-e71c58dcb01e/thunderbird-profile-blank.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile-blank.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile-blank.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "xpath": "//application[@name='Thunderbird']//*[contains(text(), 'Test Account') or contains(@name, 'Test Account')]"
+        },
+        {
+          "xpath": "//application[@name='Thunderbird']//*[contains(text(), 'anonym-x2024@outlook.com') or contains(@name, 'anonym-x2024@outlook.com')]"
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_15c3b339-88f7-4a86-ab16-e71c58dcb01e_sid_1488389",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened Thunderbird, navigated to Account Setup form, filled name as 'Anonym User', email as 'anonym-x2024@outlook.com', and password. Stayed on setup page but never clicked Continue, so IMAP was never shown. Evaluator expected 'Anonym Tester' not 'Anonym User'.",
+    "capability_extraction": "Can interact with Thunderbird UI, click form fields, clear and type text, fill name/email/password fields, switch between windows",
+    "failure_analysis": "Model typed 'Anonym User' instead of expected 'Anonym Tester' for the name. Also never clicked Continue so IMAP protocol info was not displayed. The 4-xpath evaluator required all conditions including IMAP visibility.",
+    "task_rationale": "Decomposed to two-step: fill name and email fields. Model demonstrated ability to fill both fields successfully in the trajectory. Partial credit if only one field is correct.",
+    "explanation": "Task requires filling name and email in Thunderbird account setup. Evaluator checks accessibility tree for both 'Test Account' name and email address. Each xpath gives 0.5 partial credit.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "name_filled": "0.5 - Display name 'Test Account' present in accessibility tree",
+      "email_filled": "0.5 - Email 'anonym-x2024@outlook.com' present in accessibility tree"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (get_accessibility_tree) correctly retrieves UI state needed to verify form field values in Thunderbird.",
+        "Metric (check_accessibility_tree) correctly receives the rules list and iterates over xpath rules to check element presence.",
+        "Both instruction requirements are covered: name 'Test Account' and email 'anonym-x2024@outlook.com' are each verified by separate xpath rules.",
+        "XPath expressions use contains(text(), ...) or contains(@name, ...) which appropriately matches form field values in the accessibility tree.",
+        "Minor inaccuracy: metadata claims 'Each xpath gives 0.5 partial credit' but check_accessibility_tree returns 0.0 immediately if any rule finds no matching elements (line 253), so there is no actual partial credit. Evaluation is all-or-nothing.",
+        "Postconfig with 1-second sleep is reasonable for UI stabilization before reading the accessibility tree."
+      ],
+      "llm_judge_fix_suggestions": [
+        "If partial credit is desired, consider using a different metric or custom function that scores each rule independently (e.g., 0.5 per matched rule) rather than returning 0.0 on first failure.",
+        "Update metadata scoring_breakdown to accurately reflect the all-or-nothing scoring behavior of check_accessibility_tree."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

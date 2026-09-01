@@ -1,0 +1,103 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_41",
+  "snapshot": "os",
+  "instruction": "Delete all files in the \"/tmp/test_files\" directory that were last modified 30 days ago",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'OLD_COUNT=$(find /tmp/test_files/old_files -type f 2>/dev/null | wc -l); NEW_COUNT=$(find /tmp/test_files/new_files -type f 2>/dev/null | wc -l); if [ \"$OLD_COUNT\" -eq 0 ] && [ \"$NEW_COUNT\" -eq 2 ]; then echo \"Success: Old files deleted, new files preserved\"; else echo \"Fail: OLD_COUNT=$OLD_COUNT NEW_COUNT=$NEW_COUNT\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files deleted, new files preserved"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires deleting files modified 30 days ago while preserving newer files. Verification checks that old_files directory has 0 files and new_files directory has 2 files. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Directory structure assumption not verified: Evaluator assumes /tmp/test_files contains old_files/ and new_files/ subdirectories, but instruction says 'all files in the /tmp/test_files directory' without mentioning subdirectories",
+        "No actual time-based verification: Evaluator only checks file counts (0 in old_files, 2 in new_files) but doesn't verify that deleted files were actually 'last modified 30 days ago' - this relies entirely on setup.sh creating the correct test scenario",
+        "Hardcoded expected values (0 and 2 files): These counts are not justified in the metadata and cannot be verified without examining setup.sh",
+        "Evaluator verifies a pre-arranged test scenario rather than the semantic requirement of 'files modified 30 days ago'"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify that setup.sh actually creates the subdirectory structure (old_files/ and new_files/) and sets the correct modification times",
+        "Add metadata explaining why exactly 0 files should remain in old_files and exactly 2 files should remain in new_files",
+        "Consider adding a verification step that checks the modification times of remaining files to ensure they are NOT 30 days old",
+        "If the instruction truly means 'all files directly in /tmp/test_files' (no subdirectories), restructure the evaluator to check that directory instead"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

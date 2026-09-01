@@ -1,0 +1,72 @@
+{
+  "id": "12086550-11c0-466b-b367-1d9e75b3910e",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Please navigate to the downloads page in Chrome where I can see all my downloaded files.",
+  "source": "https://www.quora.com/What-are-the-cool-tricks-to-use-Google-Chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab_approximate",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "chrome://downloads/"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "explanation": "Task requires navigating to Chrome's downloads page (chrome://downloads/). This has the same difficulty as the original password manager navigation - both are straightforward navigation tasks to Chrome internal pages. The evaluator uses existing functions: is_expected_active_tab_approximate metric and active_url_from_accessTree getter to verify the active tab URL matches chrome://downloads/.",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_active_url_from_accessTree extracts the active tab URL from the accessibility tree by reading the Chrome address bar entry. The config correctly uses goto_prefix='' to avoid adding https:// prefix to chrome:// URLs.",
+        "Metric logic is correct: is_expected_active_tab_approximate properly compares URLs while ignoring query parameters, which is appropriate for Chrome internal pages that may have varying query strings.",
+        "Expected value is semantically correct: chrome://downloads/ is the correct Chrome internal URL for the downloads page as specified in the instruction.",
+        "Complete instruction coverage: The evaluator fully verifies that the user has navigated to the downloads page by checking the active tab URL.",
+        "Data flow is correct: Getter extracts URL string → Metric receives URL and compares with expected chrome://downloads/ → Returns 1.0 for match or 0.0 for mismatch.",
+        "Practical feasibility: The accessibility tree method is reliable for getting Chrome's active tab URL. No postconfig needed since we're just reading current browser state."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

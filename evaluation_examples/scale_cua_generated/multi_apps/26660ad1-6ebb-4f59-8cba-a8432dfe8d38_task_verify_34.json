@@ -1,0 +1,101 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_34",
+  "snapshot": "multiapps",
+  "instruction": "Test your internet connection speed using speedtest.net. Once the test completes, save the results to ~/Desktop/speedtest_results.txt.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/speedtest_results.txt",
+      "dest": "speedtest_results.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires running a speed test on speedtest.net and saving results to Desktop. The evaluator checks if speedtest_results.txt on Desktop contains the core metrics: Ping, Download, and Upload. This verifies the user completed the test and exported results to the correct location.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary scoring: 1.0 if all required keywords (Ping, Download, Upload) are present in the Desktop file, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both requirements of the instruction: (1) file exists at the correct location (~/Desktop/speedtest_results.txt), and (2) file contains speed test results",
+        "The three keywords (Ping, Download, Upload) are semantically correct for verifying a speedtest.net result was saved",
+        "Getter (get_vm_file) correctly fetches the file from the VM at the expected Desktop location",
+        "Metric (file_contains) correctly implements the verification logic: checks all three keywords are present in the file text",
+        "Correct parameter handling: metric receives config={'expected': ['Ping', 'Download', 'Upload']} and correctly accesses config['expected'], following the framework's get_rule behavior for type='rule'",
+        "Complete instruction coverage: verifies both that the speed test was run (content check) and results were saved to the correct location (file path check)",
+        "Robust edge case handling: returns 0.0 for missing file, read errors, or missing keywords",
+        "No runtime issues: file-based verification, no UI/dialog state dependencies, no need for postconfig"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

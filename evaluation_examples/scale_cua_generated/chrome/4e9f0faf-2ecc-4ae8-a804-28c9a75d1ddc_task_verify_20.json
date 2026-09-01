@@ -1,0 +1,135 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Get the invoice PDF from Google Drive, extract the line items, and store them in an Excel sheet on the desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_invoice_item_count__fe7b3b87c906805b9607b8fa824022f2",
+    "result": {
+      "type": "invoice_item_count__fe7b3b87c906805b9607b8fa824022f2",
+      "path": "/home/user/Desktop/invoice.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "item_count": 7,
+        "sample_items": [
+          {
+            "Description": "laptop",
+            "Quantity": "1",
+            "Price": "800"
+          },
+          {
+            "Description": "mouse",
+            "Quantity": "2",
+            "Price": "25"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1",
+    "variation_index": 1,
+    "explanation": "Task requires extracting invoice PDF from Google Drive and converting to Excel on Desktop. Evaluator comprehensively verifies: (1) file exists on Desktop path, (2) file is .xlsx format, (3) proper structure with header and total rows, (4) exactly 7 line items extracted, (5) sample data content matches expected invoice items (laptop, mouse, etc.). Uses partial credit scoring.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1_task_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1_task_verify_1/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": "0.2 for file on Desktop, 0.1 for .xlsx format, 0.2 for proper structure (header + total row), 0.3 for correct item count (7), 0.2 for data content verification (sample items match)",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator checks all critical aspects of the instruction (file location, format, structure, item count, and data content)",
+        "Desktop location verified: Getter checks '/Desktop/' in path (line 35) and metric awards 0.2 points for on_desktop=True (line 33)",
+        "File format verified: Getter checks .xlsx extension (line 36) and metric awards 0.1 points (line 37)",
+        "Structure verification: Getter validates header row (lines 61-66) and total row (lines 76-87), metric awards 0.2 points (line 41)",
+        "Item count verification: Getter counts line items excluding header/total (line 99), metric awards 0.3 points for exact match of 7 items (line 47)",
+        "Data content verification: Metric compares extracted sample items against expected invoice data (lines 52-76), checking Description, Quantity, Price fields with flexible matching",
+        "Partial credit scoring is logical and well-distributed: 0.2 (location) + 0.1 (format) + 0.2 (structure) + 0.3 (count) + 0.2 (content) = 1.0",
+        "Metric parameter handling is correct: directly accesses expected.get('item_count') and expected.get('sample_items'), proper handling of expected.type='rule'",
+        "Edge case handling: Metric checks for None/empty results, handles missing fields gracefully (lines 22-23)",
+        "Semantic flow is correct: Getter extracts RIGHT state (Desktop Excel with invoice data) → Metric compares RIGHT aspects (location, format, structure, count, content)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider extracting more than 3 sample items (currently line 90 limits to 3) to strengthen content verification, though 3 samples is sufficient for most cases",
+        "Minor: Could add verification that header contains expected column names (e.g., 'Description', 'Quantity', 'Price') to ensure proper column structure"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

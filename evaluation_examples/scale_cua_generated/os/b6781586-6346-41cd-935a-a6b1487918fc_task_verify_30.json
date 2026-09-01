@@ -1,0 +1,72 @@
+{
+  "id": "b6781586-6346-41cd-935a-a6b1487918fc",
+  "new_id": "task_verify_30",
+  "snapshot": "os",
+  "instruction": "Change the system timezone to UTC-6 (Central Standard Time).",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/clock-timezone.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_timezone_utc_minus_6__53de5eae",
+    "result": {
+      "type": "vm_command_line",
+      "command": "timedatectl status",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "offset": "-0600",
+        "allow_dst": false
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting timezone to UTC-6 (CST/US Central). Evaluator checks if timedatectl output shows timezone offset as -0600.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b6781586-6346-41cd-935a-a6b1487918fc_aug_5_task_verify_6/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: checks if timedatectl output line ends with '-0600)'",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "FIXED: Metric function now correctly handles expected_state parameter with proper rules extraction using expected_state.get('rules', expected_state)",
+        "FIXED: Now uses robust regex pattern to extract timezone offset instead of fragile string matching",
+        "FIXED: Properly implements allow_dst flag to accept -0500 (CDT) when DST is allowed",
+        "Semantic issue: Instruction says 'Central Standard Time' with allow_dst=false, meaning it only accepts -0600. However, Central Time zones like America/Chicago observe DST and become -0500 in summer, which could cause false negatives during daylight time periods",
+        "Minor issue: Only verifies offset (-0600), not the actual timezone name. Multiple timezones share UTC-6 offset (America/Chicago, America/Regina, etc.). Instruction specifically mentions 'Central Standard Time' suggesting a specific timezone might be expected",
+        "Instruction ambiguity: 'UTC-6 (Central Standard Time)' could mean either literal CST-only zones (like America/Regina) or Central Time zones in general (like America/Chicago). Current config with allow_dst=false suggests CST-only interpretation",
+        "Getter logic is correct: get_vm_command_line properly executes 'timedatectl status' command to retrieve timezone information",
+        "Metric has good fallback logic for finding timezone line and handles edge cases appropriately"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider setting allow_dst=true in expected rules if the task should accept Central Time zones during daylight saving time (CDT, -0500)",
+        "Consider adding timezone name validation to verify it's actually a Central Time zone (e.g., check if timezone name contains 'America/Chicago', 'America/Regina', 'CST', 'CDT')",
+        "Clarify the instruction: specify whether 'Central Standard Time' means CST-only (no DST, like Regina) or Central Time in general (with DST, like Chicago)",
+        "If CST-only is required, instruction should specify a non-DST zone like 'America/Regina' or 'America/Guatemala' instead of ambiguous 'Central Standard Time'"
+      ]
+    }
+  }
+}

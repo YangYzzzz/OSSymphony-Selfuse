@@ -1,0 +1,107 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "37887e8c-da15-4192-923c-08fa390a176d_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Create a tar.gz archive of all files in /tmp/test_files/new_files/ and save it as /tmp/new_backup.tar.gz",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "tar -tzf /tmp/new_backup.tar.gz",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "new_file1.txt",
+          "new_file2.txt"
+        ],
+        "exclude": [
+          "old_file1.txt",
+          "old_file2.txt"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_37887e8c-da15-4192-923c-08fa390a176d_sid_1488151",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent used find with -mtime 30 to locate old files, then used tar -czvf to create a single archive. The task expected individual file compression (gzip), not a tar bundle.",
+    "capability_extraction": "Can use terminal, find command with -mtime flag, tar, ls, redirect output, verify file existence",
+    "failure_analysis": "Model used tar -czvf to create a single archive instead of compressing each file individually with gzip. The evaluator expected individual .gz files in-place, not a tar.gz bundle.",
+    "task_rationale": "Directly tests the tar archiving skill the model demonstrated in the trajectory, but with a clearer target (specific subdirectory, explicit output path) to match what the model actually did successfully",
+    "explanation": "Task requires creating a tar.gz archive of files in new_files/ directory. Evaluator lists archive contents with tar -tzf and checks it includes new_file1.txt and new_file2.txt but excludes old files, confirming only the correct directory was archived.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "scoring_breakdown": {
+      "archive_contents": "1.0 - Archive contains exactly the new_files and no old_files"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'tar -tzf' to list archive contents, which verifies both archive existence and format",
+        "Metric 'check_include_exclude' correctly receives the rules dict directly (proper handling of expected.type='rule') and uses substring matching to check file presence",
+        "Substring matching works correctly regardless of tar path format (e.g., './new_file1.txt' or 'new_files/new_file1.txt' both match 'new_file1.txt')",
+        "Evaluator covers the key requirements: archive exists at correct path, contains expected new files, and excludes old files from other directories",
+        "Minor concern: evaluator only checks for 2 specific files (new_file1.txt, new_file2.txt) - if setup creates additional files in new_files/, completeness of archiving all files is not fully verified"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding all files created by setup.sh in the include list to ensure the archive contains ALL files from the directory, not just a subset"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

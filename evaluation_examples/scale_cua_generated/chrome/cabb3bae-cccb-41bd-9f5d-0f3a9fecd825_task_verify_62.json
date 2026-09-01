@@ -1,0 +1,108 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_62",
+  "snapshot": "chrome",
+  "instruction": "Find Disney Princess toys for girls and sort by price from low to high.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Disney Princess",
+          "Toys",
+          "Girls"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Disney Princess": "Disney Princess",
+        "disney princess": "Disney Princess",
+        "Toys": "Toys",
+        "Girls": "Girls",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "disney princess": true,
+          "toys": true,
+          "girls": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Disney Princess toys for girls on kohls.com and sorting by price low-high. Similar complexity to original with different product theme. Evaluator uses check_direct_json_object to verify search and sort.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 instruction requirements: Disney Princess search term, Toys category, Girls category, and Price Low-High sorting",
+        "Data flow is semantically correct: getter extracts breadcrumb elements and URL parameters, metric compares against expected boolean values",
+        "Dual verification strategy (HTML parsing + URL checking) provides good redundancy if one method fails",
+        "Expected values are semantically correct: all search/filter terms set to true, is_other_exist set to false to ensure no unintended filters",
+        "The is_other_exist check correctly verifies that no additional unexpected filters are applied",
+        "Minor robustness concern: evaluator relies on Kohl's-specific CSS classes (pmpSearch_breadcrumb, sbSelector, catAllProducts) which may break if HTML structure changes",
+        "However, URL parameter checking (S=4 for sort, search terms in URL) provides fallback verification method"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

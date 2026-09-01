@@ -1,0 +1,126 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Access the URL from the latest Bills email and display it in Chrome while closing the existing Apple and Google Scholar tabs.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires opening the Amazon link from Bills email and closing all other tabs. The evaluator checks that exactly 1 tab remains: Amazon. Uses existing functions.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 6,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks all instruction requirements - opening Amazon URL and closing both Apple and Google Scholar tabs",
+        "Getter 'get_open_tabs_info' correctly extracts current open tabs state (returns list of dicts with 'url' and 'title' for each tab)",
+        "Metric 'is_expected_tabs' uses exact list matching via 'are_lists_equal' which verifies both tab count (exactly 1) and tab URL (Amazon)",
+        "Expected value correctly specifies single Amazon URL ['https://www.amazon.com/'], which implicitly verifies other tabs were closed",
+        "Logical correctness: By checking that ONLY Amazon tab exists (exact list equality), the evaluator ensures Apple and Google Scholar tabs are NOT present",
+        "Data flow is correct: getter extracts tabs → metric compares with expected → returns 1.0 only if exactly 1 tab with Amazon URL exists",
+        "Postconfig includes sleep 1s which allows tab state to settle after actions"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

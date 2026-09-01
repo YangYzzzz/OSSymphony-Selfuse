@@ -1,0 +1,135 @@
+{
+  "id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "new_id": "task_verify_72",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Locate and bookmark the personal homepages of the first three authors listed in the paper, organizing them in a folder called 'Lead Authors'.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a82b78bb-7fde-4cb3-94a4-035baf10bcf0/2206.08853.pdf",
+            "path": "/home/user/Desktop/2206.08853.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/2206.08853.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-20)"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "liked_authors_websites_urls",
+        "names": [
+          "Lead Authors"
+        ],
+        "urls": [
+          [
+            "https://jimfan.me/",
+            "https://research.nvidia.com/person/linxi-jim-fan",
+            "https://www.linkedin.com/in/drjimfan/"
+          ],
+          [
+            "https://guanzhi.me/",
+            "http://guanzhi.me/"
+          ],
+          [
+            "https://yunfanj.com/",
+            "https://cs.stanford.edu/~yunfanj/"
+          ]
+        ]
+      }
+    }
+  },
+  "trajectory": "trajectories/a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "related_apps": [
+    "chrome",
+    "pdf"
+  ],
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+    "variation_index": 6,
+    "explanation": "Task verified: requires finding the first three authors (Linxi Fan, Guanzhi Wang, Yunfan Jiang) from the author list and bookmarking their personal websites in a folder named 'Lead Authors'.",
+    "new_functions_paths": [
+      "tmp_funcs/a82b78bb-7fde-4cb3-94a4-035baf10bcf0_aug_5_task_verify_6"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "task_type": "bookmark_author_websites",
+    "verification_method": "Checked author names and affiliations from PDF (page 1). The evaluator reuses the existing is_expected_bookmarks function which validates bookmark folder names and URLs.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "CRITICAL SEMANTIC ERROR: Folder name hardcoded mismatch - instruction requires folder named 'Lead Authors' but metric function is_expected_bookmarks (chrome.py:221) has 'Liked Authors' hardcoded, completely ignoring the rule['names'] parameter",
+        "The metric function extracts rule['names'] containing 'Lead Authors' but line 221 performs a hardcoded check: bookmark['name'] == 'Liked Authors', making the names parameter useless",
+        "Consequence: Even if user correctly creates 'Lead Authors' folder with all correct author website bookmarks, evaluator will always return 0.0 because it searches for wrong folder name",
+        "This is a fundamental logic error in the metric function that makes verification impossible for this instruction - the evaluator cannot verify what the instruction actually requires"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix chrome.py:221 in is_expected_bookmarks function - replace hardcoded string 'Liked Authors' with dynamic lookup from rule['names'] parameter",
+        "Change line 221 from: bookmark['name'] == 'Liked Authors' to: bookmark['name'] in rule['names']",
+        "This will make the evaluator properly check for the folder name specified in the rules, which is 'Lead Authors' for this task",
+        "Alternative fix: Change line 221 to: bookmark['name'] == rule.get('names', ['Liked Authors'])[0] with proper fallback"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

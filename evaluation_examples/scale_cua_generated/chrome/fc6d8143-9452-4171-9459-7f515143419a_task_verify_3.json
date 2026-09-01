@@ -1,0 +1,108 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "task_verify_3",
+  "snapshot": "chrome",
+  "instruction": "Give the current status of flights scheduled from Chicago airports to Miami for tomorrow.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "tomorrow"
+        },
+        "expected": {
+          "start": "ORD",
+          "end": "MIA",
+          "time": "{DoW}, {Month} {Day0D}, {Year}"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation that changes the flight route from 'New York to Columbus OH' to 'Chicago to Miami'. The task maintains the same structure as the original: agent navigates Delta.com to search for flight status updates for a specific route tomorrow. The evaluator uses existing functions (get_active_tab_html_parse, get_rule_relativeTime, check_direct_json_object) to verify the agent successfully searched for ORD→MIA flights with tomorrow's date. ORD (O'Hare) is a major hub with frequent service.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "very_high",
+    "changes": "Only modified: instruction (ORD→MIA route), expected airports (ORD, MIA). Kept same: config, evaluator structure, all getter/metric functions.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: origin airport (Chicago/ORD), destination airport (Miami/MIA), and flight date (tomorrow)",
+        "Getter logic is semantically correct: get_active_tab_html_parse extracts flight context information from Delta.com using appropriate CSS class selectors for route and date",
+        "Expected values are semantically accurate: ORD is Chicago O'Hare International Airport, MIA is Miami International Airport, and tomorrow's date is computed dynamically with timezone-aware logic",
+        "Data flow is correct: getter extracts {start, end, time} → metric compares against expected {start: 'ORD', end: 'MIA', time: formatted_tomorrow}",
+        "Metric uses appropriate exact string matching for airport codes and formatted dates",
+        "The evaluator can successfully verify whether the agent completed the task of finding Chicago to Miami flight status for tomorrow"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor consideration: The evaluator relies on Delta.com's specific CSS class names (mach-flight-context-info__wrapper--date, mach-flight-context-info__wrapper__info--separator) which may change if the website updates its HTML structure. This is acceptable for web-based tasks but represents a runtime dependency.",
+        "Minor consideration: The date format assumes Delta.com displays dates as '{DoW}, {Month} {Day0D}, {Year}' (e.g., 'Mon, Jan 06, 2025'). If the website uses a different format, verification may fail. However, this appears to match Delta.com's actual format based on the class names used.",
+        "The evaluator assumes 'ORD' will be displayed exactly as the airport code. If Delta.com displays full airport names or formats like 'Chicago (ORD)', the verification would fail. However, based on the task context and Delta.com's typical display format for flight status, this assumption appears valid."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "fc6d8143-9452-4171-9459-7f515143419a_aug_14_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

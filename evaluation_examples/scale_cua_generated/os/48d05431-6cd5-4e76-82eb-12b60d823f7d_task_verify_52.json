@@ -1,0 +1,97 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_52",
+  "snapshot": "os",
+  "instruction": "After running \"pyenv install 3.9.0\" in terminal, I got \"pyenv: command not found\". Can you help me resolve this issue so pyenv works right away?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_1",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'PYENV_ROOT' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'pyenv: command not found' by adding pyenv initialization to ~/.bashrc. Evaluator checks if PYENV_ROOT is present in .bashrc, which indicates pyenv has been properly configured. Similar pattern to conda initialization.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for PYENV_ROOT in .bashrc which is the standard pyenv configuration pattern.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Instruction requires pyenv to 'work right away', implying immediate availability in current shell session",
+        "Evaluator only checks if PYENV_ROOT is in ~/.bashrc, which verifies persistent configuration for future sessions",
+        "Semantic mismatch: checking .bashrc content doesn't verify current session availability without sourcing",
+        "After modifying .bashrc, the shell needs 'source ~/.bashrc' for changes to take effect immediately",
+        "Missing verification: should check if pyenv is actually executable in current session (e.g., 'pyenv --version' or 'command -v pyenv')",
+        "The evaluator verifies 'will work in next login' rather than 'works right away' as instruction requires"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change verification command to check current session availability: 'command -v pyenv >/dev/null 2>&1 && echo 1 || echo 0'",
+        "Or use: 'pyenv --version >/dev/null 2>&1 && echo 1 || echo 0' to verify pyenv is executable",
+        "Or add postconfig to source .bashrc before evaluation: 'source ~/.bashrc' to make current session match future sessions",
+        "Alternative: Change instruction to clarify it configures pyenv for future sessions (not 'right away'), keeping current evaluator",
+        "Consider checking both: (1) .bashrc contains pyenv init, AND (2) pyenv is currently executable"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

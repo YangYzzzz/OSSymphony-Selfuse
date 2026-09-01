@@ -1,0 +1,106 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_66",
+  "snapshot": "multiapps",
+  "instruction": "I'd like to assess my current network quality. Please run a speed test on speedtest.net, then obtain the results from speedtest.net/results and record them in ~/Test/Speed/results.txt (if the folder doesn't exist, make it first). Structure the file with each metric on its own line, showing the metric name and value separated by a single space character.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Test/Speed/results.txt",
+      "dest": "results.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task involves executing a network quality assessment via speedtest.net, fetching the test results from speedtest.net/results, and persisting to a file. Evaluator validates that the file includes three key network indicators: Ping, Download, and Upload. This is a paraphrased version of the original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_instruction",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete format verification: Evaluator only checks if the words 'Ping', 'Download', and 'Upload' appear anywhere in the file, but does not verify the required format",
+        "Missing structure validation: Instruction explicitly requires 'each metric on its own line, showing the metric name and value separated by a single space character', but file_contains metric does not verify this structure",
+        "Weak validation logic: The file_contains function (general.py:554-568) uses simple substring matching ('if text not in file_text'), which would pass incorrectly formatted files (e.g., 'Ping Download Upload' on one line, or these words appearing in prose)",
+        "No value validation: Does not verify that actual speed test VALUES are present alongside the metric names, only checks for keyword presence",
+        "Format requirement mismatch: A file containing the three keywords in any format/order would pass, even though the instruction specifies a precise format with line breaks and single-space separation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use check_list metric instead of file_contains to verify line-by-line structure with regex patterns",
+        "Add regex patterns to expected rules that match the format: '^Ping \\d+', '^Download [\\d.]+', '^Upload [\\d.]+'",
+        "Consider using check_include_exclude with more specific patterns that enforce the 'metric_name value' format on separate lines",
+        "Alternative: Create a custom metric that parses each line and validates: (1) each metric is on its own line, (2) metric name and value are separated by exactly one space, (3) value is numeric"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

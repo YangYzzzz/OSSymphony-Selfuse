@@ -1,0 +1,100 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "af630914-714e-4a24-a7bb-f9af687d3b91_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome's default font size to the smallest option available.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "range",
+        "min": 0,
+        "max": 10
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_af630914-714e-4a24-a7bb-f9af687d3b91_sid_1488225",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Chrome menu -> Settings -> Appearance -> Font size dropdown and selected 'Very large' in 7 turns.",
+    "capability_extraction": "Can open Chrome menu, navigate to Settings, find Appearance section, interact with font size dropdown, select specific options.",
+    "task_rationale": "Reverse of original task: set font size to smallest instead of largest. Same navigation pattern, different target value.",
+    "explanation": "Task requires navigating to Chrome Appearance settings and selecting 'Very small' from the font size dropdown. Evaluator uses official check_font_size metric with chrome_font_size getter, expecting a value <= 10 (Very small = 9).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 7,
+    "variation_index": 0,
+    "scoring_breakdown": {
+      "font_size": "1.0 - Font size set to Very small (value <= 10)"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter chrome_font_size correctly reads Chrome's Preferences JSON file from disk to extract default_font_size value.",
+        "Postconfig properly kills and relaunches Chrome to flush Preferences to disk before getter reads it.",
+        "Metric check_font_size with range rule (0 < x < 10) correctly identifies 'Very small' font size (value=9) and rejects all other options (12, 16, 20, 24).",
+        "Single-requirement instruction fully covered by single evaluator check.",
+        "Expected parameter handling is correct: metric receives rules dict directly and accesses rule['type'] and rule['min']/rule['max'] properly."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider using an exact value check (type='value', value=9) instead of a range check, to be more precise about the expected 'Very small' font size."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

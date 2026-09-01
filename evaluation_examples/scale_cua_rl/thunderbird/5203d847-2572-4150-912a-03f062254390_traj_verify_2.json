@@ -1,0 +1,114 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "5203d847-2572-4150-912a-03f062254390_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder called \"Updates\" and create a filter to auto move inbox emails from senders containing \"noreply\" to that folder.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Updates",
+            "condition": [
+              "AND (from,contains,noreply)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_5203d847-2572-4150-912a-03f062254390_sid_1488181",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created 'Promotions' local folder, opened Message Filters dialog, created a filter named 'Discount to Promotions' with condition 'Subject contains discount' and action 'Move to Local Folders/Promotions'. Completed in 16 turns.",
+    "capability_extraction": "Can create local folders in Thunderbird, navigate to Message Filters dialog, create new filters with subject/sender conditions and move-to-folder actions.",
+    "task_rationale": "Variation uses a different folder ('Updates') and sender-based condition ('from contains noreply') to filter automated emails, testing the model's ability to handle a practical no-reply sender filtering scenario.",
+    "explanation": "Task requires creating an 'Updates' local folder and a filter that moves emails from senders containing 'noreply' to it. Evaluator checks msgFilterRules.dat for correct filter with from-contains condition and move action to Local Folders/Updates.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly fetches msgFilterRules.dat from the Thunderbird profile, which is the right file containing filter definitions.",
+        "Metric check_thunderbird_filter correctly parses filter entries and matches against expected rules using _match_record.",
+        "Expected values are semantically correct: enabled=yes, action='Move to folder', actionValue points to Local Folders/Updates with proper URI encoding, and condition checks 'from contains noreply'.",
+        "Parameter handling is correct: expected.type='rule' causes get_rule to return the rules dict directly, and the metric accesses rules.get('expect', []) properly.",
+        "Postconfig closes the Message Filters window before evaluation, ensuring the filter file is saved/flushed to disk.",
+        "Minor coverage gap: the evaluator only verifies the filter definition exists in msgFilterRules.dat but does not independently verify that the 'Updates' local folder was actually created on disk. However, the actionValue URI implicitly references the folder, and Thunderbird's UI typically requires the folder to exist before it can be selected as a move target."
+      ],
+      "llm_judge_fix_suggestions": [
+        "To achieve full coverage, consider adding a second evaluation step that checks for the existence of the 'Updates' folder under the Local Folders directory (e.g., verify /home/user/.thunderbird/<profile>/Mail/Local Folders/Updates exists)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

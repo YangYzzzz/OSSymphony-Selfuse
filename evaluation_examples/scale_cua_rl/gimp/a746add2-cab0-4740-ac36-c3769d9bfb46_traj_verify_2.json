@@ -1,0 +1,111 @@
+{
+  "id": "a746add2-cab0-4740-ac36-c3769d9bfb46",
+  "new_id": "a746add2-cab0-4740-ac36-c3769d9bfb46_traj_verify_2",
+  "snapshot": "gimp",
+  "instruction": "Open the Bloom filter window in GIMP.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/a746add2-cab0-4740-ac36-c3769d9bfb46/dog_with_background.png",
+            "path": "/home/user/Desktop/dog_with_background.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/dog_with_background.png"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; pyautogui.press([\"esc\"]);time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);time.sleep(1);"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; pyautogui.press([\"right\"]);time.sleep(1);pyautogui.press([\"enter\"])"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cat /home/user/.config/GIMP/2.10/action-history",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "filters-bloom"
+        ],
+        "exclude": [
+          "error",
+          "failed",
+          "not found"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_a746add2-cab0-4740-ac36-c3769d9bfb46_sid_1488246",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent dismissed color profile dialog, navigated Filters > Light and Shadow > Vignette, successfully opened the Vignette filter dialog in 8 turns.",
+    "capability_extraction": "Can navigate GIMP menu hierarchy, find specific filters in submenus, dismiss dialogs, interact with GIMP UI",
+    "task_rationale": "Tests the same Light and Shadow submenu navigation but targeting Bloom, which is at the top of the submenu (visible in trajectory screenshot 5). Provides diversity by testing a different filter from the same confirmed submenu.",
+    "explanation": "Task requires opening the Bloom filter dialog via Filters > Light and Shadow > Bloom. Evaluator quits GIMP to flush action-history, then checks for 'filters-bloom' in the history file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Semantic flow is correct: GIMP action-history records filter invocations, and 'filters-bloom' is the correct action ID for the Bloom filter.",
+        "Postconfig correctly quits GIMP (Esc then Ctrl+Q with save dialog handling) to flush the action-history file to disk before reading it.",
+        "Getter (vm_command_line with cat) correctly reads the action-history file from the expected GIMP 2.10 config path.",
+        "Metric (check_include_exclude) correctly receives the rules dict directly and checks for 'filters-bloom' in the output.",
+        "Coverage is complete: the single instruction requirement (open Bloom filter) is fully verified.",
+        "Minor concern: exclude terms ('error', 'failed', 'not found') are checked against the entire action-history file, which could theoretically cause false negatives if any past action ID contained these substrings, though this is unlikely in practice."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider narrowing the exclude check or removing it, since action-history file content is action IDs that are unlikely to contain 'error', 'failed', or 'not found' as substrings."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

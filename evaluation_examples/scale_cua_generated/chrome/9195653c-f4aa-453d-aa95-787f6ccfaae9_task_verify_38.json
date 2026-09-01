@@ -1,0 +1,86 @@
+{
+  "id": "9195653c-f4aa-453d-aa95-787f6ccfaae9",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "I want to organize my VLC recordings better. Can you change the default recording folder in VLC to save recordings to my Desktop instead of the current location?",
+  "source": "https://superuser.com/questions/1513285/how-can-i-increase-the-maximum-volume-output-by-vlc?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "is_vlc_recordings_folder",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Desktop"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing VLC's recording folder to /home/user/Desktop. The evaluator uses the existing is_vlc_recordings_folder function which reads the VLC config file and verifies that input-record-path is set to /home/user/Desktop. This is similar in difficulty to the original max volume task - both are simple VLC preference changes.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts VLC config file (vlcrc) which contains recording path settings",
+        "Metric correctly parses config file and checks 'input-record-path' setting",
+        "Expected value '/home/user/Desktop' is semantically correct for the instruction",
+        "Metric function correctly handles the 'rule' parameter without incorrect wrapping (directly accesses rule['recording_file_path'])",
+        "Postconfig properly restarts VLC to ensure config changes are persisted and state is fresh",
+        "Complete coverage: instruction requires changing recording folder, evaluator verifies the exact setting",
+        "Logic handles edge cases: skips comments, empty lines, returns 0 if setting not found",
+        "Comparison logic is appropriate: exact string match for file paths"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

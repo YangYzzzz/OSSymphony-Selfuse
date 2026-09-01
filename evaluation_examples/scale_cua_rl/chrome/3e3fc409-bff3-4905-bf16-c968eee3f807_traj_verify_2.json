@@ -1,0 +1,146 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "3e3fc409-bff3-4905-bf16-c968eee3f807_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "In the opened movies spreadsheet, create a new sheet called 'classic_movies' with all movies released before 1960. Keep the same headers and sort the results by release year from earliest to latest.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "movies.xlsx",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's'); import time; time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_filtered_sheet__0d0f959234d0c494b6d7c17cb5158836",
+    "result": {
+      "type": "xlsx_sheet_data__0d0f959234d0c494b6d7c17cb5158836",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "classic_movies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_sheet_name": "classic_movies",
+        "expected_headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "expected_row_count": 30,
+        "sort_key": "release year",
+        "sort_order": "asc"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent created an 'unseen_movies' sheet but copied ALL seen_movies data instead of finding unseen IMDB Top 30 movies. Never visited IMDB website. Attempted to sort data in the new sheet.",
+    "capability_extraction": "Can create new sheets in LibreOffice Calc, copy data between sheets, use sort dialog, navigate between sheet tabs, right-click context menus",
+    "failure_analysis": "Model failed because it never visited IMDB to get the Top 30 list. Instead, it copied all existing seen_movies to unseen_movies sheet. The cross-application comparison (Chrome + Calc) was too complex.",
+    "task_rationale": "Simplified to filtering movies by year (before 1960). No external website needed. Sort by release year ascending is a different sort target than the original, testing the model's ability to configure sorting correctly.",
+    "explanation": "Task requires creating a new sheet with pre-1960 movies sorted by release year ascending. Evaluator checks: sheet exists with correct name, headers match, row count is 30, and data is sorted by release year ascending.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132_traj_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_3e3fc409-bff3-4905-bf16-c968eee3f807_sid_1488132_traj_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "sheet_exists": "0.25 - Sheet 'classic_movies' exists with correct name",
+      "headers_match": "0.25 - Headers match original (title, release year, ratings, description)",
+      "row_count": "0.25 - Contains exactly 30 movies released before 1960",
+      "sort_order": "0.25 - Sorted by release year from earliest to latest"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly reads the 'classic_movies' sheet from the xlsx file, returning sheet_name, headers, rows (as dicts keyed by header name), and row_count - all needed by the metric.",
+        "Metric correctly handles expected parameter for type='rule': accesses expected.get('expected_sheet_name') etc. directly from the rules dict without incorrect nesting.",
+        "Postconfig properly activates the window and saves the file with Ctrl+S before evaluation, ensuring fresh file state.",
+        "All four verification aspects are checked: sheet name (0.25), headers match (0.25), row count (0.25), sort order (0.25) with reasonable partial credit logic.",
+        "COVERAGE GAP: The evaluator does NOT verify that the rows actually contain movies released before 1960. It only checks row count=30 and ascending sort by 'release year'. An agent could copy any 30 rows sorted by year and score full marks without correctly filtering by year<1960.",
+        "The combination of exact count (30) + correct sort order provides a reasonable but imperfect proxy for correct filtering, since the dataset presumably has exactly 30 pre-1960 movies."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a check in the metric to verify that all rows have 'release year' < 1960, e.g.: if all(float(str(r.get(sort_key, 9999))) < 1960 for r in rows): score += bonus or integrate into existing sort check.",
+        "Consider adding the year threshold (1960) to the expected rules as 'max_year' and checking it in the metric to ensure the filtering condition is actually verified."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

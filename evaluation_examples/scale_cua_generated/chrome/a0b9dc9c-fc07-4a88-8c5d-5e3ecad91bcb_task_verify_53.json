@@ -1,0 +1,149 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_53",
+  "snapshot": "chrome",
+  "instruction": "Copy the AWS invoice email and the Twitter receipt email from Thunderbird's Bills folder as .eml files into my Google Drive emails folder, naming the files according to their email subjects.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_eml_files__74b11cf6",
+    "result": {
+      "type": "googledrive_eml_files",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_path": [
+        "emails"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_subjects": [
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789]",
+          "Your receipt from X (formerly Twitter) #0123-4567"
+        ],
+        "check_headers": [
+          "MIME-Version:",
+          "Content-Type:"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires copying two specific emails from Thunderbird's Bills folder (AWS invoice and Twitter receipt) to Google Drive as .eml files with filenames matching email subjects. Evaluator dynamically retrieves all .eml files from Google Drive 'emails' folder, verifies they match the expected email subjects, checks proper MIME headers, and validates filenames match subjects. The Bills folder in the test environment contains exactly these two emails.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_9/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_9/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Instruction now specifies exactly 2 emails (AWS invoice and Twitter receipt), matching the hardcoded expected_subjects - coverage is complete",
+        "Getter logic correctly downloads all .eml files from Google Drive 'emails' folder (getters/googledrive.py:47-66)",
+        "Metric logic comprehensively verifies: (1) exact count match (line 116), (2) required MIME headers (lines 138-142), (3) subject extraction from .eml content (line 148), (4) filename matches subject with proper normalization (lines 156-174)",
+        "Expected parameter handling is correct: directly accesses expected_state.get('expected_subjects') without incorrectly accessing 'rules' or 'type' keys (lines 105-106)",
+        "Config pre-deletes Google Drive 'emails' folder (lines 9-21), ensuring any .eml files found must have been uploaded during task execution - provides indirect source verification",
+        "Subject extraction handles multi-line subjects properly (getters/googledrive.py:67-72), filename normalization handles special characters correctly",
+        "Minor limitation: Cannot directly verify files came from Bills folder specifically (vs other Thunderbird folders), but combined with pre-delete config and specific subject requirements, verification is adequate"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

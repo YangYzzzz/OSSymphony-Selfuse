@@ -1,0 +1,105 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_29",
+  "snapshot": "chrome",
+  "instruction": "Please turn off Chrome Sync to prevent my browsing data from being synchronized across devices.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_sync_disabled__97c301f6"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling Chrome Sync. Custom getter get_chrome_sync_disabled__97c301f6 checks Chrome Preferences for sync.requested, signin.allowed, and sync_disabled settings. Returns 'true' when sync is disabled.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/99146c54-4f37-4ab8-9327-5f3291665e1e_task_verify_7/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Custom getter verifies Chrome Sync is disabled by checking multiple sync-related flags in Preferences.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome Preferences file from appropriate OS-specific locations",
+        "Metric (exact_match with expected='true') appropriately verifies sync is disabled",
+        "Postconfig correctly restarts Chrome to ensure preferences are persisted to disk",
+        "Evaluator covers the main requirement: verifying Chrome Sync is turned off",
+        "Logic at chrome.py:51 has confusing boolean logic combining sync.requested and signin.allowed that may not cover all edge cases",
+        "Getter returns 'false' on exceptions (chrome.py:59) rather than failing evaluation, which could hide configuration/permission issues and cause false negatives",
+        "Despite logic complexity, the final return statement checks 'not signin.allowed' separately which should catch most sync-disabled states"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Simplify getter logic at chrome.py:51-56 to make sync detection clearer and more robust",
+        "Consider raising an exception or returning an error indicator instead of 'false' when file read fails, to distinguish between 'sync enabled' and 'cannot verify'",
+        "Add logging to indicate which specific flag(s) determined the sync status for debugging purposes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

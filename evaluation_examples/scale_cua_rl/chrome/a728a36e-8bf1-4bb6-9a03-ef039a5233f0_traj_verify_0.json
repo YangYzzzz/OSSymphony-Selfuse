@@ -1,0 +1,95 @@
+{
+  "id": "a728a36e-8bf1-4bb6-9a03-ef039a5233f0",
+  "new_id": "a728a36e-8bf1-4bb6-9a03-ef039a5233f0_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Find information about exchanging a foreign driver's license on the Virginia DMV website.",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.dmv.virginia.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "^https://(www\\.)?dmv\\.virginia\\.gov.*foreign"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_a728a36e-8bf1-4bb6-9a03-ef039a5233f0_sid_1488425",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Virginia DMV website from homepage through LICENSES & IDS menu to Driver's License section and found the eligibility requirements page in 10 turns.",
+    "capability_extraction": "Can navigate hierarchical menus on government websites, click through multi-level navigation, identify and click relevant links, scroll to read page content",
+    "task_rationale": "Same site navigation but targeting a different sub-page (Exchange a Foreign Driver's License) visible in the sidebar of the eligibility page. Tests the model's ability to find a related but different page under the same section.",
+    "explanation": "Task requires navigating to the foreign driver's license exchange page on Virginia DMV. The evaluator checks that the active URL contains 'foreign' under the dmv.virginia.gov domain. This page is linked from the Driver's License Application sidebar.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active Chrome tab URL from the accessibility tree, which is the right state to check for a navigation task.",
+        "Metric (is_expected_url_pattern_match) correctly receives the rules dict via get_rule and accesses rules['expected'] to get the regex pattern list. Parameter handling is correct.",
+        "Regex pattern '^https://(www\\.)?dmv\\.virginia\\.gov.*foreign' reasonably verifies the user navigated to a page about foreign driver's licenses on the Virginia DMV site.",
+        "Minor concern: goto_prefix 'https://www.' always prepends 'www.' to the address bar text. If Chrome displays 'www.' in the address bar, the URL would become 'https://www.www.dmv...' and fail to match. Modern Chrome typically strips 'www.' so this is unlikely but possible.",
+        "The regex checks for 'foreign' but not 'exchange'. This is acceptable since the foreign driver's license exchange page URL would naturally contain 'foreign', and other 'foreign'-containing pages on DMV are unlikely to be unrelated."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using goto_prefix 'https://' instead of 'https://www.' to avoid potential double-www issue, and rely on the regex's (www\\.)? group to handle both cases.",
+        "Optionally tighten the regex to also require 'exchange' in the URL path for more precise verification, e.g., '^https://(www\\.)?dmv\\.virginia\\.gov.*(foreign|exchange).*license'."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

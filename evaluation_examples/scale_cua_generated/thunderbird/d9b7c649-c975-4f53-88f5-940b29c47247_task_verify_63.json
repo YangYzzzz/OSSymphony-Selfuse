@@ -1,0 +1,115 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "task_verify_63",
+  "snapshot": "thunderbird",
+  "instruction": "Identify all unique sender email addresses from the most recent five emails in Thunderbird's daily folder. Create a single-column list of these unique addresses sorted alphabetically in LibreOffice Calc and save it as 'unique_senders.xlsx' on the Desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-the-first-1000-gmail-emails-from-the-current-month-in-a-new-google-sheets-report",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "bash",
+            "-c",
+            "wmctrl -a 'LibreOffice Calc' 2>/dev/null || wmctrl -a 'Calc' 2>/dev/null || wmctrl -a '.xlsx' 2>/dev/null; sleep 0.3; python3 -c 'import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\"); import time; time.sleep(1)'"
+          ]
+        }
+      }
+    ],
+    "func": "check_thunderbird_unique_senders__0399616e",
+    "result": {
+      "type": "thunderbird_unique_senders__0399616e",
+      "path": "/home/user/Desktop/unique_senders.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_senders": [
+          "enotices.daily.digest@hku.hk",
+          "mail.service@intranet.hku.hk"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting unique sender email addresses from 5 most recent emails. Verified: 2 unique senders (enotices.daily.digest@hku.hk, mail.service@intranet.hku.hk) sorted alphabetically. Evaluator checks Excel contains this sorted unique list AND verifies Thunderbird daily folder state (existence of folder, email count >= 5). Multi-level scoring: 1.0 for full verification, 0.5 if Thunderbird verified but count uncertain, 0.3 if only output correct (suspicious of manual creation).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_3/getters/thunderbird__0399616e.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_3/metrics/thunderbird__0399616e.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": {
+      "thunderbird_state_verification": "Getter verifies Thunderbird daily folder exists and contains >= 5 emails by checking mbox file structure",
+      "source_verification": "Metric uses graduated scoring to detect suspicious cases where output is correct but Thunderbird state cannot be verified",
+      "known_limitations": "Cannot verify exact 'most recent 5 emails' order or that user didn't manually create file, but provides strong evidence of proper process through state checks"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "POSITIVE: Getter includes Thunderbird state verification - checks if daily folder exists and contains >= 5 emails by reading mbox file structure. This significantly improves verification confidence.",
+        "POSITIVE: Graduated scoring system (0.3/0.5/1.0) helps distinguish between manual file creation vs. actual Thunderbird extraction.",
+        "POSITIVE: Correctly verifies Excel output (unique senders, sorted alphabetically, correct file format and location).",
+        "LIMITATION: Cannot verify 'most recent five emails' requirement - only checks that >= 5 emails exist, not that exactly the 5 most recent were processed.",
+        "LIMITATION: Cannot guarantee extraction process - user could still manually create Excel with correct addresses after seeing Thunderbird data, though graduated scoring mitigates this.",
+        "MINOR: Postconfig wmctrl patterns may fail if window titles don't match, but includes multiple fallback patterns."
+      ],
+      "llm_judge_fix_suggestions": [
+        "OPTIONAL: Could enhance verification by actually reading the 5 most recent emails from Thunderbird mbox file and comparing senders, but current approach is reasonably robust for practical purposes.",
+        "OPTIONAL: Could add timestamp verification between Thunderbird folder modification time and Excel creation time to detect manual creation."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "id": "ea98c5d7-3cf9-4f9b-8ad3-366b58e0fcae",
+  "new_id": "task_verify_50",
+  "snapshot": "vscode",
+  "instruction": "Disable ctrl+p for quick open file search in VS Code.",
+  "source": [
+    "https://code.visualstudio.com/docs/getstarted/keybindings"
+  ],
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_keybindings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "key": "ctrl+p",
+          "command": "-workbench.action.quickOpen"
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/keybindings.json",
+      "dest": "keybindings.json"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling Ctrl+P keybinding which is normally used for 'Quick Open' file search. The evaluator uses the existing check_json_keybindings function to verify the keybinding is disabled.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correct: vm_file fetches the correct VS Code keybindings.json configuration file from /home/user/.config/Code/User/keybindings.json (vscode.py:9-46, file.py:74-143)",
+        "Metric logic correct: check_json_keybindings properly handles expected parameter when type='rule' - framework calls get_rule() which returns config['rules'] (misc.py:88-92), then metric correctly accesses expected['expected'] to extract the keybinding dict (vscode.py:42)",
+        "Expected value semantically correct: {'key': 'ctrl+p', 'command': '-workbench.action.quickOpen'} uses VS Code's '-' prefix convention for disabling a keybinding, which is the standard VS Code method for keybinding removal",
+        "Complete coverage: Evaluator verifies the single requirement (disable ctrl+p keybinding) by checking for the exact entry in keybindings array (vscode.py:43-44)",
+        "State accessibility: keybindings.json persists on disk after VS Code writes changes, no UI state dependencies, no timing issues",
+        "Metric reads file robustly: Implements two JSON parsing strategies (direct_load_json at vscode.py:19-25 and skip_first_line_load_json at vscode.py:27-34) to handle VS Code's JSON-with-comments format",
+        "Data flow correct: vm_file getter (file.py:74-143) fetches file from VM and caches locally → returns cache path → metric receives path as 'actual' parameter → metric loads JSON via helper functions (vscode.py:36-40) → checks if expected dict exists in array",
+        "Static validator warnings are false positives: Metric DOES read and consume the vm_file path through JSON loading helper functions (direct_load_json, skip_first_line_load_json at vscode.py:19-34), not direct file operations. The static analyzer cannot detect indirect file usage through helper functions.",
+        "Postconfig appropriate: postconfig activates VS Code window to ensure proper UI state, though not strictly required since keybindings.json persists regardless of window state"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_70",
+  "snapshot": "chrome",
+  "instruction": "Import the helloExtension folder from the Desktop into Chrome extensions in developer mode.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 9: Uses 'import' verb and explicitly mentions 'developer mode'. Evaluator verifies the extension at /home/user/Desktop/helloExtension is loaded. Task requires opening chrome://extensions/, enabling Developer mode toggle, and using Load unpacked to import the extension folder.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic can semantically and correctly verify the instruction",
+        "Getter 'get_find_unpacked_extension_path' (chrome.py:1401-1436) correctly reads Chrome Preferences file and extracts all unpacked extension paths from extensions.settings[*].path",
+        "Metric 'is_in_list' (general.py:76-81) correctly checks if expected path '/home/user/Desktop/helloExtension' exists in the result list",
+        "Complete coverage: evaluator verifies the core requirement - that the extension folder was imported into Chrome by checking if its path appears in Chrome's Preferences file",
+        "Data flow is correct: getter extracts list of all extension paths -> metric checks if expected path is in list -> expected value is the correct installation path",
+        "Practical feasibility: getter can access Chrome Preferences file which persists after task completion, no runtime issues expected",
+        "No postconfig needed: verification reads from persistent Chrome Preferences file (file-based state), not from UI state",
+        "Static validation warning about 'UI/state-dependent task may need postconfig' is a false positive - while the task involves UI interaction (chrome://extensions page), the verification reads from a persistent file, not UI state"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "false_positive_warnings_suppressed": [
+        "UI/state-dependent task may need postconfig (heuristic) - False positive: verification reads from persistent Chrome Preferences file, not UI state. LLM judge confirmed no postconfig needed."
+      ]
+    }
+  }
+}

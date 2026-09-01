@@ -1,0 +1,109 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_23",
+  "snapshot": "os",
+  "instruction": "Remove all regular files with .txt extension under current directory tree",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_files_deleted__0a07f87a",
+    "result": {
+      "type": "vm_command_line",
+      "command": "find testDir -type f -name '*.txt'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "should_be_empty": true
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires removing all .txt files in testDir. Since all files (file1.txt, file2.txt, file3.txt) have .txt extension, they should all be deleted. Evaluator checks that find returns no results.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_6/metrics/os.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical path mismatch: Setup config ends with 'cd testDir', making testDir the current working directory. However, the evaluator command uses 'find testDir -type f -name \"*.txt\"' which would search for a subdirectory named 'testDir' within the current directory (testDir/testDir), not the current directory itself.",
+        "The instruction says 'under current directory tree' which should be verified relative to the working directory established by setup (testDir), but the evaluator searches for a path 'testDir' which won't exist from within testDir.",
+        "Metric logic is correct: check_files_deleted__0a07f87a properly returns 1.0 for empty result (files deleted) and 0.0 otherwise.",
+        "Expected value is semantically correct: should_be_empty=true matches the requirement that all .txt files should be removed."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change evaluator command from 'find testDir -type f -name \"*.txt\"' to 'find . -type f -name \"*.txt\"' to search the current directory (which is testDir after setup).",
+        "Alternatively, if the command should run from the parent directory, add a postconfig step to 'cd ..' before running the find command, or use an absolute path in the find command."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

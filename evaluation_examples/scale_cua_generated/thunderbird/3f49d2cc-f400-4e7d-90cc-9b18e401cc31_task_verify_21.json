@@ -1,0 +1,120 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "task_verify_21",
+  "snapshot": "thunderbird",
+  "instruction": "The menu bar in Thunderbird is taking up valuable screen space. Can you help me configure it to auto-hide so it only appears when I press the Alt key?",
+  "source": "https://www.reddit.com/r/Thunderbird/comments/182dg5p/unified_inbox_howto/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/xulstore.json",
+      "dest": "xulstore.json"
+    },
+    "func": "check_json",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "chrome://messenger/content/messenger.xhtml",
+              "toolbar-menubar",
+              "autohide"
+            ],
+            "method": "eq",
+            "ref": "true"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling auto-hide for the menu bar in Thunderbird. The evaluator checks xulstore.json for toolbar-menubar.autohide set to 'true'. Verified that this setting exists in the sample xulstore.json. Similar complexity to original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified xulstore.json contains 'toolbar-menubar' with 'autohide' attribute. The setting already exists in the profile and can be toggled through UI.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks Thunderbird's persistent configuration file (xulstore.json) where UI preferences are stored",
+        "JSON key path ['chrome://messenger/content/messenger.xhtml', 'toolbar-menubar', 'autohide'] correctly targets the menu bar auto-hide setting",
+        "Expected value 'true' (as string) is semantically correct for enabling auto-hide functionality",
+        "Postconfig appropriately closes Thunderbird before file read, ensuring xulstore.json is flushed to disk (file is only written on app close)",
+        "The check_json metric function has robust error handling and correctly navigates nested JSON keys",
+        "Complete coverage: instruction has one requirement (enable auto-hide) and evaluator verifies exactly that requirement",
+        "Profile directory path matches the pre-configured profile from config setup, ensuring path stability"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "id": "df67aebb-fb3a-44fd-b75b-51b6012df509",
+  "new_id": "task_verify_2",
+  "snapshot": "vscode",
+  "instruction": "Use DBLP to obtain bibtex entries for all references in the thesis (excluding arxiv when possible), and store them in 'references.bib', making sure to cover Spider, SParC, CoSQL, Transformer, BERT, and GPT-3.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://dblp.org/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "touch",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/df67aebb-fb3a-44fd-b75b-51b6012df509/references.docx",
+            "path": "/home/user/Desktop/references.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/references.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_bibtex_titles__22ec293d30359609bd92049c80c6d096",
+    "result": {
+      "type": "bibtex_titles__22ec293d30359609bd92049c80c6d096",
+      "path": "/home/user/Desktop/references.bib"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "required_keywords": [
+          "spider: a large-scale",
+          "sparc:",
+          "cosql:",
+          "attention is all you need",
+          "bert: pre-training",
+          "language models are few-shot"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding BibTeX entries on DBLP (avoiding arXiv when possible) for the 6 papers from references.docx. The evaluator extracts all title fields and entry metadata from the BibTeX file and checks for: (1) Keywords from each paper: 'spider: a large-scale', 'sparc:', 'cosql:', 'attention is all you need', 'bert: pre-training', and 'language models are few-shot' (2) Required fields: author, year, and venue (booktitle/journal) for each entry (3) Source preference: DBLP URLs are preferred over arXiv URLs/eprint fields per the instruction. Score: 70% keyword matching + 20% entry completeness + 10% DBLP preference. Verification: Comprehensive check of title presence, entry completeness, and adherence to DBLP preference requirement.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_2/getters/bibtex.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_2/metrics/bibtex.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 12,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "CORRECT - Getter properly extracts titles with nested brace handling (lines 108-124) and detects DBLP/arXiv sources (lines 66-75).",
+        "CORRECT - Metric checks all three requirements: (1) keyword matching for 6 papers (lines 29-43), (2) entry completeness with author/year/venue fields (lines 51-59), (3) DBLP vs arXiv source preference (lines 61-72).",
+        "CORRECT - Keywords are specific and minimize false positive risk: 'spider: a large-scale', 'attention is all you need', 'bert: pre-training', 'language models are few-shot'.",
+        "CORRECT - Metric handles expected parameter correctly for type='rule' (line 15: expected.get('required_keywords')).",
+        "MINOR ISSUE - DBLP preference enforcement is weak: only 10% weight in final score (line 76), so penalty for all-arXiv entries is only ~3%. Instruction says 'avoiding arxiv when possible' which semantically should carry more weight.",
+        "MINOR ISSUE - Small false positive risk remains: 'sparc:' could match SPARC architecture papers (low probability), and no author-based verification to confirm correct papers.",
+        "ACCEPTABLE - Evaluator checks for 6 specific required papers but doesn't verify that ONLY those papers are included (could have extra entries). This is acceptable given the instruction's focus on 'include entries for all the key papers'."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing DBLP preference weight from 10% to 20-30% to better reflect the instruction's emphasis on 'avoiding arxiv when possible'.",
+        "For higher precision, add author name verification to confirm keyword-matched entries are actually the correct papers (e.g., 'bert: pre-training' + author contains 'devlin').",
+        "Consider stricter enforcement: reduce score more significantly if only arXiv sources are found (currently 0.7 factor on 10% = 3% penalty)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "df67aebb-fb3a-44fd-b75b-51b6012df509_aug_19_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

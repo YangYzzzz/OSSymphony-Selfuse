@@ -1,0 +1,108 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_70",
+  "snapshot": "chrome",
+  "instruction": "In the spreadsheet, find the value stored in cell B20 and copy it. Then search for that value in Google Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=loreta(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B20 value 'Loreta' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'loreta' (case-insensitive). Verified by reading complete Excel file: B20 contains 'Loreta' at row 19, column 1 (0-indexed). No postconfig needed: Chrome tab state persists after task completion and can be verified directly via active_tab_info getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "postconfig_not_needed_reason": "Chrome browser state (active tab URL) persists after task completion. The active_tab_info getter can directly read the final Chrome state without needing to reopen any UI. The evaluator verification is state-based, not action-based. Empty postconfig array added to suppress heuristic warning.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Metric function correctly handles expected parameter for type='rule' - directly accesses rules['expect']['pattern'] without incorrect expected.get('rules') pattern (chrome.py:247-256)",
+        "Getter (active_tab_info) successfully extracts the active Chrome tab URL including full URL with query parameters (chrome.py:803-890)",
+        "Metric logic is correct: uses re.search() to match regex pattern against active_tab_info['url'], returns 1.0 if match, 0.0 otherwise (chrome.py:247-256)",
+        "Regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=loreta(?:&|$|#).*' correctly matches Google search URLs with query parameter q=loreta (case-insensitive via (?i) flag)",
+        "Expected value 'loreta' is semantically correct - metadata confirms B20 contains 'Loreta', and regex is case-insensitive so matches both 'Loreta' and 'loreta'",
+        "Evaluator successfully verifies the observable end result: a Google search for 'loreta' was performed in Chrome and is visible in the active tab",
+        "No postconfig needed - active_tab_info getter reads current Chrome state which persists after task completion (no dialog/UI to reopen)",
+        "Data flow is correct: active_tab_info returns dict with 'url' key -> metric extracts url and matches against regex pattern -> returns score",
+        "COVERAGE NOTE: Evaluator uses outcome-based verification (checks final search result) rather than process-based verification (checking intermediate steps like spreadsheet opening, cell selection, clipboard state). This is a pragmatic design choice - intermediate states are ephemeral and difficult to verify without invasive monitoring.",
+        "The outcome-based approach is appropriate for this task type - it verifies what matters most (correct search was performed with correct value) while acknowledging practical limitations in verifying transient intermediate states"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Current evaluator design is sound and pragmatic - it successfully verifies the observable end result (Google search for correct value 'loreta'), which is the most important requirement",
+        "The outcome-based verification approach is appropriate for this multi-step task where intermediate states (file access, cell selection, clipboard content) are ephemeral and difficult to verify without invasive monitoring or complex state tracking",
+        "No changes needed - the evaluator correctly balances verification rigor with practical constraints"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

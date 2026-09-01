@@ -1,0 +1,141 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "I want to review recent cinema I've watched. Create a new sheet called 'recent_films' in the opened Excel workbook containing all movies from 2020 to 2023. Use the same headers and organize them by ratings from highest to lowest.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_content__e89c2962",
+    "result": {
+      "type": "xlsx_sheet_data__e89c2962",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "dest": "movies.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet_name": "recent_films",
+        "expected_count": 8,
+        "year_min": 2020,
+        "year_max": 2023,
+        "rating_min": 8.2
+      }
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "metadata": {
+    "explanation": "Verified with Python: 8 movies from 2020-2023 sorted by rating descending. Top rated: 12th Fail (9.1), Jai Bhim (8.7), Spider-Man: Across the Spider-Verse (8.6)",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.0": "Sheet does not exist",
+      "0.2": "Sheet exists but headers incorrect",
+      "0.4": "Sheet and headers correct, count correct",
+      "0.7": "All data valid (correct years and ratings)",
+      "1.0": "Perfect - all valid and sorted correctly by rating descending"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks sheet name 'recent_films' existence",
+        "Headers verification logic is correct but uses case-sensitive exact match ['title', 'release year', 'ratings', 'description'] which may fail if original file has different casing",
+        "Year range verification (2020-2023) correctly implemented",
+        "Rating descending sort verification correctly implemented",
+        "Row count check (expected_count=8) matches metadata explanation",
+        "Postconfig includes Ctrl+S to save file before verification - ensures file state is persisted",
+        "Scoring breakdown aligns well with verification logic (0.0->0.2->0.4->0.7->1.0)",
+        "Rating threshold filter (rating >= 8.2) not explicitly mentioned in instruction but appears to be based on actual data analysis (metadata confirms 8 movies with ratings 8.2+)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider case-insensitive header comparison or normalize headers to lowercase before comparison to handle variations in header casing from the source file",
+        "Add error handling for missing or malformed year/rating values (e.g., non-numeric values) to provide more robust verification",
+        "Verify that rating_min=8.2 threshold is intentional - instruction says 'all movies from 2020 to 2023' but evaluator filters by rating >= 8.2. If this is based on actual data (only 8 movies exist in this range), consider documenting this constraint more explicitly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

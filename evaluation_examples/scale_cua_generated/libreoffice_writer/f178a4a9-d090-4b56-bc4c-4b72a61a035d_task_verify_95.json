@@ -1,0 +1,108 @@
+{
+  "id": "f178a4a9-d090-4b56-bc4c-4b72a61a035d",
+  "new_id": "task_verify_95",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Set dark blue as the default text color for all new documents in LibreOffice Writer",
+  "source": "https://ask.libreoffice.org/t/how-do-i-make-times-new-roman-the-default-font-in-lo/64604",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/f178a4a9-d090-4b56-bc4c-4b72a61a035d/loa-one-time-submission-sealand.docx",
+            "path": "/home/user/Desktop/loa-one-time-submission-sealand.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/loa-one-time-submission-sealand.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "active_setting",
+        "parameters": {
+          "setting": [
+            "libreoffice_writer"
+          ],
+          "value": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "active_setting",
+        "parameters": {
+          "setting": [
+            "libreoffice_writer"
+          ],
+          "value": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_default_text_color__ea408cb7",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "color_value": "128"
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/libreoffice/4/user/registrymodifications.xcu",
+      "dest": "registrymodifications.xcu"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing the default text color for LibreOffice Writer to dark blue (color value 128 represents dark blue in LibreOffice). The evaluator checks the LibreOffice configuration file to verify the StandardColor setting under DefaultFont. Similar difficulty to original task.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f178a4a9-d090-4b56-bc4c-4b72a61a035d_1_task_verify_5/metrics/check_default_text_color__ea408cb7.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.55,
+      "llm_judge_reasons": [
+        "CRITICAL ISSUE - Color value semantic correctness cannot be verified: Expected value '128' for 'dark blue' is unverifiable without LibreOffice documentation or empirical testing. LibreOffice color values can be RGB integers (0-16777215), color indices, or other formats. Value '128' could represent: red=128 (purple-ish), blue=128 (dark blue only if it's the blue channel), gray=128 (mid-gray), or a color palette index. Without proof that '128' represents dark blue in LibreOffice's StandardColor system, this evaluator may incorrectly pass/fail tasks.",
+        "Missing verification that settings apply to new documents: Evaluator checks StandardColor setting but doesn't verify this actually affects new documents. Should ideally verify by creating a new document and checking actual text color, not just reading config file.",
+        "Postconfig doesn't ensure settings persistence: Opening and closing settings dialog doesn't guarantee that (a) LibreOffice has written settings to disk, (b) agent actually made the required changes, or (c) filesystem has synced. Better approach: close LibreOffice completely, add filesystem sync delay, or verify by creating new document.",
+        "POSITIVE - Metric logic structurally correct: Properly parses LibreOffice XML config file (check_default_text_color__ea408cb7.py:41) and extracts StandardColor value from correct XML path (/org.openoffice.Office.Writer/DefaultFont)",
+        "POSITIVE - Correct expected parameter handling: Directly accesses expected['color_value'] (line 25) which is correct for type='rule' (framework's get_rule returns config['rules'] directly)",
+        "POSITIVE - vm_file consumption is correct: Static validator warnings are false positives. Metric correctly uses file path at lines 33-35 (os.path.exists check) and line 41 (ET.parse(config_file_path))",
+        "POSITIVE - Good error handling: Handles FileNotFoundError (line 62), XML ParseError (line 65), missing StandardColor (line 53-55), and unexpected errors (line 68)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "CRITICAL FIX - Verify color value '128' empirically: Before using this task, manually set dark blue as default text color in LibreOffice Writer, then read registrymodifications.xcu to confirm what value is actually stored. If '128' is incorrect, update expected.rules.color_value to the correct value. Alternatively, provide LibreOffice documentation proving '128' = dark blue.",
+        "RECOMMENDED - Add functional verification: Instead of only checking config file, postconfig should: (1) close existing document, (2) create new document via LibreOffice API or keyboard shortcut (Ctrl+N), (3) extract actual default text color from new document, (4) compare that color to 'dark blue'. This verifies the instruction's actual requirement ('default text color for all new documents').",
+        "RECOMMENDED - Improve postconfig for settings persistence: Add steps to ensure settings are saved: (1) close LibreOffice completely (pkill soffice.bin or similar), (2) add sleep(3) to allow filesystem sync, (3) then read config file. Current approach (opening/closing settings dialog) doesn't guarantee disk writes.",
+        "Optional - Better color comparison: If keeping config-based approach, consider checking that StandardColor is in a valid 'dark blue' range (e.g., RGB where blue channel > 150 and red/green channels < 100) rather than exact match, to be more robust to LibreOffice version differences."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

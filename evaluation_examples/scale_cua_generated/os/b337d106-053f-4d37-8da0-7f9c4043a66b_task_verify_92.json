@@ -1,0 +1,116 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "task_verify_92",
+  "snapshot": "os",
+  "instruction": "I want to enable search result highlighting in Vim so I can easily see all matches. Please search the web for how to enable search highlighting in Vim and set it as the default configuration for my local Vim.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b337d106-053f-4d37-8da0-7f9c4043a66b/eval.sh",
+              "path": "eval_hlsearch__90408808.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > eval_hlsearch__90408808.sh << 'EOF'\n#!/bin/bash\nif grep -q \"set hlsearch\" ~/.vimrc 2>/dev/null || grep -q \"set hls\" ~/.vimrc 2>/dev/null; then\n    echo \"Search Highlighting Enabled!\"\nelse\n    echo \"Search highlighting not configured\"\nfi\nEOF\nchmod +x eval_hlsearch__90408808.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_hlsearch__90408808.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Search Highlighting Enabled!"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires searching for how to enable search highlighting in Vim and adding 'set hlsearch' (or abbreviated 'set hls') to ~/.vimrc. Evaluator checks if either command is present. Similar complexity to original (search tutorial, configure vim search feature).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if hlsearch is enabled in .vimrc, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the core requirement: search highlighting configuration in ~/.vimrc",
+        "Bash script correctly uses grep to check for both 'set hlsearch' and 'set hls' (full and abbreviated forms)",
+        "Data flow is correct: postconfig creates eval script -> vm_command_line executes it -> check_include_exclude validates output",
+        "Binary scoring (1.0/0.0) matches the instruction's boolean requirement",
+        "Appropriate choice of getter (vm_command_line) and metric (check_include_exclude) for shell-based verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Could add case-insensitive grep (-i flag) to handle 'Set hlsearch' variants, though Vim config is typically case-sensitive",
+        "Minor: Could check alternative config locations (~/.vim/vimrc) though ~/.vimrc is the standard location for Ubuntu"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

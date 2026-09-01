@@ -1,0 +1,106 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "task_verify_8",
+  "snapshot": "chrome",
+  "instruction": "Find flights from San Francisco to Boston on 5th next month and only show those that can be purchased with miles.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time",
+        "mach-global-tabs-small__wrapper__tab--active": "category"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "relativeTime": {
+        "from": "5th next month"
+      },
+      "rules": {
+        "start": "SFO",
+        "end": "BOS",
+        "time": "{DoW}, {Month} {Day0D}, {Year}",
+        "category": "Miles"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "This variation changes the flight route from Seattle-NYC to San Francisco-Boston while maintaining identical task structure and complexity. The evaluator uses existing functions (get_active_tab_html_parse and check_direct_json_object) to verify: 1) the date is set to 5th of next month, 2) departure is SFO and destination is BOS, 3) the Miles filter is active. No custom functions needed as we reuse the original evaluator pattern with different airport codes.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "city_route": "San Francisco (SFO) to Boston (BOS)",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator configuration is semantically correct and can verify all instruction requirements.",
+        "Complete coverage: All three requirements are checked: (1) route SFO to BOS via 'start' and 'end' keys, (2) date 5th next month via 'time' with relativeTime conversion, (3) Miles filter via 'category' key.",
+        "Getter logic is correct: get_active_tab_html_parse extracts flight search parameters from Delta's UI using appropriate class-based selectors (mach-flight-context-info__wrapper--date for date, mach-global-tabs-small__wrapper__tab--active for filter category, mach-flight-context-info__wrapper__info--separator for origin/destination).",
+        "Metric logic is correct: check_direct_json_object performs direct key-value comparison between extracted data and expected values.",
+        "Relative time handling is correct: The framework will process relativeTime through get_rule_relativeTime (misc.py:93-338) which correctly converts '5th next month' to absolute date in format '{DoW}, {Month} {Day0D}, {Year}' (e.g., 'Fri, Jan 05, 2026').",
+        "Data flow is semantically sound: Getter extracts {time, start, end, category} -> relativeTime converts to absolute date -> metric compares all fields against expected values.",
+        "Expected values are semantically correct: start='SFO', end='BOS', category='Miles' match the instruction requirements.",
+        "Framework integration is correct: result.type='active_tab_html_parse' calls the getter, expected.type='rule' with relativeTime triggers relative time conversion, evaluator.func='check_direct_json_object' performs the comparison."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

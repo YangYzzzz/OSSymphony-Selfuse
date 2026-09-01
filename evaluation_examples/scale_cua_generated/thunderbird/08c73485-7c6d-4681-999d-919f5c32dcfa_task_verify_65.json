@@ -1,0 +1,116 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_65",
+  "snapshot": "thunderbird",
+  "instruction": "I want to enable the use of STATUS command for new mail notifications instead of examining folders. Could you help me configure Thunderbird to use IMAP STATUS for checking new mail?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.imap.use_status_for_biff": {
+            "method": "eq",
+            "ref": true
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling IMAP STATUS command for new mail notifications. Original task sets mail.imap.use_status_for_biff to false, this variation requires setting it to true.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Based on original task - mail.imap.use_status_for_biff is set to false in original expected rules, task here requires changing it to true",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly targets the mail.imap.use_status_for_biff preference, which is the accurate Thunderbird setting for enabling IMAP STATUS command for new mail notifications",
+        "Expected value of 'true' semantically matches the instruction requirement to 'enable' the feature",
+        "Getter (get_vm_file) can successfully retrieve the prefs.js file from the VM filesystem at the specified path",
+        "Metric (check_thunderbird_prefs) correctly parses prefs.js format using regex and JSON, then compares the preference value appropriately",
+        "Postconfig properly closes Thunderbird before verification, ensuring preferences are flushed to disk",
+        "Complete coverage: instruction has one requirement (enable IMAP STATUS) and evaluator checks exactly that one setting",
+        "Data flow is correct: file extraction -> preference parsing -> boolean comparison matches the verification needs"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

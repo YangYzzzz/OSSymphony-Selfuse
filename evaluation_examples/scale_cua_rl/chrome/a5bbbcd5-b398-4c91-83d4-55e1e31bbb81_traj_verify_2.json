@@ -1,0 +1,88 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Disable the VLC option that restricts it to one instance when files are opened from the file manager.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 0
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_sid_1488184",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated VLC > Tools > Preferences > Interface, checked 'Start in minimal view mode', saved preferences, and restarted VLC to verify persistence.",
+    "capability_extraction": "Can launch VLC, navigate to Tools > Preferences, find and toggle checkbox settings in Interface tab, save preferences",
+    "task_rationale": "Related variation targeting a different checkbox in the same VLC Preferences > Interface panel. The 'Use only one instance when started from file manager' option is visible in the same Simple Preferences view the agent already navigated, making it achievable with demonstrated capabilities.",
+    "explanation": "Task requires unchecking 'Use only one instance when started from file manager' in VLC Preferences > Interface > Playlist and Instances. Evaluator reads vlcrc config and checks that one-instance-when-started-from-file=0. Default is 1 (enabled), so agent must uncheck this option and save.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'vlc_config' correctly reads the vlcrc configuration file from the VM, which is the right source for this setting.",
+        "Metric 'check_one_instance_when_started_from_file' checks the correct config key 'one-instance-when-started-from-file' and compares against expected value 0 (disabled).",
+        "Expected value 0 correctly corresponds to 'Disable' in the instruction. Default value 1 (enabled) is correct.",
+        "Int-to-string conversion is properly handled in the metric function.",
+        "Postconfig kills and relaunches VLC to ensure the config file is written to disk before reading, addressing state freshness.",
+        "Complete coverage: the instruction has a single requirement (disable the one-instance option) and the evaluator fully verifies it."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

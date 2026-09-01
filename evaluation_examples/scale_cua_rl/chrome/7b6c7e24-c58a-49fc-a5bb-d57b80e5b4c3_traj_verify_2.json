@@ -1,0 +1,112 @@
+{
+  "id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3",
+  "new_id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Remove all cookies stored by doubleclick.net to stop ad tracking from Amazon pages.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.amazon.com",
+          "https://www.amazon.com/s?k=huggingface+transformers+book"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_cookie_deleted",
+    "result": {
+      "type": "cookie_data",
+      "dest": "Cookies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "domains",
+        "domains": [
+          ".doubleclick.net"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3_sid_1488188",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Chrome settings to clear Amazon browsing data, cookies, and site data. Also enabled Do Not Track, blocked third-party cookies, and verified Amazon data was removed.",
+    "capability_extraction": "Can navigate Chrome settings menus, toggle privacy settings, clear browsing data, manage site-specific cookies, use Chrome's privacy and security panel",
+    "task_rationale": "Agent demonstrated ability to delete site-specific cookies in the trajectory. This variation targets doubleclick.net (an ad tracking domain visible in the trajectory's All Sites page) instead of Amazon, testing the model's ability to identify and remove third-party tracking cookies.",
+    "explanation": "Task requires deleting doubleclick.net cookies from Chrome. The config opens Amazon tabs which loads doubleclick.net tracking cookies (visible in trajectory screenshot 15). Evaluator uses official cookie_data getter and is_cookie_deleted metric to verify doubleclick.net cookies are removed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "scoring_breakdown": {
+      "cookies_deleted": "1.0 - No doubleclick.net cookies remain in Chrome"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter cookie_data correctly reads Chrome's Cookies SQLite DB and returns all cookie rows; cookie[1] corresponds to host_key column which contains the domain.",
+        "Metric is_cookie_deleted correctly checks if any cookie domain matches .doubleclick.net using compare_urls, returning 1.0 only when no matching cookies remain.",
+        "Expected parameter handling is correct: type='rule' causes get_rule to return {type: 'domains', domains: ['.doubleclick.net']} directly to the metric, and the metric accesses rule['type'] and rule['domains'] correctly.",
+        "Postconfig properly kills Chrome and relaunches it with a 3-second sleep to ensure the Cookies DB is not locked during getter read.",
+        "Config opens Amazon pages which would load doubleclick.net tracking cookies, establishing the precondition for the task.",
+        "Complete instruction coverage: the single requirement (remove doubleclick.net cookies) is fully verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: compare_urls is designed for URL comparison and may not be optimal for bare domain matching (e.g., '.doubleclick.net'), though this is the established pattern in the official codebase and works in practice."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

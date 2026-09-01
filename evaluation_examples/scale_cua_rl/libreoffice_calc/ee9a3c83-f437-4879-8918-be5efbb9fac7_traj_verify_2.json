@@ -1,0 +1,107 @@
+{
+  "id": "ee9a3c83-f437-4879-8918-be5efbb9fac7",
+  "new_id": "ee9a3c83-f437-4879-8918-be5efbb9fac7_traj_verify_2",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Using the command line, convert the opened ods file on the desktop to csv and save the output in /home/user/Documents/ while LibreOffice is running.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/ee9a3c83-f437-4879-8918-be5efbb9fac7/file_example_ODS_5000.ods",
+            "path": "/home/user/Desktop/file_example_ODS_5000.ods"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/file_example_ODS_5000.ods"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_csv_in_documents__a95ba08342a252657d47056ba988912e",
+    "result": {
+      "type": "csv_in_documents__a95ba08342a252657d47056ba988912e",
+      "path": "/home/user/Documents/file_example_ODS_5000.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_min_lines": 5000
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_ee9a3c83-f437-4879-8918-be5efbb9fac7_sid_1488119",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully converted ODS to CSV using command line with libreoffice --headless --accept flag to handle the running instance. Used --outdir to specify output directory.",
+    "capability_extraction": "Can use terminal commands, handle LibreOffice running instance conflicts, use --outdir flag to control output location, file format conversion",
+    "task_rationale": "Same CSV conversion task but with a different output directory, testing whether agent can correctly use --outdir to place the output in Documents instead of Desktop",
+    "explanation": "Evaluator checks: (1) bash history contains a libreoffice/soffice --convert-to csv command (0.5 credit), (2) CSV file exists at /home/user/Documents/ with valid header and 5000+ lines (0.5 credit)",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_ee9a3c83-f437-4879-8918-be5efbb9fac7_sid_1488119_traj_verify_2/getters/csv_documents.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_ee9a3c83-f437-4879-8918-be5efbb9fac7_sid_1488119_traj_verify_2/metrics/csv_documents.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "terminal_usage": "0.5 - Used libreoffice/soffice --convert-to csv via terminal",
+      "file_output": "0.5 - Valid CSV file with 5000+ lines at /home/user/Documents/"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly checks bash history for libreoffice/soffice --convert-to csv command, verifying command-line usage requirement",
+        "Getter correctly reads the CSV file at /home/user/Documents/file_example_ODS_5000.csv, verifying correct output location",
+        "Getter validates file content by checking line count and header columns (First Name, Last Name), ensuring meaningful CSV conversion",
+        "Metric correctly accesses expected parameter directly (expected.get('expected_min_lines', 5000)) consistent with type='rule' framework behavior",
+        "Scoring breakdown (0.5 terminal + 0.5 file output) provides reasonable partial credit for multi-aspect verification",
+        "Minor concern: bash history may not be reliably flushed after killall gnome-terminal-server in postconfig, as SIGTERM may not guarantee bash writes history to disk before exit",
+        "Postconfig appropriately kills gnome-terminal-server to clean up before evaluation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a small sleep or explicit history flush (e.g., 'bash -c \"history -a\"') in postconfig before reading bash_history, or use an alternative method like checking /proc or ps output for the conversion command",
+        "Consider also checking the output directory path in bash_history grep pattern (e.g., --outdir.*Documents) to more strongly verify the agent used the correct output location via command line"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

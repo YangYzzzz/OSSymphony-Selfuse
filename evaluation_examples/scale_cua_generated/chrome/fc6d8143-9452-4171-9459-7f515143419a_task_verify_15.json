@@ -1,0 +1,106 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "task_verify_15",
+  "snapshot": "chrome",
+  "instruction": "Locate tomorrow's flights from Seattle-Tacoma International to Denver International.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relativeTime": {
+          "from": "tomorrow"
+        },
+        "expected": {
+          "start": "SEA",
+          "end": "DEN",
+          "time": "{DoW}, {Month} {Day0D}, {Year}"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation uses same Delta.com website with different airport pair (SEA to DEN) for tomorrow. Reuses existing getter 'get_active_tab_html_parse' and metric 'check_direct_json_object' which parse Delta's flight search results HTML. Airport codes SEA and DEN are standard IATA codes. Task complexity remains identical to original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "similarity_to_original": "very_high",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator has complete coverage: verifies start airport (SEA), end airport (DEN), and date (tomorrow)",
+        "Getter logic correctly extracts flight search data from Delta.com HTML using class-based selectors for date and airport codes",
+        "Metric comparison logic is sound: check_direct_json_object compares extracted JSON with expected values",
+        "Expected values are semantically correct: SEA and DEN are valid IATA airport codes, relativeTime calculation for 'tomorrow' is implemented correctly in get_rule_relativeTime",
+        "Data flow is correct: getter extracts {start, end, time} -> metric compares with expected {start: SEA, end: DEN, time: formatted_tomorrow_date}",
+        "The rule validator error appears to be a false positive - the actual JSON shows expected.type is correctly set to 'rule' (line 63)"
+      ],
+      "llm_judge_fix_suggestions": []
+    },
+    "augmented_from": "fc6d8143-9452-4171-9459-7f515143419a_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

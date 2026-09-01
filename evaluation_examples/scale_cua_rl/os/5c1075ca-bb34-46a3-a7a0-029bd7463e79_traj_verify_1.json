@@ -1,0 +1,110 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Delete all .ipynb files that do NOT contain 'failed' in their filename from the current directory tree.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "find /home/user/test_environment -name '*.ipynb' -type f | sort",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "a_failed.ipynb",
+          "c_failed.ipynb",
+          "e_failed.ipynb"
+        ],
+        "exclude": [
+          "b.ipynb",
+          "d.ipynb"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_5c1075ca-bb34-46a3-a7a0-029bd7463e79_sid_1488142",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened a new terminal instead of using the pre-configured one, ran from /home/user instead of /home/user/test_environment. Used find+cp and rsync to copy *failed.ipynb files but with wrong working directory.",
+    "capability_extraction": "Can open terminal, use find, mkdir, cp, rsync commands. Understands file pattern matching and can navigate filesystem.",
+    "failure_analysis": "Model opened a new terminal and worked from /home/user instead of the configured /home/user/test_environment. Files ended up with wrong hierarchy.",
+    "task_rationale": "Simplified to deleting non-matching files instead of copying with hierarchy preservation. Tests find + delete within model's demonstrated capability.",
+    "explanation": "Task requires deleting .ipynb files that don't contain 'failed' in name (b.ipynb and d.ipynb). Evaluator checks that only *failed.ipynb files remain and b.ipynb/d.ipynb are gone.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'find' to list all remaining .ipynb files in the target directory tree, capturing the post-task filesystem state.",
+        "Metric 'check_include_exclude' correctly receives the rules dict via get_rule and uses substring matching (r in result) which works with full paths from find output.",
+        "Include list ['a_failed.ipynb', 'c_failed.ipynb', 'e_failed.ipynb'] correctly verifies that files containing 'failed' still exist after the deletion.",
+        "Exclude list ['b.ipynb', 'd.ipynb'] correctly verifies that files NOT containing 'failed' have been deleted.",
+        "Full coverage: the evaluator checks both that the correct files remain AND that the incorrect files are removed, fully verifying the instruction."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

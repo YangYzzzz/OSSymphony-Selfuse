@@ -1,0 +1,140 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_40",
+  "snapshot": "thunderbird",
+  "instruction": "Review the tuition payment spreadsheet, locate students with outstanding payments, and add their email addresses to the recipient field of the payment reminder email.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"fox@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"iron@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"nancy@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"stella@someuniversity.edu\"]"
+          ]
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "explanation": "Paraphrased version of the original task. Verified that unpaid students are Fox, Iron, Nancy, and Stella (4 students with Payment='No' in the tuition.xlsx file). The evaluator uses check_accessibility_tree to verify all 4 email addresses are in the To field.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses check_accessibility_tree to verify Thunderbird compose window state",
+        "Complete coverage: All 4 required email addresses (fox@, iron@, nancy@, stella@) are checked",
+        "Proper CSS selectors: Targets MsgHeadersToolbar -> To field -> address-pill labels with correct email substrings",
+        "Expected values are semantically correct: Metadata confirms these 4 students have Payment='No' in tuition.xlsx",
+        "Data flow is correct: Getter extracts accessibility tree -> Metric parses XML and applies CSS selectors -> Returns 1.0 if all 4 emails found",
+        "Postconfig appropriately includes 10-second sleep for UI to settle",
+        "Verification is practical: The end result (correct emails in To field) proves the task was completed correctly, even though intermediate steps (review spreadsheet, locate students) cannot be directly verified"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: CSS selector uses name*='email' (substring match) which could theoretically match 'foxes@someuniversity.edu' or 'redfox@someuniversity.edu', but this is unlikely given the specific email patterns and controlled test environment. Consider using more precise matching if false positives become an issue (though none are expected here)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

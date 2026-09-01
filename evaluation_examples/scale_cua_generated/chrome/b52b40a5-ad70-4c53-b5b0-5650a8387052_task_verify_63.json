@@ -1,0 +1,152 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_63",
+  "snapshot": "chrome",
+  "instruction": "Save all image attachments from the Outlook welcome email (the one with Chinese characters in the subject) to a new folder called 'Outlook_Images' in your Pictures directory.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_file_count__081d0b6c",
+    "result": {
+      "type": "file_count_in_dir__081d0b6c",
+      "dir_path": "/home/user/Pictures/Outlook_Images",
+      "extension": ".png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_count": 16
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires saving all image attachments from email to a new folder. The Outlook welcome email has 16 PNG image attachments. Custom getter counts PNG files in the target directory, metric verifies count equals 16.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_8/getters/count_files_in_dir__081d0b6c.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_8/metrics/check_file_count__081d0b6c.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified from Thunderbird profile: Outlook welcome email contains 16 PNG attachments. Note: reusing PDF counter but it will count all files in the target directory.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Core verification logic is semantically correct: getter counts PNG files in the correct target directory (/home/user/Pictures/Outlook_Images) and metric compares count to expected value of 16",
+        "Expected value (16 PNG files) is accurate based on metadata verification of the Thunderbird email profile",
+        "Getter implementation is robust: uses find command with proper flags (-maxdepth 1 -type f) to count files, handles errors gracefully by returning 0",
+        "Evaluator can verify the main requirement: that 16 image files were saved to the correct location",
+        "Minor limitation: instruction says 'all image attachments' but getter only counts .png files. However, metadata confirms all 16 attachments are PNG, so this works for this specific task",
+        "Edge case issue: if the target directory doesn't exist, find command will fail and return 0, which could incorrectly suggest task wasn't completed (though the instruction requires creating the folder, so this indicates incomplete task)",
+        "Verification weakness: cannot verify that the files are actually FROM the email (could be any 16 PNG files in that directory), but this is a fundamental limitation of file-based verification without content hashing"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding existence check for the directory before counting files, to provide better error messages",
+        "Could enhance getter to verify file creation timestamps are recent (within task execution window) to better ensure files came from the task",
+        "For robustness, could filter by multiple image extensions (.png, .jpg, .jpeg, .gif, .bmp) if instruction says 'image attachments', though metadata confirms all are PNG in this case"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_file_count__081d0b6c second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

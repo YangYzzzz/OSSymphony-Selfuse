@@ -1,0 +1,73 @@
+{
+  "id": "e0df059f-28a6-4169-924f-b9623e7184cc",
+  "new_id": "task_verify_61",
+  "snapshot": "os",
+  "instruction": "Rename the directory \"todo_list_Jan_1\" to \"todo-list-Jan-1\" on the Desktop.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/files-rename.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S mkdir ~/Desktop/todo_list_Jan_1",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "[ -d ~/Desktop/todo-list-Jan-1 ] && echo 'Directory exists.' || echo 'Directory does not exist.'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Directory exists.\n"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires renaming directory by replacing underscores with dashes. Evaluator verifies that todo-list-Jan-1 exists. Uses existing exact_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification: Evaluator only checks that the NEW directory name 'todo-list-Jan-1' exists, but does NOT verify that the OLD directory 'todo_list_Jan_1' no longer exists",
+        "This creates a critical verification gap: a user could simply CREATE a new directory 'todo-list-Jan-1' instead of RENAMING the original 'todo_list_Jan_1', and the evaluator would still pass",
+        "A proper rename verification should check BOTH conditions: (1) new directory exists AND (2) old directory does not exist",
+        "The logic that IS present works correctly (checks directory existence at correct path with correct expected output), but it only verifies half of what a rename operation entails"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify the shell command to check both conditions: '[ -d ~/Desktop/todo-list-Jan-1 ] && [ ! -d ~/Desktop/todo_list_Jan_1 ] && echo 'Rename successful.' || echo 'Rename failed.'",
+        "Update expected value to match the new output: 'Rename successful.\\n'",
+        "Alternative: Use two separate checks in the evaluator config to verify both the presence of new directory and absence of old directory"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

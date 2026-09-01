@@ -1,0 +1,86 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "task_verify_66",
+  "snapshot": "os",
+  "instruction": "Copy the compressed archive 'data.tar.gz' to each of directories 'dir1', 'dir2', 'dir3'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "rm -rf dir1 dir2 dir3 && rm -f data.tar.gz && echo 'Sample data' > sample.txt && tar -czf data.tar.gz sample.txt && rm sample.txt && mkdir dir1 dir2 dir3",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'for d in dir1 dir2 dir3; do if [ -f \"$d/data.tar.gz\" ]; then echo \"Success: data.tar.gz exists in $d.\"; else echo \"Failure: data.tar.gz does not exist in $d.\"; fi; done'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: data.tar.gz exists in dir1.",
+          "Success: data.tar.gz exists in dir2.",
+          "Success: data.tar.gz exists in dir3."
+        ],
+        "exclude": [
+          "Failure"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires copying an archive file 'data.tar.gz' to three directories. The evaluator checks that data.tar.gz exists in all three directories. This tests the same pattern as the original task but with a different file type (compressed archive).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking bash script logic: the script checks for archive file existence in each directory. The evaluator confirms all success messages are present and no failure messages exist.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is semantically correct: executes bash command that checks file existence in all three target directories (dir1, dir2, dir3)",
+        "Metric logic is appropriate: check_include_exclude correctly validates that all success messages are present and no failure messages exist",
+        "Complete coverage: evaluator verifies the file exists in all three directories as required by the instruction",
+        "Expected values are correct: include patterns match the exact success messages from the bash command, exclude pattern catches any failures",
+        "Data flow is sound: bash command output (string) flows correctly to pattern matching metric",
+        "Edge cases handled: partial completion (missing file in any directory) will include 'Failure' in output and return 0.0",
+        "No postconfig needed: file system state is persistent and doesn't require UI state management",
+        "Practical feasibility: bash command is well-formed and will execute correctly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_25",
+  "snapshot": "os",
+  "instruction": "Create a backup copy of all regular files under current directory tree with .bak extension",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "find testDir -type f -name '*.bak'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "file1.txt.bak",
+          "file2.txt.bak",
+          "file3.txt.bak"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating backup copies of all files with .bak extension. The three original files should result in three .bak files. Evaluator checks that all three backup filenames appear in the find output.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter correctly uses find command to search for .bak files in testDir",
+        "Metric check_include_exclude appropriately checks if expected backup filenames are present in the output",
+        "Expected values correctly list the three backup files that should be created",
+        "Substring matching in check_include_exclude is imprecise - it matches filenames anywhere in the result string, not as complete paths",
+        "Evaluator does not verify that original files (file1.txt, file2.txt, file3.txt) still exist after backup creation",
+        "Evaluator assumes exactly 3 files exist based on setup.sh but doesn't verify completeness if more files are present in subdirectories",
+        "The instruction says 'all regular files under current directory tree' but evaluator only checks for 3 hardcoded filenames"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a more precise matching approach that verifies complete file paths rather than substring matching",
+        "Add verification that original files still exist to ensure they are 'copies' not 'moves'",
+        "Consider dynamic verification: count original files, then verify equal number of .bak files exist",
+        "Add check to exclude the .bak files themselves from being backed up (prevent .bak.bak files)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

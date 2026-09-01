@@ -1,0 +1,106 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_13",
+  "snapshot": "chrome",
+  "instruction": "I prefer the classic Chrome interface over the 2023 refresh. Please turn off the chrome-refresh-2023 and chrome-webui-refresh-2023 experiments to restore the original design.",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments__480bcfea_d68f_4aaa_a0a9_2589ef319381",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "chrome-refresh-2023",
+          "chrome-webui-refresh-2023"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This is a paraphrased variation of the original task. The instruction is reworded ('prefer the classic Chrome interface' vs 'do not like the design of the new 2023 chrome UI', 'turn off' vs 'disable', 'restore the original design' vs 'keep using the original one') but the task goal remains identical: disable the chrome-refresh-2023 and chrome-webui-refresh-2023 experiments. The config and evaluator are kept exactly the same to verify the same outcome.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_task_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_instruction",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can properly verify the instruction requirements",
+        "Getter function 'get_enabled_experiments' (chrome.py:319-350) correctly extracts enabled experiments from Chrome's Local State file at path '.config/google-chrome/Local State' or equivalent OS paths",
+        "Getter returns list of enabled experiment names from 'browser.enabled_labs_experiments' JSON key, with safe fallback to empty list on error",
+        "Metric function 'check_enabled_experiments__480bcfea_d68f_4aaa_a0a9_2589ef319381' correctly implements ABSENCE checking using set.isdisjoint() operation",
+        "Metric logic: Returns 1.0 when experiments_to_disable.isdisjoint(currently_enabled) is True, meaning specified experiments are NOT in enabled list (successfully disabled)",
+        "Metric logic: Returns 0.0 when any experiment from rule['names'] is still present in enabled experiments (not yet disabled)",
+        "Expected values are correct: rule['names'] contains the two experiment names that should be disabled: ['chrome-refresh-2023', 'chrome-webui-refresh-2023']",
+        "Postconfig correctly restarts Chrome with 'pkill chrome' followed by relaunch, ensuring settings are persisted to Local State file and readable",
+        "Complete coverage: All instruction requirements (disabling both experiments) are verified by the evaluator",
+        "Data flow is correct: get_enabled_experiments returns list → metric receives it as 'enabled_experiments' parameter → rule dict received as 'rule' parameter → comparison logic checks for absence"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

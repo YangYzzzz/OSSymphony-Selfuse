@@ -1,0 +1,130 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "task_verify_44",
+  "snapshot": "thunderbird",
+  "instruction": "Attach ~/financial-summary.pdf to the draft email without sending or closing the window.",
+  "source": "https://support.mozilla.org/en-US/kb/how-use-attachments",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/financial-summary.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/show-thunderbird-attachments.py",
+              "path": "/home/user/show-thunderbird-attachments.py"
+            },
+            {
+              "url": "https://files.pythonhosted.org/packages/ee/58/257350f7db99b4ae12b614a36256d9cc870d71d9e451e79c2dc3b23d7c3c/cssselect-1.3.0-py3-none-any.whl",
+              "path": "/home/user/cssselect-1.3.0-py3-none-any.whl"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pip",
+            "install",
+            "/home/user/cssselect-1.3.0-py3-none-any.whl"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "/home/user/show-thunderbird-attachments.py",
+            "New-month AWS Bill",
+            "financial-summary.pdf"
+          ],
+          "stdout": "check-attachments.output"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "check-attachments.output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "Attachment added!"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires attaching financial-summary.pdf. Same evaluator as original, verifying attachment via show-thunderbird-attachments.py script. Filename changed to financial-summary.pdf with identical complexity.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct for verifying the core requirement (attachment added to draft email)",
+        "Appropriate use of custom Python script (show-thunderbird-attachments.py) to verify Thunderbird attachment state, which cannot be easily checked via standard accessibility APIs",
+        "Correct data flow: postconfig script execution → cache_file getter → check_list metric with regex pattern matching",
+        "The metric check_list correctly matches the expected output pattern 'Attachment added!' from the verification script",
+        "The script arguments correctly specify email subject ('New-month AWS Bill') and expected attachment filename ('financial-summary.pdf')"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator cannot verify the actual implementation of show-thunderbird-attachments.py (external script), so there's inherent uncertainty about whether it correctly parses Thunderbird's draft storage and attachment metadata",
+        "Minor: The instruction includes implicit requirements ('without sending or closing the window') that are not explicitly verified - however, if the script finds the draft with attachment, it implies the email is still in draft state (not sent), and window state may not persist in postconfig anyway",
+        "Suggested improvement (optional): Add error handling check - if the script outputs anything other than 'Attachment added!', the evaluator should catch common error patterns (e.g., 'Email not found', 'No attachments') to provide better diagnostic information"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "id": "f7dfbef3-7697-431c-883a-db8583a4e4f9",
+  "new_id": "task_verify_3",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Use the LibreOffice command-line to batch convert all Word files from the Desktop folder to HTML format.",
+  "source": "https://www.thegeekdiary.com/libreoffice-command-examples-in-linux/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f7dfbef3-7697-431c-883a-db8583a4e4f9/doc.tar.gz",
+            "path": "/home/user/Desktop/doc.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "tar -zxf /home/user/Desktop/doc.tar.gz -C /home/user/Desktop/ && rm /home/user/Desktop/doc.tar.gz"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "cd /home/user/Desktop && tar -zcf html.tar.gz *.html 2>/dev/null || echo 'no html files'"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_html_conversion__b5ca523a54cc6ae837c08b60601febd6",
+    "result": {
+      "type": "html_result__b5ca523a54cc6ae837c08b60601febd6",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(cat ~/.bash_history | grep -E \"(soffice|libreoffice).+--convert-to\\s+html\"); if [ -z \"$output\" ]; then echo \"failed to complete this task\"; else echo \"catch the desired command\"; fi"
+      ],
+      "path": "/home/user/Desktop/html.tar.gz"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "command_match": "catch the desired command"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires batch converting all Word documents (17 total: 14 .doc files + 3 .docx files) to HTML format using LibreOffice command line. Evaluator checks (1) bash history contains correct conversion command pattern for HTML output, and (2) html.tar.gz archive is created successfully. Custom getter extracts both command output and archive file. Similar difficulty to original task - same batch conversion pattern with LibreOffice CLI, but targets all Word documents instead of just .doc files.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/f7dfbef3-7697-431c-883a-db8583a4e4f9_aug_14_task_verify_2/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/f7dfbef3-7697-431c-883a-db8583a4e4f9_aug_14_task_verify_2/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.5 for correct LibreOffice command in bash history, 0.5 for successful HTML file creation",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both key requirements: (1) LibreOffice CLI command was used for HTML conversion, checked via bash history grep pattern, and (2) all 17 Word documents were converted to HTML, verified by counting files in the archive.",
+        "Getter logic is sound: extracts command output from bash history and counts HTML files in archive using 'tar -tzf | grep \\.html$ | wc -l', which correctly identifies HTML files.",
+        "Metric logic is correct: checks html_count == 17 (expected_html_count) for full credit, with proportional partial credit if fewer files converted. Scoring breakdown (0.5 command + 0.5 file count) aligns with instruction requirements.",
+        "Coverage is complete: evaluator checks ALL requirements from instruction - using LibreOffice CLI and converting all 17 Word documents (.doc + .docx) to HTML format.",
+        "Minor consideration: Command verification only checks pattern exists in history, not execution success. However, the file count check provides strong evidence that conversion actually succeeded."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could verify that HTML filenames correspond to original Word document names (e.g., if 'report.docx' exists, verify 'report.html' exists in archive). However, this is not strictly required by the instruction."
+      ]
+    },
+    "augmented_from": "f7dfbef3-7697-431c-883a-db8583a4e4f9_aug_14_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

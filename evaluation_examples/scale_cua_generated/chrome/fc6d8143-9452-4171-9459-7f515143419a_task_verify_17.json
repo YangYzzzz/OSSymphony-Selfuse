@@ -1,0 +1,111 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "task_verify_17",
+  "snapshot": "chrome",
+  "instruction": "Look up flights from Dallas/Fort Worth International Airport to Phoenix Sky Harbor Airport for tomorrow.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object__fc6d8143",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relativeTime": {
+          "from": "tomorrow"
+        },
+        "expected": {
+          "start": "DFW",
+          "end": "PHX",
+          "time": "{DoW}, {Month} {Day0D}, {Year}"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation uses same Delta.com website with different airport pair (DFW to PHX) for tomorrow. Created custom metric 'check_direct_json_object__fc6d8143' to handle relativeTime conversion and comparison. Airport codes DFW and PHX are standard IATA codes. Task complexity remains identical to original.",
+    "new_functions_paths": [
+      "results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/fc6d8143-9452-4171-9459-7f515143419a_task_verify_4/metrics/check_direct_json_object__fc6d8143.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "similarity_to_original": "very_high",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: (1) departure airport DFW via class_multiObject_child index 0, (2) arrival airport PHX via class_multiObject_child index 1, (3) flight date as tomorrow via class_singleObject with proper relativeTime conversion.",
+        "Metric function properly handles expected parameter: Uses correct signature 'def check_direct_json_object__fc6d8143(result, expected: Dict, **options)' and correctly accesses expected['relativeTime'] and expected['expected'] throughout the function, conforming to framework standard.",
+        "Timezone handling is robust: Uses get_default_timezone() which hardcodes 'America/Chicago' for DFW airport (line 39-42), avoiding network dependencies. This is semantically correct since DFW is in Dallas, Texas (Central Time).",
+        "RelativeTime conversion logic is sound: Properly converts 'tomorrow' to absolute date using timedelta(days=1), applies correct date formatting with day_of_week_mapping and month_mapping, and generates expected format '{DoW}, {Month} {Day0D}, {Year}' (e.g., 'Mon, Jan 21, 2025').",
+        "Date format assumption is plausible: CSS class names 'mach-flight-context-info__wrapper--date' and 'mach-flight-context-info__wrapper__info--separator' suggest Delta.com uses structured flight context info. Format matches standard airline date display patterns.",
+        "Minor risk: Missing postconfig to preserve flight search results state. The getter get_active_tab_html_parse reopens the active tab URL, which may not display the same flight search results if Delta.com search is session-dependent. However, the getter reopens the EXACT URL from the address bar, which for Delta.com flight search pages typically includes search parameters in the URL itself, making results likely stable on reload.",
+        "Data flow correctness: Getter extracts {start, end, time} from HTML class elements → Metric compares extracted values against {DFW, PHX, formatted_tomorrow_date} → All comparisons use strict equality which is appropriate for airport codes and formatted dates.",
+        "Edge case handling: Metric properly handles None result (line 111-113), JSON parsing errors (line 105-107), and returns 0.0 for mismatches. The relativeTime logic has proper error handling for unsupported time values (line 146-147)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to re-execute the flight search (fill origin=DFW, destination=PHX, date=tomorrow, submit) before verification to ensure fresh search results. This would eliminate any risk of stale/session-dependent data, though current approach may work if Delta.com embeds search params in URL.",
+        "Add fallback handling in metric for missing keys in result dict. Current code assumes result.get(key) will return the value, but could add explicit None checks before comparison to make error messages clearer.",
+        "Consider adding metadata comment in expected.rules documenting that the date format '{DoW}, {Month} {Day0D}, {Year}' matches Delta.com's mach-flight-context-info date display format for future maintainability."
+      ]
+    }
+  }
+}

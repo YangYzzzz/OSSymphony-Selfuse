@@ -1,0 +1,79 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_5",
+  "snapshot": "os",
+  "instruction": "Add a new Ubuntu user called 'emma' with the password 'T3mpP@ss!', set the home directory to '/home/test1', and configure the password to expire after 30 days.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/test1",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get install -y expect",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_passwd_expiry__9c1a98b9ab77ed8338363ad0c57d51e2",
+    "result": {
+      "type": "user_passwd_expiry__9c1a98b9ab77ed8338363ad0c57d51e2",
+      "username": "emma",
+      "sudo_password": "{CLIENT_PASSWORD}"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "max_days": "30",
+        "home_directory": "/home/test1"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a user 'emma' with password 'T3mpP@ss!' that expires in 30 days, with home directory /home/test1. The evaluator comprehensively checks all 4 requirements: (1) user 'emma' exists, (2) home directory is /home/test1, (3) password authentication capability, and (4) password expiry is 30 days. Custom getter get_user_passwd_expiry__9c1a98b9ab77ed8338363ad0c57d51e2 retrieves user existence, home directory, password authentication status, and password max days. Custom metric check_passwd_expiry__9c1a98b9ab77ed8338363ad0c57d51e2 verifies all requirements with partial credit (0.25 per requirement) for a total score of 0.0-1.0.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/5812b315-e7bd-4265-b51f-863c02174c28_task_verify_3/getters/os_user.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/5812b315-e7bd-4265-b51f-863c02174c28_task_verify_3/metrics/os_user.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator correctly checks all 4 instruction requirements: (1) user 'emma' exists, (2) home directory is '/home/test1', (3) password authentication capability, (4) password expiry is 30 days",
+        "User existence verified: Getter uses 'getent passwd emma' to check if user exists (os_user.py:35-49), returns user_exists=True/False",
+        "Home directory verified: Getter parses passwd entry to extract home directory (os_user.py:43-45), metric compares to expected '/home/test1' (os_user.py:40-53)",
+        "Password expiry verified correctly: Getter extracts max days via 'chage -l' command (os_user.py:55-63), metric compares to expected '30' (os_user.py:65-77)",
+        "Partial credit logic is sound: Metric awards 0.25 per requirement with early exit if user doesn't exist (os_user.py:30-80)",
+        "Expected parameter handling is correct: Metric properly accesses expected.get('max_days') and expected.get('home_directory') directly when type='rule'",
+        "Minor limitation: password_auth_works is set to True unconditionally if user exists (os_user.py:69-70) without actually verifying password 'T3mpP@ss!'. Comment acknowledges this limitation (os_user.py:65-68). Postconfig installs 'expect' tool suggesting password testing was considered but deemed too complex"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider implementing actual password verification using 'expect' tool (already installed in postconfig). Could test login with provided password 'T3mpP@ss!' to verify it was set correctly, though this adds complexity"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "5812b315-e7bd-4265-b51f-863c02174c28_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

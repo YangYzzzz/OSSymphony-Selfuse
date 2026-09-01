@@ -28,5 +28,5 @@ def asset(path: str) -> str:
     rel = path.lstrip("/")
     base = get_base_url()
     if "://" not in base:
-        return os.path.join(base, rel)
+        return os.path.abspath(os.path.join(base, unquote(rel)))
     return f"{base}/{rel}"

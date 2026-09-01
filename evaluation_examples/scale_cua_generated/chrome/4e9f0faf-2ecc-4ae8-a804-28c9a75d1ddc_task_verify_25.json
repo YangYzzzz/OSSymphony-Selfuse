@@ -1,0 +1,123 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_25",
+  "snapshot": "chrome",
+  "instruction": "Get the invoice from Google Drive, convert it to an Excel file with LibreOffice Calc, and save it to the desktop, making sure the most expensive item stands out.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_most_expensive_item__e5d6042fcfd6dbfad741bc78ecf0d884",
+    "result": {
+      "type": "most_expensive_item__e5d6042fcfd6dbfad741bc78ecf0d884",
+      "path": "/home/user/Desktop/invoice.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "item_name": "Web Design Services",
+        "price": 500.0
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1",
+    "variation_index": 2,
+    "explanation": "Task requires extracting invoice PDF from Google Drive and converting to Excel. Evaluator identifies the most expensive item by unit price. Verified with Python script on gold file: 'Web Design Services' at $500.0 is the highest-priced item.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1_task_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1_task_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": "1.0 if both item name and price match, 0.5 if only price matches, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts the most expensive item by unit price from column C (index 2) of the Excel file",
+        "Metric logic correctly compares both item name and price with appropriate tolerance and partial credit scoring",
+        "Expected values are semantically correct: 'Web Design Services' at $500.0 verified as highest-priced item",
+        "Data flow is correct: getter extracts (item_name, price) tuple which metric compares against expected values",
+        "Instruction phrase 'with the highest-priced item identifiable' is ambiguous - could mean programmatic extraction (which evaluator checks) OR visual highlighting/formatting (which evaluator does NOT check)",
+        "Evaluator assumes specific column structure (column C = unit price) without validation - if PDF conversion produces different structure, wrong data might be read",
+        "No explicit verification that file exists or was successfully created/converted before attempting to read it"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider clarifying instruction: does 'identifiable' mean programmatically extractable OR visually highlighted in the file?",
+        "Consider adding file existence check before attempting to extract data",
+        "Consider validating expected column structure (e.g., check headers) to ensure PDF-to-Excel conversion preserved the expected format",
+        "If visual identification is required, add getter to check cell formatting (highlight, bold, color) for the max-priced item's row"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_xhaug_1_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

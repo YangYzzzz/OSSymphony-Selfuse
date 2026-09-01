@@ -1,0 +1,122 @@
+{
+  "id": "510f64c8-9bcc-4be1-8d30-638705850618",
+  "new_id": "510f64c8-9bcc-4be1-8d30-638705850618_traj_verify_4",
+  "snapshot": "vscode",
+  "instruction": "Open the file ~/Desktop/project/main.py in VS Code from the terminal.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/vscodeEvalExtension.zip",
+            "path": "/home/user/Downloads/vscodeEvalExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "cd /home/user/Downloads && unzip -q vscodeEvalExtension.zip && code --install-extension vscodeEvalExtension/eval-0.0.1.vsix && rm -rf vscodeEvalExtension vscodeEvalExtension.zip && mkdir -p ~/Desktop/project/.vscode && history -c && echo > ~/.bash_history"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/main.py",
+            "path": "/home/user/Desktop/project/main.py"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/README.md",
+            "path": "/home/user/Desktop/project/README.md"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/settings.json",
+            "path": "/home/user/Desktop/project/.vscode/settings.json"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Visual Studio Code"
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "use_terminal=$(cat ~/.bash_history | grep '[c]ode.*main.py'); if [ -z \"$use_terminal\" ]; then echo \"false\"; else echo \"true\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "true"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_510f64c8-9bcc-4be1-8d30-638705850618_sid_1488437",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent typed 'code ~/Desktop/project' in terminal, pressed Enter. VS Code opened with project folder showing main.py, README.md, .vscode in 4 turns.",
+    "capability_extraction": "Can use terminal commands, launch VS Code from CLI with folder path, navigate directories",
+    "task_rationale": "Variation opens a specific file instead of a folder, testing the model's knowledge of VS Code CLI file-opening syntax",
+    "explanation": "Task requires opening a specific file in VS Code from the terminal. Evaluator checks bash history for a 'code' command that includes 'main.py' in the arguments.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly checks bash history for 'code.*main.py' pattern, which semantically verifies that a VS Code CLI command targeting main.py was issued from the terminal.",
+        "Metric check_include_exclude correctly receives rules dict (include: ['true']) and checks if 'true' appears in getter output. Parameter handling for type='rule' is correct.",
+        "Grep pattern '[c]ode.*main.py' is a reasonable but not strict check - it does not verify the full path ~/Desktop/project/main.py, so 'code ~/other/main.py' would also pass.",
+        "Evaluator only verifies the command was typed in bash history, not that VS Code actually opened the file successfully. The installed VS Code eval extension could have been used for stronger verification.",
+        "Postconfig kills gnome-terminal-server before evaluation, which may prevent bash from flushing history to ~/.bash_history. This is an established OSWorld pattern but carries some risk of false negatives."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider tightening the grep pattern to include the full path, e.g., '[c]ode.*Desktop/project/main.py' to avoid false positives from other main.py files.",
+        "Consider adding a second evaluation step that checks VS Code's active editor tab to confirm main.py is actually open (e.g., using the installed eval extension)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

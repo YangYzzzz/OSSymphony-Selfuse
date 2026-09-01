@@ -1,0 +1,103 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38_traj_verify_2",
+  "snapshot": "multiapps",
+  "instruction": "Run a speed test on speedtest.net and save only the download speed value (in Mbps) to ~/Test/Speed/download.txt.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_download_speed_file__034287361433ba7df6a1a4debdad660e",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Test/Speed/download.txt",
+      "dest": "download.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "check_numeric": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_26660ad1-6ebb-4f59-8cba-a8432dfe8d38_sid_1488264",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent dismissed privacy popup, ran speed test (clicked GO, waited for completion), navigated to results page, opened terminal, created ~/Test/Speed/results.txt with lowercase metric names (ping, download, upload) instead of capitalized names (Ping, Download, Upload).",
+    "capability_extraction": "Can navigate Chrome, interact with speedtest.net, click GO button, wait for speed test completion, read results from web page, open terminal, create directories and files via bash",
+    "failure_analysis": "Model used lowercase metric names ('ping', 'download', 'upload') when the evaluator expected capitalized names ('Ping', 'Download', 'Upload') matching the speedtest.net UI display.",
+    "task_rationale": "Simplified version of original task: only requires saving one metric (download speed) instead of all three, reducing complexity and focusing on the core web-to-file pipeline the model demonstrated.",
+    "explanation": "Task requires running speed test and saving only the download speed to a file. Custom metric provides partial credit: 0.5 for file existing with content, 0.5 for containing a valid numeric speed value.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_26660ad1-6ebb-4f59-8cba-a8432dfe8d38_sid_1488264_traj_verify_2/metrics/file_check.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "scoring_breakdown": {
+      "file_exists": "0.5 - File exists at ~/Test/Speed/download.txt with non-empty content",
+      "numeric_value": "0.5 - File contains a valid numeric speed value"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter correctly fetches ~/Test/Speed/download.txt from VM using vm_file, matching the instruction's target path.",
+        "Metric provides reasonable partial credit: 0.5 for file existence with content, 0.5 for valid numeric value > 0.",
+        "The expected parameter (rules dict with check_numeric: true) is completely ignored by the metric function - the function hardcodes its behavior regardless of expected values. This is poor practice but does not break correctness since the intended logic is fully hardcoded.",
+        "Cannot verify that the saved value is specifically the download speed (vs upload/ping/random number), but this is a reasonable limitation given dynamic speed test results.",
+        "Does not verify the instruction's 'only' requirement - file with multiple values would still pass. Minor gap but acceptable for this task type."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Metric should reference the expected parameter (e.g., check expected.get('check_numeric')) rather than ignoring it entirely, even if the behavior would be the same.",
+        "Consider adding a check that the file contains only a single numeric value (not multiple lines/values) to better verify the 'only the download speed' requirement."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

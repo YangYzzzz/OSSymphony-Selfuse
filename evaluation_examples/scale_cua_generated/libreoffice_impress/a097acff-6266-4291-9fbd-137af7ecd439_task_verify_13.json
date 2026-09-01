@@ -1,0 +1,85 @@
+{
+  "id": "a097acff-6266-4291-9fbd-137af7ecd439",
+  "new_id": "task_verify_13",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Add a text box with the text 'Confidential' in red color on slide 1 and save as marked.pptx on the Desktop",
+  "source": "https://www.youtube.com/watch?v=DDmEvjs4iBw",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/a097acff-6266-4291-9fbd-137af7ecd439/Secrets-of-Monetizing-Video.pptx",
+            "path": "Downloads/Secrets-of-Monetizing-Video.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "Downloads/Secrets-of-Monetizing-Video.pptx"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_pptx_red_text__8805d2fc",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/marked.pptx",
+      "dest": "marked.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "slide_index": 0,
+        "text_content": "Confidential",
+        "check_red_color": true
+      }
+    },
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ]
+  },
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding a text box with 'Confidential' text in red color on slide 1. Evaluator checks for the text content and red font color (RGB values close to pure red).",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.5 if text 'Confidential' exists on slide 1, 1.0 if text is in red color",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a097acff-6266-4291-9fbd-137af7ecd439_task_verify_5/metrics/slides.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical logic bug in check_pptx_red_text__8805d2fc:34-43: When check_red_color=True and text is found but NOT red, the function falls through without returning, eventually returning 0.0 instead of the intended 0.5 partial credit",
+        "The scoring breakdown states '0.5 if text exists, 1.0 if text is red', but the implementation fails to return 0.5 when text exists without red color",
+        "Logic flow issue: Line 41 'return score' is inside the 'else' block of 'if check_red_color', so it only returns 0.5 when check_red_color=False, not when text is found but color check fails",
+        "The evaluator will incorrectly give 0.0 score to cases where 'Confidential' text is added but not in red color, failing to properly implement partial credit"
+      ],
+      "llm_judge_fix_suggestions": [
+        "In check_pptx_red_text__8805d2fc lines 34-43, add proper return logic: if check_red_color=True but color is not red, the function should still return 0.5 (text found) instead of continuing the loop",
+        "Restructure the logic: track whether text was found separately from color checking, then return appropriate score after the loop completes",
+        "Example fix: Add 'text_found = True' flag when text is found, then after the loop: 'if text_found: return 0.5' before the final 'return 0.0'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

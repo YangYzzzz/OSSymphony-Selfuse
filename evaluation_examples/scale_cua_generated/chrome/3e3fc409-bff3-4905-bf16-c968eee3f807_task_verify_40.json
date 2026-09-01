@@ -1,0 +1,140 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_40",
+  "snapshot": "chrome",
+  "instruction": "I'm interested in early 21st century classics. Create a new sheet called 'early_21st_classics' in the opened Excel file with movies from 2000-2015 that have ratings of 8.5 or higher. Maintain the same column structure and arrange them by ratings from high to low.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_content__5859d0b6",
+    "result": {
+      "type": "xlsx_sheet_data__5859d0b6",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "dest": "movies.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet_name": "early_21st_classics",
+        "expected_count": 9,
+        "year_min": 2000,
+        "year_max": 2015,
+        "rating_min": 8.5
+      }
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "metadata": {
+    "explanation": "Verified with Python: 9 movies from 2000-2015 with rating >= 8.5, sorted descending. Top movies: LOTR trilogy (9.0, 8.9, 8.8), Inception (8.8), Spirited Away (8.6)",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_9/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_9/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.0": "Sheet does not exist",
+      "0.2": "Sheet exists but headers incorrect",
+      "0.4": "Sheet and headers correct, count correct",
+      "0.7": "All data valid (correct years and ratings)",
+      "1.0": "Perfect - all valid and sorted correctly by rating descending"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: sheet name, year range (2000-2015), rating threshold (>=8.5), column structure, and descending sort by rating",
+        "Getter logic is correct - retrieves Excel file from VM and caches it locally",
+        "Metric logic correctly implements progressive scoring: sheet existence (0.0->0.2), headers (0.2->0.4), count (0.4), data validity (0.7), sorting (1.0)",
+        "Data validation logic properly checks year range and rating threshold for all rows (lines 54-62)",
+        "Sorting validation correctly checks if ratings are in descending order (lines 65-67)",
+        "Postconfig includes necessary Ctrl+S to save file before verification",
+        "Expected count of 9 movies is hardcoded but metadata indicates it was pre-verified with Python analysis of source data"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Expected count (9) is hardcoded in metric. If source data changes, this could cause false failures. Consider adding metadata documentation that this count was verified against the specific source file",
+        "Minor: Row validation uses 'if row[0]' which only checks if title exists. Consider more robust validation for empty rows, though this is unlikely to be an issue in practice",
+        "Enhancement: Could add validation for data types (year should be int, rating should be float) to catch malformed data, though try-except handles this"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

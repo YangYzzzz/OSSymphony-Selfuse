@@ -1,0 +1,87 @@
+{
+  "id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217",
+  "new_id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's settings page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://drugs.com"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://settings.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_0d8b7de3-e8de-4d86-b9fd-dd2dce58a217_sid_1488192",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent encountered Access Denied on drugs.com. Tried Google search (got SSL error), alternative URLs (npg.nature.com - also blocked), then opened terminal and used curl to fetch content from Wikipedia, NIAID, nature.com, and KEGG over 50 turns. Never reached drugs.com/npc/ or /npp/.",
+    "capability_extraction": "Can click Chrome address bar, type URLs, perform Google search attempts, open terminal, run curl/bash commands, navigate between windows",
+    "failure_analysis": "drugs.com blocked VM IP (Access Denied). Google.com had SSL certificate error in browser. External websites largely inaccessible in this VM environment.",
+    "task_rationale": "Simplified to navigating to Chrome internal settings page (chrome://settings) which requires no network access. Model demonstrated ability to type in address bar.",
+    "explanation": "Task requires navigating to chrome://settings. Evaluator uses is_expected_url_pattern_match to check the active tab URL matches the chrome://settings pattern.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "scoring_breakdown": {
+      "navigation": "1.0 - Active tab URL matches chrome://settings"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active tab URL from the accessibility tree, which is the right state to check for page navigation.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict (with 'expected' key) and uses regex matching to verify the URL pattern.",
+        "Expected pattern 'chrome://settings.*' correctly matches any chrome://settings URL including subpages.",
+        "Single instruction requirement (open settings page) is fully covered by the single URL pattern check.",
+        "Data flow is correct: getter returns string URL -> metric receives string -> regex match against pattern."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

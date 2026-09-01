@@ -1,0 +1,108 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "480bcfea-d68f-4aaa-a0a9-2589ef319381_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Enable the PDF Chrome Refresh 2023 experiment in Chrome flags.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments_contains__1656c6075ec2ba63a026b59d9c69a38f",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "pdf-cr23"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_480bcfea-d68f-4aaa-a0a9-2589ef319381_sid_1488424",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to chrome://flags and searched for 'refresh', 'ChromeRefresh2023', and 'modern'. Found some refresh-related flags when searching 'refresh' but did not find or enable the target flags. Gave up after 11 turns.",
+    "capability_extraction": "Can navigate to chrome://flags, use the search box to filter flags, type URLs in address bar, interact with Chrome UI elements",
+    "failure_analysis": "The target flags chrome-refresh-2023 and chrome-webui-refresh-2023 do not exist in Chrome 130. The model searched with correct intent but wrong flag names. It found related flags (ntp-realbox-cr23-theming, pdf-cr23) but did not attempt to change any dropdown values.",
+    "task_rationale": "Simplified to enabling a single flag (pdf-cr23) that was actually visible in the trajectory when model searched 'refresh'. The flag name contains 'Chrome Refresh 2023' making it discoverable with the same search strategy the model already attempted.",
+    "explanation": "Task requires navigating to chrome://flags, finding the PDF Chrome Refresh 2023 flag, and enabling it. Evaluator restarts Chrome and checks enabled experiments include pdf-cr23. [Fixed: replaced strict list equality metric with containment check metric to handle pre-existing enabled experiments]",
+    "new_functions_paths": [
+      "tmp_funcs/task_chrome_480bcfea-d68f-4aaa-a0a9-2589ef319381_sid_1488424_traj_verify_1/metrics/chrome.py"
+    ],
+    "fix_history": [
+      "Fix 1: Replaced official check_enabled_experiments (strict list equality) with custom check_enabled_experiments_contains__1656c6075ec2ba63a026b59d9c69a38f (subset/containment check) so that pre-existing enabled experiments do not cause false negatives"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "flag_enabled": "1.0 - pdf-cr23 flag is enabled"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Custom metric check_enabled_experiments_contains correctly uses containment check: 'all(name in enabled_experiments_names for name in rule[\"names\"])'. This properly verifies that pdf-cr23 is present in the enabled experiments list without requiring it to be the only enabled experiment.",
+        "Getter (enabled_experiments) correctly reads Chrome Local State file and extracts browser.enabled_labs_experiments list — the right data source for verifying enabled flags.",
+        "Postconfig correctly kills Chrome and restarts it with a 3-second sleep, ensuring the Local State file is flushed to disk before the getter reads it.",
+        "Expected value 'pdf-cr23' is the correct internal flag name for 'PDF Chrome Refresh 2023' as confirmed by trajectory observations where the flag was visible.",
+        "Parameter handling is correct: with expected.type='rule', get_rule returns the rules dict {'type': 'names', 'names': ['pdf-cr23']} directly as the 'rule' parameter. The metric accesses rule['type'] and rule['names'] correctly.",
+        "Coverage is complete: single instruction requirement (enable one flag) with a single verification check."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: the metric splits experiment names on '@' to strip suffixes — this is correct behavior for Chrome's experiment format, but worth noting as a design choice."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

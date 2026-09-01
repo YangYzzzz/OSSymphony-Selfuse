@@ -1,0 +1,95 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "b337d106-053f-4d37-8da0-7f9c4043a66b_traj_verify_0",
+  "snapshot": "os",
+  "instruction": "Configure Vim to display absolute line numbers by default.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "cat",
+        "/home/user/.vimrc"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "set number"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_b337d106-053f-4d37-8da0-7f9c4043a66b_sid_1488177",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent tried to search Google for Vim line numbers tutorial but hit SSL certificate error. Navigated to vimhelp.org successfully. Switched to terminal and ran curl, vim --help, man vim commands. Eventually opened a file in Vim but got stuck and never configured ~/.vimrc.",
+    "capability_extraction": "Can interact with terminal (type commands, execute shell commands), navigate Chrome to HTTP sites, switch between Chrome and Terminal windows",
+    "failure_analysis": "SSL certificate error on Google blocked web search. Model spent many turns retrying Google. When it switched to terminal, it opened Vim interactively and got stuck without exiting or writing to .vimrc.",
+    "task_rationale": "Removed the web search requirement from the original task. The core goal (configure Vim line numbers) is achievable via terminal alone, which the model demonstrated it can use.",
+    "explanation": "Task requires adding 'set number' to ~/.vimrc. Evaluator reads ~/.vimrc and checks that it contains 'set number'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "vimrc_contains_set_number": "1.0 - ~/.vimrc contains 'set number'"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads ~/.vimrc via 'cat /home/user/.vimrc' to extract Vim configuration state",
+        "Metric check_include_exclude correctly verifies 'set number' is present in the file, which is the standard Vim command for absolute line numbers",
+        "Parameter handling is correct: expected.type='rule' causes get_rule to return the rules dict, which check_include_exclude accesses via rules.get('include') and rules.get('exclude')",
+        "Complete coverage: the single instruction requirement (configure absolute line numbers) is fully verified by checking for 'set number' in .vimrc",
+        "Edge cases handled: if .vimrc doesn't exist, cat fails, getter returns None, metric returns 0.0"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

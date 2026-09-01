@@ -1,0 +1,91 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Add the current Delta Airlines page to your bookmarks bar.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://www.delta.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_sid_1488357",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to delta.com, successfully entered SEA as origin and NYC as destination, but got stuck interacting with the date picker calendar widget. Spent all 50 turns unable to set correct departure/return dates. Repeatedly received 'please correct the 1 item indicated' validation error. Never clicked SEARCH, never reached flight results page.",
+    "capability_extraction": "Can navigate Chrome, type in text input fields, select from autocomplete dropdown suggestions, interact with web form checkboxes and buttons",
+    "failure_analysis": "Model struggled with the delta.com date picker calendar widget. Could not properly select the 5th of next month as departure date. Kept toggling between months and dates without confirming. The complex calendar UI with month navigation proved too difficult.",
+    "task_rationale": "Decomposed original complex flight search into a simple bookmark operation. Adding a bookmark tests Chrome UI interaction (Ctrl+D or star icon) which is a fundamental capability the model should have.",
+    "explanation": "Task requires adding delta.com to the bookmarks bar. Evaluator uses the official bookmarks getter to retrieve all bookmarks and checks if delta.com URL appears in the bookmark bar.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "bookmark_added": "1.0 - delta.com URL found in bookmarks bar"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter (get_bookmarks) correctly reads Chrome Bookmarks file from filesystem and returns the roots structure containing bookmark_bar children.",
+        "Metric (is_expected_bookmarks) correctly handles the 'rule' expected type — receives the rules dict directly and accesses rule['type'] and rule['urls'] without unwrapping.",
+        "The 'bookmark_bar_websites_urls' branch extracts URLs from bookmark_bar children and compares against expected URLs — semantically correct for verifying bookmark addition.",
+        "Minor issue: Metric uses exact set equality (==) rather than subset check (>=). Instruction says 'Add' delta.com, meaning it should be present, but metric requires it to be the ONLY bookmark in the bar. If the snapshot has any pre-existing bookmarks, this would produce a false negative.",
+        "Minor risk: Expected URL 'https://www.delta.com/' must match exactly. Delta.com may redirect or Chrome may store a URL with additional path/query parameters (e.g., 'https://www.delta.com/us/en'), which would cause a mismatch."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a subset check (e.g., set(rule['urls']).issubset(set(bookmark_bar_websites_urls))) instead of exact set equality, to allow pre-existing bookmarks.",
+        "Consider using URL prefix matching or domain-level matching instead of exact URL equality, since delta.com may redirect to a more specific URL like 'https://www.delta.com/us/en'."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

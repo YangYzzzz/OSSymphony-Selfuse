@@ -1,0 +1,107 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908_traj_verify_1",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Use the pkill command to force close the frozen LibreOffice Writer from the terminal.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep \"[p]kill\"); if [ -z \"$output\" ]; then echo \"pkill not used\"; else echo \"pkill was used\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "pkill was used"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "pkill not used"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_2b9493d7-49b8-493a-a71b-56cd1f4d6908_sid_1488112",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully used ps aux to find LibreOffice Writer PID (1974), killed it with kill -9, and verified termination in 8 turns.",
+    "capability_extraction": "Can use terminal, find processes with ps/grep, kill processes with kill command, verify process termination",
+    "task_rationale": "Variation requiring pkill command instead of manual PID lookup + kill, testing knowledge of pattern-based process killing",
+    "explanation": "Task requires using pkill to terminate LibreOffice Writer by name. Evaluator checks: (1) no soffice process running, (2) pkill command appears in bash history.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both instruction requirements: (1) LibreOffice Writer process is no longer running via ps aux check, and (2) pkill command was used via bash history check.",
+        "Metric check_include_exclude correctly receives the rules dict directly and checks for include/exclude string patterns — parameter handling is correct for type='rule'.",
+        "Getter vm_command_line runs a well-constructed bash command that produces deterministic output strings for both conditions.",
+        "Minor concern: postconfig kills gnome-terminal-server before the result command checks ~/.bash_history. Bash may not flush in-memory history to disk on non-clean exit (SIGTERM/SIGKILL), which could cause a false negative for the 'pkill was used' check even if the agent correctly used pkill."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'history -a' or 'sync' step in postconfig before killing gnome-terminal to ensure bash history is flushed to ~/.bash_history, or add a small sleep between history flush and terminal kill.",
+        "Alternatively, check /proc or use a different mechanism to verify pkill usage (e.g., script command logging or auditd) that doesn't depend on bash history flushing."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

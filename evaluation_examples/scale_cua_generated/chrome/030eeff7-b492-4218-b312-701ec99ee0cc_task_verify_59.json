@@ -1,0 +1,104 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "Can you enable password saving in Chrome so it remembers my login credentials?",
+  "source": "https://support.google.com/chrome/answer/95606",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "password_manager_enabled__eda823da"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to enable password saving in Chrome settings. The getter reads Chrome Preferences to verify credentials_enable_service is true.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_3/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "task_category": "chrome_password_settings",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Getter checks wrong Chrome Preferences field - uses 'password_manager_enabled' instead of 'credentials_enable_service'",
+        "The instruction requires enabling password SAVING (credentials_enable_service), but getter checks a different setting (password_manager_enabled)",
+        "The metadata (line 71) correctly identifies 'credentials_enable_service' as the target field, but the getter implementation (chrome.py:36) uses 'password_manager_enabled' instead",
+        "This semantic mismatch means the evaluator will not correctly verify whether password saving is actually enabled",
+        "Postconfig is adequate (restarts Chrome with 3s sleep to ensure Preferences file is written)",
+        "Metric logic is correct (exact_match with 'true' is appropriate for boolean setting verification)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change chrome.py line 36 from: password_manager_enabled = data.get('profile', {}).get('password_manager_enabled', False)",
+        "To: password_manager_enabled = data.get('profile', {}).get('credentials_enable_service', False)",
+        "Alternatively, check the correct nested path in Chrome Preferences - the field might be at: data.get('profile', {}).get('password_manager_leak_detection', {}).get('credentials_enable_service') or similar",
+        "Verify the exact JSON path in Chrome's Preferences file for the 'offer to save passwords' setting, which is what the instruction is asking to enable"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

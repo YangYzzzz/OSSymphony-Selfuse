@@ -1,0 +1,90 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_64",
+  "snapshot": "chrome",
+  "instruction": "Integrate the extracted helloExtension folder into Chrome's extensions by loading it unpacked.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    },
+    "postconfig": []
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 6: Uses 'integrate' and explicitly mentions 'loading it unpacked'. Evaluator checks for /home/user/Desktop/helloExtension in loaded extensions. Task involves going to chrome://extensions/, enabling Developer mode, and selecting the folder via Load unpacked button.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_find_unpacked_extension_path (chrome.py:1401-1435) reads Chrome's Preferences file and extracts all extension paths from extensions.settings[extension_id].path, returning a list of all loaded extension paths",
+        "Metric logic is correct: is_in_list (general.py:76-81) performs list membership check - receives rules dict from get_rule() and checks if rules['expected'] exists in the result list",
+        "Expected value is semantically correct: '/home/user/Desktop/helloExtension' matches the extraction location from config line 22 which unzips to /home/user/Desktop/",
+        "Complete coverage: The evaluator directly verifies the core instruction requirement - that the helloExtension folder was successfully loaded as an unpacked extension in Chrome",
+        "State accessibility is robust: The getter reads from Chrome's persistent Preferences file (~/.config/google-chrome/Default/Preferences) which is automatically updated when extensions are loaded via Load unpacked button - no UI state dependency",
+        "Data flow is semantically correct: config extracts to Desktop → user loads via chrome://extensions/ → Preferences file updates with path → getter reads path → metric verifies path matches expected location",
+        "No postconfig needed: Extension loading persists to disk in the Preferences file, making it reliably verifiable without needing the extensions UI to remain open (the static validation warning is a false positive for this task)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

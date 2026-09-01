@@ -1,0 +1,96 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_32",
+  "snapshot": "os",
+  "instruction": "Set up conda to auto-activate the base environment upon launching a new terminal, removing the need to run 'conda activate base' manually.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'auto_activate_base.*true' ~/.condarc 2>/dev/null && echo 1 || (conda config --show | grep -q 'auto_activate_base.*True' && echo 1 || echo 0)",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling conda auto_activate_base setting by running 'conda config --set auto_activate_base true'. The evaluator checks if 'auto_activate_base' is set to true/True in either ~/.condarc file or conda config output (returns 1 if found, 0 if not). Expected result is '1\\n' indicating auto-activation was enabled. This is similar in complexity to the original conda task - both involve configuring conda settings through command-line configuration.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking command structure: First checks ~/.condarc for 'auto_activate_base.*true' pattern, if not found then checks 'conda config --show' output for 'auto_activate_base.*True' pattern. The shell expression returns 1 if either check succeeds (exit code 0), 0 if both fail (non-zero exit code). The exact_match metric compares this output against expected '1\\n'.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the core requirement: checking if conda auto_activate_base is enabled",
+        "Command correctly checks both possible sources: ~/.condarc file and conda config output",
+        "Case sensitivity handling is correct: lowercase 'true' for YAML (.condarc) and uppercase 'True' for Python output (conda config --show)",
+        "Expected value '1\\n' correctly matches the command's output format (echo 1 produces '1' + newline)",
+        "exact_match metric is appropriate for binary pass/fail verification",
+        "Logic flow is sound: returns 1 if setting is found in either location, 0 if not found in both",
+        "Minor weakness: regex pattern 'auto_activate_base.*true' could theoretically match false positives (e.g., 'auto_activate_base_something: false # true comment'), but this is extremely unlikely in conda config structure and doesn't affect practical verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using more specific regex patterns like 'auto_activate_base:\\s*true' for .condarc and 'auto_activate_base:\\s*True' for conda config output to eliminate theoretical false positives, though current implementation is sufficient for practical use"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

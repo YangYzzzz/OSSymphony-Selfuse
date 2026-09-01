@@ -1,0 +1,90 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_58",
+  "snapshot": "multiapps",
+  "instruction": "Export the two blog articles currently displayed in the browser as PDF documents and store them in the /home/user/Documents/Articles directory.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_pdf_count__a0da932e",
+    "result": {
+      "type": "pdf_count_in_dir__a0da932e",
+      "directory": "/home/user/Documents/Articles"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 2
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires exporting two blog articles as PDF files to Documents/Articles directory. Evaluator verifies exactly 2 PDF files exist in the target directory.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_1/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_1/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator only counts PDFs (checks count == 2) but does NOT verify content correctness - pre-existing PDFs or wrong PDFs would pass the test",
+        "CRITICAL: No verification that the exported PDFs correspond to the two specific blog articles from the instruction (URLs: lilianweng.github.io agent post and human-data-quality post)",
+        "CRITICAL: No baseline check - if directory already contains 2 PDFs before task execution, evaluator would pass even if agent did nothing",
+        "Missing verification of PDF metadata (creation time, filenames, content) to ensure they match the expected blog articles",
+        "The evaluator cannot reliably distinguish between correct task completion and coincidental presence of 2 PDF files"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to check PDF filenames contain expected article titles or URLs (e.g., 'agent', '2023-06-23', 'human-data-quality', '2024-02-05')",
+        "Verify PDF file creation timestamps to ensure they were created during task execution (recent modification time)",
+        "Use postconfig to clear the target directory before task execution, or check that PDF count increased by exactly 2",
+        "Add content verification by checking PDF metadata or extracting text to verify it matches the blog article content",
+        "Consider using a getter that lists PDF filenames and a metric that validates filenames match expected patterns from the source URLs"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

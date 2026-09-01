@@ -1,0 +1,96 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38_traj_verify_1",
+  "snapshot": "multiapps",
+  "instruction": "Create the directory ~/Test/Speed and save a file named info.txt there with the text 'Network test completed'.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Test/Speed/info.txt",
+      "dest": "info.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Network test completed"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_26660ad1-6ebb-4f59-8cba-a8432dfe8d38_sid_1488264",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent dismissed privacy popup, ran speed test (clicked GO, waited for completion), navigated to results page, opened terminal, created ~/Test/Speed/results.txt with lowercase metric names (ping, download, upload) instead of capitalized names (Ping, Download, Upload).",
+    "capability_extraction": "Can open terminal (Ctrl+Alt+T), execute bash commands (mkdir, echo), create directory structures, write content to text files",
+    "failure_analysis": "Model used lowercase metric names ('ping', 'download', 'upload') when the evaluator expected capitalized names ('Ping', 'Download', 'Upload') matching the speedtest.net UI display.",
+    "task_rationale": "Decomposed file-creation sub-task: model demonstrated ability to open terminal and create directories/files via bash in the original trajectory. This tests that capability with known expected content, removing the web-scraping variable.",
+    "explanation": "Task requires creating directory ~/Test/Speed and writing a file info.txt with exact specified content. Evaluator uses vm_file getter to download the file and file_contains metric to verify the expected text is present.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vm_file) correctly targets /home/user/Test/Speed/info.txt, which maps to ~/Test/Speed/info.txt as specified in the instruction.",
+        "Metric (file_contains) correctly reads the downloaded file and checks that all strings in config['expected'] are present in the file content.",
+        "Expected parameter handling is correct: with expected.type='rule', the framework passes the rules dict directly to the metric, so config['expected'] yields ['Network test completed'].",
+        "Full coverage: if the file exists at the correct path with the correct content, the directory ~/Test/Speed must also exist. Both instruction requirements (create directory + write file with specific text) are implicitly verified.",
+        "The expected text 'Network test completed' exactly matches what the instruction specifies."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

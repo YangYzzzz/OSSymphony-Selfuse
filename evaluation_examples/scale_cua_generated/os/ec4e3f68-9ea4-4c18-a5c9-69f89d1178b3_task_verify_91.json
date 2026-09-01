@@ -1,0 +1,92 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_91",
+  "snapshot": "os",
+  "instruction": "Can you add Firefox at the end of the favorite applications list?",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "thunderbird.desktop",
+          "vim.desktop",
+          "google-chrome.desktop",
+          "firefox.desktop"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding Firefox at the end of favorite apps. Initial state has [thunderbird, vim, chrome], final state should have [thunderbird, vim, chrome, firefox]. Uses existing check_gnome_favorite_apps metric which checks set equality, not order.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic issue: Instruction requires 'add Firefox at the end' but metric uses set() comparison which ignores order",
+        "The metric check_gnome_favorite_apps (basic_os.py:1-14) uses 'set(apps) == set(expected_apps)' which only verifies presence of apps, not their order",
+        "This means ['firefox.desktop', 'thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop'] would incorrectly pass even though Firefox is at the beginning, not the end",
+        "The evaluator cannot distinguish between Firefox added at the end vs Firefox added at the beginning or middle",
+        "Incomplete verification: The 'at the end' requirement is explicitly stated in the instruction but cannot be verified by the evaluator"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace set comparison with list comparison: change 'set(apps) == set(expected_apps)' to 'apps == expected_apps' to preserve order",
+        "Or create a new metric that checks if the last element is 'firefox.desktop' while verifying all other apps are present",
+        "Or simplify the instruction to 'Add Firefox to favorite applications list' (without 'at the end') to match the set-based verification capability"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

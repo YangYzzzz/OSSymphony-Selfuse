@@ -1,0 +1,90 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_17",
+  "snapshot": "os",
+  "instruction": "I want to use 'python' command to run Python 3, but currently it shows \"python: command not found\". Could you help me set up a python alias for python3 so I can use it right away?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -qE \"alias python=(\\\")?python3(\\\")? *$\" ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting up 'python' as an alias for 'python3' by adding it to ~/.bashrc. The evaluator checks if 'alias python=' text exists in ~/.bashrc (returns 1 if found, 0 if not). Expected result is '1\\n' indicating the alias was added. This is similar in complexity to the original conda task - both involve modifying shell configuration files to make commands accessible.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking command structure: 'grep -q' performs a quiet search for 'alias python=' in ~/.bashrc. The shell expression returns 1 if pattern is found (exit code 0), 0 if not found (non-zero exit code). The exact_match metric compares this output against expected '1\\n'.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "The grep pattern 'alias python=(\\\")?python3(\\\")? *$' correctly verifies that the alias specifically points to python3, not just any alias",
+        "The evaluator semantically checks all key requirements: (1) alias exists in ~/.bashrc, (2) alias name is 'python', (3) alias target is 'python3'",
+        "The regex handles the most common cases: unquoted (alias python=python3) and double-quoted (alias python=\"python3\") aliases",
+        "Minor limitation: The regex does not handle single quotes (alias python='python3'), though this is a less common case and doesn't affect core functionality since double-quoted and unquoted versions work correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "To handle all quote styles, could update pattern to: 'alias python=([\"'])?python3([\"'])? *$' to also match single quotes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

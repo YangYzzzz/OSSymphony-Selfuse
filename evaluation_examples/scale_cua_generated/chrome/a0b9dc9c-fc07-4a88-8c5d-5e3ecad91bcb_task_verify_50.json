@@ -1,0 +1,171 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "Convert all messages in Thunderbird's Bills folder to .eml format and upload them to my Google Drive emails directory, preserving the subject lines as filenames.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_files_exist__74b11cf6",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path_list": [
+        [
+          "emails",
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml"
+        ],
+        [
+          "emails",
+          "Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      ],
+      "dest": [
+        "pred1.eml",
+        "pred2.eml"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_count": 2,
+        "expected_emails": [
+          {
+            "subject": "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789]",
+            "sender_pattern": "(aws|amazon|no-reply@.*amazon)",
+            "description": "AWS billing invoice email from Bills folder"
+          },
+          {
+            "subject": "Your receipt from X (formerly Twitter) #0123-4567",
+            "sender_pattern": "(twitter|x\\.com|noreply@.*twitter)",
+            "description": "Twitter/X receipt email from Bills folder"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires converting emails from Bills folder to .eml format and uploading to Google Drive. Evaluator verifies that 2 files are successfully uploaded to the emails directory on Google Drive.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_3/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_gdrive_files_exist__74b11cf6 first parameter type (Union) may not match getter get_googledrive_file return type (Any)"
+        }
+      ],
+      "validation_passed": true,
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical gap - filename preservation NOT verified: Instruction requires 'preserving the subject lines as filenames', but the metric only verifies the email CONTENT has the correct subject (line 81 in metric checks msg.get('Subject')). It does NOT verify that the FILENAME on Google Drive matches the subject line. The path_list contains hardcoded filenames but these are never verified to match the actual subjects extracted from the .eml files.",
+        "Missing source validation: The evaluator cannot verify emails came from Thunderbird's Bills folder specifically. It only checks if .eml files with certain content exist on Google Drive, not their origin. This is a limitation but may be acceptable if the specific emails are unique identifiers.",
+        "Partial content verification implemented: The metric does verify (1) file count matches expected=2, (2) all files have .eml extension, (3) parsed email subjects match expected subjects, (4) sender addresses match expected patterns using regex. This provides reasonable confidence the correct emails were processed.",
+        "Indirect verification flow: Evaluation works by Agent uploads → Getter downloads from GDrive to cache → Metric checks local files. This is a reasonable but indirect approach - it verifies the getter can download files, which implies the agent uploaded them."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add filename verification logic: Modify the metric to extract the filename from each downloaded file path, compare it against the expected filename pattern (derived from subject line with filesystem-safe substitutions like replacing '/' with '_'), and verify they match. This is the critical missing piece.",
+        "Document filename derivation rules: Add metadata explaining how email subjects should be converted to filenames (e.g., which characters are replaced, max length, etc.) so the evaluator can verify the agent followed the correct naming convention.",
+        "Consider alternative: If filename verification cannot be added to the metric, document this limitation and explain that verification relies on content matching alone, not filename preservation.",
+        "Optional enhancement: Add verification that the Google Drive file paths in result.path_list match expected patterns based on the subject lines in expected_emails, to ensure consistency between the hardcoded paths and the expected content."
+      ]
+    }
+  }
+}

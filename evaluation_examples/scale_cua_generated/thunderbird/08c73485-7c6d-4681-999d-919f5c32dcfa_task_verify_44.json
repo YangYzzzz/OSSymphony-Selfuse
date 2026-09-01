@@ -1,0 +1,123 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_44",
+  "snapshot": "thunderbird",
+  "instruction": "Disable Thunderbird's automatic loading of remote content in emails to prevent tracking pixels and external images from appearing.",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mailnews.message_display.disable_remote_image": {
+            "method": "eq",
+            "ref": true
+          }
+        },
+        "unexpect": {
+          "mailnews.message_display.disable_remote_image": {
+            "method": "eq",
+            "ref": false
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling automatic loading of remote content in Thunderbird emails for privacy protection. The evaluator checks that mailnews.message_display.disable_remote_image is set to true and verifies it's not false. Uses existing check_thunderbird_prefs metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same application, single privacy setting configuration",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks the mailnews.message_display.disable_remote_image preference, which is the correct Thunderbird setting for disabling automatic remote content loading",
+        "Getter (get_vm_file) correctly fetches the prefs.js file from the VM's Thunderbird profile directory",
+        "Metric (check_thunderbird_prefs) correctly parses the prefs.js file using regex and validates preferences against rules",
+        "Complete coverage: evaluator verifies both that the setting is true (expect) and not false (unexpect)",
+        "Postconfig appropriately closes Thunderbird before reading prefs.js to ensure file is saved",
+        "Metric correctly handles None result (when file retrieval fails) by returning 0.0",
+        "Static warning about type mismatch is a false positive - metric function signature correctly handles both str and None from get_vm_file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "08c73485-7c6d-4681-999d-919f5c32dcfa_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

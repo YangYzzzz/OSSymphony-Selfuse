@@ -1,0 +1,115 @@
+{
+  "id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "new_id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0_traj_verify_1",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Create a new bookmark folder named 'Research Papers' in Chrome's Bookmarks bar.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a82b78bb-7fde-4cb3-94a4-035baf10bcf0/2206.08853.pdf",
+            "path": "/home/user/Desktop/2206.08853.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/2206.08853.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-20)"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_folders_names",
+        "names": [
+          "Research Papers"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_a82b78bb-7fde-4cb3-94a4-035baf10bcf0_sid_1488324",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent spent 50 turns trying to read the PDF, extract author info via terminal, search Google, and curl arxiv. Never created bookmarks or found author webpages. Failed due to overly complex multi-step task and apt-get errors.",
+    "capability_extraction": "Can open terminal (Ctrl+Alt+T), type shell commands, use Chrome address bar, search Google, navigate between terminal and Chrome, find files on filesystem",
+    "failure_analysis": "Task required reading PDF, identifying 4 authors, searching for each author's webpage, creating a bookmark folder, and adding 4 bookmarks. Model wasted turns on exploration and apt-get failures. Never reached bookmark creation step.",
+    "task_rationale": "Decomposed to bookmark folder creation only. The original task required creating a 'Liked Authors' folder with URLs. This simplified task tests just the folder creation capability.",
+    "explanation": "Task requires creating a bookmark folder named 'Research Papers' under Chrome's Bookmarks bar. Evaluator uses existing is_expected_bookmarks metric with bookmarks getter to check folder existence.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "folder_creation": "1.0 - Bookmark folder 'Research Papers' exists in Bookmarks bar"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (get_bookmarks) correctly reads Chrome's Bookmarks JSON file and returns the 'roots' dict containing 'bookmark_bar' with its children.",
+        "Metric (is_expected_bookmarks) correctly handles the 'bookmark_bar_folders_names' rule type: extracts folder names from bookmark_bar.children and compares against expected names.",
+        "Expected parameter handling is correct: when expected.type='rule', the framework passes the rules dict directly to the metric as the 'rule' parameter, and the metric accesses rule['type'] and rule['names'] directly.",
+        "Coverage is complete: the single instruction requirement (create a bookmark folder named 'Research Papers') is fully verified by checking folder existence in the bookmark bar.",
+        "Minor robustness concern: the metric uses strict set equality (set(actual_folders) == set(expected_names)) rather than a superset/subset check. If pre-existing bookmark folders exist in the VM, the evaluator would return 0 even if 'Research Papers' was correctly created. In a controlled OSWorld environment this is likely acceptable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using set(rule['names']).issubset(set(bookmark_bar_folders_names)) instead of strict equality to be robust against pre-existing bookmark folders in the VM."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

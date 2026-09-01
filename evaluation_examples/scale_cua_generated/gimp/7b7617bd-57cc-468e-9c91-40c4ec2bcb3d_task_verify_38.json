@@ -1,0 +1,92 @@
+{
+  "id": "7b7617bd-57cc-468e-9c91-40c4ec2bcb3d",
+  "new_id": "task_verify_38",
+  "snapshot": "gimp",
+  "instruction": "Set the default image resolution to 150 ppi in GIMP preferences.",
+  "source": "https://www.youtube.com/watch?v=G_PjQAy0iiU",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "key-value",
+        "key": [
+          "default-image",
+          "default-resolution"
+        ],
+        "value": "150.000000"
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to navigate to GIMP preferences and set the default image resolution to 150 ppi. The evaluator checks the gimprc config file for 'default-image default-resolution 150.000000'. Uses existing check_config_status metric and get_gimp_config_file getter with two-part key.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if default-image default-resolution is set to 150.000000, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical parsing logic error in check_config_status metric at gimp.py:517-538",
+        "The metric attempts to parse nested GIMP config format '(default-image (default-resolution 150.000000))' but the parsing logic is incorrect",
+        "After stripping parentheses and splitting, items[1] will be '(default-resolution' (with leading parenthesis), not 'default-resolution'",
+        "The two-part key check at line 535-537 will fail because items[1] == rule['key'][1] will be '(default-resolution' == 'default-resolution' which is false",
+        "The evaluator will always return 0.0 even when the correct setting exists in the config file",
+        "Postconfig is appropriate (closes GIMP to save settings), and getter correctly retrieves the config file, but metric logic is broken"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix the parsing logic in check_config_status to properly handle nested parentheses in GIMP config format",
+        "Option 1: Strip all parentheses from each item after splitting: items = [item.strip('()') for item in items]",
+        "Option 2: Use regex to properly parse GIMP config S-expression format",
+        "Option 3: For two-part keys, check if items[1].startswith('(') and strip it before comparison",
+        "Add test cases to verify parsing works for GIMP's nested config format: '(default-image (default-resolution 150.000000))'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

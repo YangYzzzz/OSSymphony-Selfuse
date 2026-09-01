@@ -1,0 +1,91 @@
+{
+  "id": "4127319a-8b79-4410-b58a-7a151e15f3d7",
+  "new_id": "4127319a-8b79-4410-b58a-7a151e15f3d7_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Use a terminal command to find the PHP file with the most lines in ~/project and display its name and line count.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4127319a-8b79-4410-b58a-7a151e15f3d7/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "bash ./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\nxdg-open /home/user/project",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "User.php",
+          "21"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_4127319a-8b79-4410-b58a-7a151e15f3d7_sid_1488256",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent opened terminal, ran find+wc command to count PHP lines in ~/project, got correct answer 54 in 4 turns.",
+    "capability_extraction": "Can open terminal, construct complex shell commands (find, wc, pipe, sort), navigate to correct directory",
+    "task_rationale": "Harder variation requiring sorting and identifying the max. Instead of summing all lines, agent must find the specific file with the most lines (User.php with 21 lines). Tests ability to combine find, wc, and sort.",
+    "explanation": "Task requires finding the PHP file with the most lines. The setup creates 4 PHP files: index.php (8), User.php (21), UserController.php (12), home.php (13). User.php has the most at 21 lines. Evaluator checks terminal output contains 'User.php' and '21'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "file_identified": "Partial - 'User.php' appears in terminal output",
+      "line_count": "Partial - '21' appears in terminal output"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter 'get_vm_terminal_output' correctly reads terminal output, which is the appropriate state for a terminal-command-based task.",
+        "Metric 'check_include_exclude' correctly receives the rules dict (with 'include'/'exclude' keys) via type='rule' and checks substring inclusion — parameter handling is correct.",
+        "Expected values are semantically correct: User.php (21 lines) is indeed the PHP file with the most lines among the 4 setup files (index.php:8, User.php:21, UserController.php:12, home.php:13).",
+        "Both instruction requirements are covered: file name ('User.php') and line count ('21') are both checked.",
+        "Minor concern: '21' is a short substring that could match within other numbers (e.g., '210', '121'). In practice this is unlikely given the task context, but a more specific pattern like ' 21 ' or '21 User.php' would be more robust.",
+        "The evaluator uses all-or-nothing scoring (1.0 or 0.0) despite the scoring_breakdown suggesting partial credit, but this is acceptable for a two-check task."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a more specific include pattern like '21 User.php' or adding an exclude for potential false-positive numbers containing '21' to reduce substring match ambiguity."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

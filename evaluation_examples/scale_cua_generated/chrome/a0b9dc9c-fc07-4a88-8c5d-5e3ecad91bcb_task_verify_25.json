@@ -1,0 +1,156 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_25",
+  "snapshot": "chrome",
+  "instruction": "From Thunderbird's 'Bills' folder, export the Twitter receipt email as an .eml file using its subject for the filename, and upload it to your Google Drive 'emails' folder.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_twitter_receipt__12ff505f1cc77038855fb34142173dbc",
+    "result": {
+      "type": "gdrive_twitter_receipt__12ff505f1cc77038855fb34142173dbc",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "emails",
+      "filename": "Your receipt from X (formerly Twitter) #0123-4567.eml",
+      "dest": "pred_twitter.eml"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "subject_pattern": "Your receipt from X (formerly Twitter)"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting only the Twitter receipt email from Thunderbird 'Bills' folder with its subject as filename to Google Drive 'emails' folder. Evaluator checks if the file exists in Google Drive with the exact filename 'Your receipt from X (formerly Twitter) #0123-4567.eml' and verifies it contains the expected subject pattern. Score: 1.0 if file exists with correct subject, 0.0 otherwise.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_2/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary scoring: 1.0 if Twitter receipt file exists in Google Drive with correct subject, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks the end result: file exists in Google Drive 'emails' folder with expected filename and subject pattern",
+        "Getter logic is correct: downloads file from Google Drive and returns local path",
+        "Metric logic is correct: validates file exists and reads content to verify subject pattern matches",
+        "Parameter handling is correct: metric receives rules dict directly when expected.type='rule' and correctly accesses expected.get('subject_pattern')",
+        "Coverage gap: evaluator only verifies Step 2 (file in Google Drive) but cannot verify Step 1 (export from Thunderbird 'Bills' folder)",
+        "Cannot verify the file was actually exported from Thunderbird vs uploaded from another source",
+        "Cannot verify the file came specifically from 'Bills' folder vs another Thunderbird folder",
+        "Hardcoded filename in config means evaluator cannot verify agent correctly derived filename from subject"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a getter to check Thunderbird 'Bills' folder state (e.g., verify email still exists or check export history if available)",
+        "Consider adding filesystem check to verify .eml file was created locally before upload",
+        "For more robust verification, could add timestamp checks to verify file was recently created/modified",
+        "However, for a binary end-state verification task, the current evaluator is acceptable if we assume correct end result implies correct process"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_twitter_receipt__12ff505f1cc77038855fb34142173dbc second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "id": "2c9fc0de-3ee7-45e1-a5df-c86206ad78b5",
+  "new_id": "2c9fc0de-3ee7-45e1-a5df-c86206ad78b5_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "In the current project, make two commits: first commit only README.md with message 'add readme', then commit all remaining files with message 'add project files'. Push both to origin main.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2c9fc0de-3ee7-45e1-a5df-c86206ad78b5/binder.zip",
+            "path": "/home/user/Downloads/binder.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "git config --global user.name \"xlang\" && git config --global user.email \"xlang2024anonym@gmail.com\" && mkdir -p /home/user/projects/remote_project && cd /home/user/projects/remote_project && git init --initial-branch=main && git config receive.denyCurrentBranch ignore "
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "unzip -q /home/user/Downloads/binder.zip -d /home/user/projects/ && cd /home/user/projects/binder && git init --initial-branch main && git remote add origin /home/user/projects/remote_project"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/projects/binder",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "cd /home/user/projects/remote_project; commit_count=$(git rev-list --count HEAD 2>/dev/null); if [ \"$commit_count\" -ge 2 ]; then echo \"has multiple commits\"; fi; first_hash=$(git log --oneline --reverse 2>/dev/null | head -n 1 | awk '{print $1}'); second_hash=$(git log --oneline --reverse 2>/dev/null | sed -n '2p' | awk '{print $1}'); first_msg=$(git log --format=%s -1 \"$first_hash\" 2>/dev/null); second_msg=$(git log --format=%s -1 \"$second_hash\" 2>/dev/null); echo \"$first_msg\"; echo \"$second_msg\"; if [ \"$first_msg\" = \"add readme\" ] && [ \"$second_msg\" = \"add project files\" ]; then echo \"correct_commit_order\"; fi; first_files=$(git diff-tree --no-commit-id --name-only -r \"$first_hash\" 2>/dev/null); if [ \"$first_files\" = \"README.md\" ]; then echo \"first_commit_only_readme\"; fi; second_files=$(git diff-tree --no-commit-id --name-only -r \"$second_hash\" 2>/dev/null); second_file_count=$(echo \"$second_files\" | wc -l); has_readme_in_second=$(echo \"$second_files\" | grep -c '^README.md$'); if [ \"$second_file_count\" -ge 1 ] && [ \"$has_readme_in_second\" -eq 0 ]; then echo \"second_commit_has_remaining_files\"; fi; cd /home/user/projects/binder; local_id=$(git log --oneline 2>/dev/null | head -n 1 | awk '{print $1}'); cd /home/user/projects/remote_project; remote_id=$(git log --oneline 2>/dev/null | head -n 1 | awk '{print $1}'); if [ \"$local_id\" = \"$remote_id\" ]; then echo \"repo is synchronous\"; else echo \"repo is not synchronous\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "add readme",
+          "add project files",
+          "has multiple commits",
+          "correct_commit_order",
+          "first_commit_only_readme",
+          "second_commit_has_remaining_files",
+          "repo is synchronous"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_2c9fc0de-3ee7-45e1-a5df-c86206ad78b5_sid_1488325",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully ran git status, git add ., git commit -m 'daily update', and git push origin main in terminal. All changes pushed to remote successfully.",
+    "capability_extraction": "Can use terminal, run git commands (status, add, commit, push), navigate git workflow fluently",
+    "task_rationale": "Tests selective staging and multiple commits, adding complexity to the proven single-commit workflow",
+    "explanation": "Task requires two separate commits: first staging only README.md, then staging remaining files. Evaluator checks: 1) both commit messages exist on remote, 2) at least 2 commits, 3) correct commit order (add readme before add project files), 4) first commit contains ONLY README.md, 5) second commit contains remaining files (not README.md), 6) repos are synchronized via push. [Fixed: added commit content verification and commit order check]",
+    "new_functions_paths": [],
+    "difficulty": "hard",
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Enhanced bash command to verify first commit contains only README.md using git diff-tree",
+      "Fix 2: Enhanced bash command to verify second commit contains remaining files (no README.md) using git diff-tree",
+      "Fix 3: Added commit order verification using git log --reverse to ensure 'add readme' is the first commit and 'add project files' is the second"
+    ],
+    "scoring_breakdown": {
+      "commit_messages": "checked via include: 'add readme', 'add project files'",
+      "multiple_commits": "checked via include: 'has multiple commits'",
+      "commit_order": "checked via include: 'correct_commit_order'",
+      "first_commit_content": "checked via include: 'first_commit_only_readme'",
+      "second_commit_content": "checked via include: 'second_commit_has_remaining_files'",
+      "sync_status": "checked via include: 'repo is synchronous'"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator comprehensively verifies all instruction requirements: (1) at least 2 commits via 'has multiple commits', (2) correct commit messages via 'add readme' and 'add project files' inclusion checks, (3) correct chronological order via 'correct_commit_order' using git log --reverse, (4) first commit contains ONLY README.md via git diff-tree check printing 'first_commit_only_readme', (5) second commit contains remaining files but NOT README.md via git diff-tree check printing 'second_commit_has_remaining_files', (6) push verification via latest commit hash comparison printing 'repo is synchronous'",
+        "Getter (vm_command_line) correctly executes the bash command on the VM and returns stdout, which check_include_exclude then verifies for all required substrings",
+        "Metric check_include_exclude correctly receives rules dict directly (type=rule) and checks all 7 include strings are present in the command output",
+        "Minor note: all-or-nothing scoring (1.0 or 0.0) is appropriate since the instruction requires all steps to be completed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

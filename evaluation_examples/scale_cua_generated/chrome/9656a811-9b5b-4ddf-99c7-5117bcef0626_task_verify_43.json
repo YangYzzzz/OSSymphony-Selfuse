@@ -1,0 +1,113 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "I want the strongest protection against dangerous websites. Can you enable Enhanced Safe Browsing mode in Chrome for maximum security?",
+  "source": "https://support.google.com/chrome/answer/9890866",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"safebrowsing\":{\"enabled\":true,\"enhanced\":false}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_enhanced_safety_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to enable Enhanced Safe Browsing in Chrome (stronger than standard Safe Browsing). The evaluator uses existing get_enable_enhanced_safety_browsing getter to check safebrowsing.enhanced field. Initial state: enhanced=false. Expected state: enhanced=true.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: checks if safebrowsing.enhanced field is set to true",
+        "Getter function get_enable_enhanced_safety_browsing (chrome.py:1296-1327) correctly extracts the right state: reads Preferences file and accesses data.get('safebrowsing', {}).get('enhanced', {})",
+        "Metric exact_match correctly compares getter result ('true'/'false' string) with expected value ('true')",
+        "Expected value is semantically correct: 'true' represents Enhanced Safe Browsing enabled state",
+        "Postconfig appropriately restarts Chrome to reload preferences from disk, ensuring getter reads updated state",
+        "Minor logic flaw in error handling: getter's exception handler returns 'Google' instead of 'false' (line 1326 in chrome.py) - this is a copy-paste error from another function but only affects error cases"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix error fallback in get_enable_enhanced_safety_browsing function (chrome.py:1326): change 'return \"Google\"' to 'return \"false\"' for consistent error handling"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

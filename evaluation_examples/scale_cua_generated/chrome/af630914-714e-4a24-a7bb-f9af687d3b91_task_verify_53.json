@@ -1,0 +1,107 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "task_verify_53",
+  "snapshot": "chrome",
+  "instruction": "My mother finds web pages too small on her high-resolution display. Could you set the default page zoom in Chrome to 125% or higher to make all websites appear larger by default?",
+  "source": "https://www.howtogeek.com/680260/how-to-change-chromes-default-text-size/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_page_zoom__1c67d2f9",
+    "result": {
+      "type": "chrome_page_zoom__1c67d2f9"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "range",
+        "min": 0.5,
+        "max": 99999
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting default page zoom to 125% or higher. In Chrome preferences, zoom levels are stored as floating point values where 0.0 = 100%, positive values = zoom in. 125% zoom is approximately 0.5 in the zoom level scale. The evaluator checks if default_zoom_level >= 0.5.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/af630914-714e-4a24-a7bb-f9af687d3b91_task_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/af630914-714e-4a24-a7bb-f9af687d3b91_task_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Expected value semantic error: The min value of 0.5 does NOT correspond to 125% zoom in Chrome's zoom level encoding",
+        "Chrome uses a logarithmic zoom scale where 0.0 = 100%. The relationship '125% = 0.5' stated in metadata is incorrect",
+        "The actual zoom level value for 125% in Chrome preferences varies by implementation but is typically computed as log(zoom_factor)/log(base) where base is around 1.2",
+        "For 125% zoom (1.25x), the correct value would be approximately log(1.25)/log(1.2) ≈ 1.04, not 0.5",
+        "The evaluator will incorrectly pass for zoom levels >= 0.5 which may correspond to zoom percentages much lower than 125%",
+        "Getter implementation appears correct (reads from partition.default_zoom_level.x), but the expected value is semantically wrong"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify the actual numeric encoding Chrome uses for zoom levels in the Preferences file by testing with known zoom percentages",
+        "Update the expected min value to the correct zoom level that corresponds to 125% zoom",
+        "Alternatively, modify the getter to convert the raw zoom level value to a percentage and check if percentage >= 125",
+        "Add verification logic that actually tests the zoom conversion formula used by Chrome"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

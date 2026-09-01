@@ -110,8 +110,8 @@ class SetupController:
         self._download_setup(files)
 
     def execute(self, command: List[str], stdout: str = "", stderr: str = "", shell: bool = False,
-                until: Optional[Dict[str, Any]] = None, quiet: bool = False, timeout: int = 120) -> None:
-        self._execute_setup(command, stdout=stdout, stderr=stderr, shell=shell, until=until, quiet=quiet, timeout=timeout)
+                until: Optional[Dict[str, Any]] = None, quiet: bool = False, timeout: int = 120):
+        return self._execute_setup(command, stdout=stdout, stderr=stderr, shell=shell, until=until, quiet=quiet, timeout=timeout)
 
     def launch(self, command: Union[str, List[str]], shell: bool = False) -> None:
         self._launch_setup(command, shell=shell)
@@ -359,8 +359,9 @@ class SetupController:
             logger.warning("Command should be a list of strings. Now it is a string. Will split it by space.")
             command = command.split()
             
-        if command[0] == "google-chrome" and self.use_proxy:
-            command.append("--proxy-server=http://127.0.0.1:18888")  # Use the proxy server set up by _proxy_setup
+        # if command[0] == "google-chrome" and self.use_proxy:
+        if command[0] == "google-chrome": # Modified by Yang
+            command.append("--proxy-server=http://10.1.8.5:23128")  # Use the proxy server set up by _proxy_setup
 
         payload = json.dumps({"command": command, "shell": shell})
         headers = {"Content-Type": "application/json"}
@@ -467,6 +468,10 @@ class SetupController:
             if not terminates:
                 time.sleep(0.3)
 
+        if isinstance(results, dict):
+            return results.get("output", "")
+        return ""
+
     def _execute_with_verification_setup(
             self,
             command: List[str],
@@ -519,7 +524,7 @@ class SetupController:
             raise Exception(f"Request failed: {e}")
 
     def _command_setup(self, command: List[str], **kwargs):
-        self._execute_setup(command, **kwargs)
+        return self._execute_setup(command, **kwargs)
 
     def _sleep_setup(self, seconds: float):
         time.sleep(seconds)

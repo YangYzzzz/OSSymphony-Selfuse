@@ -1,0 +1,103 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "I want to try the new parallel downloading feature to speed up downloads. Please enable the parallel downloading experiment in Chrome for me.",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "enable-parallel-downloading"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the parallel downloading experiment (enable-parallel-downloading) in Chrome flags. Uses existing check_enabled_experiments metric. Same difficulty level as original - accessing chrome://flags and enabling one experiment flag.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "The getter function (get_enabled_experiments) correctly extracts enabled Chrome experiments from the Local State file",
+        "The metric function (check_enabled_experiments) correctly parses experiment names by splitting on '@'",
+        "The postconfig correctly kills and restarts Chrome to persist the experiments to the Local State file",
+        "The expected value 'enable-parallel-downloading' is the correct Chrome experiment flag name for parallel downloading",
+        "CRITICAL ISSUE: The metric uses exact equality (==) instead of subset checking. If the user has OTHER experiments enabled in addition to parallel downloading, the check will FAIL even though the instruction requirement is satisfied",
+        "The instruction says 'enable the parallel downloading experiment' but does NOT require disabling all other experiments. The evaluator should verify that parallel downloading is IN the enabled list, not that the list contains ONLY parallel downloading"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change the metric comparison in check_enabled_experiments from 'enabled_experiments_names == rule['names']' to 'set(rule['names']).issubset(set(enabled_experiments_names))' to check if the required experiments are enabled (subset) rather than checking for exact equality",
+        "Alternatively, update the expected rule type to support subset checking (e.g., add a new type 'contains_names' or 'has_experiments') and implement the subset logic in the metric function"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

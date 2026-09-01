@@ -1,0 +1,95 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Switch the default search engine to Yahoo.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Yahoo!",
+          "Yahoo"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_bb5e4c0d-f964-439c-97b6-bdb9747de3f4_sid_1488114",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated to Chrome settings > Search engine section and changed default search engine from Google to Microsoft Bing in 7 turns.",
+    "capability_extraction": "Can open Chrome settings, navigate to specific settings sections, use dialogs/dropdowns to change setting values",
+    "task_rationale": "Same search engine change pattern with different target (Yahoo instead of Bing) to verify the capability generalizes across options",
+    "explanation": "Task requires changing Chrome default search engine to Yahoo. Uses same official default_search_engine getter and match_in_list metric as original task. Accepts both 'Yahoo!' and 'Yahoo' name variants.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'default_search_engine' correctly reads Chrome's Preferences JSON file to extract the default search engine short_name, which is the right state for verifying this instruction.",
+        "Metric 'match_in_list' correctly receives the rules dict with 'expected' key and checks if the getter result is in the expected list.",
+        "Expected values ['Yahoo!', 'Yahoo'] cover both common name variants of Yahoo's search engine in Chrome.",
+        "Postconfig correctly kills and relaunches Chrome to ensure the Preferences file is flushed to disk before the getter reads it.",
+        "Single-step instruction is fully covered by the evaluator - no missing requirements."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

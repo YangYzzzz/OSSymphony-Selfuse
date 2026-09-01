@@ -1,0 +1,103 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_55",
+  "snapshot": "os",
+  "instruction": "Ensure that Thunderbird, Vim, Chrome, and Files are the only apps marked as favorites.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps_partial__b4585266e3285db10295625412489679",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "thunderbird.desktop",
+          "vim.desktop",
+          "google-chrome.desktop",
+          "org.gnome.Nautilus.desktop"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding Files (org.gnome.Nautilus.desktop) to the existing three favorites. Initial state has Thunderbird, Vim, and Chrome. The custom metric provides partial credit: 1.0 for all four apps with correct count, 0.5 for correct count but missing some apps or all apps but wrong count, 0.0 otherwise. This encourages the agent to add Files while maintaining the existing apps.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_task_verify_4/metrics/basic_os.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "1.0": "All four required apps present with correct count",
+      "0.5": "Either correct count (4) but missing some apps, or all required apps but wrong count",
+      "0.0": "Wrong count or missing most required apps"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly extracts GNOME favorite apps using gsettings command",
+        "Expected values are semantically correct - all 4 required apps (Thunderbird, Vim, Chrome, Files/Nautilus) are specified with correct .desktop filenames",
+        "Metric correctly handles 'type: rule' parameter - accesses rule['expected'] directly as the rules dict is passed to metric",
+        "Comparison logic is sound - checks both count (exactly 4) and presence (all 4 required apps)",
+        "Partial credit scoring is reasonable - rewards full match (1.0), penalizes missing apps or wrong count (0.5), and fails for major issues (0.0)",
+        "Complete instruction coverage - verifies all requirements: exact count and all 4 specific apps",
+        "Data flow is correct: gsettings string → eval to list → set comparison → score calculation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Code quality: Replace eval(apps_str) with ast.literal_eval(apps_str) for safer parsing - eval() poses security risk if apps_str is malformed or malicious",
+        "Edge case handling: Add try-except around eval/literal_eval to handle malformed gsettings output gracefully",
+        "Consider validating that apps_str is a string before parsing to prevent TypeError"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

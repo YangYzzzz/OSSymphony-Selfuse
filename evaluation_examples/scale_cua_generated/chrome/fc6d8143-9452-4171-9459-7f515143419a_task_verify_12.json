@@ -1,0 +1,106 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "task_verify_12",
+  "snapshot": "chrome",
+  "instruction": "Display tomorrow's flight status for departures from Los Angeles airports to Seattle.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "tomorrow"
+        },
+        "expected": {
+          "start": "LAX",
+          "end": "SEA",
+          "time": "{DoW}, {Month} {Day0D}, {Year}"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation that changes the flight route from 'New York to Columbus OH' to 'Los Angeles to Seattle'. The task maintains the same structure as the original: agent navigates Delta.com to search for flight status updates for a specific route tomorrow. The evaluator uses existing functions (get_active_tab_html_parse, get_rule_relativeTime, check_direct_json_object) to verify the agent successfully searched for LAX→SEA flights with tomorrow's date. No custom functions needed as we reuse the original evaluator structure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "very_high",
+    "changes": "Only modified: instruction (LAX→SEA route), expected airports (LAX, SEA). Kept same: config, evaluator structure, all getter/metric functions.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: departure airport (LAX), arrival airport (SEA), and date (tomorrow)",
+        "Getter logic is semantically correct: get_active_tab_html_parse extracts flight info from Delta's active tab using appropriate CSS class selectors",
+        "Data extraction uses class_multiObject_child to get direct text nodes from 'mach-flight-context-info__wrapper__info--separator', correctly extracting departure/arrival airports",
+        "Relative time conversion is correct: get_rule_relativeTime properly converts 'tomorrow' to absolute date with format '{DoW}, {Month} {Day0D}, {Year}' matching Delta's date display",
+        "Expected values are semantically accurate for LAX→SEA route as specified in the instruction",
+        "Metric logic is appropriate: check_direct_json_object performs direct JSON comparison which correctly verifies extracted values against expected values",
+        "Data flow is logically sound: getter extracts JSON → relative time getter converts tomorrow to absolute date → metric compares extracted vs expected",
+        "All data types are semantically compatible throughout the evaluation pipeline"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "fc6d8143-9452-4171-9459-7f515143419a_aug_14_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

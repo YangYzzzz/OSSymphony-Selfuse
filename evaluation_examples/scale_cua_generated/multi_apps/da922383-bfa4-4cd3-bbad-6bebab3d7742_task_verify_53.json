@@ -1,0 +1,92 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_53",
+  "snapshot": "multiapps",
+  "instruction": "Convert the open web pages in Chrome to PDF and save them in /home/user/Downloads/Readings, using the title of each page as the PDF filename.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_pdf_export__17dfab17",
+    "result": {
+      "type": "pdf_exports__17dfab17",
+      "directory": "/home/user/Downloads/Readings"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "page_titles": [
+          "LLM Powered Autonomous Agents",
+          "How to Generate High Quality Human Data"
+        ],
+        "count": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting 2 Chrome tabs to PDF files in /home/user/Downloads/Readings directory. The evaluator checks if 2 PDFs exist and their filenames contain substantial portions of the actual page titles ('LLM Powered Autonomous Agents' and 'How to Generate High Quality Human Data').",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_8/getters/pdf_check__17dfab17.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_8/metrics/pdf_check__17dfab17.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: checks PDF count (2), directory location (/home/user/Downloads/Readings), and filename matching with page titles",
+        "Multi-word phrase matching logic is robust: requires at least 3 consecutive words (or 2 if title is short) from page titles to appear in filenames, preventing false positives like 'agent.pdf' or 'human.pdf'",
+        "Getter extracts correct state: lists PDF files in target directory using find command, returns basenames and file sizes for validation",
+        "Expected values are semantically correct: page titles match actual blog post titles from the URLs ('LLM Powered Autonomous Agents', 'How to Generate High Quality Human Data'), count=2 matches number of opened tabs",
+        "Partial credit scoring is well-designed: 80% weight on title matching, 20% on count, with granular scoring for too-few PDFs (30% partial credit) vs too-many PDFs (50% partial credit)",
+        "Logic handles filename variations: case-insensitive matching and normalization of hyphens/underscores to spaces for robust matching",
+        "File validity check: properly filters out empty PDFs by checking size > 0",
+        "Metric function correctly handles expected parameter: when expected.type='rule', it directly accesses expected.get('page_titles') and expected.get('count') which is correct since framework passes rules dict directly (no Section 5.1 violation)",
+        "No postconfig needed: verification reads saved PDF files from filesystem, not UI state, so closed print dialogs are not an issue",
+        "Complete coverage: all aspects of the instruction are verified (location, count, title-based naming)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Could add file creation timestamp check to ensure PDFs were created during task execution rather than pre-existing files (low priority since environment should start clean)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

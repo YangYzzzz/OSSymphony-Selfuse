@@ -1,0 +1,76 @@
+{
+  "id": "2373b66a-092d-44cb-bfd7-82e86e7a3b4d",
+  "new_id": "2373b66a-092d-44cb-bfd7-82e86e7a3b4d_traj_verify_0",
+  "snapshot": "multiapps",
+  "instruction": "Use mpstat to display per-processor CPU statistics every 2 seconds for 15 iterations and save the output to 'CPU_Per_Core_Report.txt' on Desktop.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update && echo {CLIENT_PASSWORD} | sudo -S apt-get install sysstat",
+        "shell": "true"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_mpstat_report__28ae802c5923a6e7ecfebd0e5cc59702",
+    "result": {
+      "type": "vm_file_content__28ae802c5923a6e7ecfebd0e5cc59702",
+      "path": "/home/user/Desktop/CPU_Per_Core_Report.txt",
+      "dest": "CPU_Per_Core_Report.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "keywords": [
+          "CPU",
+          "%usr",
+          "%sys",
+          "%idle"
+        ],
+        "min_timestamp_lines": 15
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened terminal, installed sysstat, ran 'sar 1 30' to collect CPU stats every 1 second for 30 seconds, and redirected output to System_Resources_Report.txt on Desktop. Task completed in 24 turns.",
+    "capability_extraction": "Can open terminal, install packages via apt, use sysstat tools (sar), redirect command output to files, navigate file paths",
+    "task_rationale": "Variation uses mpstat (another sysstat tool) instead of sar, testing per-processor stats rather than aggregate CPU. Same pattern of running a monitoring command and saving output.",
+    "challenge_additions": "Uses mpstat instead of sar, requires per-processor output format knowledge",
+    "explanation": "Task requires running mpstat from sysstat toolkit with interval and count parameters, saving output to file. Evaluator checks file contains mpstat-specific headers (CPU, %usr, %sys, %idle) and has at least 15 timestamped data lines.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393_traj_verify_0/getters/sysstat.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393_traj_verify_0/metrics/sysstat.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "keywords_present": "0.5 - File contains mpstat CPU headers (CPU, %usr, %sys, %idle)",
+      "line_count": "0.5 - File has at least 15 timestamped data lines"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter correctly reads the file from /home/user/Desktop/CPU_Per_Core_Report.txt on the VM and returns content for metric evaluation.",
+        "Metric correctly handles expected parameter directly (proper type='rule' handling — accesses expected.get('keywords') and expected.get('min_timestamp_lines') without wrapping).",
+        "Keyword check for ['CPU', '%usr', '%sys', '%idle'] correctly identifies mpstat-specific output headers.",
+        "Timestamp regex pattern correctly matches HH:MM:SS format lines in mpstat output.",
+        "Minor gap: Does not verify the 2-second interval between iterations (hard to verify from static file output, acceptable omission).",
+        "Minor gap: Does not explicitly verify per-processor output (e.g., checking for individual CPU core numbers like 0, 1, 2), though the keyword 'CPU' and mpstat-specific headers provide indirect evidence.",
+        "The min_timestamp_lines=15 threshold is a loose lower bound — with N CPU cores, 15 iterations produce N*15+ timestamp lines — but still validates that sufficient data was collected."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a keyword like 'all' or checking for numeric CPU identifiers (e.g., regex matching ' 0 ' or ' 1 ') to explicitly verify per-processor output format.",
+        "Could increase min_timestamp_lines to a higher value (e.g., 30+) since per-processor output with multiple cores should produce many more than 15 timestamp lines for 15 iterations."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

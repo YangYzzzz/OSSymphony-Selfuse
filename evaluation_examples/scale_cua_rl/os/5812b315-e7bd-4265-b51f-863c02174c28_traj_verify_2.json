@@ -1,0 +1,100 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "5812b315-e7bd-4265-b51f-863c02174c28_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Create a Linux user named 'charles' with password 'Ex@mpleP@55w0rd!' and set their home directory to '/home/test1'.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/test1",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get install -y expect",
+          "shell": true
+        }
+      },
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5812b315-e7bd-4265-b51f-863c02174c28/check_password.sh",
+              "path": "check_password.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x check_password.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_user_password_home__6fbd0fb5ef1077b146e8ceece522a6b4",
+    "result": {
+      "type": "user_password_home__6fbd0fb5ef1077b146e8ceece522a6b4",
+      "username": "charles",
+      "password": "Ex@mpleP@55w0rd!",
+      "expected_home": "/home/test1",
+      "check_script": "./check_password.sh"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "check_user": true,
+        "check_home": true,
+        "check_password": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened terminal, created user 'charles' with useradd -m (wrong home dir /home/charles instead of /home/test1), set password, created /home/test1 dir, edited sshd_config for ChrootDirectory, but spent ~20 turns struggling with SSH not being installed. Eventually installed openssh-server and started it, but the user's home directory was never corrected to /home/test1.",
+    "capability_extraction": "Can open terminal, create users with useradd, set passwords with chpasswd, create directories, set file permissions/ownership, edit config files with tee/heredoc, install packages with apt-get, manage services",
+    "failure_analysis": "Model used 'useradd -m charles' which created /home/charles as home dir instead of /home/test1. Never used the -d flag to set custom home dir. Also wasted many turns on SSH service restart failures before discovering it wasn't installed.",
+    "task_rationale": "Simplified version of original task: create user with password and correct home directory, but WITHOUT the SSH ChrootDirectory restriction. This removes the complex SSH configuration that caused the model to waste many turns, while still testing the core user creation skills the model attempted.",
+    "explanation": "Task requires creating user 'charles' with password and home dir /home/test1. Getter checks user existence via getent, home directory match, and password using check_password.sh script. Metric awards partial credit: user exists (0.33), home correct (0.34), password correct (0.33).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064_traj_verify_2/getters/user_password_home__6fbd0fb5ef1077b146e8ceece522a6b4.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064_traj_verify_2/metrics/check_user_password_home__6fbd0fb5ef1077b146e8ceece522a6b4.py"
+    ],
+    "difficulty": "easy-medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "user_exists": "0.33 - User 'charles' exists",
+      "home_directory": "0.34 - Home directory is /home/test1",
+      "password_correct": "0.33 - Password 'Ex@mpleP@55w0rd!' works"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'getent passwd charles' to check user existence and parses field index 5 (home directory) from the colon-separated output — matches /etc/passwd format.",
+        "Home directory comparison against expected '/home/test1' is correct and uses exact string match, which is appropriate.",
+        "Password verification uses a downloaded check_password.sh script with postconfig to install 'expect' — a valid approach for non-interactive password verification.",
+        "Metric provides sensible partial credit: 0.33 (user exists) + 0.34 (home correct) + 0.33 (password correct) = 1.0, covering all three instruction requirements.",
+        "All three requirements from the instruction (user creation, password, home directory) are fully verified — complete coverage.",
+        "Minor: Metric does not reference the 'expected' rules parameter (check_user, check_home, check_password are never read); the metric always checks all three conditions regardless. This is functionally correct for this task since all three rules are true, but makes the expected rules decorative."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider having the metric conditionally check based on expected rules (e.g., only award password points if expected.get('check_password') is true), to make the expected configuration meaningful and support future flexibility."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

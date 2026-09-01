@@ -1,0 +1,98 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "task_verify_70",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome's homepage to Google (https://www.google.com) so it opens every time you start the browser.",
+  "source": "https://www.howtogeek.com/680260/how-to-change-chromes-default-text-size/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_chrome_setting__df4ecdef",
+    "result": {
+      "type": "chrome_setting_value__df4ecdef"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contains",
+        "value": "https://www.google.com"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting homepage to Google so it opens every time you start the browser. The evaluator checks TWO conditions: (1) startup_urls list contains 'https://www.google.com', AND (2) restore_on_startup is set to 4 or 5 (not 1 which is New Tab page).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/af630914-714e-4a24-a7bb-f9af687d3b91_aug_5_task_verify_4/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/af630914-714e-4a24-a7bb-f9af687d3b91_aug_5_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification: The evaluator correctly checks BOTH conditions required for the instruction: (1) session.startup_urls contains 'https://www.google.com', AND (2) session.restore_on_startup is set to 4 or 5 (not 1 which opens New Tab page).",
+        "Getter logic is correct: Properly reads Chrome preferences file and extracts both session.startup_urls array and session.restore_on_startup value (chrome.py:39-56).",
+        "Metric logic is correct: Properly verifies both conditions - checks URL presence in startup_urls list AND validates restore_on_startup is 4 or 5 (chrome.py:18-40). Returns 1.0 only when both conditions are met.",
+        "Proper postconfig: Kills and restarts Chrome to verify the homepage setting works in practice when browser starts (evaluator.postconfig).",
+        "Edge case handling: Returns sensible defaults if preferences file cannot be read (chrome.py:59-64).",
+        "Data flow is semantically correct: Getter extracts both required values → Metric checks both conditions → Returns binary score based on complete verification."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

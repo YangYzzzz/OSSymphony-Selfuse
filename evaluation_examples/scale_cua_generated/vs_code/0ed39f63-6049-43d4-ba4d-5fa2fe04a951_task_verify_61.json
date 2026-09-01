@@ -1,0 +1,129 @@
+{
+  "id": "0ed39f63-6049-43d4-ba4d-5fa2fe04a951",
+  "new_id": "task_verify_61",
+  "snapshot": "vscode",
+  "instruction": "Find and replace every occurrence of 'the' with 'a' throughout the file.",
+  "source": "https://www.quora.com/How-do-you-find-and-replace-text-in-Visual-Studio-Code",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/0ed39f63-6049-43d4-ba4d-5fa2fe04a951/vscode_replace_text.txt",
+            "path": "/home/user/Desktop/vscode_replace_text.txt"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/vscode_replace_text.txt"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Visual Studio Code"
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_text_replacement__0b4a6158",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/vscode_replace_text.txt",
+      "dest": "vscode_replace_text.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "original_word": "the",
+        "replacement_word": "a",
+        "expected_count": 10
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires replacing all instances of 'the' with 'a' in VSCode. Verified with Python: original file contains 10 instances of 'the'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/0ed39f63-6049-43d4-ba4d-5fa2fe04a951_task_verify_1/metrics/vscode.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Counted 10 occurrences of 'the' in original file using Python script.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL LOGIC ERROR: Metric uses substring counting instead of word counting for replacement verification",
+        "The metric checks content.count('a') == 10, but 'a' likely already exists in the original file in words like 'cat', 'sat', 'mat', etc.",
+        "This will cause false negatives: even if replacement is done correctly, the count will include pre-existing 'a' substrings",
+        "Example: 'the cat' -> 'a cat' adds 1 word 'a' but 'cat' contains substring 'a', so total count != expected replacements",
+        "The metric should use word boundary regex (e.g., re.findall(r'\\ba\\b', content)) instead of simple substring counting",
+        "Minor issue: Case sensitivity - instruction says 'the' but doesn't specify case-insensitive matching (VSCode default is case-insensitive)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace content.count(replacement_word) with word-boundary counting: import re; actual_count = len(re.findall(r'\\b' + re.escape(replacement_word) + r'\\b', content))",
+        "Similarly for original_word check: use re.search(r'\\b' + re.escape(original_word) + r'\\b', content) instead of 'in' operator",
+        "Consider case-insensitive matching: use re.IGNORECASE flag if instruction expects case-insensitive replacement",
+        "Alternative: Instead of counting replacement word, verify that original_word count is 0 and file was modified (compare hash/length)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_text_replacement__0b4a6158 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_text_replacement__0b4a6158 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

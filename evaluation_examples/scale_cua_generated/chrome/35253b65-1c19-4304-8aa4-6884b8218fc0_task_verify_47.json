@@ -1,0 +1,84 @@
+{
+  "id": "35253b65-1c19-4304-8aa4-6884b8218fc0",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "Make this website available as a desktop application using Chrome's install feature.",
+  "source": "https://www.laptopmag.com/articles/how-to-create-desktop-shortcuts-for-web-pages-using-chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.twitter.com"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_shortcut_on_desktop",
+    "result": {
+      "type": "shortcuts_on_desktop"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "exec",
+        "exec": "/opt/google/chrome/google-chrome --profile-directory=Default --app-id=jgeocpdicgmnaannojhgkejlkgfnkbpo"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation for creating a desktop shortcut for Twitter using Chrome's install feature. Same interaction pattern as original task. The app-id for Twitter is jgeocpdicgmnaannojhgkejlkgfnkbpo. Uses existing evaluator functions.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Metric uses exact string matching for Exec command which is too strict - will fail if Chrome adds extra flags or whitespace variations",
+        "The metric checks for 'Exec=' + rule['exec'] + '\\n' requiring exact match including newline, but Chrome PWA shortcuts may have variations in flags (e.g., --no-startup-window) or profile paths",
+        "No postconfig provided to refresh desktop state after PWA installation - desktop environment may not immediately detect new .desktop file",
+        "Static validation correctly warned about UI/state-dependent task needing postconfig to ensure desktop shortcuts are refreshed",
+        "App-id jgeocpdicgmnaannojhgkejlkgfnkbpo may be Twitter-specific but this assumes consistent Chrome PWA generation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify metric to use partial string matching or regex to check if app-id is present in exec command rather than exact match",
+        "Add postconfig to refresh desktop environment (e.g., restart file manager or wait for desktop cache refresh)",
+        "Consider checking for app-id in the exec command using 'app-id=jgeocpdicgmnaannojhgkejlkgfnkbpo' substring rather than full exec path",
+        "Add flexibility to handle variations in profile-directory paths and additional Chrome flags"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

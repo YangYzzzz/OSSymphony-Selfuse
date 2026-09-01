@@ -1,0 +1,113 @@
+{
+  "id": "21df9241-f8d7-4509-b7f1-37e501a823f7",
+  "new_id": "task_verify_36",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Change the representation of column \"Parameter\" to show in Thousands (K) in Column B. The numbers should be rounded to one decimal place, and half should be rounded up. Then remember to place a white space between the digits and the unit.",
+  "source": "https://www.youtube.com/watch?v=p5C4V_AO1UU",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/21df9241-f8d7-4509-b7f1-37e501a823f7/Represent_in_millions_billions.xlsx",
+            "path": "/home/user/Represent_in_millions_billions.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Represent_in_millions_billions.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Represent_in_millions_billions.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_thousands_format__c7589826",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Represent_in_millions_billions.xlsx",
+      "dest": "Represent_in_millions_billions.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet": 0,
+        "values": {
+          "B2": "0.0 K",
+          "B3": "0.0 K",
+          "B4": "0.1 K",
+          "B5": "15.0 K",
+          "B6": "1500.0 K",
+          "B7": "150000.0 K",
+          "B8": "15000000.0 K"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires converting Parameter column values to Thousands (K) format with one decimal place. Verified with Python: 1→0.0 K, 10→0.0 K, 150→0.1 K, 15000→15.0 K.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/21df9241-f8d7-4509-b7f1-37e501a823f7_task_verify_0/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Metric function expects file bytes but vm_file getter returns a file path string. Line 23-27 in xlsx.py attempts tmp.write(result) where result is a string path from get_vm_file(), not bytes. This will cause TypeError at runtime.",
+        "Data type mismatch: get_vm_file() returns Union[str, List[str]] (file paths per file.py:74-143) but metric treats result as bytes to write to file handle. The metric needs to read from the file path, not write the path as bytes.",
+        "Uncertain verification approach: Metric reads cell.value with openpyxl data_only=True (line 30). If cells are formatted with custom number format rather than containing text, cell.value may return numeric values instead of formatted strings like '0.0 K'. This could cause false negatives.",
+        "Expected values are correct for the requirement (include space: '0.0 K'), but the verification logic won't work due to the data type issue.",
+        "Postconfig is correctly implemented with window activation and Ctrl+S to save the file before evaluation."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix metric to read from file path: Change line 23-27 to read the file from the path. Since result is a string path, use: wb = openpyxl.load_workbook(result, data_only=True) directly, instead of writing to temp file.",
+        "Consider using openpyxl with data_only=False to read formatted values, or use ws[cell_addr].number_format to check if custom formatting was applied, since the task requires formatting cells, not just entering text values.",
+        "Add error handling for when result is None (file fetch failed) to avoid AttributeError.",
+        "Verify that the expected values match the actual calculation from source data (e.g., verify that cell B5 should indeed be '15.0 K' based on original value in the source file)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

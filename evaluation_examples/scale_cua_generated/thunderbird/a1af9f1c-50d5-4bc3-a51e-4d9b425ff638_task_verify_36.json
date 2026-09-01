@@ -1,0 +1,128 @@
+{
+  "id": "a1af9f1c-50d5-4bc3-a51e-4d9b425ff638",
+  "new_id": "task_verify_36",
+  "snapshot": "thunderbird",
+  "instruction": "I need to configure Thunderbird with my Office 365 account (admin@business.com) for sending emails only, using the Microsoft SMTP relay. Don't set up the receiving part.",
+  "source": "https://superuser.com/questions/1764409/how-to-send-email-with-thunderbird-without-configuring-an-incoming-email-service",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/15c3b339-88f7-4a86-ab16-e71c58dcb01e/thunderbird-profile-blank.tar.gz",
+            "path": "/home/user/thunderbird-profile-blank.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile-blank.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.smtpserver.smtp1.hostname": {
+            "method": "==",
+            "ref": "smtp.office365.com"
+          },
+          "mail.smtpserver.smtp1.port": {
+            "method": "==",
+            "ref": 587
+          },
+          "mail.smtpserver.smtp1.username": {
+            "method": "==",
+            "ref": "admin@business.com"
+          },
+          "mail.identity.id1.useremail": {
+            "method": "==",
+            "ref": "admin@business.com"
+          }
+        },
+        "unexpect": {
+          "mail.server.server1.type": {
+            "method": "==",
+            "ref": "pop3"
+          }
+        }
+      }
+    },
+    "func": "check_thunderbird_prefs"
+  },
+  "metadata": {
+    "explanation": "Task variation for Office 365 SMTP configuration. Verifies basic SMTP settings (server hostname, port, username, and email) are configured correctly for send-only operation. Also verifies that no incoming mail server (IMAP/POP3) is configured, ensuring send-only setup. While OAuth2 authentication cannot be fully validated, the basic SMTP configuration elements are verifiable through Thunderbird's prefs.js file.",
+    "difficulty": "medium",
+    "estimated_steps": 6,
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses check_thunderbird_prefs to verify SMTP configuration in Thunderbird's prefs.js file",
+        "Complete coverage: All instruction requirements are verified - SMTP server (smtp.office365.com), port (587), username (admin@business.com), email identity (admin@business.com), and send-only configuration (no imap/pop3 incoming servers)",
+        "Correct metric parameter handling: check_thunderbird_prefs receives rules dict directly as 'rule' parameter and correctly accesses rule.get('expect') and rule.get('unexpect')",
+        "Expected values are semantically correct for Office 365 SMTP relay configuration",
+        "Proper postconfig: Closes Thunderbird and waits before reading prefs.js to ensure configuration is persisted",
+        "Logic flow is sound: VM file getter extracts prefs.js → check_thunderbird_prefs parses preferences → verifies expected SMTP settings exist and unexpected incoming server settings do not exist"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

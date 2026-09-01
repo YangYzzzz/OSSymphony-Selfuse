@@ -1,0 +1,150 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "Transfer the Bills emails from Thunderbird into a 'emails' directory on Google Drive, naming each .eml file after its subject line.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_filename_pattern__a2f23245",
+    "result": {
+      "type": "googledrive_filenames__a2f23245",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_path": [
+        "emails"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension": ".eml",
+        "min_files": 2
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Verifies files in 'emails' folder have .eml extension and at least 2 files exist. Verified Bills folder has 2 emails with subjects containing 'Amazon Web Services' and from X/Twitter.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_3/getters/googledrive_a2f23245.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_3/metrics/googledrive_a2f23245.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator does not verify the primary requirement that files must be 'named after their subject line' - it only checks file extension and count",
+        "Incomplete coverage: Instruction specifies emails from 'Bills' folder in Thunderbird, but evaluator doesn't verify the source folder",
+        "Metadata mentions specific email subjects ('Amazon Web Services', 'X/Twitter') but evaluator doesn't check if filenames match these subjects",
+        "The metric check_filename_pattern__a2f23245 only validates structural properties (.eml extension, min 2 files) but not semantic naming requirements",
+        "Getter logic is correct for retrieving filenames from Google Drive folder, but metric cannot validate if those filenames correspond to email subjects"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add expected filenames list based on actual email subjects from Bills folder (e.g., ['Amazon Web Services Invoice.eml', 'X Twitter Notification.eml'])",
+        "Modify metric to check if retrieved filenames match or contain expected subject line patterns",
+        "Consider using a substring/fuzzy matching metric to handle subject line variations (special characters, length limits, etc.)",
+        "Alternatively, use a pattern-based metric that verifies filenames are reasonable subject lines (not just random strings), though exact match is preferred",
+        "Document the actual email subjects in metadata so expected values can be properly specified"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

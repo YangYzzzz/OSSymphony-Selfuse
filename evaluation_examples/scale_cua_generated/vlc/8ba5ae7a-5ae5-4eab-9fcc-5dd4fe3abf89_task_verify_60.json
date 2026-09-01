@@ -1,0 +1,76 @@
+{
+  "id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89",
+  "new_id": "task_verify_60",
+  "snapshot": "base_setup",
+  "instruction": "Configure VLC to automatically load subtitles from the Desktop folder",
+  "source": "https://docs.videolan.me/vlc-user/desktop/3.0/en/basic/recording/playing.html#choose-your-recordings-folder",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_vlc_subtitle_folder__73747be5",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "subtitle_folder_path": "/home/user/Desktop"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires modifying VLC's subtitle autoload folder setting to Desktop. The evaluator checks if 'sub-autodetect-path' in vlcrc is set to '/home/user/Desktop'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_task_verify_0/metrics/vlc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Metric comparison logic assumes 'sub-autodetect-path' contains a single path, but VLC stores this as a comma or semicolon-separated list of paths",
+        "The exact string match (line 26: current_path == expected_subtitle_path) will fail if Desktop path is combined with other paths (e.g., 'sub-autodetect-path=./subtitles,/home/user/Desktop')",
+        "No handling of VLC config formatting variations such as quotes, trailing slashes, or path list delimiters",
+        "The getter logic is correct and can extract the VLC config file properly",
+        "Expected value '/home/user/Desktop' is semantically correct for the instruction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change comparison from exact match to substring/list check: verify that '/home/user/Desktop' is contained within the sub-autodetect-path value",
+        "Parse the sub-autodetect-path value as a comma or semicolon-separated list and check if Desktop path is in the list",
+        "Normalize paths before comparison (handle trailing slashes, resolve ~/ to /home/user/)",
+        "Example fix: current_paths = [p.strip() for p in current_path.split(',')]; return 1.0 if expected_subtitle_path in current_paths else 0.0"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

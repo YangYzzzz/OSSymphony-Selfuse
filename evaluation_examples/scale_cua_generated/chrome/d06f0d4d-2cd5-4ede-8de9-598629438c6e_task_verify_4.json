@@ -1,0 +1,85 @@
+{
+  "id": "d06f0d4d-2cd5-4ede-8de9-598629438c6e",
+  "new_id": "task_verify_4",
+  "snapshot": "chrome",
+  "instruction": "Please configure a global hotkey for play/pause in VLC so I can control media playback even when the VLC window is not in focus. This would be helpful when I'm working on other tasks.",
+  "source": "https://superuser.com/questions/1039392/changing-colour-of-vlc-volume-slider",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_global_key_play_pause",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_global_key_play_pause": "1"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting a global play/pause hotkey in VLC by configuring the global-key-play-pause setting in the VLC configuration file. The existing metric function check_global_key_play_pause validates this setting. Default is unset (empty), so the agent must set it to a key binding.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts VLC config file from OS-specific paths (vlc.py:35-61)",
+        "Metric correctly checks if global-key-play-pause setting is configured: '0' if empty (not set), '1' if non-empty (set)",
+        "Expected value '1' correctly represents that a global hotkey should be configured",
+        "Complete coverage: instruction requires configuring a global play/pause hotkey, evaluator verifies the setting is configured",
+        "State accessibility is correct: VLC config file persists and is readable after VLC restart",
+        "Postconfig appropriately restarts VLC to ensure config is loaded",
+        "Metric uses binary check (empty vs non-empty) which appropriately verifies THAT a hotkey is configured, matching the instruction requirement of 'configure a global hotkey' without specifying which specific key"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

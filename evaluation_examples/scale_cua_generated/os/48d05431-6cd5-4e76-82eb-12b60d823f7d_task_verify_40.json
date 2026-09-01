@@ -1,0 +1,94 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_40",
+  "snapshot": "os",
+  "instruction": "I tried running \"nvm use 16\" in the terminal but got \"nvm: command not found\". Please fix this so I can use nvm commands immediately.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_0",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'NVM_DIR' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'nvm: command not found' by adding NVM initialization to ~/.bashrc. Evaluator checks if NVM_DIR is present in .bashrc, which indicates nvm has been properly initialized. Similar complexity to original conda task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for NVM_DIR in .bashrc similar to how original checks for 'conda initialize'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification of 'immediately' requirement: The instruction requires nvm commands to work 'immediately', but adding NVM_DIR to .bashrc only enables it for new terminal sessions, not the current one. The evaluator doesn't verify immediate availability.",
+        "Missing postconfig: No postconfig to source ~/.bashrc or verify nvm is actually available in the current session after modification.",
+        "Shallow verification: Only checks for NVM_DIR presence in .bashrc, doesn't verify if nvm commands actually work (e.g., 'nvm --version' or 'command -v nvm').",
+        "Potential false positive: Evaluator passes if NVM_DIR string exists in .bashrc, but doesn't verify the full nvm initialization block is correct or that nvm is functional."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig to source ~/.bashrc after modification: 'source ~/.bashrc' to enable immediate use",
+        "Change verification to test actual nvm availability: Use command 'command -v nvm' or 'nvm --version' instead of grep for NVM_DIR",
+        "Verify the full nvm initialization block is present, not just NVM_DIR variable",
+        "Consider two-step verification: (1) check .bashrc contains nvm init, (2) verify nvm command works after sourcing"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

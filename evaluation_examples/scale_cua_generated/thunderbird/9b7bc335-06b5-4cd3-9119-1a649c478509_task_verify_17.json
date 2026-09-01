@@ -1,0 +1,117 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_17",
+  "snapshot": "thunderbird",
+  "instruction": "Configure a message filter in Thunderbird to automatically mark all emails with the subject containing 'Weekly Report' as read. Apply this filter to the anonym-x2024@outlook.com account. Ensure the filter is enabled.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Mark read",
+            "condition": [
+              "AND (subject,contains,Weekly Report)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation requires creating a filter to mark emails as read based on subject content. The evaluator checks for: (1) enabled='yes', (2) action='Mark read', and (3) condition checking the 'subject' field contains 'Weekly Report'. Uses the existing check_thunderbird_filter function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "The check_thunderbird_filter function can validate 'Mark read' actions with subject-based conditions. The condition format 'AND (subject,contains,Weekly Report)' follows Thunderbird's filter syntax pattern.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: filter enabled, action 'Mark read', and subject condition 'contains Weekly Report'",
+        "Getter extracts filter file from correct account-specific path (/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat), implicitly verifying account requirement",
+        "Metric function check_thunderbird_filter properly parses filter file format and matches against expected rules",
+        "Postconfig correctly closes Message Filters window to ensure filter file is saved before verification",
+        "Edge cases handled: returns 0.0 if file is None, iterates all filters for matching",
+        "Parameter handling correct: metric receives rules dict directly (not wrapped), accesses rules.get('expect', []) correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Static type warning (get_vm_file returns Union[Optional[str], List[Optional[str]]] vs metric expects str) is a type annotation precision issue, not a runtime error. In single-file mode, get_vm_file returns str or None, which metric handles correctly. No fix required for runtime correctness."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

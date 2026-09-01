@@ -1,0 +1,116 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_51",
+  "snapshot": "multiapps",
+  "instruction": "Create PDF copies of the open Chrome tabs and store them in /home/user/Desktop/Articles, using each page's title as the filename.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "pip install PyMuPDF",
+          "shell": "true"
+        }
+      }
+    ],
+    "func": "check_pdf_export__b47a318c",
+    "result": {
+      "type": "pdf_exports__b47a318c",
+      "directory": "/home/user/Desktop/Articles"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "pdf_requirements": [
+          {
+            "expected_title": "LLM Powered Autonomous Agents",
+            "keywords": [
+              "llm",
+              "autonomous",
+              "agent"
+            ],
+            "min_keywords": 3
+          },
+          {
+            "expected_title": "Human Data Quality For AI",
+            "keywords": [
+              "human",
+              "data",
+              "quality"
+            ],
+            "min_keywords": 3
+          }
+        ],
+        "count": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting 2 Chrome tabs to PDF files in /home/user/Desktop/Articles directory. The evaluator verifies that 2 PDFs exist and their filenames are derived from page titles using multi-factor verification: (1) keyword matching with minimum threshold, (2) fuzzy string similarity to expected title, (3) PDF metadata title verification, and (4) content verification via text snippets. This ensures filenames are meaningfully derived from actual page titles rather than just containing scattered keywords.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_6/getters/pdf_check__b47a318c.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_6/metrics/pdf_check__b47a318c.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement that filenames must be derived from page titles",
+        "Multi-factor weighted scoring (keyword 30%, fuzzy title match 25%, metadata title 30%, content 15%) provides robust verification",
+        "Expected values include actual page titles ('LLM Powered Autonomous Agents', 'Human Data Quality For AI') and metric correctly uses these for fuzzy matching (check_pdf_export__b47a318c.py:51, 83-87)",
+        "PDF metadata title verification (30% weight) is the strongest signal - if Chrome saves PDFs correctly, metadata title should match page title (check_pdf_export__b47a318c.py:92-100)",
+        "Threshold of 0.7 is appropriately strict to prevent false positives while allowing reasonable filename variations (check_pdf_export__b47a318c.py:125)",
+        "Getter extracts correct state: PDF filenames, metadata, and text content from /home/user/Desktop/Articles directory (get_pdf_exports__b47a318c.py:6-97)",
+        "Content verification via text snippets (15% weight) provides additional validation that PDFs contain expected content (check_pdf_export__b47a318c.py:103-108)",
+        "Logic handles edge cases: checks exact count (2 PDFs), prevents double-matching, and gracefully handles missing metadata"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Expected titles might not exactly match actual HTML page titles which likely include ' | Lil\\'Log' suffix, but fuzzy matching should handle this. Consider testing with actual page titles if issues arise.",
+        "Enhancement: Could add validation that PDF creator/producer indicates Chrome-based export, though this is not required by the instruction"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

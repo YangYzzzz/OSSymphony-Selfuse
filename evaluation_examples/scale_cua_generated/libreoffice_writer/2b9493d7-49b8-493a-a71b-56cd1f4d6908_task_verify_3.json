@@ -1,0 +1,114 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_3",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Find and kill the process ID (PID) of the non-responsive LibreOffice Writer window using the terminal.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_pid_termination__a1464bb237d6019eaf4415118bf3efea",
+    "result": {
+      "type": "pid_termination__a1464bb237d6019eaf4415118bf3efea",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep -E \"(pidof|pgrep)\"); if [ -z \"$output\" ]; then echo \"pid not found\"; else echo \"pid lookup performed\"; fi; output=$(cat ~/.bash_history | grep -E 'kill[[:space:]]+-?[0-9]+'); if [ -z \"$output\" ]; then echo \"kill command not used\"; else echo \"kill command used with PID\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "pid lookup performed",
+          "kill command used with PID"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "pid not found",
+          "kill command not used"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding LibreOffice Writer's PID and terminating it using the kill command with that PID. Evaluator verifies: (1) no LibreOffice process is running, (2) PID lookup commands (pidof or pgrep) were used in bash history, and (3) kill command was used with a numeric PID. Tests complete multi-step process termination workflow.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_2/getters/terminal.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_2/metrics/terminal.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three requirements from the instruction: (1) PID lookup performed via pidof/pgrep commands in bash history, (2) kill command with numeric PID used in bash history via pattern 'kill[[:space:]]+-?[0-9]+', and (3) LibreOffice process is terminated",
+        "The bash history check for kill command correctly matches 'kill <PID>', 'kill -9 <PID>', and other signal variations, ensuring the specific kill command with PID requirement is met",
+        "The evaluator correctly rejects alternative termination methods (killall, pkill) that don't use 'kill <PID>' as required by the instruction",
+        "Complete coverage: all steps in the multi-step task are verified (find PID -> use kill command -> process terminated)",
+        "The metric function correctly implements include/exclude pattern matching with proper parameter handling for type='rule'"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_4_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

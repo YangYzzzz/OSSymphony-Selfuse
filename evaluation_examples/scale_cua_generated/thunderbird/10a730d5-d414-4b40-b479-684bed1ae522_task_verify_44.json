@@ -1,0 +1,116 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_44",
+  "snapshot": "thunderbird",
+  "instruction": "I'd like Thunderbird to automatically check for new messages more frequently. Can you configure the automatic mail check interval to a shorter period?",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.default.check_time": {
+            "method": "eq",
+            "ref": 5
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting Thunderbird automatic mail check interval to a shorter period. The evaluator checks if mail.server.default.check_time preference is set to 5 (minutes). Standard Thunderbird preference with similar complexity to original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "All-or-nothing: 1.0 if mail.server.default.check_time=5, else 0.0",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly extracts Thunderbird preferences file from /home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+        "Metric check_thunderbird_prefs properly parses prefs.js and checks mail.server.default.check_time preference",
+        "Expected value of 5 minutes is semantically correct for 'shorter period' - this is a common short interval for automatic mail checking",
+        "Postconfig appropriately closes Thunderbird window to ensure preferences are saved to disk before verification",
+        "Edge cases handled: None result returns 0.0, missing preferences handled correctly, JSON parsing for values is robust",
+        "Complete coverage: evaluator checks the exact requirement (mail check interval configuration)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor consideration: The instruction says 'shorter period' without specifying the exact value. While 5 minutes is reasonable, any value less than the original default would technically satisfy the instruction. However, 5 minutes is a standard and appropriate choice."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_52",
+  "snapshot": "chrome",
+  "instruction": "Locate diesel trucks with a maximum budget of $60,000 within 100 miles of 60601.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "60000",
+          "maximum_distance": "100",
+          "zip": "60601",
+          "fuel_slugs[]": "diesel"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires finding diesel trucks with price ≤ $60,000 within 100 miles of Chicago (60601). Evaluator validates URL query parameters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete requirement coverage: Instruction specifies 'diesel trucks' but evaluator only verifies diesel fuel type (fuel_slugs[]=diesel), not vehicle type (trucks)",
+        "Missing verification for vehicle type/category parameter that would ensure trucks are selected",
+        "The evaluator could pass if user searches for diesel cars, SUVs, or vans instead of trucks, which would not satisfy the instruction",
+        "The URL parameter parsing logic correctly extracts the specified keys (list_price_max, maximum_distance, zip, fuel_slugs[])",
+        "Expected values are semantically correct: price=60000, distance=100, zip=60601, fuel=diesel",
+        "Getter and metric logic are functionally correct for what they check, but coverage is incomplete"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for vehicle type/category parameter (e.g., 'body_style', 'vehicle_type', or similar cars.com parameter that specifies trucks)",
+        "Update expected values to include the trucks filter, for example: add a key-value pair like 'stock_type': 'truck' or 'body_style[]': 'truck' depending on cars.com URL structure",
+        "Consider updating parse_keys to include the vehicle type parameter",
+        "Alternative: Update instruction to remove 'trucks' requirement if only fuel type filtering is desired, OR ensure evaluator checks all instruction requirements"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

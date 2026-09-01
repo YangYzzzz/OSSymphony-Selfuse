@@ -1,0 +1,84 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "215dfd39-f493-4bc3-a027-8a97d72c61bf_traj_verify_1",
+  "snapshot": "vlc",
+  "instruction": "Change VLC's maximum volume limit to 200%.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": 200
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_215dfd39-f493-4bc3-a027-8a97d72c61bf_sid_1488187",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated VLC advanced preferences (Tools > Preferences > All > Interface > Main interfaces > Qt) to disable the background cone icon, saved settings, and restarted VLC to verify the change.",
+    "capability_extraction": "Can navigate VLC advanced preferences, find specific settings, toggle checkboxes, save preferences, restart VLC",
+    "task_rationale": "Related VLC Qt preferences task: changing the maximum volume limit is in the same Qt interface settings area the model already navigated successfully, testing the ability to modify a numeric value instead of a checkbox.",
+    "explanation": "Task requires changing VLC's maximum volume to 200% via Qt preferences. Evaluator uses existing get_vlc_config getter to read vlcrc file, and check_qt_max_volume metric to verify qt-max-volume is set to 200. Default is 125.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter get_vlc_config correctly reads the vlcrc configuration file from the VM, which contains the qt-max-volume setting.",
+        "Metric check_qt_max_volume correctly parses vlcrc for 'qt-max-volume=' line, defaults to '125' if absent, and compares against expected value '200'.",
+        "Expected parameter handling is correct: with type='rule', get_rule returns {'expected_qt_max_volume': 200}, and the metric accesses rule['expected_qt_max_volume'] directly.",
+        "Postconfig kills VLC before reading config, ensuring vlcrc is flushed to disk with saved settings.",
+        "Full coverage: the single instruction requirement (max volume = 200%) is completely verified by the evaluator.",
+        "Expected value 200 correctly matches the instruction's '200%' requirement."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

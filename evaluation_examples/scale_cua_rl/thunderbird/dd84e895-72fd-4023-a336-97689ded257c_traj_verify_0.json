@@ -1,0 +1,109 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "dd84e895-72fd-4023-a336-97689ded257c_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Delete the X (formerly Twitter) receipt email from the local Bills folder.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "run_sqlite3",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select (select count(*) from messages where folderID = 13) = 1;"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_dd84e895-72fd-4023-a336-97689ded257c_sid_1488186",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to Bills folder, opened both emails (AWS invoice and X receipt), attempted to star them by clicking star icons and selecting all messages, but spent 50 turns toggling stars on/off without achieving persistent starring of both emails.",
+    "capability_extraction": "Can navigate Thunderbird folder tree, click on Bills folder, open and read individual emails, select multiple messages, interact with star/flag icons (inconsistently), use Ctrl+A to select all",
+    "failure_analysis": "Model failed to reliably star all emails. It repeatedly toggled star icons on individual messages but couldn't achieve a stable state where both messages were starred. The model appeared confused about whether stars were applied, leading to repeated toggling across 50 turns.",
+    "task_rationale": "Decomposed original starring task into a simpler deletion task. The model demonstrated ability to select individual messages and interact with action buttons (Reply, Forward, Delete visible in toolbar). Deleting a single specific email is simpler than starring all.",
+    "explanation": "Task requires deleting the X (Twitter) receipt from Bills folder, leaving only the AWS invoice. Evaluator uses run_sqlite3 to check that exactly 1 message remains in folderID=13 (Bills).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_vm_file to fetch the Thunderbird global-messages-db.sqlite database and run_sqlite3 to query it.",
+        "Postconfig properly closes Thunderbird before reading the DB, ensuring data is flushed and the DB is not locked.",
+        "Expected type is 'rule', and get_rule returns the rules dict directly. run_sqlite3 correctly accesses rules['sql'] - parameter handling is correct.",
+        "SQL checks count of messages in folderID=13 equals 1, which is a reasonable proxy for verifying deletion occurred.",
+        "INCOMPLETE COVERAGE: The evaluator only checks that exactly 1 message remains in the Bills folder (folderID=13). It does NOT verify WHICH email was deleted. If the agent deleted the AWS invoice instead of the X (Twitter) receipt, the evaluator would still return 1.0 (false positive).",
+        "The SQL could be improved to also check that the remaining message is NOT the X receipt (e.g., by checking the subject or sender of the remaining message)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Enhance the SQL to verify the identity of the remaining message, e.g.: 'SELECT (SELECT count(*) FROM messages WHERE folderID = 13) = 1 AND (SELECT count(*) FROM messages WHERE folderID = 13 AND subject LIKE \"%Twitter%\" OR subject LIKE \"%X%receipt%\") = 0;' to ensure the X receipt was deleted and not the AWS invoice.",
+        "Alternatively, check that the remaining message contains 'AWS' or 'invoice' in its subject to confirm the correct email survived."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -22,10 +22,11 @@ import lib_run_single
 from desktop_env.osworld.desktop_env import DesktopEnv
 import os
 from os_caliber_task_generator import OSCaliberTaskGenerator
+from task_loader import load_task_config
 
 from mm_agents.qwen3vl_agent import Qwen3VLAgent
 from mm_agents.os_symphony.agents.instruction_generation_agent import InstructionGenerationAgent
-from mm_agents.anthropic.main import AnthropicAgent
+from mm_agents.anthropic.main_wo_code import AnthropicAgent
 from mm_agents.kimi.kimi_agent import KimiAgent
 from mm_agents.glm4v.glm4v_agent import GLM4VAgent
 from mm_agents.seed_agent import SeedAgent
@@ -35,7 +36,6 @@ from mm_agents.os_symphony.utils.process_context import set_current_result_dir
 from mm_agents.openai.gpt54_agent import GPT54Agent
 from mm_agents.anthropic.main_with_code import AnthropicAgentWithCode
 from mm_agents.gemini.gemini_openai_agent_with_code import GeminiOpenAIAgentWithCode
-from mm_agents.anthropic.main_with_self_defined_tools import AnthropicAgentWithSelfDefinedTools
 from mm_agents.os_symphony2.os_symphony2_agent_with_toolcall import OSSymphony2AgentWithToolCall
 from mm_agents.kimi.kimi_agent_with_code import KimiAgentWithCode
 
@@ -72,8 +72,13 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument("--sleep_after_execution", type=float, default=3.0)
     parser.add_argument("--max_steps", type=int, default=15)
+    parser.add_argument("--cache_dir", type=str, default="cache", help="Base cache directory for task files and evaluator artifacts.")
     
     # evaluation config
+    parser.add_argument(
+        "--benchmark", type=str, default="oscaliber", help="Benchmark name, e.g. oscaliber / osworld / osworld-v2"
+    )
+    parser.add_argument("--domain", type=str, default="all")
     parser.add_argument(
         "--test_config_base_dir", type=str, default="evaluation_examples"
     )
@@ -88,6 +93,8 @@ def config() -> argparse.Namespace:
     parser.add_argument("--use_thinking", action="store_true", default=False)
     parser.add_argument("--max_trajectory_length", type=int, default=8, help="The max number of trajectory steps.") # 一般没用, 目前强模型通常选择保留全部文本
     parser.add_argument("--max_image_history_length", type=int, default=5, help="The max number of images in the history.")
+    parser.add_argument("--keep_first_image", action="store_true", default=False, help="Keep the first screenshot in model history for OSSymphony2 agents.")
+    parser.add_argument("--keep_all_text", action="store_true", default=False, help="Keep all text content in model history for OSSymphony2 agents.")
     parser.add_argument("--language", type=str, default="Chinese", help="Language for the agent.")
 
     # logging related
@@ -128,6 +135,12 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--rollout_test_all_meta_path", type=str, default="evaluation_examples/osworld/test_all.json" # 当 mode 为 offline 时生效
     )
+    parser.add_argument(
+        "--test_all_meta_path",
+        dest="rollout_test_all_meta_path",
+        type=str,
+        help="Alias of --rollout_test_all_meta_path for compatibility with evaluation scripts.",
+    )
     # Online
     parser.add_argument(
         "--rollout_base_dir", type=str, default="evaluation_examples/ubuntu_online_rollout/synthesis" # 保存的任务文件基目录, 当 mode 为 online 时生效
@@ -164,6 +177,10 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--collect_qwen_sft_image_dir", type=str, default="qwen3vl_sft_dataset/image" # SFT 图像路径，后续需要更改
     )
+    parser.add_argument(
+        "--qwen3_tools", action="store_true",
+        help="Use the Qwen3-compatible Claude batched action schema. Enabled automatically by --collect_qwen_sft."
+    )
     # instrction generation model config ig: instrction generation model
     parser.add_argument("--ig_provider", type=str, default="openai")
     parser.add_argument("--ig_model", type=str, default="gpt-5")
@@ -179,6 +196,21 @@ def config() -> argparse.Namespace:
 
     args = parser.parse_args()
     return args
+
+
+def configure_osworld_v2_file_base_url(args: argparse.Namespace) -> None:
+    if getattr(args, "benchmark", None) != "osworld-v2":
+        return
+    if os.environ.get("OSWORLD_FILE_BASE_URL"):
+        return
+
+    local_asset_base = os.path.abspath(args.cache_dir)
+    os.environ["OSWORLD_FILE_BASE_URL"] = local_asset_base
+    logging.getLogger("desktopenv.experiment").info(
+        "OSWORLD_FILE_BASE_URL is not set; defaulting to local V2 asset cache: %s",
+        local_asset_base,
+    )
+
 
 args = config()
 logger = logging.getLogger()
@@ -198,6 +230,7 @@ stdout_handler.addFilter(logging.Filter("desktopenv"))
 
 logger.addHandler(stdout_handler)
 logger = logging.getLogger("desktopenv.experiment")
+configure_osworld_v2_file_base_url(args)
 
 
 def distribute_tasks(test_all_meta: dict) -> List[tuple]:
@@ -206,6 +239,42 @@ def distribute_tasks(test_all_meta: dict) -> List[tuple]:
         for example_id in examples:
             all_tasks.append((domain, example_id))
     return all_tasks
+
+
+def task_get(task_config, key: str, default=None):
+    if hasattr(task_config, "get") and callable(getattr(task_config, "get")):
+        try:
+            return task_config.get(key, default)
+        except TypeError:
+            return task_config.get(key)
+    return getattr(task_config, key, default)
+
+
+def ensure_task_id(task_config, task_id: str):
+    if hasattr(task_config, "get") and callable(getattr(task_config, "get")):
+        task_config["id"] = task_id
+    else:
+        setattr(task_config, "id", task_id)
+    return task_config
+
+
+def load_offline_task_config(args: argparse.Namespace, domain: str, example_id: str):
+    is_osworld_v2 = args.benchmark == "osworld-v2"
+    if args.benchmark in {"osworld", "osworld-v2"}:
+        example = load_task_config(
+            task_id=example_id,
+            base_dir=args.test_config_base_dir,
+            benchmark="osworld" if is_osworld_v2 else args.benchmark,
+            domain=domain,
+            eval_version="v2" if is_osworld_v2 else "v1",
+            prefer_class=is_osworld_v2,
+        )
+        return ensure_task_id(example, example_id)
+
+    config_file = os.path.join(args.rollout_task_dir, f"{domain}/{example_id}.json")
+    with open(config_file, "r", encoding="utf-8") as f:
+        example = json.load(f)
+    return ensure_task_id(example, example_id)
 
 
 def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: list):
@@ -238,7 +307,8 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
             os_type="Ubuntu",
             require_a11y_tree=args.observation_type in ["a11y_tree", "screenshot_a11y_tree", "som"],
             enable_proxy=True,
-            client_password=args.client_password
+            client_password=args.client_password,
+            cache_dir=args.cache_dir,
         )
         env.start()
         active_environments.append(env)
@@ -257,7 +327,8 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 use_thinking=args.use_thinking,
                 language=args.language
             )
-        elif "qwen3" in args.model.lower() or "symphony" in args.model.lower():
+        elif "qwen" in args.model.lower() or "symphony" in args.model.lower() or "gpt" in args.model.lower():
+            # GPT 系列使用同 Symphony Harness
             agent = OSSymphony2AgentWithToolCall(
                 model=args.model,
                 base_url=args.base_url,
@@ -266,7 +337,10 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 top_p=args.top_p,
                 temperature=args.temperature,
                 max_trajectory_length=args.max_trajectory_length,
+                keep_first_image=args.keep_first_image,
+                keep_all_text=args.keep_all_text,
                 use_thinking=args.use_thinking,
+                benchmark=args.benchmark,
                 input_screen_size=(args.input_screen_width, args.input_screen_height),
                 enable_code_tool=args.enable_code_tool,
                 collect_qwen_sft=args.collect_qwen_sft,
@@ -282,7 +356,13 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                     temperature=args.temperature,
                     only_n_most_recent_images=args.max_image_history_length,
                     top_p=args.top_p,
-                    no_thinking=not args.use_thinking,
+                    thinking_mode="adaptive",
+                    effort="max",
+                    screen_size=(args.screen_width, args.screen_height),
+                    input_screen_size=(args.input_screen_width, args.input_screen_height),
+                    batch_tool_prompt=True,
+                    qwen3_tools=args.qwen3_tools or args.collect_qwen_sft,
+                    max_steps=args.max_steps,
                     collect_qwen_sft=args.collect_qwen_sft,
                     collect_qwen_sft_image_dir=args.collect_qwen_sft_image_dir
                 )
@@ -418,14 +498,11 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                 break
             domain, example_id = item
             try:
-                config_file = os.path.join(
-                    args.rollout_task_dir, f"{domain}/{example_id}.json"
-                )
-                with open(config_file, "r", encoding="utf-8") as f:
-                    example = json.load(f)
+                example = load_offline_task_config(args, domain, example_id)
+                instruction = task_get(example, "instruction")
                 logger.info(f"[{current_process().name}][Domain]: {domain}")
                 logger.info(f"[{current_process().name}][Example ID]: {example_id}")
-                logger.info(f"[{current_process().name}][Instruction]: {example['instruction']}")
+                logger.info(f"[{current_process().name}][Instruction]: {instruction}")
                 example_result_dir = os.path.join(
                     args.result_dir,
                     domain,
@@ -438,7 +515,7 @@ def run_env_tasks(task_queue: Queue, args: argparse.Namespace, shared_scores: li
                         env,
                         example,
                         args.max_steps,
-                        example["instruction"],
+                        instruction,
                         args,
                         example_result_dir,
                         shared_scores,
@@ -550,7 +627,8 @@ def run_online_rollout(task_queue: Queue, args: argparse.Namespace, task_all_met
             os_type="Ubuntu",
             require_a11y_tree=args.observation_type in ["a11y_tree", "screenshot_a11y_tree", "som"],
             enable_proxy=True,
-            client_password=args.client_password
+            client_password=args.client_password,
+            cache_dir=args.cache_dir,
         )
         env.start()
         active_environments.append(env)
@@ -855,6 +933,8 @@ if __name__ == "__main__":
         if args.rollout_mode == "offline":
             with open(args.rollout_test_all_meta_path, "r", encoding="utf-8") as f:
                 test_file_list = json.load(f)
+            if args.domain != "all":
+                test_file_list = {args.domain: test_file_list[args.domain]}
             # get unfinished
             test_file_list = get_unfinished_tasks(test_file_list, args.result_dir, args.collect_qwen_sft)
             offline_test(args, test_file_list)

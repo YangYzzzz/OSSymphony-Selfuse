@@ -1,0 +1,110 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_24",
+  "snapshot": "chrome",
+  "instruction": "Find youth Nike sweatpants between $40 and $80.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "$40 - $80",
+          "youth",
+          "sweatpants",
+          "nike"
+        ]
+      },
+      "url_include_expected": [
+        "$40",
+        "$80",
+        "youth",
+        "sweatpants",
+        "nike"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "$40 - $80": true,
+          "youth": true,
+          "sweatpants": true,
+          "nike": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation of NBA store filtering task. User must apply 4 filters: youth category, Nike brand, sweatpants type, and $40-$80 price range. Evaluator checks all filters are present in HTML class elements and URL parameters, with no extra filters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing check_direct_json_object metric and get_active_tab_html_parse getter. Pattern matches original task structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks all 4 filter requirements from the instruction (youth, Nike, sweatpants, $40-$80 price range)",
+        "Logical correctness: Getter extracts filter state from both HTML class elements and URL parameters using case-insensitive matching",
+        "Correct verification logic: The 'class&url' category checks for expected filters in both DOM elements and URL, ensuring filters are actually applied",
+        "No extra filters check: Validates 'is_other_exist: false' to ensure no unexpected filters are present",
+        "Metric correctly compares all expected keys with actual values using check_direct_json_object",
+        "Data flow is sound: getter extracts filter JSON -> metric compares with expected -> returns 1.0 only if all filters match",
+        "Practical feasibility: Active tab HTML/URL is accessible via Playwright, e-commerce sites typically expose filter state in both DOM and URL",
+        "No postconfig needed: Filter state persists in page after user interaction"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

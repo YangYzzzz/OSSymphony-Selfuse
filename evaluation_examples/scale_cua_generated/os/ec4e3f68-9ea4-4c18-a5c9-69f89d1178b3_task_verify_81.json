@@ -1,0 +1,103 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_81",
+  "snapshot": "os",
+  "instruction": "Remove all applications from favorites except Google Chrome",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "google-chrome.desktop"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+        "shell": true
+      }
+    }
+  ],
+  "metadata": {
+    "explanation": "Task requires keeping only Chrome in favorites and removing all others. Initial apps are ['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']. Evaluator verifies list contains only Chrome using check_gnome_favorite_apps.",
+    "new_functions_paths": [
+      "tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_task_verify_4"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL SECURITY ISSUE: Metric function uses eval(apps_str) at basic_os.py:4 which is unsafe and could execute arbitrary code",
+        "Getter logic is correct: gsettings get org.gnome.shell favorite-apps extracts the exact state needed to verify the instruction",
+        "Metric comparison logic is functionally correct: Compares both length (line 8-9) and set equality (line 11-12) to verify favorites list",
+        "Complete coverage: Evaluator verifies the single requirement - that favorites list contains only google-chrome.desktop",
+        "Expected value is semantically correct: ['google-chrome.desktop'] matches the instruction requirement to keep only Chrome",
+        "Correct parameter handling: Metric directly accesses rule['expected'] (line 6) as required for type='rule'",
+        "State accessibility: gsettings can be queried at any time without UI dependencies, postconfig present at lines 62-70",
+        "No error handling: Function does not handle malformed output or parsing failures"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace eval(apps_str) with ast.literal_eval(apps_str) for safe parsing of Python literal strings",
+        "Add try/except block to handle parsing failures gracefully and return 0 on error",
+        "Add type validation to ensure parsed result is a list before comparison"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

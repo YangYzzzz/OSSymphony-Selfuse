@@ -1,0 +1,128 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_61",
+  "snapshot": "os",
+  "instruction": "Find all files with extension \".ipynb\" (excluding those containing \"failed\" in the name) in the test_environment directory tree and copy them to a new directory \"./successful\" while preserving directory structure",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/eval.sh",
+            "path": "eval.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd /home/user/test_environment && find successful -type f -name '*.ipynb' 2>/dev/null | sort || echo ''",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "successful/dir1/b.ipynb",
+          "successful/dir2/d.ipynb"
+        ],
+        "exclude": [
+          "failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires copying .ipynb files that do NOT contain 'failed' in the name. Based on setup.sh, there are 5 .ipynb files total: a_failed.ipynb, b.ipynb, c_failed.ipynb, d.ipynb, e_failed.ipynb. The non-failed ones are: dir1/b.ipynb and dir2/d.ipynb. These should be copied to successful/ with directory structure preserved. Uses existing check_include_exclude metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts the list of copied .ipynb files from the successful/ directory using find command",
+        "Metric check_include_exclude properly verifies both requirements: (1) presence of all expected files (successful/dir1/b.ipynb, successful/dir2/d.ipynb), and (2) absence of any files containing 'failed' in the result",
+        "Expected values are semantically correct based on the setup.sh context - correctly identifies the 2 non-failed .ipynb files out of 5 total files",
+        "Directory structure preservation is implicitly verified by the full paths in the include list",
+        "Complete coverage: evaluator checks all instruction requirements (file type, exclusion pattern, destination directory, structure preservation)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

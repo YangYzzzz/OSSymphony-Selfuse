@@ -1,0 +1,113 @@
+{
+  "id": "aa3a8974-2e85-438b-b29e-a64df44deb4b",
+  "new_id": "task_verify_64",
+  "snapshot": "libreoffice_calc",
+  "instruction": "I need to clean up this spreadsheet by removing all the empty rows between the data sections. Delete rows 2, 4, 6, 8, and 10 to make the sheet more compact. Save the file when done.",
+  "source": "https://www.quora.com/Libre-Office-Calc-How-do-I-resize-all-cells-in-a-sheet-to-make-them-fit-to-1-page-for-printing-and-exporting-as-PDF",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/aa3a8974-2e85-438b-b29e-a64df44deb4b/Resize_Cells_Fit_Page.xlsx",
+            "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/aa3a8974-2e85-438b-b29e-a64df44deb4b_task_verify_5",
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Resize_Cells_Fit_Page.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.3); pyautogui.hotkey('ctrl', 's'); time.sleep(0.5)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_empty_rows_removed__56032cbd",
+    "result": {
+      "type": "xlsx_empty_row_count__56032cbd",
+      "path": "/home/user/Resize_Cells_Fit_Page.xlsx",
+      "sheet": 0,
+      "start_row": 1
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "max_empty": 0,
+        "expected_row_count": 5,
+        "deleted_rows": [
+          2,
+          4,
+          6,
+          8,
+          10
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires deleting empty rows (2, 4, 6, 8, 10) to compact the spreadsheet. The evaluator checks that there are 0 empty rows remaining in the range 1-15 after deletion. Verified from data: original file has 5 empty rows in the header section that should be removed.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/aa3a8974-2e85-438b-b29e-a64df44deb4b_task_verify_5/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/aa3a8974-2e85-438b-b29e-a64df44deb4b_task_verify_5/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.35,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator cannot verify that SPECIFIC rows (2,4,6,8,10) were deleted. Only checks final state is compact (0 empty rows). Would incorrectly PASS if agent deleted wrong rows (e.g., rows 1,3,5,7,9 containing data) as long as result has 0 empty rows and 3-7 total rows.",
+        "CRITICAL: No data preservation verification. Getter collects sample_cell_values (calc.py:78-83) but metric never uses them to verify expected cell content or data structure preservation (calc.py:94-99 only checks non-empty, not correctness).",
+        "CRITICAL: Hard-coded row count assumption fragile. Metric expects 3-7 rows (calc.py:83-88) based on assumption original has ~10 rows with 5 empty. If original file structure differs, verification fails incorrectly or passes incorrectly.",
+        "Semantic gap: Instruction prescribes deleting specific row numbers, but evaluator only verifies outcome state (compact sheet). Cannot distinguish between correct execution (deleted empty rows 2,4,6,8,10) vs incorrect execution (deleted data rows but result still compact).",
+        "Missing verification: No check that data from original rows 1,3,5,7,9,11 (the non-empty rows) are now at compacted positions 1,2,3,4,5,6. This is feasible via sample_cell_values but not implemented.",
+        "Logic issue: Metric check at calc.py:104-107 for len(sample_cell_values) < actual_max_row is commented as 'pass' (allow) - this weakens verification as it allows rows with no meaningful data."
+      ],
+      "llm_judge_fix_suggestions": [
+        "REQUIRED: Add expected cell values to metadata (e.g., expected = {'sample_cell_values': {'R1C1': 'value1', 'R2C1': 'value2', ...}}) that represent the preserved data after compaction. Metric should verify result.sample_cell_values matches expected pattern.",
+        "REQUIRED: Verify data preservation by checking specific cell markers (e.g., first data row value, last data row value, key column values) match expected values from original data rows 1,3,5,7,9,11.",
+        "Alternative approach: Store hash/fingerprint of expected data rows in metadata, then verify after compaction the same data signature exists. This proves data was preserved and correct rows were deleted.",
+        "Improve row count logic: Instead of hard-coded 3-7 range, calculate expected_row_count from original file analysis (original_total_rows - len(deleted_rows)) and allow ±1 tolerance only.",
+        "Strengthen metric check at calc.py:104-107: Instead of 'pass', require reasonable data density (e.g., len(sample_cell_values) >= actual_max_row * min_cells_per_row) to ensure meaningful content exists."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

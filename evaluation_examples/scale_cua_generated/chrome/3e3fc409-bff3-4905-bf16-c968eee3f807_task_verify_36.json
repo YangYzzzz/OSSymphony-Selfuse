@@ -1,0 +1,149 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "I have an extensive movie collection in the opened Excel file. I'm interested in reviewing films from the first decade of the 2000s. Create a new sheet named '2000s_movies' that includes all movies released from 2000 to 2010 (inclusive). Keep the same column headers and organize them first by release year (earliest first), then by rating (highest first) for movies within the same year.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_sorted__519f56f3",
+    "result": {
+      "type": "xlsx_sheet_data__519f56f3",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "2000s_movies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "exact_rows": 31,
+        "min_rows": 30,
+        "sort_column_idx": 1,
+        "descending": false,
+        "secondary_sort_column_idx": 2,
+        "secondary_descending": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires filtering movies from 2000-2010 and sorting by year ascending (primary) then rating descending (secondary). Verified with Python: 31 movies from 2000-2010 period. Evaluator checks two-level sorting: primary sort by release year column (index 1) ascending, and secondary sort by ratings column (index 2) descending for movies with the same year.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_6/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_6/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "headers_match": 0.2,
+      "min_rows_present": 0.2,
+      "exact_row_count": 0.2,
+      "sorted_correctly": 0.4
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator correctly checks ALL instruction requirements including two-level sorting",
+        "Getter logic is correct: properly extracts sheet data from xlsx file via get_xlsx_sheet_data__519f56f3, retrieves the correct sheet '2000s_movies', and returns headers, data, and row_count",
+        "Metric implements full two-level sort verification (lines 122-144 in metrics/xlsx.py): checks primary sort by year (column index 1, ascending) and secondary sort by rating (column index 2, descending) when primary values are equal",
+        "Expected configuration is semantically correct: headers=['title', 'release year', 'ratings', 'description'], exact_rows=31, sort_column_idx=1 (year), descending=false (earliest first), secondary_sort_column_idx=2 (ratings), secondary_descending=true (highest first)",
+        "Numeric comparison is properly handled via _to_comparable helper function, ensuring correct comparison of year and rating values",
+        "Postconfig is adequate: includes Ctrl+S to save file before verification with appropriate sleep delays",
+        "Scoring breakdown is logical: headers_match (20%), min_rows_present (20%), exact_row_count (20%), sorted_correctly (40%)",
+        "The evaluator will correctly identify if movies are filtered to 2000-2010 range, sorted by year ascending, and within each year sorted by rating descending"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

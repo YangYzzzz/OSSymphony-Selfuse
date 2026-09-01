@@ -1,0 +1,106 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_3",
+  "snapshot": "thunderbird",
+  "instruction": "Add new local folders called ARCHIVE and NEWSLETTERS to Thunderbird.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bARCHIVE\\.msf\\b",
+          "\\bARCHIVE/?(?!\\.msf)",
+          "\\bNEWSLETTERS\\.msf\\b",
+          "\\bNEWSLETTERS/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task variation asks the user to create two local Thunderbird folders named ARCHIVE and NEWSLETTERS. The evaluator uses the existing check_list function to verify that both folders are created correctly by checking for the .msf index file and the folder file itself in the Local Folders directory. The regex patterns check for ARCHIVE.msf, ARCHIVE (folder file), NEWSLETTERS.msf, and NEWSLETTERS (folder file).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly captures the state of Thunderbird Local Folders directory using ls -R command in postconfig",
+        "check_list metric function correctly verifies folder creation by matching regex patterns against the ls output",
+        "All instruction requirements are verified: both ARCHIVE and NEWSLETTERS folders are checked via 4 regex patterns (2 per folder)",
+        "Regex patterns correctly check for both .msf index files and folder files, which are the two files Thunderbird creates for each local folder",
+        "The patterns use word boundaries and negative lookahead to distinguish between folder files and .msf files",
+        "Data flow is correct: postconfig captures directory listing -> get_cache_file reads it -> check_list verifies patterns"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The optional slash in patterns like '\\bARCHIVE/?(?!\\.msf)' is unnecessary since ls output shows files without trailing slashes, but this doesn't affect correctness",
+        "The regex patterns are functionally correct and will properly match the ls output format"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "a10b69e1-6034-4a2b-93e1-571d45194f75_aug_15_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

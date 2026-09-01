@@ -1,0 +1,121 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_12",
+  "snapshot": "chrome",
+  "instruction": "In LibreOffice Calc, set up a product inventory sheet with three columns: Product, Quantity, and Price, and save the file as inventory.xlsx to the desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_xlsx_exists__57af7e9cd5698f93d5a1d771357a91a5",
+    "result": {
+      "type": "xlsx_basic_inventory__57af7e9cd5698f93d5a1d771357a91a5",
+      "path": "/home/user/Desktop/inventory.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_should_exist": true,
+        "required_columns": [
+          "Product",
+          "Quantity",
+          "Price"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a basic LibreOffice Calc spreadsheet with inventory data and saving it to desktop. Evaluator checks if the .xlsx file exists at the specified location and contains data in the first row. Custom getter reads the file from VM using env.controller.get_file() and uses openpyxl to verify structure. Metric verifies file existence and data presence.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_0/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_0/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary scoring: 1.0 if file exists with data in first row, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: extracts file from VM using env.controller.get_file(), loads with openpyxl, and extracts first 3 cells from row 1 (columns A, B, C) as headers",
+        "Metric parameter handling is CORRECT: Line 24 correctly uses 'expected.get(\"required_columns\", [])' to directly access the rules dict (previous judgment was incorrect - it misread the code)",
+        "Verification coverage is complete: checks file existence (line 20), file has data (line 30), exactly 3 columns (line 34), and correct headers with case-insensitive matching (lines 38-46)",
+        "Expected values are semantically correct: required_columns ['Product', 'Quantity', 'Price'] match the instruction requirements exactly",
+        "Partial scoring logic is appropriate: 0.0 (no file), 0.5 (file exists but wrong headers/columns), 1.0 (file exists with correct headers)",
+        "Data flow is correct: getter extracts first row headers → metric compares against required_columns → returns score based on match quality"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

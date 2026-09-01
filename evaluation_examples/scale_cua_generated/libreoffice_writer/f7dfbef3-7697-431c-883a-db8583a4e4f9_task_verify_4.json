@@ -1,0 +1,120 @@
+{
+  "id": "f7dfbef3-7697-431c-883a-db8583a4e4f9",
+  "new_id": "task_verify_4",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Via command line, batch transform all .docx documents present in the Desktop directory to PDF files using LibreOffice.",
+  "source": "https://www.thegeekdiary.com/libreoffice-command-examples-in-linux/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f7dfbef3-7697-431c-883a-db8583a4e4f9/doc.tar.gz",
+            "path": "/home/user/Desktop/doc.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "tar -zxf /home/user/Desktop/doc.tar.gz -C /home/user/Desktop/ && rm /home/user/Desktop/doc.tar.gz"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "cd /home/user/Desktop && tar -zcf pdf_docx.tar.gz *.pdf 2>/dev/null || echo 'no pdf files'"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_pdf_docx_conversion__a2a86631dd34db500aa084715506d32d",
+    "result": {
+      "type": "pdf_docx_result__a2a86631dd34db500aa084715506d32d",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(cat ~/.bash_history | grep -E \"(soffice|libreoffice).+--convert-to\\s+pdf.+\\*\\.docx\"); if [ -z \"$output\" ]; then echo \"failed to complete this task\"; else echo \"catch the desired command\"; fi"
+      ],
+      "path": "/home/user/Desktop/pdf_docx.tar.gz"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "command_match": "catch the desired command"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires batch converting .docx files (3 files: 1cfc37e1-344f-52ef-be9f-69bc1855316d.docx, adfddc91-944f-572e-8439-c67b67f4c5f7.docx, d119ec81-bc60-5b76-8679-5f942b191c70.docx) to PDF format using LibreOffice command line. Evaluator checks (1) bash history contains correct conversion command targeting .docx files, and (2) pdf_docx.tar.gz archive is created successfully. Custom getter extracts both command output and archive file. Similar difficulty to original task - same batch conversion pattern and target format (PDF), but different source file type (.docx instead of .doc).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/f7dfbef3-7697-431c-883a-db8583a4e4f9_aug_14_task_verify_3/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/f7dfbef3-7697-431c-883a-db8583a4e4f9_aug_14_task_verify_3/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.5 for correct LibreOffice command in bash history, 0.5 for successful PDF file creation",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "FIXED - Correct expected parameter handling: Metric correctly accesses expected.get('command_match') directly. When expected.type='rule', framework calls get_rule() returning config['rules'], so metric receives {'command_match': 'catch the desired command'} directly.",
+        "Complete coverage: Evaluator verifies both (1) command execution via bash history grep pattern, and (2) successful file conversion with proper validation.",
+        "Strong file verification: Archive verification extracts tar.gz contents and validates exactly 3 PDF files exist, each with non-empty size and valid '%PDF-' header signature (lines 43-69).",
+        "Correct file count check: Verifies exactly 3 PDF files in archive, matching the 3 source .docx files mentioned in metadata (1cfc37e1-344f-52ef-be9f-69bc1855316d.docx, adfddc91-944f-572e-8439-c67b67f4c5f7.docx, d119ec81-bc60-5b76-8679-5f942b191c70.docx).",
+        "Proper scoring breakdown: 0.5 for command verification + 0.5 for valid PDF files = 1.0 total, matching metadata.scoring_breakdown.",
+        "Getter logic correct: Extracts both command output from bash history and archive file bytes, returning proper tuple format.",
+        "Command pattern verification appropriate: Bash history grep checks for '(soffice|libreoffice).+--convert-to\\s+pdf.+\\*\\.docx' pattern, which correctly identifies batch LibreOffice conversion command."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

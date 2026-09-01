@@ -1,0 +1,92 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_64",
+  "snapshot": "multiapps",
+  "instruction": "Install the extension from the helloExtension folder manually in Chrome by loading it as an unpacked extension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_installed_extension_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Hello Extensions"
+      }
+    },
+    "postconfig": []
+  },
+  "metadata": {
+    "explanation": "Paraphrased instruction to install the extension. Verifies by checking if the extension name 'Hello Extensions' appears in the list of installed extension names.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification PASSED: Evaluator correctly verifies that the extension 'Hello Extensions' is installed by checking if its name appears in the list of installed extension names extracted from Chrome Preferences file",
+        "Coverage completeness PASSED: Instruction requires installing the extension, evaluator checks extension name is in installed list - verifies the only requirement completely",
+        "Getter logic correctness (chrome.py:1438-1472): Reads Chrome Preferences JSON at correct OS-specific path, navigates to extensions.settings, extracts manifest.name from each extension, returns list of all installed extension names - logic is semantically correct",
+        "Metric logic correctness (general.py:76-81): Receives list from getter and rules dict with expected='Hello Extensions', performs exact string membership check 'expect in result' - logic is semantically correct for this verification",
+        "Data flow correctness: Getter extracts list ['Ext1', 'Hello Extensions', ...] → Metric receives result=list and rules={'expected': 'Hello Extensions'} → Checks membership → Returns 1.0 if found, 0.0 otherwise - semantically correct",
+        "Expected value correctness: 'Hello Extensions' is the correct extension name from manifest.json per existing metadata validation",
+        "State accessibility: Chrome Preferences file updates synchronously when extension loads via chrome://extensions, file is directly accessible without UI reopening - no postconfig needed",
+        "Static warning dismissed: UI/state-dependent heuristic warning is false positive - Preferences file is persistent and directly readable"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true,
+      "fix_notes": "Validation completed successfully: (1) LLM judge passed with score 1.0 - evaluator logic is correct; (2) Rule-based heuristic warning dismissed as false positive - Chrome Preferences file updates synchronously when extension loads, no postconfig needed; (3) Extension name 'Hello Extensions' verified to match the manifest.json in the source zip file; (4) All functions exist and are properly implemented with correct logic"
+    }
+  }
+}

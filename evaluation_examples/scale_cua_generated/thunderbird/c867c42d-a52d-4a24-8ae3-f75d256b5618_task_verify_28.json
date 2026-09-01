@@ -1,0 +1,110 @@
+{
+  "id": "c867c42d-a52d-4a24-8ae3-f75d256b5618",
+  "new_id": "task_verify_28",
+  "snapshot": "thunderbird",
+  "instruction": "Export Thunderbird's Personal Address Book to CSV format on the Desktop. Find the oldest contact by birth year and save their full name (First Name + Last Name) to a file named 'oldest.txt' on the Desktop.",
+  "source": "https://www.sync.blue/en/sync/mozilla-thunderbird/google-sheets/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/c867c42d-a52d-4a24-8ae3-f75d256b5618/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "--recursive-unlink",
+          "-xz",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "func": "check_combined_requirements__0afbc336",
+    "result": {
+      "type": "composite",
+      "getters": {
+        "csv_status": {
+          "type": "csv_export_status__0afbc336",
+          "desktop_path": "/home/user/Desktop"
+        },
+        "oldest_content": {
+          "type": "text_file_content__0afbc336",
+          "path": "/home/user/Desktop/oldest.txt"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "oldest_name": "Jennifer Holt"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires two actions: (1) Export Thunderbird's Personal Address Book to CSV format on Desktop, and (2) Find the oldest contact by birth year and save their full name to 'oldest.txt'. Verified with Python: Jennifer Holt born in 1905 is the oldest contact.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c867c42d-a52d-4a24-8ae3-f75d256b5618_aug_3_task_verify_2/getters/text_file.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c867c42d-a52d-4a24-8ae3-f75d256b5618_aug_3_task_verify_2/metrics/text_comparison.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Combined score: 50% for CSV export verification (CSV file exists on Desktop with content), 50% for oldest contact verification (oldest.txt contains 'Jennifer Holt'). Total score ranges from 0.0 to 1.0.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "CORRECT parameter handling: The metric function correctly accesses expected.get('oldest_name', '') on line 24, properly treating 'expected' as the rules dictionary (not checking for 'type' or 'rules' keys).",
+        "Complete coverage: The evaluator verifies BOTH requirements from the instruction with appropriate 50/50 weighting: (1) CSV export to Desktop (50%), (2) oldest contact name in oldest.txt (50%).",
+        "Correct getter logic: get_csv_export_status__0afbc336 checks for CSV file existence and content on Desktop; get_text_file_content__0afbc336 reads oldest.txt content. Both extract the right state needed for verification.",
+        "Correct expected value: 'Jennifer Holt' is semantically correct based on metadata (born 1905, verified as oldest contact).",
+        "Minor issue: CSV getter tries multiple filenames which is good for robustness, but if multiple CSV files exist on Desktop, the behavior may not be deterministic (tries specific names first, then parses directory listing).",
+        "Minor issue: No postconfig specified to ensure files are saved/flushed before verification. If agent doesn't explicitly save files, verification might read stale state. However, for file creation tasks this is usually less critical than for dialog/UI state tasks."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to ensure file system state is fresh before verification (e.g., sync command or brief delay).",
+        "Consider making CSV getter more deterministic: if multiple CSV files exist, define clear priority (e.g., largest file, most recent, or specific name pattern).",
+        "Consider partial credit for oldest.txt: currently all-or-nothing (0.5 if exact match, 0.0 otherwise). Could add fuzzy matching for minor variations (case, whitespace, punctuation)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

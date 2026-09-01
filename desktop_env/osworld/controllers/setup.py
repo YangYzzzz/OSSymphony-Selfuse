@@ -58,6 +58,16 @@ class SetupController:
     def reset_cache_dir(self, cache_dir: str):
         self.cache_dir = cache_dir
 
+    def download(self, files: List[Dict[str, str]]) -> None:
+        self._download_setup(files)
+
+    def execute(self, command: List[str], stdout: str = "", stderr: str = "", shell: bool = False,
+                until: Optional[Dict[str, Any]] = None, quiet: bool = False, timeout: int = 120):
+        return self._execute_setup(command, stdout=stdout, stderr=stderr, shell=shell, until=until, quiet=quiet, timeout=timeout)
+
+    def launch(self, command: Union[str, List[str]], shell: bool = False) -> None:
+        self._launch_setup(command, shell=shell)
+
     def upload_text(self, text: str, path: str) -> None:
         """Upload UTF-8 text to a path inside the VM."""
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as tmp:
@@ -477,7 +487,7 @@ class SetupController:
             logger.info("Command executed successfully: %s", response.text)
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to open file '{path}'. An error occurred while trying to send the request or the server responded with an error: {e}")
-            raise Exception(f"Failed to open file '{path}'. An error occurred while trying to send the request or the server responded with an error: {e}") from e
+            raise Exception(f"Failed to open file '{path}'. An error occurred while trying to _launch_setup the request or the server responded with an error: {e}") from e
 
     def _launch_setup(self, command: Union[str, List[str]], shell: bool = False):
         if not command:
@@ -511,7 +521,9 @@ class SetupController:
             stdout: str = "",
             stderr: str = "",
             shell: bool = False,
-            until: Optional[Dict[str, Any]] = None
+            until: Optional[Dict[str, Any]] = None,
+            quiet: bool = False,
+            timeout: int = 120,
     ):
         if not command:
             raise Exception("Empty command to launch.")
@@ -545,7 +557,7 @@ class SetupController:
                     new_command_list.append(item)
                 return new_command_list
         command = replace_screen_env_in_command(command)
-        payload = json.dumps({"command": command, "shell": shell})
+        payload = json.dumps({"command": command, "shell": shell, "timeout": timeout})
         headers = {"Content-Type": "application/json"}
 
         while not terminates:
@@ -553,6 +565,17 @@ class SetupController:
                 response = requests.post(self.http_server + "/setup" + "/execute", headers=headers, data=payload)
                 if response.status_code == 200:
                     results: Dict[str, str] = response.json()
+                    log_results: Union[str, Dict[str, str]] = response.text
+                    if quiet:
+                        if isinstance(results, dict):
+                            redacted = dict(results)
+                            if "output" in redacted:
+                                redacted["output"] = "<quiet>"
+                            if "error" in redacted:
+                                redacted["error"] = "<quiet>"
+                            log_results = json.dumps(redacted)
+                        else:
+                            log_results = "<quiet>"
                     if stdout:
                         with open(os.path.join(self.cache_dir, stdout), "w") as f:
                             f.write(results["output"])
@@ -561,7 +584,7 @@ class SetupController:
                             f.write(results["error"])
                     logger.info("Command executed successfully: %s -> %s"
                                 , " ".join(command) if isinstance(command, list) else command
-                                , response.text
+                                , log_results
                                 )
                 else:
                     logger.error("Failed to launch application. Status code: %s", response.text)
@@ -583,6 +606,10 @@ class SetupController:
             terminates = terminates or nb_failings >= 5
             if not terminates:
                 time.sleep(0.3)
+
+        if isinstance(results, dict):
+            return results.get("output", "")
+        return ""
 
     def _execute_with_verification_setup(
             self,
@@ -636,7 +663,7 @@ class SetupController:
             raise Exception(f"Request failed: {e}")
 
     def _command_setup(self, command: List[str], **kwargs):
-        self._execute_setup(command, **kwargs)
+        return self._execute_setup(command, **kwargs)
 
     def _sleep_setup(self, seconds: float):
         time.sleep(seconds)

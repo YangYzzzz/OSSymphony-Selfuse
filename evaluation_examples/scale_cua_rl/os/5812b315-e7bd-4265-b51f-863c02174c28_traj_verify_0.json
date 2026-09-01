@@ -1,0 +1,64 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "5812b315-e7bd-4265-b51f-863c02174c28_traj_verify_0",
+  "snapshot": "os",
+  "instruction": "Create a new Linux user named 'charles' whose home directory is set to '/home/test1'.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/test1",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_user_homedir__df678257c48d0ebe8f2e03968592b783",
+    "result": {
+      "type": "user_homedir__df678257c48d0ebe8f2e03968592b783",
+      "username": "charles"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_home": "/home/test1"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened terminal, created user 'charles' with useradd -m (wrong home dir /home/charles instead of /home/test1), set password, created /home/test1 dir, edited sshd_config for ChrootDirectory, but spent ~20 turns struggling with SSH not being installed. Eventually installed openssh-server and started it, but the user's home directory was never corrected to /home/test1.",
+    "capability_extraction": "Can open terminal, create users with useradd, set passwords with chpasswd, create directories, set file permissions/ownership, edit config files with tee/heredoc, install packages with apt-get, manage services",
+    "failure_analysis": "Model used 'useradd -m charles' which created /home/charles as home dir instead of /home/test1. Never used the -d flag to set custom home dir. Also wasted many turns on SSH service restart failures before discovering it wasn't installed.",
+    "task_rationale": "Decomposed the complex SSH user creation task into a simpler sub-task: just create a user with the correct home directory. This isolates the specific step the model failed at.",
+    "explanation": "Task requires creating user 'charles' with home directory /home/test1. Getter runs 'getent passwd charles' to retrieve user info. Metric checks user exists (0.5) and home dir matches (0.5).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064_traj_verify_0/getters/user_homedir__df678257c48d0ebe8f2e03968592b783.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064_traj_verify_0/metrics/check_user_homedir__df678257c48d0ebe8f2e03968592b783.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "user_exists": "0.5 - User 'charles' exists in /etc/passwd",
+      "home_directory": "0.5 - Home directory is /home/test1"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'getent passwd charles' to extract user info and parses the colon-separated passwd format, with field index 5 being the home directory - this is the correct approach for checking Linux user properties.",
+        "Metric correctly handles the expected parameter for type='rule': accesses expected.get('expected_home') directly, which matches the rules dict {'expected_home': '/home/test1'} returned by get_rule.",
+        "Complete coverage: both instruction requirements are verified - user existence (0.5 points) and home directory matching /home/test1 (0.5 points).",
+        "Expected value '/home/test1' is semantically correct per the instruction.",
+        "Partial credit scoring (0.5 for user exists + 0.5 for correct home dir) is reasonable for this two-requirement task."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "id": "74d5859f-ed66-4d3e-aa0e-93d7a592ce41",
+  "new_id": "task_verify_69",
+  "snapshot": "chrome",
+  "instruction": "Generate a web extension scaffold named \"color-picker v1.0.5\" with the webext.eu helper. Set description to \"Pick colors from any page\". Activate content scripts and options page only - skip background script and browser action. Save to \"~/Projects\".",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://webext.eu"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Projects"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Projects"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/74d5859f-ed66-4d3e-aa0e-93d7a592ce41_task_verify_9",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_json",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Projects/color-picker/manifest.json",
+      "dest": "manifest.json"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "name"
+            ],
+            "method": "eq",
+            "ref": "color-picker"
+          },
+          {
+            "key": [
+              "version"
+            ],
+            "method": "eq",
+            "ref": "1.0.5"
+          },
+          {
+            "key": [
+              "description"
+            ],
+            "method": "eq",
+            "ref": "Pick colors from any page"
+          },
+          {
+            "key": [
+              "content_scripts"
+            ],
+            "method": "exist",
+            "ref": null
+          },
+          {
+            "key": [
+              "options_ui"
+            ],
+            "method": "exist",
+            "ref": null
+          }
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "explanation": "This variation creates a color-picker extension with version 1.0.5, custom description, and includes only content_scripts and options_ui (without background script or browser_action). The evaluator checks the manifest.json for these specific properties. Uses existing check_json metric.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction explicitly requires 'skip background script and browser action', but evaluator only checks for presence of content_scripts and options_ui",
+        "Missing negative verification: Evaluator does not verify ABSENCE of 'background' and 'browser_action' fields in manifest.json",
+        "False positive risk: An extension with all features (including background and browser_action) would incorrectly pass evaluation",
+        "Partial verification: Only 5 out of 7 instruction requirements are verified (missing verification for 2 'skip' requirements)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'unexpect' rules to verify that 'background' and 'browser_action' keys do not exist in the manifest.json",
+        "Example fix: Add to rules.unexpect: [{\"key\": [\"background\"], \"method\": \"not_exist\", \"ref\": null}, {\"key\": [\"browser_action\"], \"method\": \"not_exist\", \"ref\": null}]",
+        "The check_json metric already supports 'unexpect' rules (see lines 362-377 in general.py), so this fix is straightforward"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

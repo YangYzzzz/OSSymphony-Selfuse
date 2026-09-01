@@ -1,0 +1,119 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_49",
+  "snapshot": "thunderbird",
+  "instruction": "Create an automatic forwarding filter in Thunderbird for all emails received at anonym-x2024@outlook.com to be forwarded to mirror-inbox@zoho.com. Configure this locally in Thunderbird without changing the online account.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Forward",
+            "actionValue": "mirror-inbox@zoho.com",
+            "condition": [
+              "ALL"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation with different forward target email (mirror-inbox@zoho.com). Evaluator verifies filter is enabled, action is Forward, target is mirror-inbox@zoho.com, and condition is ALL. Same complexity as original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification: Instruction requires filter for emails 'received at anonym-x2024@outlook.com' but evaluator does not verify the filter checks recipient address",
+        "Condition check too loose: Expected condition ['ALL'] does not specify that filter should match emails sent TO anonym-x2024@outlook.com",
+        "Missing recipient verification: A proper forwarding filter should have condition like '(to, is, anonym-x2024@outlook.com)' but evaluator only checks for generic 'ALL' condition",
+        "Semantic gap: Evaluator verifies forward action and target email correctly, but cannot confirm filter applies to the correct incoming emails"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update expected condition to include recipient check: condition should contain '(to, is, anonym-x2024@outlook.com)' or similar",
+        "Verify the filter applies to emails with 'to' field matching anonym-x2024@outlook.com",
+        "Consider checking that 'ALL' means 'match all conditions' AND there exists a condition checking the recipient",
+        "Alternative: If 'ALL' means 'all incoming mail', clarify this is insufficient for instruction requirement of emails 'received at' specific address"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

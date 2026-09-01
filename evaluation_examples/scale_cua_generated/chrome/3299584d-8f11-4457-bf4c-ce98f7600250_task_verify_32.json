@@ -1,0 +1,92 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "I don't want websites to access my camera. How do I block camera access in Chrome?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_camera_blocked__d2e0663c"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires blocking camera access for all websites in Chrome. Similar complexity - navigate to Settings > Privacy and security > Site settings > Camera and block access.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_4/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if camera blocked (default_content_setting_values.media_stream_camera=2), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome Preferences file and extracts camera setting from profile.default_content_setting_values.media_stream_camera",
+        "Getter correctly interprets value=2 as camera blocked and returns 'true'",
+        "Metric (exact_match) correctly compares string result 'true' with expected 'true'",
+        "Expected value 'true' is semantically correct for camera being blocked",
+        "Complete coverage: instruction requires blocking camera access, evaluator verifies camera is blocked",
+        "State is accessible: Chrome Preferences file persists after settings changes, no UI needs to be open",
+        "Cross-platform support: handles Windows, macOS, and Linux paths correctly",
+        "Proper error handling: returns 'false' on exceptions with appropriate logging"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Static validation warning about needing postconfig is a false positive - Chrome Preferences are persisted to disk and verification does not require UI to be open"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

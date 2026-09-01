@@ -1,0 +1,97 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_28",
+  "snapshot": "chrome",
+  "instruction": "Configure Chrome to open with a specific set of pages on startup instead of the New Tab page.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "new_startup_page"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires agent to navigate to Chrome startup settings and configure it to open with specific pages (restore_on_startup=5). Evaluator verifies the setting by checking the Chrome Preferences file session.restore_on_startup field. The existing getter function get_new_startup_page is reused.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/tmp_funcs/99146c54-4f37-4ab8-9327-5f3291665e1e_task_verify_6/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly returns 'false' when 'session' key is missing (line 48-49), properly detecting default Chrome state (New Tab page).",
+        "Complete verification: Getter checks both restore_on_startup==5 (lines 52-54) AND that startup_urls field exists and is non-empty (lines 57-59), ensuring 'specific set of pages' are actually configured as instruction requires.",
+        "Consistent error handling: Returns 'false' on error (line 66), maintaining consistency with expected boolean string values.",
+        "Postconfig appropriately restarts Chrome to verify startup behavior after configuration changes."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

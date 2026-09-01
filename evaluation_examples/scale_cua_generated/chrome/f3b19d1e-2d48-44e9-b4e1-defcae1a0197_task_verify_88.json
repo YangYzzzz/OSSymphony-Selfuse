@@ -1,0 +1,93 @@
+{
+  "id": "f3b19d1e-2d48-44e9-b4e1-defcae1a0197",
+  "new_id": "task_verify_88",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the help page about account login issues.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://premier.ticketek.com.au/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Login|Sign.*In"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the agent to navigate from the Ticketek homepage to the help page about account login issues. The evaluator checks if the active tab URL contains 'Login' or 'Sign In' pattern, using the existing is_expected_url_pattern_match metric with active_tab_info getter. This is similar to the original task but targets login-related help.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Pattern matching is too broad and semantically incorrect: the regex 'Login|Sign.*In' matches any URL containing 'Login' OR 'Sign In', but does NOT verify it's a help page about account login issues",
+        "False positives likely: pattern would match direct login pages (/login), signup pages (/signup-and-signin), or error pages (/signin-error) which are NOT help pages about account issues",
+        "False negatives likely: legitimate help pages like /help/account-issues or /support/login-problems would fail if they don't contain exact 'Login' or 'Sign In' text in URL",
+        "Missing semantic verification: evaluator doesn't distinguish between help pages vs login forms vs signup pages, only checks for keyword presence in URL",
+        "Getter state timing issue: get_active_tab_info has warning (chrome.py:806) that it reloads the target URL page, which could cause redirect to different page if cookies/cache exist, leading to unreliable evaluation",
+        "No postconfig to stabilize state: task lacks postconfig to ensure browser is in stable state before evaluation, combined with getter's reload behavior this could cause inconsistent results"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update regex pattern to specifically match help/support pages about login: e.g., 'help.*login|support.*login|login.*help|account.*help' to ensure URL path contains both help/support context AND login/account context",
+        "Add pattern to exclude non-help pages: use negative lookahead or additional patterns to filter out direct login forms, signup pages, etc.",
+        "Consider using active_tab_info content field instead of just URL: check page title or page content for keywords like 'help', 'support', 'troubleshooting' combined with 'login', 'account', 'access issues'",
+        "Add postconfig to ensure stable browser state before evaluation, or use a different getter that doesn't reload the page (e.g., get_active_url_from_accessTree)",
+        "Alternative approach: use a multi-step evaluator that checks both URL pattern AND page content/title to confirm it's actually a help page"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

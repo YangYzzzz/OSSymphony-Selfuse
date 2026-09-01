@@ -1,0 +1,145 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_65",
+  "snapshot": "chrome",
+  "instruction": "Download all attachments from the 'Paper Recommendation' email in Thunderbird and save them to a folder named 'paper_attachments' on Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_text_contains_pattern__cc11abb5",
+    "result": {
+      "type": "gdrive_file_check__cc11abb5",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "folder_exists": true,
+        "min_file_count": 1,
+        "expected_files": [
+          "attachment_full.pdf"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires downloading email attachments and uploading to a Google Drive folder. Evaluator checks if 'paper_attachments' folder exists on Google Drive AND verifies that it contains the expected attachment file 'attachment_full.pdf' from the 'Paper Recommendation' email.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_2/getters/gdrive_file_check__cc11abb5.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_2/metrics/check_text_contains_pattern__cc11abb5.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Google Drive API query logic is now correct: Getter properly retrieves folder ID first, then queries files within that folder using '{folder_id}' in parents (gdrive_file_check__cc11abb5.py:18-40).",
+        "Semantic verification works correctly: Getter extracts folder existence and file names, metric verifies folder exists AND expected files are present by name.",
+        "Expected values are semantically correct: expected_files includes 'attachment_full.pdf' which matches the attachment file referenced in config (line 17 shows this file is deleted from root before task, confirming it's the attachment).",
+        "Coverage is adequate: Evaluator checks folder existence (required by instruction), file count (at least 1), and specific file names (verifies the actual attachment is present).",
+        "Data flow is correct: Getter returns {folder_exists, file_count, file_names} → Metric compares folder_exists, min_file_count, and verifies each expected_file is in file_names → Returns 1.0 if all checks pass.",
+        "Minor limitation (inherent to approach): Cannot verify file source (whether from Thunderbird email vs manual upload), but this is a practical limitation of post-execution verification and doesn't prevent verifying task completion."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding file size or creation timestamp verification if metadata about the original email attachment is available, to further distinguish genuine downloads from manual uploads.",
+        "If the 'Paper Recommendation' email has multiple attachments, update expected_files to include all attachment names to fully verify 'all attachments' requirement."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

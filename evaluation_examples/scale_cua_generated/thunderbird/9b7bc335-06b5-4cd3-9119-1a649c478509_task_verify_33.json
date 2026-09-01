@@ -1,0 +1,119 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_33",
+  "snapshot": "thunderbird",
+  "instruction": "Create and activate a Thunderbird filter on the anonym-x2024@outlook.com account to automatically apply a star or flag to emails received from the 'company.com' domain.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Mark flagged",
+            "condition": [
+              "AND (from,ends with,@company.com)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation asks the user to create a filter that flags/stars emails from a specific domain. The evaluator verifies: (1) enabled='yes', (2) action='Mark flagged', and (3) condition checking the 'from' field ends with '@company.com'. Uses existing check_thunderbird_filter function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "The check_thunderbird_filter function supports 'Mark flagged' action validation with domain-based conditions. The condition format 'AND (from,ends with,@company.com)' follows Thunderbird's filter rule syntax for matching email domains.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: filter is enabled, action is 'Mark flagged' (star/flag), and condition checks emails from @company.com domain",
+        "Getter logic (get_vm_file) correctly retrieves the filter rules file from the account-specific path (/home/user/.thunderbird/.../ImapMail/outlook.office365.com/msgFilterRules.dat), implicitly verifying the correct account",
+        "Metric logic (check_thunderbird_filter) properly parses Thunderbird's filter file format and matches against expected rules",
+        "Type compatibility: metric properly handles the Union return type from getter, including None case (returns 0.0 if file retrieval fails)",
+        "Postconfig appropriately closes the 'Message Filters' window before verification to ensure state is saved",
+        "Expected rule values match Thunderbird's actual filter syntax: enabled='yes', action='Mark flagged', condition='AND (from,ends with,@company.com)'",
+        "Static warning about type mismatch is a false positive - the function handles Union[Optional[str], List[Optional[str]]] correctly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "9b7bc335-06b5-4cd3-9119-1a649c478509_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

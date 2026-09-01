@@ -1,0 +1,95 @@
+{
+  "id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3",
+  "new_id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome's default font size to Large.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3_sid_1488136",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated to chrome://settings/manageProfile, cleared the existing profile name 'Person 1', and typed 'Thomas' to rename the Chrome profile.",
+    "capability_extraction": "Can navigate Chrome settings pages, interact with text input fields, modify Chrome configuration values",
+    "task_rationale": "Related Chrome settings task - changing font size requires navigating to Appearance settings and selecting a dropdown value, similar complexity to profile name change",
+    "explanation": "Task requires changing Chrome's default font size to Large (20px). Evaluator uses official chrome_font_size getter to read the current font size setting and check_font_size metric to verify it equals 20.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'chrome_font_size' correctly reads Chrome's Preferences JSON file and returns a dict containing 'default_font_size' key",
+        "Metric 'check_font_size' correctly extracts 'default_font_size' from the getter result and compares it against rule['value']",
+        "Expected value 20 is correct for Chrome's 'Large' font size setting (Very small=9, Small=12, Medium=16, Large=20, Very large=24)",
+        "Expected parameter handling is correct: get_rule returns {'type': 'value', 'value': 20} and metric accesses rule['type'] and rule['value'] directly",
+        "Postconfig correctly kills and relaunches Chrome to ensure preferences are persisted to disk before the getter reads them",
+        "Single-step instruction is fully covered by a single evaluator check"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_11",
+  "snapshot": "chrome",
+  "instruction": "Transfer all 'Bills' folder emails from Thunderbird to Google Drive, placing them in 'TB_Export' and naming each .eml file according to its subject.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'TB_Export' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_files__da0d777d0a1e3c8d735dbb81a2e45a5c",
+    "result": {
+      "type": "gdrive_file_list__da0d777d0a1e3c8d735dbb81a2e45a5c",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_path": [
+        "TB_Export"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_files": [
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml",
+          "Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+    "variation_index": 4,
+    "explanation": "Task requires exporting emails from Thunderbird Bills folder to Google Drive folder named 'TB_Export'. Evaluator checks if the two expected .eml files exist with subject-based filenames. Verified from cache: Bills folder contains 2 emails with subjects matching the expected filenames.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_4/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_4/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "0.5": "One of the two emails exported correctly",
+      "1.0": "Both emails exported to TB_Export with correct subject-based filenames"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the core requirements: files are in TB_Export folder, files are .eml format, and files are named after subject lines",
+        "Getter logic is correct: navigates to TB_Export folder in Google Drive root and lists all files",
+        "Metric logic is correct: checks presence of expected filenames and calculates partial credit score (0.5 for 1/2 files, 1.0 for 2/2 files)",
+        "Metric correctly handles expected parameter for type='rule' (accesses expected.get('expected_files') directly, not expected.get('rules'))",
+        "Expected values are semantically correct: the 2 filenames match the actual email subjects in the Bills folder (per metadata)",
+        "Data flow is sound: getter extracts list of filenames -> metric checks if expected files are present -> returns proportional score",
+        "Minor weakness: instruction says 'Export ALL messages' but evaluator only checks for 2 specific files - this works for the current case (Bills folder has exactly 2 emails per metadata) but doesn't robustly verify 'ALL messages' if the folder contained more emails",
+        "Minor weakness: evaluator doesn't verify that ONLY Bills folder messages were exported (doesn't check for unexpected extra files), though this may be acceptable depending on requirements"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying the total count of files in TB_Export folder equals the expected count (2 files), to ensure no extra files were exported",
+        "Consider adding a check to verify no unexpected files exist in the TB_Export folder beyond the expected ones",
+        "Optionally add explicit validation that all expected files end with .eml extension in the metric function for extra robustness"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

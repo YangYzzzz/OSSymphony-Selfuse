@@ -1,0 +1,149 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_8",
+  "snapshot": "chrome",
+  "instruction": "Create a Google Drive folder named 'figures' in the root directory. Upload exactly 3 PNG image files to this folder with the following names: 1.png, 2.png, and 3.png. The images must be valid PNG format (not just renamed files), non-empty (larger than 100 bytes), and must be newly created/uploaded during task execution.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_file_locations__b75faf5b6765d0d1458ed6b6d219047b",
+    "result": {
+      "type": "gdrive_file_locations__b75faf5b6765d0d1458ed6b6d219047b",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "figures",
+      "expected_filenames": [
+        "1.png",
+        "2.png",
+        "3.png"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_count": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a Google Drive folder named 'figures' in root directory and uploading 3 PNG image files with specific names (1.png, 2.png, 3.png). Evaluator verifies that the expected files exist in the figures/ folder, are not trashed, have valid PNG MIME type (image/png), are not empty/trivially small (>100 bytes), and were created recently (within last hour) to ensure they were uploaded during task execution rather than pre-existing. Partial credit given proportional to correct file count. Instruction simplified from original Word document extraction task to focus on verifiable file upload requirements.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_4/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_4/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 8,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Score = (correct_files / expected_files). 1.0 if all 3 expected files exist in correct location, not trashed, are valid PNG images (MIME type check), have size >100 bytes, AND were created within the last hour. Partial credit otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator provides complete coverage of all instruction requirements: folder creation ('figures' in root), exactly 3 files, correct filenames (1.png, 2.png, 3.png), valid PNG format, non-empty files, and newly created/uploaded",
+        "Getter logic correctly extracts all necessary state: folder location, file names, trash status, MIME types, file sizes, and creation timestamps from Google Drive API",
+        "MIME type validation (image/png) ensures files are actual PNG format, not just renamed files with .png extension - directly addresses instruction requirement",
+        "File size validation (>100 bytes) ensures files are non-empty and not trivially small - directly addresses instruction requirement",
+        "Timestamp validation (created within last hour) ensures files were created during task execution rather than pre-existing - directly addresses instruction requirement about 'newly created/uploaded'",
+        "Metric function correctly handles expected parameter for type='rule' by directly accessing expected.get('expected_count', 3) without incorrectly accessing expected['rules']",
+        "Partial credit scoring is semantically correct: proportional to number of files meeting ALL criteria (correct_count / expected_count)",
+        "Data flow is logically sound: getter extracts comprehensive file details -> metric validates all requirements simultaneously in correct_location_count",
+        "The instruction has been simplified to focus on verifiable file upload requirements (no Word document content verification required), and the evaluator verifies ALL aspects of the simplified instruction"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,137 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_70",
+  "snapshot": "os",
+  "instruction": "Move all files ending with \"_failed.ipynb\" from the test_environment directory tree to a new directory \"./archived\" (create it if it doesn't exist) while preserving the original directory structure",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/eval.sh",
+            "path": "eval.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_dir_exists_with_files__5c107_2",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd /home/user/test_environment && find archived -type f 2>/dev/null || echo ''",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "directories": [
+          "archived/dir1/a_failed.ipynb",
+          "archived/dir2/subdir1/c_failed.ipynb",
+          "archived/dir3/e_failed.ipynb"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires moving files matching '*_failed.ipynb' to archived/ directory while preserving directory hierarchy. Based on setup.sh, there are 3 files: dir1/a_failed.ipynb, dir2/subdir1/c_failed.ipynb, and dir3/e_failed.ipynb. After moving, they should appear as archived/dir1/a_failed.ipynb, archived/dir2/subdir1/c_failed.ipynb, and archived/dir3/e_failed.ipynb. Custom metric checks that all 3 files exist in their expected locations.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/5c1075ca-bb34-46a3-a7a0-029bd7463e79_task_verify_2/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 3 files are moved to archived/ with preserved directory structure",
+        "Getter command extracts the right state: lists all files in archived/ directory using 'find archived -type f'",
+        "Metric correctly handles expected parameter as rules dictionary (uses 'expected.get(\"directories\", [])' directly)",
+        "Partial credit logic is appropriate: awards 1.0/3 per file found",
+        "Expected values match the task requirements: archived/dir1/a_failed.ipynb, archived/dir2/subdir1/c_failed.ipynb, archived/dir3/e_failed.ipynb",
+        "Minor issue: Uses substring matching ('directory in result') rather than exact path matching, but file names are unique enough in this case to avoid false positives"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using more robust path matching instead of substring matching. For example, split result by newlines and check for exact path matches to avoid potential false positives with similar filenames.",
+        "Add whitespace/newline normalization when checking paths to ensure reliable matching regardless of command output formatting."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_dir_exists_with_files__5c107_2 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

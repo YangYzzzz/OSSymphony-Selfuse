@@ -1,0 +1,115 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "Bookmark the URL https://www.amazon.com/ in Chrome.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires bookmarking the URL https://www.amazon.com/ in Chrome. The evaluator verifies that the URL is present in Chrome's bookmark bar using a custom is_expected_bookmarks metric function with bookmark_bar_websites_urls rule type. The custom metric uses SUBSET checking (issubset) rather than exact equality, allowing the Amazon URL to be present alongside other existing bookmarks. This ensures the evaluator passes when the required bookmark exists, regardless of other bookmarks already in the bookmark bar.",
+    "new_functions_paths": [
+      "tmp_funcs/58565672-7bfe-48ab-b828-db349231de6b_aug_16_task_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification_limitation": "None. State-based verification directly matches the simplified instruction requirement (bookmark URL exists). The subset-based verification correctly handles cases where users have pre-existing bookmarks.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can properly verify the instruction 'Bookmark the URL https://www.amazon.com/ in Chrome.'",
+        "Getter correctness: get_bookmarks correctly reads Chrome's Bookmarks file and extracts the bookmark structure from the JSON file (bookmarks['bookmark_bar']['children']).",
+        "Metric logic correctness: The CUSTOM is_expected_bookmarks function (tmp_funcs/chrome.py:86-90) correctly uses SUBSET checking via set(rule['urls']).issubset(set(bookmark_bar_websites_urls)). This allows the Amazon URL to be present alongside other existing bookmarks, which is semantically correct for the instruction.",
+        "Coverage completeness: The evaluator checks that https://www.amazon.com/ exists in the bookmark bar, which fully covers the instruction requirement.",
+        "Expected value correctness: The expected URL https://www.amazon.com/ matches exactly what the instruction requires to be bookmarked.",
+        "Data flow correctness: get_bookmarks extracts Chrome bookmarks → custom is_expected_bookmarks filters bookmark_bar URLs → checks if Amazon URL is in the set using issubset() → returns 1.0 if present, 0.0 otherwise."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

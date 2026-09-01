@@ -1,0 +1,110 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_45",
+  "snapshot": "chrome",
+  "instruction": "Access the data file and locate cell B50. Copy its content and look it up on Google using Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Google Chrome"
+        }
+      }
+    ],
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=jeromy(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B50 value 'Jeromy' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'jeromy' (case-insensitive). Verified by reading complete Excel file: B50 contains 'Jeromy' at row 49, column 1 (0-indexed).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the final observable outcome by checking the active tab URL contains a Google search for 'jeromy' - this is the right verification approach for this multi-step task",
+        "Metric function 'is_expected_search_query' at chrome.py:247-256 correctly implements regex pattern matching: extracts pattern from rules['expect']['pattern'], applies re.search() to active_tab_info['url'], and returns 1.0 or 0.0",
+        "Expected value is semantically correct: pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=jeromy(?:&|$|#).*' matches case-insensitive Google search URLs with query='jeromy', which corresponds to the verified cell B50 content 'Jeromy'",
+        "Regex pattern robustly handles URL variations: case-insensitive flag (?i), optional 'www.', http/https protocols, and query string variations (&, $, # terminators)",
+        "Getter 'active_tab_info' (chrome.py:803-890) can successfully extract active tab URL: uses get_active_url_from_accessTree to get URL from accessibility tree, then uses Playwright to navigate to that URL and extract full tab info including URL, title, and content",
+        "Data flow is correct: Getter extracts active tab URL -> Metric searches for regex pattern in URL -> Returns 1.0 if matched (task completed), 0.0 otherwise",
+        "Evaluator does not verify intermediate steps (opening file, locating cell B50, copying content), but this is acceptable because verifying the search query for the SPECIFIC value 'jeromy' from B50 is strong evidence of correct task completion - searching the wrong value would fail the test",
+        "Postconfig correctly activates Chrome window to ensure active tab state is captured accurately before verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "None - evaluator is semantically sound and will correctly verify task completion"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

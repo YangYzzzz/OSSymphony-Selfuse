@@ -1,0 +1,108 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_61",
+  "snapshot": "chrome",
+  "instruction": "I need you to copy the value in Cell G18 from the LibreOffice Calc file and search for it using Google Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=16%2F08%2F2016(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell G18 (Date column, row 18) from the spreadsheet and search it in Chrome. Verified from Excel file: Row 18, Column G contains '16/08/2016'. Evaluator checks if active tab URL matches Google search for '16/08/2016' (URL-encoded as '16%2F08%2F2016').",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: The evaluator only checks if a Google search was performed with the correct value '16/08/2016', but does NOT verify that the user actually copied the value from Cell G18 specifically",
+        "The instruction has TWO requirements: (1) Copy value from Cell G18, and (2) Search for it in Chrome. Only requirement (2) is verified by the evaluator",
+        "The evaluator cannot distinguish between: (a) user copying from the correct cell G18, (b) user copying from a different cell that happens to contain the same value, or (c) user manually typing the value without copying at all",
+        "This creates a semantic gap: the task could be marked as successful even if the user never interacted with the spreadsheet or copied from the wrong cell",
+        "Expected value '16/08/2016' is semantically correct (verified from the Excel file metadata)",
+        "Getter and metric logic are correct for what they check (Chrome active tab URL with Google search pattern)",
+        "The regex pattern correctly matches Google search URLs with URL-encoded date parameter"
+      ],
+      "llm_judge_fix_suggestions": [
+        "To properly verify this task, you would need to either: (1) Add verification that checks clipboard content before the search is performed, or (2) Simplify the instruction to only require 'Search for 16/08/2016 in Google Chrome' without the copying requirement",
+        "If keeping the copy requirement, consider adding a getter that monitors clipboard state or accessibility tree events to verify the copy action occurred from the spreadsheet",
+        "Alternative: Split this into two separate verify tasks - one for copying from Cell G18 (checking clipboard), and one for performing the Google search",
+        "Note: The current evaluator is a reasonable approximation if we assume the user will follow instructions, but it cannot guarantee the full instruction was completed correctly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

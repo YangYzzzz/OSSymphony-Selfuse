@@ -1,0 +1,90 @@
+{
+  "id": "b7895e80-f4d1-4648-bee0-4eb45a6f1fa8",
+  "new_id": "b7895e80-f4d1-4648-bee0-4eb45a6f1fa8_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Search for New York City hotels on TripAdvisor.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.tripadvisor.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "xpath",
+      "xpathObject": {
+        "//h2[@data-automation='header_geo_title']": "city"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "city": "New York City Hotels"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "source_trajectory": "task_chrome_b7895e80-f4d1-4648-bee0-4eb45a6f1fa8_sid_1488280",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent spent 5 turns passing TripAdvisor verification slider, then searched for NYC hotels and reached the hotel listing page. Opened calendar to change dates but got confused about day-of-week mapping. Never sorted by price. Ran out of turns with malformed final action.",
+    "capability_extraction": "Can pass TripAdvisor verification slider, search for cities in TripAdvisor search box, navigate to hotel listing pages, interact with date picker calendar",
+    "failure_analysis": "Model wasted too many turns on verification slider (5 of 13 turns). After reaching hotel page, struggled with date selection in calendar and never attempted to sort by price. Final turn produced malformed tool call.",
+    "augmentation_type": "traj_verify",
+    "explanation": "Simplified version of original task: only requires searching and navigating to the NYC hotels listing page on TripAdvisor. No date selection or sorting required. Evaluator checks that the page header shows 'New York City Hotels' via XPath on the hotel listing page.",
+    "new_functions_paths": [],
+    "task_rationale": "Model demonstrated ability to search and reach the NYC hotels page in the trajectory. This variation isolates that successful sub-task.",
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly uses XPath //h2[@data-automation='header_geo_title'] to extract the geo title header from TripAdvisor's hotel listing page, which is the right state to verify that the user navigated to the NYC hotels page.",
+        "Metric check_direct_json_object correctly receives rules={'expected': {'city': 'New York City Hotels'}} via get_rule and compares result['city'] against expected value using exact match.",
+        "Coverage is complete: the instruction only requires searching for NYC hotels on TripAdvisor, and the evaluator verifies the user reached the correct hotel listing page by checking the page header.",
+        "Minor concern: exact string match on 'New York City Hotels' could be brittle if TripAdvisor renders the header text differently (e.g., 'Hotels in New York City'), but the data-automation attribute suggests this is a stable, well-defined element with predictable content."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a case-insensitive or substring match to handle minor text variations in the TripAdvisor header (e.g., if it shows 'New York City hotels' with lowercase 'h')."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

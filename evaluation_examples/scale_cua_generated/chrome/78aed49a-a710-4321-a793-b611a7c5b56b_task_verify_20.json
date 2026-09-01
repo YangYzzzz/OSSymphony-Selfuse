@@ -1,0 +1,153 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "In Thunderbird, create two new folders named 'Personal' and 'Work' under Local Folders.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_two_folders__386310fb",
+    "result": {
+      "type": "thunderbird_two_folders_exist__386310fb",
+      "profile_path": "/home/user/.thunderbird/t5q2a5hp.default-release",
+      "folders": [
+        "Personal",
+        "Work"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "personal_exists": true,
+        "work_exists": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "explanation": "Task requires creating two new folders (Personal and Work) in Thunderbird Local Folders. Evaluator checks both folders exist.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_task_verify_4/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_task_verify_4/metrics/thunderbird.py"
+    ],
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks for both required folders (Personal and Work) with complete coverage",
+        "Getter logic uses appropriate method (env.controller.get_file) to check folder existence in Thunderbird profile",
+        "Metric properly implements partial credit scoring (50% per folder), allowing verification of incomplete task completion",
+        "Data flow is semantically correct: getter extracts boolean existence flags, metric compares booleans against expected boolean values",
+        "Configuration properly parameterizes profile path and folder names for flexibility"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify that Thunderbird actually stores Local Folders at path '{profile_path}/Mail/Local Folders/{folder_name}' - Thunderbird may use .sbd subdirectories or .msf files with different naming conventions depending on version",
+        "Consider checking for folder existence using multiple possible formats (.sbd directory, .msf file, or plain directory) to ensure compatibility across Thunderbird versions",
+        "Add edge case handling for when get_file returns empty bytes vs None to distinguish between empty files and non-existent paths"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_two_folders__386310fb second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

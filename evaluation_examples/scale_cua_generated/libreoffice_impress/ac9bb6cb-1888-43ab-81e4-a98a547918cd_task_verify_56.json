@@ -1,0 +1,103 @@
+{
+  "id": "ac9bb6cb-1888-43ab-81e4-a98a547918cd",
+  "new_id": "task_verify_56",
+  "snapshot": "libreoffice_impress",
+  "instruction": "In the Slide Master view (accessible via View > Master > Slide Master), change the slide number's font color to black",
+  "source": "https://superuser.com/questions/1674211/how-to-change-colour-of-slide-number-in-libre-office",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/ac9bb6cb-1888-43ab-81e4-a98a547918cd/saa-format-guide.pptx",
+            "path": "/home/user/Desktop/saa-format-guide.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/saa-format-guide.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "saa-format-guide.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_page_number_colors",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/saa-format-guide.pptx",
+      "dest": "saa-format-guide.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "color": "black"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Paraphrased version with black color - parenthetical navigation hint. The evaluator uses the existing check_page_number_colors function which parses the slide master XML.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The check_page_number_colors function from slides.py (lines 876-920) parses the slide master XML to find the color of the page number placeholder. It checks the second-to-last solidFill/srgbClr element in the slide master and verifies it matches the expected color using threshold-based RGB comparison (red: R > G+50 and R > B+50, blue: B > G+50 and B > R+50, green: G > R+50 and G > B+50, black: R < 50 and G < 50 and B < 50).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "The evaluator uses check_page_number_colors which extracts the second-to-last solidFill/srgbClr element (index -2) from slideMaster1.xml. This is a hardcoded positional assumption that is fragile and overfitted to specific XML structures.",
+        "The function does not semantically verify it is reading the page number placeholder - it simply assumes the second-to-last color element corresponds to the page number without checking placeholder type or name.",
+        "Color matching logic for black uses threshold < 50 for all RGB channels, which is reasonable but may not handle all edge cases (e.g., very dark grays vs pure black).",
+        "The postconfig correctly saves the file with Ctrl+S, ensuring the modified PPTX is persisted before extraction.",
+        "Despite the fragile extraction logic, the evaluator will likely work correctly for this specific task and file (saa-format-guide.pptx), as indicated by the metadata verification note."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Make the color extraction logic more robust by searching for the page number placeholder by name/type (e.g., <p:ph type=\"sldNum\">) rather than using hardcoded positional index -2.",
+        "Add validation to confirm the extracted element actually corresponds to the slide number placeholder before checking its color.",
+        "Consider making the black color threshold configurable (currently hardcoded as 50) to handle different interpretations of 'black' color."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

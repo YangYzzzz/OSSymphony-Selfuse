@@ -1,0 +1,89 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "task_verify_40",
+  "snapshot": "chrome",
+  "instruction": "I'd like to disable the background cone logo in VLC Media Player. The orange traffic cone that appears when no media is playing is too bright and distracting for my eyes.",
+  "source": "https://superuser.com/questions/776056/how-to-hide-bottom-toolbar-in-vlc",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_bgcone",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_bgcone": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling the VLC background cone logo. The evaluator uses the existing check_qt_bgcone metric to verify that qt-bgcone setting is set to 0 (disabled). This is similar difficulty to the original task - both involve finding and changing a single VLC preference setting.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to disable the VLC background cone logo",
+        "Getter (get_vlc_config) correctly extracts VLC configuration from OS-specific paths (Linux: ~/.config/vlc/vlcrc, Darwin: ~/Library/Preferences/org.videolan.vlc/vlcrc, Windows: ~\\AppData\\Roaming\\vlc\\vlcrc)",
+        "Metric (check_qt_bgcone) correctly checks the qt-bgcone setting in the config file, with proper default value handling (defaults to '1' if not found, which matches VLC's default behavior)",
+        "Expected value (expected_qt_bgcone: 0) correctly represents the disabled state as required by the instruction",
+        "Postconfig appropriately kills and relaunches VLC to ensure configuration changes are persisted and verified in a fresh state",
+        "Complete coverage: instruction has one requirement (disable cone logo) and evaluator checks exactly that (qt-bgcone=0)",
+        "Data flow is semantically correct: getter reads config file → metric parses and checks qt-bgcone setting → comparison with expected value 0"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

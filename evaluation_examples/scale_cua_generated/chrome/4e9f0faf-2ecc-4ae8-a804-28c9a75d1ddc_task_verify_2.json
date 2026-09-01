@@ -1,0 +1,117 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Use LibreOffice Calc to make a spreadsheet for tracking expenses by category, then export it to the desktop as expenses.xlsx.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_xlsx_content__ecafb42348e3ea2fad5499358cc20d1b",
+    "result": {
+      "type": "xlsx_expense_tracker__ecafb42348e3ea2fad5499358cc20d1b",
+      "path": "/home/user/Desktop/expenses.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "must_have_content": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires building an expense tracker spreadsheet with categorized entries and exporting to desktop. Evaluator checks if the file exists and has proper expense tracker structure with categories. Custom getter uses openpyxl to read file from VM, extract headers, and verify expense-related content. Metric validates: (1) file exists, (2) minimum 2 rows (header + data), (3) minimum 2 columns, (4) headers contain expense-related terms, (5) category column is present. Returns 1.0 if all requirements met, 0.0 otherwise.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary scoring: 1.0 if file exists with proper expense tracker structure (minimum rows/columns, expense-related headers, category column present), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks all instruction requirements - file existence at correct path (/home/user/Desktop/expenses.xlsx), expense tracker structure (minimum 2 rows, 2 columns), expense-related headers, and specifically validates presence of category column",
+        "Correct semantic verification: Getter extracts headers and checks for expense-related keywords (category, expense, amount, cost, price, date, description, item, type), and specifically flags if category column exists using substring match 'categor'",
+        "Logical correctness: Metric properly validates all requirements - file exists (line 17-18), minimum structure (lines 24-29), expense-related content (lines 32-34), and required category column (lines 37-39)",
+        "Practical implementation: Uses openpyxl to read .xlsx files appropriately, handles edge cases (missing file returns exists=False, empty headers handled), and returns binary score as intended"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor enhancement: Could validate at least 3 columns instead of 2 to ensure more complete expense tracking (category + amount + description/date), though current logic is acceptable"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixed": true
+    },
+    "augmented_from": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

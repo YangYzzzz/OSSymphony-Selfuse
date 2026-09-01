@@ -1,0 +1,108 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_52",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the Apple website comparison page for iPhone 15 and iPhone 14",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-15",
+            "iphone-14"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires navigating to Apple.com and accessing the comparison page for iPhone 15 vs iPhone 14. The evaluator verifies successful navigation by checking that the active tab URL contains the modelList query parameter with both 'iphone-15' and 'iphone-14'. The postconfig sleep ensures the page has loaded before verification. URL verification is appropriate here because Apple's comparison page uses URL parameters to determine which models to display, making the URL a reliable indicator that the user has successfully navigated to the comparison page. The instruction has been simplified to 'Navigate to...comparison page' (rather than 'compare specifications') to accurately match what the evaluator verifies - successful navigation to the correct URL, not viewing/comparing the actual specification content. Uses existing check_direct_json_object metric and get_active_tab_url_parse getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Instruction-evaluator semantic alignment: Instruction says 'Navigate to...comparison page' (navigation task), evaluator verifies URL contains correct modelList parameters - this is appropriate verification for navigation",
+        "Getter logic correctness: get_active_tab_url_parse (chrome.py:2380-2454) correctly extracts active tab URL from accessibility tree and parses query parameters with split_list support",
+        "Metric logic correctness: check_direct_json_object (general.py:382-481) with ignore_list_order=true properly compares lists order-agnostically (sorts before comparison, lines 428-434)",
+        "Data flow correctness: URL → parse query params → extract modelList → split comma-separated values to list → compare with expected ['iphone-15', 'iphone-14']",
+        "Expected values are correct: modelList=['iphone-15', 'iphone-14'] matches Apple's comparison page URL structure for comparing these two iPhone models",
+        "Parameter validation: Getter validates required parameters are present (returns None if missing, line 2428-2430), ensuring robust error handling",
+        "Task coverage: For a navigation task, verifying the URL correctly contains the target page parameters is semantically sufficient verification",
+        "Minor limitation: Evaluator verifies URL correctness but does not confirm page content actually loaded (could pass if URL is correct but page fails to render)",
+        "Postconfig adequacy: 2-second sleep should be sufficient for URL to update after navigation completes"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Add page title or DOM element verification to confirm page actually loaded (e.g., verify page title contains 'Compare' or check for comparison table elements)",
+        "Optional: Extend postconfig sleep to 3-5 seconds to ensure page fully loads before URL verification",
+        "Consider hybrid verification: URL parameters (primary check) + page title verification (confirms successful page load)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

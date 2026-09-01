@@ -1,0 +1,98 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_76",
+  "snapshot": "multiapps",
+  "instruction": "I have a custom Chrome extension on the Desktop that needs to be manually installed. Please load it into Chrome and verify that version 1.0 is installed correctly.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_extension_version__ae6416e4",
+    "result": {
+      "type": "extension_version__ae6416e4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension_name": "Hello Extensions",
+        "version": "1.0"
+      }
+    }
+  },
+  "postconfig": [],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing an unpacked Chrome extension and verifying the version. From manifest.json, the extension version is '1.0'. Custom getter reads Chrome Preferences to extract extension versions from manifests. Metric checks if 'Hello Extensions' has version '1.0'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "postconfig_not_needed_reason": "Evaluator reads persistent Chrome Preferences JSON file (file-based state), not transient UI state. No UI needs to be reopened for verification.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic logic verification: Getter correctly reads OS-specific Chrome Preferences JSON file and extracts extension manifest data from data['extensions']['settings'], returning {extension_name: version} dict. Metric correctly checks both extension existence and exact version match.",
+        "Coverage completeness: Evaluator verifies ALL instruction requirements - (1) extension 'Hello Extensions' is installed AND (2) has version '1.0'. No missing verification steps.",
+        "Metric parameter handling for type='rule' is CORRECT: Uses expected.get('extension_name') and expected.get('version') directly, where expected IS the rules dict (not {'type': 'rule', 'rules': {...}}). This follows the framework specification correctly.",
+        "Data flow correctness: getter extracts {name: version} dict → metric receives result dict and expected dict (rules) → checks if expected['extension_name'] exists in result with expected['version'] value → returns 1.0 on match, 0.0 otherwise. Flow is semantically correct.",
+        "Expected values are semantically correct: extension_name='Hello Extensions' and version='1.0' match the actual extension data from the task setup. Values are accurate for this specific task.",
+        "State accessibility: Verification reads persistent Chrome Preferences JSON file (file-based state), NOT transient UI state. No postconfig needed - the static validator warning about UI reopening is a false positive heuristic. The Preferences file persists after extension installation.",
+        "Edge case handling: (1) Getter returns empty dict {} on file read/parse exceptions, (2) Metric returns 0.0 if extension_name/version keys missing in expected, (3) Metric returns 0.0 if extension not found in result, (4) Metric returns 0.0 on version mismatch. All edge cases handled correctly.",
+        "Runtime execution correctness: At runtime, the getter will successfully read Chrome's persistent Preferences file → parse JSON → extract extensions from data['extensions']['settings'] → return {name: version} dict → metric will check if 'Hello Extensions' key exists with value '1.0' → return 1.0 on exact match, 0.0 otherwise. Logic will work correctly."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

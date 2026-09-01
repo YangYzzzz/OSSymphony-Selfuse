@@ -1,0 +1,106 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Find me women's Nike t-shirts with a maximum price of $30.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "under $30",
+          "women",
+          "t-shirts",
+          "nike"
+        ]
+      },
+      "url_include_expected": [
+        "under $30",
+        "women",
+        "t-shirts",
+        "nike"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "under $30": true,
+          "women": true,
+          "t-shirts": true,
+          "nike": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering NBA store for women's Nike t-shirts under $30. Evaluator checks URL parameters and filter elements contain the correct filter values (under $30, women, t-shirts, nike).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing get_active_tab_html_parse and check_direct_json_object functions. Similar complexity to original task with 4 filter criteria.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies all 4 instruction requirements: gender (women), brand (Nike), category (t-shirts), and price (under $30)",
+        "Getter (get_active_tab_html_parse with category 'class&url') can semantically extract filter states from both HTML class elements ('filter-selector-link') and URL parameters",
+        "Metric (check_direct_json_object) correctly compares result JSON vs expected JSON with exact boolean matching for each filter",
+        "The 'is_other_exist' flag correctly detects if unexpected filters are present, preventing incorrect filter combinations",
+        "Data flow is correct: getter extracts filter presence as booleans, metric verifies all expected filters are true and no unexpected filters exist"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Evaluator is tightly coupled to NBA.com HTML structure (hardcoded class name 'filter-selector-link'). If the agent navigates to a different shopping website, the getter will fail. Consider adding a postconfig check or making the class name more flexible.",
+        "Consider adding explicit verification that higher price ranges (e.g., 'under $50', 'under $100') are NOT selected, rather than relying solely on 'is_other_exist' flag. The current approach works but could be more explicit about price validation."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

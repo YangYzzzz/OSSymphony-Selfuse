@@ -1,0 +1,120 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "task_verify_64",
+  "snapshot": "thunderbird",
+  "instruction": "Locate the oldest three emails in Thunderbird's daily folder. Extract the sender name and subject for each, then create a two-column report in LibreOffice Calc showing this information and save it as 'oldest_emails.xlsx' on the Desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-the-first-1000-gmail-emails-from-the-current-month-in-a-new-google-sheets-report",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('alt', 'tab'); time.sleep(0.3); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_thunderbird_oldest_three__0c7bac1c",
+    "result": {
+      "type": "thunderbird_oldest_three__0c7bac1c",
+      "path": "/home/user/Desktop/oldest_emails.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_data": [
+          [
+            "eNotices System",
+            "HKU Daily Notices (21 JAN 2024)"
+          ],
+          [
+            "HKU Bulk Email Delivery System",
+            "HKU Daily Email Digest (22 JAN 2024)"
+          ],
+          [
+            "eNotices System",
+            "HKU Daily Notices (23 JAN 2024)"
+          ]
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting oldest 3 emails from Thunderbird's daily folder and creating a two-column report. Evaluator validates: (1) Excel has proper two-column header structure with sender/subject-related labels, (2) Contains exactly 3 data rows matching the expected emails, (3) CRITICAL: Getter reads Thunderbird's daily folder mbox file, extracts all emails with timestamps, sorts by date (oldest first), and verifies that Excel data matches the actual oldest 3 emails from the source, (4) Metric includes temporal verification (40% weight) that confirms extracted emails are genuinely the oldest from Thunderbird by comparing against runtime-read Thunderbird data. This prevents false positives where agent extracts wrong emails. Edge cases handled: missing Thunderbird folder (reduced confidence score), empty cells, no headers, order variations in Excel.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_4/getters/thunderbird__0c7bac1c.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_4/metrics/thunderbird__0c7bac1c.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "✅ Evaluator correctly verifies the core 'oldest' requirement: getter reads Thunderbird's daily folder mbox file, extracts all emails with timestamps, sorts by date (oldest first), and metric verifies Excel data matches the actual oldest 3 emails",
+        "✅ Temporal verification (40% weight) prevents false positives where agent extracts wrong emails - Excel must contain emails that match Thunderbird's oldest 3",
+        "✅ Complete coverage: validates file location, two-column structure, correct number of emails (3), sender/subject data, and temporal ordering",
+        "✅ Robust edge case handling: missing Thunderbird folder (reduced confidence score 0.7), empty cells, parsing errors, order variations in Excel",
+        "✅ Data flow is semantically correct: getter extracts from both Excel and Thunderbird source → metric compares both to verify 'oldest' claim",
+        "✅ Postconfig appropriately saves Excel file with Ctrl+S before verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Thunderbird profile path is hardcoded ('gah8lzo3.default-release') - consider making it more flexible to find profile dynamically, though this is acceptable for OSWorld's controlled environment",
+        "Optional enhancement: Could add explicit check that Thunderbird daily folder contains at least 3 emails before verification, though current error handling is adequate"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

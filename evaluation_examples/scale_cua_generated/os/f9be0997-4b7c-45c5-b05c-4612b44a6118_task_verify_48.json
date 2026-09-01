@@ -1,0 +1,71 @@
+{
+  "id": "f9be0997-4b7c-45c5-b05c-4612b44a6118",
+  "new_id": "task_verify_48",
+  "snapshot": "os",
+  "instruction": "Enable natural scrolling (reverse scroll direction) in Ubuntu's touchpad settings.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/mouse-touchpad-click.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "gsettings set org.gnome.desktop.peripherals.touchpad natural-scroll false",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "gsettings get org.gnome.desktop.peripherals.touchpad natural-scroll",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true\n"
+      }
+    },
+    "postconfig": []
+  },
+  "metadata": {
+    "explanation": "Task requires enabling natural scrolling (macOS-style scrolling) for touchpad. The config disables it first (sets to false), and the evaluator checks that the agent enabled it (changed to true). Uses GNOME touchpad peripherals schema.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification: Evaluator correctly verifies that natural scrolling was enabled using gsettings command-line tool",
+        "Getter correctness: get_vm_command_line (general.py:8-22) executes 'gsettings get org.gnome.desktop.peripherals.touchpad natural-scroll' which is the correct command to read this Ubuntu/GNOME setting, returns command stdout",
+        "Metric logic: exact_match (general.py:41-48) correctly compares command output with expected value using strict equality (result == expect)",
+        "Expected value correctness: 'true\\n' is semantically correct and includes the newline character that gsettings outputs",
+        "Complete coverage: Instruction has single requirement (enable natural scrolling) and evaluator checks exactly that requirement",
+        "Setup correctness: Config properly disables natural-scroll first (sets to false) ensuring agent must actively change it to true",
+        "No state timing issues: Uses command-line gsettings (persistent GNOME dconf database) not GUI dialog, so no UI state dependency or need for postconfig - the static validation warning is a false positive for this case",
+        "Parameter handling: exact_match receives rules dict as second parameter and correctly accesses rules['expected'] - proper handling for type='rule', no incorrect patterns like rules.get('rules') or expected.get('type')"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

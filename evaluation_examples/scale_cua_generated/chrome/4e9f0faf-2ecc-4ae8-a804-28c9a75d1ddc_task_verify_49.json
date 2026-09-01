@@ -1,0 +1,120 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "Extract the invoice data from the PDF in my Google Drive and create a single-sheet LibreOffice Calc file named 'invoice.xlsx' on the Desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_sheet_count__50a22d91",
+    "result": {
+      "type": "xlsx_sheet_count__50a22d91",
+      "path": "/home/user/Desktop/invoice.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet_count": 1
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task verifies that the extracted invoice data is saved in a single-sheet workbook (not multiple sheets). The evaluator counts the number of sheets in the xlsx file and checks it equals 1.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_9/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_9/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "50a22d91",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Incomplete verification coverage - instruction requires extracting invoice data from PDF, but evaluator only checks if file has 1 sheet",
+        "Missing content verification - evaluator does not verify that invoice data was actually extracted from the PDF or that any data exists in the sheet",
+        "Evaluator would pass for an empty single-sheet xlsx file, even though the main task (extracting invoice data) was not completed",
+        "Only verifies structural requirement (single-sheet) while ignoring semantic requirement (invoice data extraction)",
+        "Filename verification missing - hardcoded path assumes filename is correct but doesn't verify it"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to extract actual cell data/content from the xlsx file to verify invoice data is present",
+        "Add metric to check that extracted data matches expected invoice fields (e.g., invoice number, date, amount, line items)",
+        "Consider adding verification that the file is not empty (has rows with data)",
+        "Add check to verify the filename is actually 'invoice.xlsx' rather than hardcoding the path",
+        "Consider verifying that data structure matches typical invoice format (headers, rows, totals)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

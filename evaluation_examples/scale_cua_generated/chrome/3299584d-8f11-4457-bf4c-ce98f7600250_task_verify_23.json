@@ -1,0 +1,91 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "I want Chrome to clear my browsing data automatically when I close the browser. How do I enable this?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_clear_on_exit__da95206e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling 'Clear cookies and site data when you quit Chrome' setting. Similar complexity - navigate to Settings > Privacy and security > Cookies and enable the clear on exit option.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_7/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if clear on exit enabled (profile.exit_type=1 and clear_lso_data_enabled=true), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Getter uses OR logic (exit_type==1 OR clear_lso) but instruction requires BOTH conditions to verify 'clear browsing data automatically when closing browser'. Metadata scoring_breakdown correctly states 'AND' but code implements 'OR'.",
+        "Logic error: Getter will return 'true' if ONLY exit_type=1 (without clear_lso_data_enabled), which means Chrome exits cleanly but doesn't actually clear data - fails to verify instruction requirement.",
+        "Logic error: Getter will return 'true' if ONLY clear_lso_data_enabled=true (without exit_type=1), which enables clearing but doesn't trigger it on exit - incomplete verification.",
+        "State timing concern: Getter reads Chrome Preferences file while Chrome is running. Chrome typically writes Preferences on close or periodically, so settings changes may not be immediately reflected. No postconfig to restart Chrome or force state refresh.",
+        "Missing verification: The instruction says 'browsing data' but getter only checks cookies/site data (clear_lso_data_enabled). However, Chrome's actual setting 'Clear cookies and site data when you quit Chrome' does specifically refer to cookies/site data, so this is acceptable for the specific Chrome feature."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change line 46 in chrome.py from 'return \"true\" if (exit_type == 1 or clear_lso) else \"false\"' to 'return \"true\" if (exit_type == 1 and clear_lso) else \"false\"' to correctly verify BOTH conditions are met.",
+        "Add postconfig to close and reopen Chrome, or add a delay/Chrome restart to ensure Preferences file is written after user makes settings changes.",
+        "Consider checking additional Chrome preferences related to clearing data on exit, such as 'profile.exit_type' and other clear_*_on_exit flags to ensure comprehensive verification."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

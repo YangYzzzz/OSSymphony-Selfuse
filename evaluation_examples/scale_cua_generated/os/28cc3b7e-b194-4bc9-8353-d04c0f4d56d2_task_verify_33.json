@@ -1,0 +1,69 @@
+{
+  "id": "28cc3b7e-b194-4bc9-8353-d04c0f4d56d2",
+  "new_id": "task_verify_33",
+  "snapshot": "os",
+  "instruction": "Change the system's volume setting to 90% of the highest possible value.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/sound-volume.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "pulseaudio --start\npactl list sinks | grep '^[[:space:]]Volume:' | head -n 1 | awk '{print $5}' | sed 's/%//g'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "90\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires increasing system volume to 90%. Evaluator uses existing exact_match metric with vm_command_line getter to verify PulseAudio volume is set to 90%. This is a simple system setting change similar to the original task but with a different target volume.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can verify the instruction requirement",
+        "The vm_command_line getter correctly extracts the PulseAudio volume percentage using standard pactl commands",
+        "The command pipeline properly parses the volume output: starts PulseAudio, lists sinks, greps for Volume, extracts percentage value, and removes % sign",
+        "The exact_match metric correctly compares the result against the expected value '90\\n'",
+        "Expected value '90\\n' matches the actual command output format (number + newline)",
+        "Complete coverage: the evaluator checks the single requirement (volume at 90%)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor edge case: On systems with multiple audio sinks, 'head -n 1' assumes the first sink is the active one. Consider using 'pactl get-sink-volume @DEFAULT_SINK@' for more robust sink selection",
+        "Minor edge case: The 'awk {print $5}' assumes volume percentage is always in field 5. While this is standard for PulseAudio output, different versions might vary"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "28cc3b7e-b194-4bc9-8353-d04c0f4d56d2_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

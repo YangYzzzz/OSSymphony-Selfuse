@@ -1,0 +1,105 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_45",
+  "snapshot": "os",
+  "instruction": "Create a zip archive of all files in the \"/tmp/test_files\" directory that were last modified 30 days ago and save it as \"/tmp/old_files.zip\"",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'if [ -f \"/tmp/old_files.zip\" ]; then if unzip -l /tmp/old_files.zip 2>/dev/null | grep -q \"old_file\"; then echo \"Success: Zip archive created with old files\"; else echo \"Fail: Zip does not contain old files\"; fi; else echo \"Fail: Zip file not found\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Zip archive created with old files"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires creating a zip archive of files modified 30 days ago at /tmp/old_files.zip. Verification checks that the zip file exists and contains files with 'old_file' in their names. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical: Evaluator does NOT verify the core requirement - that files were modified 30 days ago. It only checks for 'old_file' pattern in filenames.",
+        "Incomplete verification: Only checks if zip exists and contains files with 'old_file' in names, but doesn't verify modification times.",
+        "Semantic mismatch: Instruction requires time-based filtering (30 days ago) but evaluator uses filename pattern matching as a proxy.",
+        "Missing time verification: No logic to check actual file modification timestamps in the zip archive or compare them to the 30-day criteria.",
+        "Assumption dependency: Relies on setup script creating files with 'old_file' naming convention, which is an indirect proxy rather than direct verification."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification of file modification times: extract timestamps from zip metadata or compare with original /tmp/test_files directory.",
+        "Verify that ALL files in the zip were actually modified 30 days ago (not just that some contain 'old_file' in names).",
+        "Add check to ensure no files with different modification times are included in the zip.",
+        "Consider using 'unzip -l -v' to get detailed file metadata including timestamps, then parse and verify modification times.",
+        "Alternative: Add a second command to check modification times of files in /tmp/test_files before zipping, and verify zip contents match that list."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

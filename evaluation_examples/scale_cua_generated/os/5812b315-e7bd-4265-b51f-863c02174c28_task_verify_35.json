@@ -1,0 +1,67 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_35",
+  "snapshot": "os",
+  "instruction": "Please create a user named \"frank\" with a specific UID of 2500 and disable password-based login for this user.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"frank\"; TARGET_UID=2500; ACTUAL_UID=$(id -u \"$USERNAME\" 2>/dev/null) && [ \"$ACTUAL_UID\" = \"$TARGET_UID\" ] && PASSWD_STATUS=$(passwd -S \"$USERNAME\" | awk '{print $2}') && [ \"$PASSWD_STATUS\" = \"L\" ] && echo 'User has UID 2500 and locked password' || echo 'Check failed'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "User has UID 2500 and locked password"
+        ],
+        "exclude": [
+          "Check failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating user 'frank' with specific UID 2500 and disabling password login. Evaluator verifies UID via 'id -u' and checks password is locked via 'passwd -S' (status should be 'L').",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks both requirements - user 'frank' with UID 2500 AND password locked",
+        "Correct state extraction: Uses appropriate Linux commands ('id -u' for UID verification, 'passwd -S' for password status)",
+        "Correct expected values: UID 2500 checked via string comparison, password status 'L' (locked) checked correctly",
+        "Logical correctness: Bash command uses && chain to ensure ALL conditions must pass for success",
+        "Metric logic correct: check_include_exclude properly verifies success message present and failure message absent",
+        "Error handling: Command gracefully handles non-existent user (stderr redirected to /dev/null) and outputs 'Check failed' on any verification failure"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "5812b315-e7bd-4265-b51f-863c02174c28_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Create a user named 'charles' and give them ownership of '/home/test1' with permissions restricted to the owner only (mode 700).",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/test1",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_dir_ownership__425163a454302c61dc411d05ac9420b7",
+    "result": {
+      "type": "dir_ownership__425163a454302c61dc411d05ac9420b7",
+      "path": "/home/test1"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_owner": "charles",
+        "expected_group": "charles",
+        "expected_permissions": "700"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened terminal, created user 'charles' with useradd -m (wrong home dir /home/charles instead of /home/test1), set password, created /home/test1 dir, edited sshd_config for ChrootDirectory, but spent ~20 turns struggling with SSH not being installed. Eventually installed openssh-server and started it, but the user's home directory was never corrected to /home/test1.",
+    "capability_extraction": "Can open terminal, create users with useradd, set passwords with chpasswd, create directories, set file permissions/ownership, edit config files with tee/heredoc, install packages with apt-get, manage services",
+    "failure_analysis": "Model used 'useradd -m charles' which created /home/charles as home dir instead of /home/test1. Never used the -d flag to set custom home dir. Also wasted many turns on SSH service restart failures before discovering it wasn't installed.",
+    "task_rationale": "Tests the directory ownership and permissions sub-task that the model attempted (chown charles:charles /home/test1 && chmod 700). The model demonstrated this capability in the trajectory, so this validates that specific skill.",
+    "explanation": "Task requires creating user 'charles' and setting ownership/permissions on /home/test1. Getter runs 'stat' to get owner, group, permissions. Metric awards partial credit: owner (0.34), group (0.33), permissions (0.33).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064_traj_verify_1/getters/dir_ownership__425163a454302c61dc411d05ac9420b7.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_5812b315-e7bd-4265-b51f-863c02174c28_sid_1488064_traj_verify_1/metrics/check_dir_ownership__425163a454302c61dc411d05ac9420b7.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "owner_correct": "0.34 - Owner is 'charles'",
+      "group_correct": "0.33 - Group is 'charles'",
+      "permissions_correct": "0.33 - Permissions are 700"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'stat -c %U %G %a' to extract owner name, group name, and octal permissions from /home/test1",
+        "Metric correctly handles expected parameter for type='rule' — directly accesses expected.get('expected_owner') etc., consistent with get_rule returning config['rules']",
+        "Expected values are semantically correct: owner='charles', group='charles' (default group matches username), permissions='700' (owner-only access)",
+        "Partial credit scoring is well-structured: owner (0.34) + group (0.33) + permissions (0.33) = 1.0",
+        "User creation is not explicitly verified as a separate check, but is implicitly covered — if owner is 'charles', the user must exist on the system",
+        "Getter handles edge cases (missing directory, unexpected stat output) with error returns, and metric correctly returns 0.0 for error results"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding an explicit user existence check (e.g., 'id charles') as a separate evaluator step to directly verify user creation, rather than relying solely on implicit verification through ownership"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

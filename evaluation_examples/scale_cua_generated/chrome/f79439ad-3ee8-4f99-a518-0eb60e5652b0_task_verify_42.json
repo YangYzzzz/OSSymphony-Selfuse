@@ -1,0 +1,105 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "Search a one way flight for two adults traveling from Brussels to Lisbon, departing on the 25th of the next month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "25th next month"
+        },
+        "expected": {
+          "originIata": "CRL",
+          "destinationIata": "LIS",
+          "tpAdults": "2",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation: One way flight search from Brussels (CRL) to Lisbon (LIS) for 2 adults departing on 25th of next month. Uses same evaluator pattern as original - parses URL parameters to verify search criteria. No custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: All instruction requirements are verified (origin Brussels/CRL, destination Lisbon/LIS, 2 adults, 0 teens/children, one-way flight, departure date 25th next month)",
+        "Correct getter logic: get_active_tab_url_parse correctly extracts URL query parameters from Ryanair flight search URL using urlparse and parse_qs",
+        "Correct metric logic: check_direct_json_object performs accurate key-by-key comparison of extracted vs expected values",
+        "Accurate expected values: CRL and LIS are correct IATA codes, passenger counts match instruction, isReturn='false' correctly represents one-way flight",
+        "Proper time handling: get_rule_relativeTime correctly calculates '25th next month' and formats date as YYYY-MM-DD",
+        "State accessibility: Active tab URL is reliably accessible via accessibility tree, URL parameters persist after search"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

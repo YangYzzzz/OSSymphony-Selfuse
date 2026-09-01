@@ -1,0 +1,97 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_77",
+  "snapshot": "chrome",
+  "instruction": "Use Apple's comparison feature to view differences between iPhone 15 Pro, iPhone 14, and iPhone 13",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-15-pro",
+            "iphone-14",
+            "iphone-13"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires comparing three iPhone models mixing Pro and base models across generations. Agent needs to navigate to Apple Compare page and select iPhone 15 Pro, iPhone 14, and iPhone 13. The evaluator parses the URL query parameter 'modelList' and verifies it contains the three specified models in any order.",
+    "new_functions_paths": [
+      "tmp_funcs/f5d96daf-83a8-4c86-9686-bada31fc66ab_aug_5_task_verify_8/metrics/check_direct_json_object.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "Similar task to original - comparing 3 iPhone models with mixed tiers. Uses identical evaluator structure with different model names.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "The custom metric function check_direct_json_object has been FIXED and correctly handles the ignore_list_order parameter at line 49: 'ignore_list_order = rules.get(\"ignore_list_order\", False)'.",
+        "When ignore_list_order=true, the metric correctly sorts both expected and actual lists before comparison (lines 58-64), allowing order-independent matching.",
+        "The getter get_active_tab_url_parse correctly extracts the modelList query parameter from Apple's compare URL, splits it into an array (line 2445 of chrome.py), and returns it as a dict.",
+        "Expected values are semantically correct - the model names (iphone-15-pro, iphone-14, iphone-13) match Apple's URL format for the compare feature.",
+        "Data flow is correct: Getter extracts modelList array → Metric receives rules dict with ignore_list_order flag → Comparison handles order-independent matching → Verification succeeds if all 3 models present in any order.",
+        "The evaluator provides complete coverage of the instruction requirement: verifying that the user navigated to Apple's compare page and selected the three specific iPhone models."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

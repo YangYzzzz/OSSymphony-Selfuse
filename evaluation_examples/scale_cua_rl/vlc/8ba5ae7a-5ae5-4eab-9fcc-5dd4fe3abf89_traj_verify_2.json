@@ -1,0 +1,67 @@
+{
+  "id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89",
+  "new_id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_traj_verify_2",
+  "snapshot": "base_setup",
+  "instruction": "Set VLC's recording directory to /home/user/Documents.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_vlc_recordings_folder",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Documents"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89_sid_1488380",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened VLC, navigated to Tools > Preferences, switched to Advanced Preferences, browsed Input/Codecs and Stream output > Record sections. Then opened terminal and used grep to find 'input-record-path' in vlcrc but failed to correctly use sed to modify the config file due to syntax errors. Spent 50 turns without successfully changing the recording directory.",
+    "capability_extraction": "Can open VLC menus, navigate to Preferences, switch to Advanced Preferences, browse preference tree nodes, open terminal, use grep to search config files, attempt sed edits",
+    "failure_analysis": "Model found the correct config key (input-record-path at line 3962 in vlcrc) but failed due to repeated sed syntax errors when trying to modify the file. The model also confused the Stream output 'Record' section's 'Destination prefix' with the recording directory setting.",
+    "task_rationale": "Same mechanism as original task (input-record-path in vlcrc) but with /home/user/Documents as target. The explicit path in the instruction removes ambiguity about where 'Desktop' is, giving the model a clearer target for the sed/echo command it needs to use. Reuses existing getter and metric.",
+    "explanation": "Task requires setting VLC's input-record-path to /home/user/Documents. Uses existing vlc_config getter and is_vlc_recordings_folder metric with different expected path.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vlc_config) correctly reads the VLC configuration file (vlcrc) from the VM, which is the right source for verifying recording directory settings.",
+        "Metric (is_vlc_recordings_folder) correctly parses vlcrc line-by-line, skips commented lines starting with '#', finds the 'input-record-path' key, extracts its value, and compares against the expected path.",
+        "Expected parameter handling is correct: with expected.type='rule', the metric receives the rules dict directly and accesses rule['recording_file_path'] without incorrect nesting.",
+        "Expected value '/home/user/Documents' exactly matches the instruction requirement.",
+        "Complete coverage: the single-step instruction (set recording directory) is fully verified by checking the input-record-path config key."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

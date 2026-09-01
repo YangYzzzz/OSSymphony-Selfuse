@@ -1,0 +1,117 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_40",
+  "snapshot": "thunderbird",
+  "instruction": "I prefer a compact, information-dense layout for my email client. Can you change the Thunderbird interface to use compact density mode?",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.uidensity": {
+            "method": "eq",
+            "ref": 1
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing Thunderbird UI density to compact mode. The evaluator checks if mail.uidensity preference is set to 1 (compact). This is a standard Thunderbird preference: 0=default, 1=compact, 2=touch. Similar complexity to original dark mode task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "All-or-nothing: 1.0 if mail.uidensity=1, else 0.0",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts Thunderbird preferences file (prefs.js) from the standard profile location",
+        "Metric correctly parses the preferences file and checks mail.uidensity setting",
+        "Expected value of 1 is semantically correct for compact density mode (0=default, 1=compact, 2=touch)",
+        "Complete coverage: evaluator checks exactly what the instruction requires (compact density mode)",
+        "Postconfig appropriately closes Thunderbird to ensure preferences are flushed to disk before verification",
+        "Data flow is correct: file extraction -> preference parsing -> value comparison",
+        "Edge cases handled: returns 0.0 if file is missing, uses robust json.loads for value parsing",
+        "All-or-nothing scoring (1.0 or 0.0) is appropriate for this binary setting",
+        "No semantic or logical issues identified - evaluator will work correctly at runtime"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

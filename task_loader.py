@@ -64,21 +64,42 @@ def _install_osworld_v2_import_aliases() -> None:
 
     _alias_module("desktop_env.task_base", f"{compat_root}.task_base")
     _alias_module("desktop_env.file_source", f"{compat_root}.file_source")
+    _alias_module("desktop_env.actions", f"{compat_root}.actions")
+    _alias_module("desktop_env.image_utils", f"{compat_root}.image_utils")
+    _alias_module("desktop_env.user_simulator", f"{compat_root}.user_simulator")
+    _alias_module("desktop_env.desktop_env", "desktop_env.osworld.desktop_env")
 
+    providers_dir = os.path.join(os.path.dirname(__file__), "desktop_env", "osworld", "providers")
     package_aliases = {
+        "desktop_env.providers": ("desktop_env.osworld.providers", providers_dir),
         "desktop_env.controllers": (f"{compat_root}.controllers", os.path.join(compat_dir, "controllers")),
         "desktop_env.evaluators": (f"{compat_root}.evaluators", os.path.join(compat_dir, "evaluators")),
         "desktop_env.evaluators.getters": (f"{compat_root}.evaluators.getters", os.path.join(compat_dir, "evaluators", "getters")),
         "desktop_env.evaluators.metrics": (f"{compat_root}.evaluators.metrics", os.path.join(compat_dir, "evaluators", "metrics")),
+        "desktop_env.evaluators.backends": (f"{compat_root}.evaluators.backends", os.path.join(compat_dir, "evaluators", "backends")),
         "desktop_env.safety": (f"{compat_root}.safety", os.path.join(compat_dir, "safety")),
     }
     for public_name, (target_name, package_dir) in package_aliases.items():
         _alias_package(public_name, target_name, package_dir)
 
-    # Populate package-level exports such as `from desktop_env.evaluators.getters import get_vm_file`.
-    # Individual submodules remain lazy and are imported through the package __path__ above.
-    for public_name, (target_name, _package_dir) in package_aliases.items():
+    # Populate package-level exports used by V2 tasks and evaluator helpers.
+    for public_name in (
+        "desktop_env.providers",
+        "desktop_env.evaluators.getters",
+        "desktop_env.evaluators.backends",
+        "desktop_env.evaluators.metrics",
+        "desktop_env.safety",
+    ):
+        target_name, _package_dir = package_aliases[public_name]
         _update_package_exports(public_name, target_name)
+
+    task_class_dir = os.path.join(os.path.dirname(__file__), "evaluation_examples", "osworld-v2", "task_class")
+    try:
+        importlib.import_module("evaluation_examples")
+    except ModuleNotFoundError:
+        pass
+    _alias_package("evaluation_examples.task_class", "evaluation_examples.task_class", task_class_dir)
+
 
 
 def _normalize_examples_root(base_dir: Optional[str]) -> Optional[str]:
@@ -164,12 +185,10 @@ def find_task_class_path(
         if path not in candidates:
             candidates.append(path)
 
-    if domain:
-        add_candidate(os.path.join(root, "task_class", domain, f"task_{task_id}.py"))
-        add_candidate(os.path.join(root, "task_class", domain, f"{task_id}.py"))
-
-    add_candidate(os.path.join(root, "task_class", f"task_{task_id}.py"))
-    add_candidate(os.path.join(root, "task_class", f"{task_id}.py"))
+    filename = f"{task_id}.py"
+    add_candidate(os.path.join(root, "task_class", filename))
+    if domain and domain not in {"all", "tasks"}:
+        add_candidate(os.path.join(root, "task_class", domain, filename))
 
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -199,9 +218,6 @@ def resolve_task_json_path(
             candidates.append(path)
 
     if eval_version == "v2":
-        add_candidate(os.path.join(root, "examples", "examples_v2_backup", f"{task_id}.json"))
-        if domain:
-            add_candidate(os.path.join(root, "examples_v2", domain, f"{task_id}.json"))
         add_candidate(os.path.join(root, "examples_v2", "tasks", f"{task_id}.json"))
     elif domain:
         add_candidate(os.path.join(root, benchmark, "examples", domain, f"{task_id}.json"))
@@ -212,7 +228,7 @@ def resolve_task_json_path(
             return candidate
 
     if eval_version == "v2":
-        return os.path.join(root, "examples", "examples_v2_backup", f"{task_id}.json")
+        return os.path.join(root, "examples_v2", "tasks", f"{task_id}.json")
     if domain:
         return os.path.join(root, benchmark, "examples", domain, f"{task_id}.json")
     return None

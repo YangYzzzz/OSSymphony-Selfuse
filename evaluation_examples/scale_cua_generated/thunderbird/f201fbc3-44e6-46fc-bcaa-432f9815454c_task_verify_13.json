@@ -1,0 +1,115 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_13",
+  "snapshot": "thunderbird",
+  "instruction": "Disable the BCC option for all outgoing emails to prevent sending blind carbon copies by default.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.doBcc": {
+            "method": "eq",
+            "ref": false
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling automatic BCC (blind carbon copy) in Thunderbird email composition settings. The evaluator uses the existing check_thunderbird_prefs metric to verify that mail.identity.id1.doBcc is set to false. Verified against actual prefs.js file from cache - current value is false, task requires keeping/setting it to false.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Read actual prefs.js from extracted cache: mail.identity.id1.doBcc is currently false. Task asks to disable BCC, which means setting doBcc to false.",
+    "similarity_to_original": "high - same type of preference modification in Thunderbird, same complexity level (changing a single boolean preference)",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly identifies and checks the right Thunderbird preference (mail.identity.id1.doBcc) for BCC functionality",
+        "Postconfig appropriately closes Thunderbird to ensure preferences are written to disk before verification",
+        "Metric logic (check_thunderbird_prefs) correctly parses prefs.js and compares expected value (false)",
+        "Expected value is semantically correct: doBcc=false disables automatic BCC",
+        "None handling is correct: if file fetch fails, metric returns 0.0",
+        "Minor coverage issue: instruction says 'all outgoing emails' but only checks identity id1 (mail.identity.id1.doBcc). Thunderbird supports multiple email identities (id1, id2, etc.), so this may not verify all accounts if multiple exist",
+        "However, given the task context (difficulty=easy, single identity referenced in verification), this is likely adequate for the intended scope"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider checking all mail.identity.*.doBcc preferences if multiple identities exist, or clarify instruction to specify 'default email account' instead of 'all outgoing emails'",
+        "Could add unexpect rules to ensure no other identities have doBcc=true, providing more comprehensive verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

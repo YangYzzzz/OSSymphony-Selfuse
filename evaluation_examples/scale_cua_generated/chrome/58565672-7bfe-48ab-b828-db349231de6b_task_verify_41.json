@@ -1,0 +1,126 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "Launch a Chrome tab with the web link from the first message in the Bills email folder.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 5: Uses 'launch' verb for opening action. Task requires launching a new Chrome tab with the first link (https://www.amazon.com/) from the Bills folder's latest email. Evaluator confirms the presence of all three URLs in Chrome tabs.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Evaluator cannot verify the instruction was actually followed - it only checks the end result (URLs open), not the process",
+        "No verification that the link came from the Bills email folder or from any email at all",
+        "No verification that Thunderbird was accessed or that the first message was read",
+        "Critical false positive vulnerability: agent could simply type/open amazon.com directly without reading any email and pass evaluation",
+        "Expected URLs include pre-opened tabs (apple.com, scholar.google.com) from config, evaluator cannot distinguish which tab was opened by completing the task",
+        "The evaluator checks presence of three URLs but cannot verify causality - that amazon.com was opened BECAUSE it was extracted from the email",
+        "Incomplete coverage: instruction requires email interaction but evaluator only checks Chrome tabs state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to verify Thunderbird Bills folder was accessed and first message was read (e.g., check accessibility tree for Thunderbird window state)",
+        "Add getter to extract the actual URL from the first message in Bills folder and verify it matches the opened tab",
+        "Consider using multi-step evaluator: (1) verify email was opened, (2) verify correct link was extracted, (3) verify link was opened in Chrome",
+        "Alternative: Use a Chrome history getter to verify the amazon.com tab was opened AFTER Thunderbird interaction (temporal verification)",
+        "The current evaluator would be suitable for a simpler instruction like 'Ensure these three URLs are open in Chrome' but not for this email-based task"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

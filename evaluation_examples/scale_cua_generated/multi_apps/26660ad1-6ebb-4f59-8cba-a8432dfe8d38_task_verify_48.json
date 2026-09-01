@@ -1,0 +1,106 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_48",
+  "snapshot": "multiapps",
+  "instruction": "I need to assess my current internet connection performance. Please run speedtest.net to evaluate the connection, then copy the test results including Ping, Download, and Upload values to a file at ~/speed_test_results.txt. Make sure each metric is on its own line, with the metric name and value separated by a space.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "check_speedtest_format__26660ad1",
+    "result": {
+      "type": "speedtest_file_content__26660ad1",
+      "path": "/home/user/speed_test_results.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "metrics": [
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation uses 'assess' and 'performance' terminology, saves to the home directory directly (~/speed_test_results.txt) instead of a subdirectory, and uses the phrasing 'copy the test results' similar to the original. The task maintains identical complexity - measuring the same three core metrics (Ping, Download, Upload) from speedtest.net. Uses custom check_speedtest_format__26660ad1 metric to verify all three metrics are present with numeric values in the correct format (each metric on its own line with name and value).",
+    "new_functions_paths": [
+      "tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_task_verify_3/getters/get_speedtest_file_content__26660ad1.py",
+      "tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_task_verify_3/metrics/check_speedtest_format__26660ad1.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if all three metrics (Ping, Download, Upload) are present in the file with numeric values in the correct format (metric name followed by space/colon and a number), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts file content from ~/speed_test_results.txt using env.controller.get_file()",
+        "Metric correctly validates all three required metrics (Ping, Download, Upload) are present with numeric values",
+        "Regex pattern correctly matches format: metric name + optional colon + whitespace + numeric value",
+        "Case-insensitive matching provides flexibility for different formatting styles",
+        "Handles edge cases correctly (empty file, missing file returns 0.0)",
+        "Parameter handling is correct: metric receives rules dict directly from get_rule() as expected_state",
+        "Complete coverage: all instruction requirements are verified (file location, 3 metrics, format, numeric values)",
+        "Data flow is semantically correct: file read → text parsing → format validation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

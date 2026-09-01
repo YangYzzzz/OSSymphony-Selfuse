@@ -13,6 +13,11 @@ import copy
 
 logger = logging.getLogger("desktopenv.experiment")
 MAX_CODE_RESULT_LENGTH = 1000
+DEFAULT_USER_RESPONSE = (
+    "I have no further information to provide. "
+    "I trust you can figure it out based on the current observation and the instruction. "
+    "Please proceed with the next action. DO NOT ask me any more questions for this task."
+)
 
 
 def persist_evaluation_result(result, example_result_dir, scores):
@@ -24,10 +29,25 @@ def persist_evaluation_result(result, example_result_dir, scores):
         score = float(result)
 
     logger.info("Result: %.2f", score)
-    scores.append(score)
+    if scores is not None:
+        scores.append(score)
     with open(os.path.join(example_result_dir, "result.txt"), "w", encoding="utf-8") as f:
         f.write(f"{score}\n")
     return score
+
+def example_get(example, key: str, default=None):
+    if hasattr(example, "get") and callable(getattr(example, "get")):
+        try:
+            return example.get(key, default)
+        except TypeError:
+            return example.get(key)
+    return getattr(example, key, default)
+
+
+def get_example_id(example, fallback: str = "unknown_task") -> str:
+    value = example_get(example, "id", fallback)
+    return str(value) if value is not None else fallback
+
 
 def run_single_example(agent, env, example, max_steps, instruction, args, example_result_dir, scores):
     runtime_logger = setup_logger(example, example_result_dir)
@@ -214,13 +234,12 @@ def run_single_example_ossymphony2(agent, env, example, max_steps, instruction, 
             if i == 0 and args.save_image:
                 with open(os.path.join(example_result_dir, img_name), "wb") as _f:
                     _f.write(obs['screenshot'])
-
-            # if "coordinate" in response and isinstance(response["coordinate"], list):
-            #     draw_coordinates(
-            #         image_bytes=obs['screenshot'],
-            #         coordinates=response["coordinate"],
-            #         save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
-            #     )
+                if "coordinate" in response and isinstance(response["coordinate"], list):
+                    draw_coordinates(
+                        image_bytes=obs['screenshot'],
+                        coordinates=response["coordinate"],
+                        save_path=os.path.join(example_result_dir, img_name[:-4] + f"_draw_{i}.png")
+                    )
             
             # Execute Environment Step
             if action.startswith("BASH") or action.startswith("PYTHON"):        # 如果是执行代码，就在这里提前执行好
@@ -372,17 +391,20 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     step_idx = 0
     # Generate timestamp for ID and metadata
     global_timestamp = datetime.datetime.now().strftime("%Y%m%d@%H%M%S")
+    example_id = get_example_id(example)
+    evaluator = example_get(example, "evaluator", {}) or {}
+    related_apps = example_get(example, "related_apps") or [example_get(example, "snapshot")]
     
     model_name = agent.model if hasattr(agent, "model") else (agent.model_name if hasattr(agent, "model_name") else "undefined model")
     # Initialize the Meta JSON structure
     meta_json = {
-        "trace_id": f"{example['id']}_{global_timestamp}",
-        "task_id": example["id"],
+        "trace_id": f"{example_id}_{global_timestamp}",
+        "task_id": example_id,
         "platform": "Desktop",
         "subdomain": "Ubuntu 22.04",
         "environment_details": {
             "screen_resolution": f"{args.screen_width}x{args.screen_height}",
-            "related_apps": example.get("related_apps") or [example.get("snapshot")] # 向前兼容, 后续仅通过 related_apps 记录
+            "related_apps": related_apps # 向前兼容, 后续仅通过 related_apps 记录
         },
         "instruction": instruction,
         "agent": model_name,
@@ -405,14 +427,58 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     }
 
     while not done and step_idx < max_steps:
+        # Define current screenshot filename (using step_idx to start from 0)
+        current_screenshot_name = f"step_{step_idx}.png"
+        current_screenshot_path = os.path.join(example_result_dir, current_screenshot_name)
+        with open(current_screenshot_path, "wb") as _f:
+            _f.write(obs['screenshot'])
+    
         # Agent prediction
+        agent_obs = copy.deepcopy(obs)      # agent loop内部会修改obs的size，如果不传深拷贝后面画图就会收到被resize过的图像
+        
+        # if getattr(env, "user_simulator", None) is not None:
+        agent_obs["allow_ask_user"] = False # TODO: 目前不支持HC交互
+
         response, actions = agent.predict(
             instruction,
-            copy.deepcopy(obs)      # agent loop内部会修改obs的size，如果不传深拷贝后面画图就会收到被resize过的图像
+            agent_obs
         )
+
+        # if not actions:
+        #     question = response
+        #     if isinstance(response, list) and response:
+        #         first_response = response[0]
+        #         if isinstance(first_response, dict):
+        #             question = first_response.get("raw_response") or first_response.get("action") or str(first_response)
+        #         else:
+        #             question = str(first_response)
+        #     elif response is None:
+        #         question = ""
+
+        #     answer = DEFAULT_USER_RESPONSE
+        #     if getattr(env, "user_simulator", None) is not None:
+        #         answer = env.user_simulator.respond(str(question or ""))
+
+        #     logger.info("User simulator Q: %s | A: %s", question, answer)
+        #     with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
+        #         f.write(json.dumps({
+        #             "instruction": instruction,
+        #             "step_num": step_idx + 1,
+        #             "action": "ASK_USER",
+        #             "question": question,
+        #             "user_answer": answer,
+        #             "reward": None,
+        #             "done": False,
+        #             "info": {},
+        #             "screenshot_file": current_screenshot_name,
+        #         }, ensure_ascii=False, default=str))
+        #         f.write("\n")
+        #     obs["user_response"] = answer
+        #     step_idx += 1
+        #     continue
         
         agent_sft_sample = None
-        if "agent_sft" in response[0]:
+        if isinstance(response, list) and response and isinstance(response[0], dict) and "agent_sft" in response[0]:
             agent_sft_sample = response[0].pop("agent_sft")
 
         # Iterate through actions (usually one per step)
@@ -423,17 +489,9 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         coordinate_1 = None
         coordinate_2 = None
         code_result = ""
-        for i, (action, response_per_action) in enumerate(zip(actions, response)):
-            
-            # Define current screenshot filename (using step_idx to start from 0)
-            current_screenshot_name = f"step_{step_idx}.png"
-            current_screenshot_path = os.path.join(example_result_dir, current_screenshot_name)
-
-            # Save screenshot
-            if i == 0:
-                with open(current_screenshot_path, "wb") as _f:
-                    _f.write(obs['screenshot'])
-
+        last_reward = None
+        last_info = None
+        for _, (action, response_per_action) in enumerate(zip(actions, response)):
             # Optional: Draw coordinates for debug visualization
             # if "coordinate" in response_per_action and isinstance(response_per_action["coordinate"], list):
             #     coordinates = response_per_action["coordinate"]
@@ -484,7 +542,9 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
                     code_result += f"Return Code: {result.get('returncode', '0')}\n"
                 agent.last_code_result = code_result
 
-            obs, _, done, _ = env.step(action, args.sleep_after_execution)
+            obs, reward, done, info = env.step(action, args.sleep_after_execution)
+            last_reward = reward
+            last_info = info
             
             if done:
                 logger.info("The episode is done.")
@@ -509,6 +569,36 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         # Append to trajectory
         meta_json["trajectory"].append(step_data)
 
+        assistant_content = None
+        for response_item in response if isinstance(response, list) else []:
+            if not isinstance(response_item, dict):
+                continue
+            meta = response_item.get("meta_action")
+            if isinstance(meta, dict) and meta.get("assistant_content") is not None:
+                assistant_content = meta.get("assistant_content")
+                break
+
+        if assistant_content is not None:
+            action_log = {
+                "assistant_content": assistant_content # assistant response + signature
+            }
+        else:
+            action_log = {}
+
+        traj_item = {
+            "instruction": instruction,
+            "step_num": step_idx + 1,
+            "action": action_log,
+            "response": response,
+            "reward": last_reward,
+            "done": done,
+            "info": {},
+            "screenshot_file": current_screenshot_name,
+        }
+        with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(traj_item, ensure_ascii=False, default=str))
+            f.write("\n")
+
         if agent_sft_sample:
             with open(os.path.join(example_result_dir, "default_qwen_sft.jsonl"), "a", encoding='utf-8') as f:
                 f.write(json.dumps(agent_sft_sample, ensure_ascii=False) + "\n")
@@ -520,13 +610,12 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
 
     # --- Evaluation ---
     # Check if agent has evaluate method and it is callable
-    need_vlm_judge = args.enable_self_judge and hasattr(agent, "evaluate") and callable(agent.evaluate) # and example.get("evaluator", {}).get("need_vlm_judge", False)
-    need_rule_judge = example.get("evaluator", {}).get("need_rule_judge", False)
+    need_vlm_judge = args.enable_self_judge and hasattr(agent, "evaluate") and callable(agent.evaluate) # and evaluator.get("need_vlm_judge", False)
+    need_rule_judge = evaluator.get("need_rule_judge", True) if isinstance(evaluator, dict) else True
 
-    need_vlm_judge = True # 默认为 True
     if need_vlm_judge:
         # Passing both instruction and obs as requested
-        hint = example.get("evaluator", {}).get("vlm_desc", "")
+        hint = evaluator.get("vlm_desc", "") if isinstance(evaluator, dict) else ""
         vlm_evaluate_result = agent.evaluate(instruction, obs, hint=hint)
         
         # Update model_judge in meta_json
@@ -534,7 +623,9 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
         meta_json["model_judge"]["rationale"] = vlm_evaluate_result['thought']
 
     if need_rule_judge:
-        meta_json["rule_judge"]["reward"] = float(env.evaluate())
+        rule_evaluate_result = env.evaluate()
+        meta_json["rule_judge"]["result"] = rule_evaluate_result
+        meta_json["rule_judge"]["reward"] = persist_evaluation_result(rule_evaluate_result, example_result_dir, None)
 
     final_result = (meta_json["model_judge"]["binary_reward"] + meta_json["rule_judge"]["reward"]) / 2.0 if need_vlm_judge and need_rule_judge \
             else meta_json["model_judge"]["binary_reward"] if need_vlm_judge else meta_json["rule_judge"]["reward"]
@@ -542,7 +633,7 @@ def run_single_example_os_caliber_omni(agent, env, example, max_steps, instructi
     scores.append(final_result) # No use
 
     # --- Save Meta JSON ---
-    meta_json_path = os.path.join(os.path.dirname(example_result_dir), f"meta_{example['id']}.json")
+    meta_json_path = os.path.join(os.path.dirname(example_result_dir), f"meta_{example_id}.json")
     with open(meta_json_path, "w", encoding="utf-8") as f:
         json.dump(meta_json, f, indent=4, ensure_ascii=False)
 
@@ -691,7 +782,7 @@ def run_single_example_uitars15(agent, env, example, max_steps, instruction, arg
     # env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
         
 def setup_logger(example, example_result_dir):
-    runtime_logger = logging.getLogger(f"desktopenv.example.{example['id']}")
+    runtime_logger = logging.getLogger(f"desktopenv.example.{get_example_id(example)}")
     runtime_logger.setLevel(logging.DEBUG)
     runtime_logger.addHandler(logging.FileHandler(os.path.join(example_result_dir, "runtime.log")))
     return runtime_logger

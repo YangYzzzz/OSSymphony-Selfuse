@@ -1,0 +1,105 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 14 Pro Max and iPhone 13 Pro Max features",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-14-pro-max",
+            "iphone-13-pro-max"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "postconfig": [
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    }
+  ],
+  "metadata": {
+    "explanation": "Task requires navigating to Apple.com and comparing two iPhone models (iPhone 14 Pro Max and iPhone 13 Pro Max). The evaluator verifies task completion by checking that the active tab URL contains the correct comparison parameters (modelList query parameter with both model identifiers). This URL-based verification is a robust proxy for task completion, as reaching the comparison page with the correct models in the URL query string demonstrates the user successfully navigated to and initiated the product comparison. A postconfig sleep ensures the page is stable before evaluation. Note: While the instruction mentions 'features', the verification focuses on confirming the user reached the correct comparison page, which is the primary task objective. Verifying specific feature content would be brittle due to Apple's dynamic page structure.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/tmp_funcs/f5d96daf-83a8-4c86-9686-bada31fc66ab_aug_11_task_verify_5/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can verify task completion accurately.",
+        "Metric function correctly reads 'ignore_list_order' from rules level (line 47 of new function) and applies it to list comparisons (lines 60-66). This is the correct behavior per framework design.",
+        "Getter 'active_tab_url_parse' correctly extracts modelList from URL query parameters using urlparse/parse_qs, and splits comma-separated values into a list when split_list=true.",
+        "Expected values ['iphone-14-pro-max', 'iphone-13-pro-max'] match Apple's standard URL format for product comparison (e.g., modelList=iphone-14-pro-max,iphone-13-pro-max).",
+        "Complete coverage: The instruction requires comparing two specific iPhone models, and the evaluator checks that both model identifiers are present in the URL modelList parameter (order-insensitive).",
+        "URL-based verification is semantically appropriate: The task is to 'compare' models, which requires navigating to Apple's comparison page. The URL parameters reliably indicate successful navigation to the correct comparison state.",
+        "Postconfig sleep(2) ensures page stability before URL extraction, preventing race conditions.",
+        "Design rationale: URL verification preferred over page content verification due to robustness. Apple's comparison page HTML structure may change frequently, making content-based checks fragile. URL parameters are stable and reliably indicate task completion."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

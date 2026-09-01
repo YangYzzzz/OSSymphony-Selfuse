@@ -1,0 +1,84 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "task_verify_4",
+  "snapshot": "chrome",
+  "instruction": "When I open video files from my file manager, VLC creates multiple instances which clutters my workspace. Please configure VLC to use only one instance when opening files.",
+  "source": "https://superuser.com/questions/776056/how-to-hide-bottom-toolbar-in-vlc",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling one instance mode in VLC. The evaluator uses existing check_one_instance_when_started_from_file metric to verify the vlcrc config file has one-instance-when-started-from-file=0 (enabled). Default value is 1 (disabled/multiple instances allowed), so user must navigate to VLC preferences and enable the one instance mode setting.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vlc_config) correctly retrieves the VLC configuration file from OS-specific location",
+        "Metric (check_one_instance_when_started_from_file) correctly checks the one-instance-when-started-from-file setting in the config file",
+        "Expected value is semantically correct: 0 means one instance mode enabled, which matches the instruction requirement",
+        "Complete coverage: instruction requires enabling one instance mode, evaluator verifies exactly this setting",
+        "Proper parameter handling: metric correctly accesses rule parameter directly without incorrect .get('rules') pattern",
+        "Appropriate postconfig: kills and relaunches VLC to ensure clean state before verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

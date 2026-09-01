@@ -1,0 +1,112 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Filter for men's Jordan shoes over one hundred twenty dollars.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject_flexible": {
+        "filter | selector | facet | refinement | selected | active | applied": [
+          "over $120",
+          "men",
+          "shoes",
+          "jordan",
+          "is_other_exist"
+        ]
+      },
+      "url_include_expected": [
+        "over $120",
+        "men",
+        "shoes",
+        "jordan"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "over $120": true,
+          "men": true,
+          "shoes": true,
+          "jordan": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering NBA store products to show men's Jordan shoes over $120. Evaluator checks that the filter selections 'over $120', 'men', 'shoes', and 'jordan' are applied and no other filters are present.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses 'active_tab_html_parse' getter with 'class&url' category to extract filter states from DOM and URL",
+        "Complete coverage: verifies all 4 required filters (men, jordan, shoes, over $120) and checks is_other_exist=false",
+        "Uses class_multiObject_flexible with pipe-separated selector patterns to handle variations in class naming (filter|selector|facet|refinement|selected|active|applied)",
+        "Dual verification strategy: checks both DOM elements and URL parameters for filter presence, providing redundancy",
+        "Logical comparison: metric check_direct_json_object correctly compares boolean values for each filter requirement",
+        "Expected values semantically correct: all 4 filters should be true, is_other_exist should be false",
+        "Getter returns JSON with filter keys mapped to boolean values, metric compares exact boolean match",
+        "The flexible selector pattern is robust against website HTML structure changes",
+        "URL verification provides fallback if DOM extraction fails or is incomplete",
+        "Minor consideration: relies on website using recognizable filter keywords in class names or URL, but this is standard practice for e-commerce sites"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a postconfig to wait for dynamic content/filters to fully load before evaluation",
+        "Add case-insensitive matching for filter text (e.g., 'Men' vs 'men', 'Jordan' vs 'JORDAN') to handle variations",
+        "Consider more specific URL parameter patterns if NBA.com uses specific URL encoding for filters (e.g., '?filter=men,jordan,shoes,price-120')"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

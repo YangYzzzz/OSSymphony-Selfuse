@@ -74,7 +74,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         model: str = "qwen3-vl",
         base_url: str = "",
         api_key: str = "",
-        max_tokens: int = 15000,
+        max_tokens: int = 150000,
         top_p: float = 0.9,
         temperature: float = 0.0,
         action_space: str = "pyautogui",
@@ -131,9 +131,97 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.qwen_sft_image_hash_map: Dict[str, str] = {}
         self.collect_qwen_sft_image_dir = Path(collect_qwen_sft_image_dir) if collect_qwen_sft_image_dir else Path("qwen3vl_sft_dataset/image")
 
+        custom_headers = {
+            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
+        }
+
+        if "kubebrain" in self.base_url:
+            logger.info(f"H Cluster Local VLLM: {self.base_url}")
+            self.client = OpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                default_headers=custom_headers,
+                timeout=6000.0
+            )
+        else:
+            logger.info(f"H Service VLLM / Boyue: {self.base_url}")
+            self.client = OpenAI(
+                base_url=self.base_url, 
+                api_key=self.api_key, 
+                timeout=6000.0
+            )
+
     @staticmethod
     def _py_string(text: str) -> str:
         return json.dumps("" if text is None else str(text), ensure_ascii=False)
+
+    @staticmethod
+    def _inject_terminal_tool_call_from_content(response_message: Dict[str, Any]) -> Dict[str, Any]:
+        if response_message.get("tool_calls"):
+            return response_message
+
+        content = str(response_message.get("content") or "")
+        content_lower = content.lower()
+        if re.search(r"\bfail(?:ure)?\b", content_lower):
+            status = "failure"
+        elif re.search(r"\bdone\b", content_lower):
+            status = "success"
+        else:
+            return response_message
+
+        response_message = copy.deepcopy(response_message)
+        response_message["tool_calls"] = [
+            {
+                "id": "call_auto_terminal",
+                "function": {
+                    "arguments": json.dumps(
+                        {"action": "terminate", "status": status},
+                        ensure_ascii=False,
+                    ),
+                    "name": "custom_computer_use",
+                },
+                "type": "function",
+                "index": 0,
+            }
+        ]
+        return response_message
+
+    @staticmethod
+    def _sanitize_messages_for_llm(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        sanitized_messages: List[Dict[str, Any]] = []
+        for message in messages:
+            role = message.get("role")
+            sanitized: Dict[str, Any] = {"role": role}
+
+            if role == "assistant":
+                if "content" in message:
+                    sanitized["content"] = message.get("content")
+                tool_calls = []
+                for tool_call in message.get("tool_calls") or []:
+                    function = tool_call.get("function") or {}
+                    arguments = function.get("arguments", "{}")
+                    if not isinstance(arguments, str):
+                        arguments = json.dumps(arguments, ensure_ascii=False)
+                    tool_calls.append(
+                        {
+                            "id": tool_call.get("id", "tool_call_0"),
+                            "type": "function",
+                            "function": {
+                                "name": function.get("name", "custom_computer_use"),
+                                "arguments": arguments,
+                            },
+                        }
+                    )
+                if tool_calls:
+                    sanitized["tool_calls"] = tool_calls
+            elif role == "tool":
+                sanitized["tool_call_id"] = message.get("tool_call_id", "tool_call_0")
+                sanitized["content"] = message.get("content", "")
+            else:
+                sanitized["content"] = message.get("content", "")
+
+            sanitized_messages.append(sanitized)
+        return sanitized_messages
     
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
@@ -591,7 +679,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
             if hint:
                 eval_prompt += f"\n\n[Hint]: The following are review guidelines. Please focus on checking these points: {hint}"
 
-            eval_messages = self.messages
+            eval_messages = copy.deepcopy(self.messages)
 
             if eval_messages and eval_messages[0].get("role") == "system":
                 eval_messages[0]["content"] = [
@@ -704,30 +792,16 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         max_tries=5,
     )
     def call_llm_for_evaluate(self, payload, model) -> dict:
-        messages = payload["messages"]
-        custom_headers = {
-            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
-        }
-
-        if "kubebrain" in self.base_url:
-            logger.info(f"H Cluster Local VLLM: {self.base_url}")
-            client = OpenAI(
-                base_url=self.base_url,
-                api_key=self.api_key,
-                default_headers=custom_headers,
-            )
-        else:
-            logger.info(f"H Service VLLM / Boyue: {self.base_url}")
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        messages = self._sanitize_messages_for_llm(payload["messages"])
 
         for _ in range(MAX_RETRY_TIMES):
             try:
-                response = client.chat.completions.create(
+                response = self.client.chat.completions.create(
                     model=model,
                     messages=messages,
                     max_tokens=payload.get("max_tokens", self.max_tokens),
                     temperature=payload.get("temperature", 0),
-                    # top_p=payload.get("top_p", self.top_p),
+                    top_p=payload.get("top_p", self.top_p),
                     extra_body={
                         "chat_template_kwargs": {"enable_thinking": self.use_thinking}
                     }
@@ -922,6 +996,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         for attempt in range(EMPTY_TOOL_CALL_RETRY_TIMES):
             response_message = self.call_llm(payload, model)
+            response_message = self._inject_terminal_tool_call_from_content(response_message)
             tool_calls = response_message.get("tool_calls") or []
             valid_tool_calls = extract_supported_tool_calls(tool_calls)
 
@@ -967,44 +1042,28 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
 
         return response_message
 
-    @backoff.on_exception(
-        backoff.constant,
-        (
-            SSLError,
-            openai.RateLimitError,
-            openai.BadRequestError,
-            openai.InternalServerError,
-        ),
-        interval=30,
-        max_tries=5,
-    )
+    # @backoff.on_exception(
+    #     backoff.constant,
+    #     (
+    #         SSLError,
+    #         openai.RateLimitError,
+    #         openai.BadRequestError,
+    #         openai.InternalServerError,
+    #     ),
+    #     interval=30,
+    #     max_tries=1,
+    # )
     def call_llm(self, payload, model) -> dict:
-        messages = payload["messages"]
-        custom_headers = {
-            "Authorization": "Basic NWFkMzQxMDBlZTA1NWE0YmFlNjYzNzBhNWU2ODNiYWM6NjA3ZGU4MjQ5NjU3YTNiM2JkMDM2ZGM5NmQ0YzBiMmY="
-        }
-        custom_timeout = httpx.Timeout(600.0, read=600.0, connect=60.0)
-
-        if "kubebrain" in self.base_url:
-            logger.info(f"H Cluster Local VLLM: {self.base_url}")
-            client = OpenAI(
-                base_url=self.base_url,
-                api_key=self.api_key,
-                default_headers=custom_headers,
-                timeout=custom_timeout,
-            )
-        else:
-            logger.info(f"H Service VLLM / Boyue: {self.base_url}")
-            client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        messages = self._sanitize_messages_for_llm(payload["messages"])
 
         for _ in range(MAX_RETRY_TIMES):
             try:
-                response = client.chat.completions.create(
+                response = self.client.chat.completions.create(
                     model=model,
                     messages=messages,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
-                    top_p=self.top_p,
+                    # top_p=self.top_p,
                     tools=json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA) if self.enable_code_tool else json.loads(QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE),
                     tool_choice="auto", # required 的话只会输出 tool_call, auto 可以自由一点
                     extra_body={
@@ -1017,6 +1076,7 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
                 return message_dict
             except Exception as e:
                 logger.error(f"Error calling Qwen model: {e}")
+                self.debug_print_messages()
                 time.sleep(5)
                 continue
         return {}

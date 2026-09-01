@@ -1,0 +1,108 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "10a730d5-d414-4b40-b479-684bed1ae522_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Disable the auto-hide tab bar option in Thunderbird settings.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.tabs.autoHide": {
+            "method": "eq",
+            "ref": false
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_10a730d5-d414-4b40-b479-684bed1ae522_sid_1488450",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully enabled dark mode in Thunderbird by navigating hamburger menu -> Settings -> Add-ons and Themes -> Themes -> clicked Enable on Dark theme. Completed in 7 turns.",
+    "capability_extraction": "Can navigate Thunderbird menus, open Settings, browse Add-ons Manager, interact with UI buttons and checkboxes, scroll through settings pages",
+    "task_rationale": "Agent scrolled through Settings > General and saw the 'Auto hide tab bar' checkbox (currently checked). Unchecking a settings checkbox is a related task at similar difficulty.",
+    "explanation": "Task requires unchecking 'Auto hide tab bar' in Settings > General > Window Layout. Evaluator checks prefs.js for mail.tabs.autoHide set to false.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches prefs.js from the Thunderbird profile directory, which stores all user preferences",
+        "Metric check_thunderbird_prefs correctly parses user_pref() lines and checks mail.tabs.autoHide against the expected value false using eq method",
+        "Expected value is semantically correct: disabling auto-hide tab bar sets mail.tabs.autoHide to false",
+        "Postconfig closes Thunderbird before reading prefs.js, ensuring preferences are flushed to disk",
+        "The metric correctly receives the rules dict directly (type=rule handling) and accesses rule.get('expect', {}) without incorrect nesting"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

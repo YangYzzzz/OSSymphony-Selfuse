@@ -1,0 +1,100 @@
+{
+  "id": "8472fece-c7dd-4241-8d65-9b3cd1a0b568",
+  "new_id": "task_verify_20",
+  "snapshot": "libreoffice_writer",
+  "instruction": "I want to help a child learn word lengths. Can you make all short words (3 letters or fewer) bold so they stand out? Please format the document for me.",
+  "source": "https://stackoverflow.com/questions/37259827/libreoffice-writer-how-to-set-different-colors-to-each-letter",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/8472fece-c7dd-4241-8d65-9b3cd1a0b568/Dolch_Sight_Words_Primer.docx",
+            "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Dolch_Sight_Words_Primer.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_short_words_bold__17b5da73",
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx",
+      "dest": "Dolch_Sight_Words_Primer.docx"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires bolding all short words (<=3 letters). Verified from word list: 27 words are <=3 letters (all, do, no, say, am, eat, now, she, was, are, on, so, at, our, ate, out, be, he, ran, but, too, did, new, yes, who, saw, ran). Evaluator checks each word in tables and ensures short words are bold and long words are not bold.",
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8472fece-c7dd-4241-8d65-9b3cd1a0b568_task_verify_0/metrics/docs.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator treats formatting runs as words, not individual words. Uses run.text.strip() which returns entire text sequences, not word-by-word content",
+        "LOGIC FLAW: When a run contains 'all do no' (3 short words), evaluator checks len('all do no') = 9 > 3 and expects NOT bold, but the text should be bold (contains short words)",
+        "MISSING TOKENIZATION: Logic does not split run text into individual words before checking word length",
+        "SEMANTIC ERROR: In Word documents, runs represent continuous text with same formatting - can contain multiple words. The evaluator must split runs into words first",
+        "PRACTICAL FAILURE: Evaluator will incorrectly fail on documents where multiple short words appear in the same formatting run"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Split run.text into individual words using .split() before checking word length",
+        "Note that Word formatting is at run-level, not word-level. If a run contains mixed short/long words, the task requirement becomes ambiguous",
+        "Consider if the task instruction itself is feasible - Word cannot selectively bold individual words within a single run without breaking it into multiple runs",
+        "Correct logic: for each run, split text into words, then verify each word's length matches the run's bold status. Handle mixed-length words appropriately"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "trajectory": "trajectories/",
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

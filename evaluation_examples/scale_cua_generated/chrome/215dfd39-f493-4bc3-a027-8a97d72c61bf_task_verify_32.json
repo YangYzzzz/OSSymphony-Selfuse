@@ -1,0 +1,88 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Set VLC to store recordings in the Desktop folder rather than its default save location.",
+  "source": "https://superuser.com/questions/1224784/how-to-change-vlcs-splash-screen",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "is_vlc_recordings_folder",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Desktop"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing VLC's recording folder path to /home/user/Desktop by setting input-record-path=/home/user/Desktop in the VLC config file. The evaluator uses the existing is_vlc_recordings_folder metric function to verify the recording path is set correctly. The get_vlc_config getter reads the VLC config file (~/.config/vlc/vlcrc) and the metric checks if input-record-path matches /home/user/Desktop. No new functions needed - reusing existing VLC evaluation infrastructure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very similar - both tasks involve changing a single VLC preference setting through the UI. Original disables splash cone icon, this changes the recording folder path.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: getter reads VLC config file and metric checks if input-record-path is set to /home/user/Desktop",
+        "Expected parameter handling is correct: metric directly accesses rule['recording_file_path'] which matches the framework's get_rule() return value",
+        "Postconfig appropriately restarts VLC to ensure config changes are loaded before verification",
+        "Expected value is semantically correct: /home/user/Desktop is the appropriate path for Linux Desktop folder",
+        "Complete coverage: instruction asks to change recording path, evaluator verifies exactly that setting",
+        "Robust edge case handling: metric handles missing config file, missing config key, and exceptions gracefully"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "215dfd39-f493-4bc3-a027-8a97d72c61bf-3_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_66",
+  "snapshot": "chrome",
+  "instruction": "Extract the first name stored in cell B3 of the Calc file and search for it via Chrome's search engine.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query__e346411e",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=mara(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Google Chrome"
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires reading cell B3 from the spreadsheet (First Name: 'Mara') and searching for it in Chrome. Verified by reading the Excel file: Row 3, Column B contains 'Mara'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f8cfa149-d1c1-4215-8dac-4a0932bad3c2_aug_11_task_verify_8/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction by checking if active tab URL contains Google search for 'mara'",
+        "Getter (get_active_tab_info) can successfully extract active tab URL from accessibility tree and reload page to get current state",
+        "Metric function correctly handles type='rule' parameters: receives active_tab_info dict and rules dict directly (NOT wrapped in {'type': 'rule', 'rules': {...}}), correctly accesses rules['expect']['pattern']",
+        "Expected regex pattern is semantically correct: (?i)https?://(?:www\\.)?google\\.com/search\\?q=mara(?:&|$|#).* matches Google search URLs with query parameter 'mara' (case-insensitive)",
+        "Pattern correctly matches the value from cell B3 ('Mara') as confirmed in metadata explanation",
+        "Coverage is complete: searching for 'mara' implicitly verifies both requirements - extracting from B3 AND searching in Chrome",
+        "Data flow is correct: get_active_tab_info returns dict with 'url' key → metric accesses active_tab_info['url'] → regex.search() compares against pattern",
+        "Postconfig properly activates Chrome window before evaluation to ensure correct active tab detection"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: get_active_tab_info reloads the active tab URL (line 806 warning in chrome.py), which could cause issues if search results page has dynamic state, but for static Google search URLs this is acceptable"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

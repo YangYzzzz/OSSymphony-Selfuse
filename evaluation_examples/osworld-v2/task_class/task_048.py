@@ -333,7 +333,7 @@ echo $! >/tmp/task048_save_monitor.pid
 chmod 0644 /tmp/task048_save_monitor.pid
 '
 
-for _ in $(seq 1 50); do
+for _ in $(seq 1 300); do
     if grep -q '"kind": "monitor_ready"' /tmp/task048_save_monitor.jsonl 2>/dev/null; then
         exit 0
     fi
@@ -394,8 +394,8 @@ test -f {q(self.game_exe_path)}
                     "&& grep -q '\"kind\": \"monitor_ready\"' /tmp/task048_save_monitor.jsonl"
                 )
             },
-            max_wait_time=10,
-            check_interval=0.5,
+            max_wait_time=60,
+            check_interval=1.0,
         )
         launch_wine_game(
             setup_controller,

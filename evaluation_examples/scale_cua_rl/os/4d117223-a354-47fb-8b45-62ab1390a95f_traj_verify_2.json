@@ -1,0 +1,107 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "4d117223-a354-47fb-8b45-62ab1390a95f_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Add execute permission for the owner on all regular files under the current directory tree.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd ~/testDir && if [ $(find . -type f ! -perm /100 | wc -l) -eq 0 ]; then echo 'All files have owner execute permission.'; else echo 'Some files do not have owner execute permission.'; find . -type f ! -perm /100 -exec stat -c '%a %n' {} \\;; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "All files have owner execute permission."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_4d117223-a354-47fb-8b45-62ab1390a95f_sid_1488273",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully changed all regular file permissions to 644 using 'find . -type f -exec chmod 644 {} +' in 5 turns.",
+    "capability_extraction": "Can use terminal, find command with -type and -exec flags, chmod with numeric permissions, navigate directory structure.",
+    "task_rationale": "Variation uses symbolic permission (u+x) instead of numeric, testing whether the model can use chmod with symbolic notation to add specific permission bits.",
+    "explanation": "Task requires adding owner execute permission to all regular files. Starting permissions: file1.txt=755, file2.txt=644, file3.txt=777. After u+x: 755, 744, 777. Evaluator uses 'find ! -perm /100' to check all files have owner execute bit set.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'find . -type f ! -perm /100' to identify regular files missing the owner execute bit; -perm /100 tests the owner-execute bit precisely.",
+        "Metric check_include_exclude correctly receives the rules dict directly (include/exclude keys) matching the type=rule framework behavior.",
+        "Evaluator fully covers the instruction: checks all regular files under the directory tree for owner execute permission.",
+        "Working directory 'cd ~/testDir' matches the setup config which places files in testDir.",
+        "No UI state dependency; no postconfig needed for a file permission verification task."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

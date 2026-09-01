@@ -1,0 +1,97 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Find hybrid vehicles costing less than $40,000 located within 75 miles of ZIP code 90210.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "40000",
+          "maximum_distance": "75",
+          "zip": "90210",
+          "fuel_slugs[]": "hybrid"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 0: Changed to search for hybrid vehicles (instead of electric) with max price $40,000 (instead of $50,000), within 75 miles (instead of 50) of ZIP 90210 (instead of 10001). Uses the same evaluator logic - parsing URL query parameters to verify the search filters are correctly applied. No custom functions needed as we reuse existing get_active_tab_url_parse getter and check_direct_json_object metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_active_tab_url_parse to extract URL query parameters from the active tab",
+        "All instruction requirements are verified: hybrid fuel type (fuel_slugs[]=hybrid), price under $40,000 (list_price_max=40000), distance within 75 miles (maximum_distance=75), and ZIP code 90210 (zip=90210)",
+        "The metric check_direct_json_object correctly compares extracted URL parameters against expected values",
+        "Data flow is correct: URL parsing extracts query parameters as a dictionary, metric performs key-value comparison",
+        "Expected values are semantically correct and match the instruction requirements",
+        "The approach is appropriate for cars.com which uses URL query parameters for search filters",
+        "No postconfig needed since verification only requires reading the URL, not interacting with UI elements"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "82279c77-8fc6-46f6-9622-3ba96f61b477_aug_15_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

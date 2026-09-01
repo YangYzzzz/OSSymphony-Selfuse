@@ -1,0 +1,109 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Browse men's Nike jackets priced over $100.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "over $100",
+          "men",
+          "jackets",
+          "nike"
+        ]
+      },
+      "url_include_expected": [
+        "over $100",
+        "men",
+        "jackets",
+        "nike"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "over $100": true,
+          "men": true,
+          "jackets": true,
+          "nike": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation of NBA store filtering task. User must apply 4 filters: men's category, Nike brand, jackets type, and over $100 price. Evaluator checks all filters are present in HTML class elements and URL, with no extra filters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing check_direct_json_object metric and get_active_tab_html_parse getter. Pattern matches original task structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 instruction requirements: men's category, Nike brand, jackets type, and over $100 price",
+        "Uses dual verification approach checking both HTML class elements ('filter-selector-link') and URL parameters",
+        "Properly checks that no extra filters are applied via 'is_other_exist' field",
+        "Case-insensitive matching is correctly implemented for both class text and URL checks",
+        "Metric logic correctly compares exact boolean matches for all expected filter states"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness concern: URL encoding of special characters ('$' in 'over $100', spaces) may cause false negatives if the website encodes URLs differently. Consider adding URL decoding in the getter before string matching.",
+        "The evaluator depends on specific class name 'filter-selector-link' which may change if website structure updates, but this is acceptable for snapshot-based benchmarks."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

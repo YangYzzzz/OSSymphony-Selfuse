@@ -1,0 +1,130 @@
+{
+  "id": "5990457f-2adb-467b-a4af-5c857c92d762",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "In the researchers.xlsx file on the Desktop, add a new column G titled 'Citations per h-index' and calculate the ratio of citations to h-index for each researcher (citations / h-index).",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/5990457f-2adb-467b-a4af-5c857c92d762/researchers.xlsx",
+            "path": "/home/user/Desktop/researchers.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Desktop"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "researchers.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_ratios__ebe83598",
+    "result": {
+      "type": "xlsx_column_values__ebe83598",
+      "path": "/home/user/Desktop/researchers.xlsx",
+      "sheet": 0,
+      "column": "G",
+      "start_row": 2,
+      "end_row": 5
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_values": [
+          4155.81,
+          1507.16,
+          1727.79,
+          5511.87
+        ]
+      }
+    },
+    "options": {
+      "tolerance": 10.0
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires adding column G with citation/h-index ratios. Verified with Python: Row 2: 760513/183=4155.81, Row 3: 241145/160=1507.16, Row 4: 250530/145=1727.79, Row 5: 479533/87=5511.87. Evaluator checks column G values match these ratios with partial credit scoring.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5990457f-2adb-467b-a4af-5c857c92d762_task_verify_8/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5990457f-2adb-467b-a4af-5c857c92d762_task_verify_8/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.25 per correct ratio calculation (4 researchers total)",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.65,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires adding column G titled 'Citations per h-index', but evaluator only verifies the calculated values in rows 2-5, not the column header/title",
+        "Cannot verify calculation method: Getter uses data_only=True which reads calculated values but cannot distinguish between formulas (citations/h-index) and hard-coded values that happen to match expected results",
+        "Overly generous tolerance: tolerance=10.0 is very large and could allow significant calculation errors to pass (e.g., 4155.81 ± 10 allows range 4145.81-4165.81)",
+        "Expected values are correct: All four ratio calculations verified correctly (760513/183=4155.81, 241145/160=1507.16, 250530/145=1727.79, 479533/87=5511.87)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for column G header: Create a getter to read cell G1 and verify it contains 'Citations per h-index' (or similar text)",
+        "Verify formula presence: Use openpyxl without data_only=True to check that cells G2-G5 contain formulas, not just values",
+        "Reduce tolerance: Consider reducing tolerance to 1.0 or 0.1 for more precise ratio verification, since these are simple division calculations",
+        "Add multi-step evaluation: Create separate evaluation steps for (1) column header and (2) calculated values, with appropriate partial credit"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

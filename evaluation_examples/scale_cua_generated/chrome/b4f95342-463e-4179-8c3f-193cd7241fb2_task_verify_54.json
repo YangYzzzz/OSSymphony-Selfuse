@@ -1,0 +1,99 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_54",
+  "snapshot": "chrome",
+  "instruction": "Look up the next available reservation dates for Yellowstone.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "gotoRecreationPage_yellowstone__3772b4df"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "January|February|March|April|May|June|July|August|September|October|November|December",
+          "202[5-9]|20[3-9][0-9]",
+          "[0-9]{1,2}"
+        ],
+        "exclude": [
+          "__EVALUATION_FAILED__",
+          "error"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task asks agent to search for Yellowstone on recreation.gov and find next available dates. Similar to original but with different search term.",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/b4f95342-463e-4179-8c3f-193cd7241fb2_task_verify_0/getters/chrome__3772b4df.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Metric function semantic mismatch - check_include_exclude uses literal substring matching ('in' operator on line general.py:35), NOT regex matching. The include patterns like 'January|February|...' and '202[5-9]|20[3-9][0-9]' are treated as literal strings, not regex patterns. The evaluator will look for literal strings like '202[5-9]|20[3-9][0-9]' in the result, which will never match actual dates.",
+        "Wrong metric choice: For regex pattern matching, should use check_list or a regex-aware metric, not check_include_exclude which does substring matching. Current setup cannot semantically verify date patterns.",
+        "Incomplete verification: Even if metric worked correctly, the patterns don't verify dates are 'next available' (future dates) or multiple dates as instruction implies - they only check format, not temporal ordering or multiplicity.",
+        "Getter extraction reliability: Getter returns '__EVALUATION_FAILED__' if no dates found (chrome__3772b4df.py:167), which correctly fails evaluation, but provides no fallback for partial success cases."
+      ],
+      "llm_judge_fix_suggestions": [
+        "CRITICAL FIX: Replace check_include_exclude with a regex-aware metric function, or change include patterns to literal strings that would actually appear in dates (e.g., include=['January', '2025', '1'] or include=['February', '2026', '15']). Current regex patterns will never match with substring-based check_include_exclude.",
+        "Alternative approach: Use check_direct_json_object metric - modify getter to return JSON with structured date list, then verify list is non-empty and contains valid date strings. This provides more robust verification.",
+        "Alternative approach 2: Use literal date component strings in include rules (e.g., include=['2025', 'January'] OR include=['2026', 'March']) to check if result contains year and month names, since check_include_exclude does substring matching.",
+        "Add validation for 'next available' semantics: Include logic to verify dates are future dates relative to task execution time, not past dates.",
+        "Consider postconfig: May need postconfig to keep Yellowstone page open or re-navigate to availability page for getter to extract dates reliably."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3",
+  "new_id": "task_verify_7",
+  "snapshot": "chrome",
+  "instruction": "Erase all Google cookies in my browser to stop Google from tracking me.",
+  "source": "https://support.google.com/chrome/answer/95647?hl=en&ref_topic=7438325&sjid=16867045591165135686-AP#zippy=%2Cdelete-cookies-from-a-site",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.google.com",
+          "https://www.google.com/search?q=artificial+intelligence"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_cookie_deleted",
+    "result": {
+      "type": "cookie_data",
+      "dest": "Cookies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "domains",
+        "domains": [
+          ".google.com"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task asks user to delete cookies from Google. Uses existing getter 'get_cookie_data' and metric 'is_cookie_deleted' with domain-based checking. The evaluator verifies that no cookies from .google.com domain remain after the task is completed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'get_cookie_data' correctly extracts all cookies from Chrome's SQLite database, including domain information needed for verification",
+        "Metric 'is_cookie_deleted' correctly checks if any cookies from .google.com domain remain by iterating through cookie domains and using compare_urls for matching",
+        "Expected value '.google.com' is semantically correct for matching Google cookies (including subdomains like www.google.com)",
+        "Postconfig appropriately restarts Chrome to ensure cookie database is saved and can be read in fresh state",
+        "Complete coverage: evaluator verifies the core requirement that no Google cookies remain after deletion",
+        "Logic handles edge cases correctly: empty cookie data, subdomain matching, and allows non-Google cookies to remain"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

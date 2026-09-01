@@ -1,0 +1,116 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_27",
+  "snapshot": "chrome",
+  "instruction": "Search for women's Jordan pants under $50.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "nba_filter_state",
+      "class_multiObject_search_exist": {
+        "filter-selector-link": [
+          "under $50",
+          "women",
+          "pants",
+          "jordan",
+          "is_other_exist"
+        ]
+      },
+      "url_include_expected": [
+        "women",
+        "pants",
+        "jordan"
+      ],
+      "url_include_expected_multichoice": {
+        "under $50": "under $50",
+        "under%20%2450": "under $50",
+        "under+%2450": "under $50"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "under $50": true,
+          "women": true,
+          "pants": true,
+          "jordan": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation of NBA store filtering task. User must apply 4 filters: women's category, Jordan brand, pants type, and under $50 price. Evaluator checks all filters are present in HTML class elements and URL, with no extra filters. Fixed URL encoding issue by using custom getter with OR logic for multichoice variants.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9f3f70fc-5afc-4958-a7b7-3bb4fcb01805_task_verify_6/getters/nba_store_filter_check.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses check_direct_json_object metric with custom get_nba_filter_state getter that properly handles URL encoding for price filters using OR logic.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 instruction requirements: women's category, Jordan brand, pants type, and under $50 price filter.",
+        "Custom getter properly implements OR logic for URL encoding variants (nba_store_filter_check.py:187-194). If ANY of the encoded variants ('under $50', 'under%20%2450', 'under+%2450') appears in URL, the canonical filter name is marked as true. This correctly handles URL encoding.",
+        "Dual verification approach (HTML class elements AND URL) provides comprehensive verification that filters are actually applied. Both HTML elements (lines 119-150) and URL state (lines 152-210) are checked with case-insensitive comparison.",
+        "Correctly checks for unexpected filters via 'is_other_exist' flag (lines 136-150), ensuring no extra filters are applied beyond the 4 required ones.",
+        "Expected values semantically match instruction requirements: all 4 filters must be true, is_other_exist must be false.",
+        "Metric function check_direct_json_object correctly receives rules dict with 'expected' key and compares each filter's boolean value (general.py:419-443)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding postconfig to ensure page state is stable if there are dynamic page updates or redirects after filtering. Current implementation assumes page state remains stable after agent completes the task.",
+        "Minor: Dual verification (HTML AND URL both must pass) is strict - verify against actual NBA store behavior that filters appear in both locations. If only one location is reliable, consider adjusting verification logic."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

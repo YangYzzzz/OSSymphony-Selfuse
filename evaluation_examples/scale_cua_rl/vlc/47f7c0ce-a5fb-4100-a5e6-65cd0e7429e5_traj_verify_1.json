@@ -1,0 +1,128 @@
+{
+  "id": "47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5",
+  "new_id": "47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5_traj_verify_1",
+  "snapshot": "vlc",
+  "instruction": "Capture a frame from the landscape video and set it as the background of the title slide (first page) in the Robotic Workshop presentation.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5/landscape.mp4",
+            "path": "/home/user/Desktop/landscape.mp4"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5/Robotic_Workshop_Infographics.pptx",
+            "path": "/home/user/Desktop/Robotic_Workshop_Infographics.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Robotic_Workshop_Infographics.pptx"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 3
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "vlc",
+          "--repeat",
+          "/home/user/Desktop/landscape.mp4"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_impress",
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Robotic_Workshop_Infographics.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_slide_has_bg_image__54b7105f00ae5aefd1a4f4e9a1686c3b",
+    "result": {
+      "type": "slide_has_bg_image__54b7105f00ae5aefd1a4f4e9a1686c3b",
+      "ppt_file_path": "/home/user/Desktop/Robotic_Workshop_Infographics.pptx",
+      "slide_index": 0
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "bg_image_required": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5_sid_1488404",
+    "trajectory_success_score": 0.6953190592268272,
+    "trajectory_summary": "Agent navigated VLC to 00:08, took snapshot via Video > Take Snapshot, switched to Impress, selected slide 2, and set snapshot as background. Image comparison scored 0.695 (partial match).",
+    "capability_extraction": "Can navigate VLC timeline, use VLC menus (Video > Take Snapshot), switch windows via Activities, navigate LibreOffice Impress slides, set slide backgrounds via Insert Image dialog",
+    "failure_analysis": "Image comparison returned 0.695 instead of 1.0. Likely the frame was not captured at exactly 00:08 or image quality differed from reference.",
+    "task_rationale": "Similar to original but targets slide 1 (title slide) which is already visible when Impress opens, removing one navigation step. Also removes the exact time constraint — any frame is acceptable.",
+    "explanation": "Task requires capturing any frame from VLC and setting it as the background of slide 1. Getter checks PPTX XML for background image blip element on slide 1 (index 0). Originally no slides have background images. Metric returns 1.0 if bg image found.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5_sid_1488404_traj_verify_1/getters/slide_background.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_47f7c0ce-a5fb-4100-a5e6-65cd0e7429e5_sid_1488404_traj_verify_1/metrics/slide_background.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads slide 1 (index 0) PPTX XML and detects background images by searching for p:bgPr containing a:blip with r:embed attribute — standard OOXML background image detection.",
+        "Metric correctly checks result['has_bg_image'] and returns 1.0/0.0 for pass/fail.",
+        "Postconfig properly activates Impress window and saves the file (Ctrl+S) before evaluation, ensuring the getter reads the latest on-disk state.",
+        "Slide index 0 correctly maps to slide1.xml (the title/first slide) matching the instruction.",
+        "Minor coverage gap: evaluator verifies a background image exists on slide 1 but does not verify the image originated from the landscape video. This is an acceptable simplification since verifying exact video-frame provenance is practically infeasible, and the task rationale explicitly states any frame is acceptable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider optionally checking that the background image dimensions or aspect ratio are consistent with a video frame (landscape orientation) to provide weak verification that the image came from the video, though this is not strictly necessary."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_57",
+  "snapshot": "chrome",
+  "instruction": "I want to try the experimental tab groups feature in Chrome. Please enable the tab groups experiment for me.",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "tab-groups"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the tab groups experiment (tab-groups) in Chrome flags. Uses existing check_enabled_experiments metric. Similar complexity to original - accessing chrome://flags and enabling one experiment.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Incorrect comparison logic in check_enabled_experiments metric (chrome.py:491)",
+        "Metric uses exact equality check (enabled_experiments_names == rule['names']) which requires ONLY tab-groups to be enabled",
+        "Instruction asks to 'enable the tab groups experiment', not 'enable ONLY the tab groups experiment'",
+        "Will fail if user has any other Chrome experiments enabled (default or user-enabled), even though task was completed correctly",
+        "Correct logic should check if 'tab-groups' is IN the list of enabled experiments, not exact equality"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change metric logic in chrome.py:491 from exact equality to subset check: 'return 1. if set(rule['names']).issubset(set(enabled_experiments_names)) else 0.'",
+        "This would correctly verify that tab-groups is enabled regardless of other experiments",
+        "Alternative: Update expected to use a different rule type that supports 'contains' rather than exact match"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Locate cell B30 in this file, copy its data, and look it up in the Chrome web browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=garth(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Google Chrome"
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B30 value 'Garth' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'garth' (case-insensitive). Verified by reading complete Excel file: B30 contains 'Garth' at row 29, column 1 (0-indexed).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter 'active_tab_info' (chrome.py:803-890) correctly extracts the active Chrome tab's URL, title, and content by getting URL from accessibility tree and then reloading it to fetch full page info",
+        "Metric 'is_expected_search_query' (chrome.py:247-256) correctly verifies the URL matches a Google search pattern by applying regex to active_tab_info['url']",
+        "Case-insensitive regex pattern (?i)https?://(?:www\\.)?google\\.com/search\\?q=garth(?:&|$|#).* correctly handles variations in Google search URLs including protocol variants, www prefix, and query parameter formats",
+        "Expected value 'garth' matches the actual content of cell B30 ('Garth') as verified in metadata explanation",
+        "Evaluator correctly verifies the end state: user searched for the cell content in Chrome browser, which is the ultimate goal of the task",
+        "Data flow is correct: getter returns dict with 'url' field, metric accesses rules['expect']['pattern'] and applies re.search() to active_tab_info['url']",
+        "Postconfig correctly activates Chrome window before evaluation to ensure active_tab_info can read the address bar from accessibility tree"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor limitation: Evaluator only verifies the final search URL, not intermediate steps (opening Excel file, locating cell B30, copying data). However, this is acceptable because: (1) verifying the correct search term indirectly confirms the user found the right cell, (2) there's no reliable way to verify clipboard operations in OSWorld, (3) the task's success criteria is the end result (correct search performed)",
+        "Minor concern: get_active_tab_info function (chrome.py:814-890) reloads the target URL which could theoretically cause issues if the search result page has session-dependent behavior or anti-bot detection, but this is acceptable for stable Google search URLs"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

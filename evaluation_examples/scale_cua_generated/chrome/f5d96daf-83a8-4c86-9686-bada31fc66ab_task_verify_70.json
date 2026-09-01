@@ -1,0 +1,102 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_70",
+  "snapshot": "chrome",
+  "instruction": "Compare MacBook Air M2 with MacBook Air M1 and MacBook Air (Intel)",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "macbook-air-m2",
+            "macbook-air-m1",
+            "macbook-air-intel"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "proxy": true,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task requires comparing 3 MacBook Air models (different chip generations) on Apple's website. Evaluator checks that the active tab URL contains the modelList parameter with the 3 specified MacBook Air models (order-independent). Similar complexity to original task, just different product category focusing on processor generations.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical URL structure assumption: Evaluator assumes Apple's comparison page uses a 'modelList' query parameter, but this parameter name is not validated against actual Apple website behavior",
+        "If Apple's comparison URL uses a different structure (e.g., path-based routing, different parameter names, or no query parameters), the evaluator will always fail even if task is completed correctly",
+        "The expected model identifiers ('macbook-air-m2', 'macbook-air-m1', 'macbook-air-intel') may not match Apple's actual URL encoding format",
+        "No fallback or alternative verification method if the URL structure assumption is wrong",
+        "The evaluator logic is sound IF the URL assumption is correct, but without validation, this is a high-risk assumption"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Validate the actual URL structure of Apple's MacBook comparison page before finalizing this evaluator",
+        "Consider using HTML content parsing as an alternative/additional verification method (check for presence of all 3 model names in the comparison table)",
+        "Add multiple getter strategies: try URL parsing first, fall back to HTML content verification if URL doesn't have expected parameters",
+        "Test the evaluator against Apple's actual website to confirm 'modelList' parameter exists and uses the expected format",
+        "Consider using a more robust verification: check both URL parameters AND page content to ensure models are actually being compared"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_93",
+  "snapshot": "thunderbird",
+  "instruction": "I want to enable automatic deletion of junk mail that's older than 14 days to keep my mailbox clean. Could you help me configure Thunderbird to automatically purge old junk mail after 14 days?",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.server1.purge_junk": {
+            "method": "eq",
+            "ref": true
+          },
+          "mail.server.server1.purge_junk_interval": {
+            "method": "eq",
+            "ref": 14
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic junk mail deletion by setting mail.server.server1.purge_junk to true and mail.server.server1.purge_junk_interval to 14 (days). This automatically deletes junk mail older than the specified interval.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The preferences mail.server.server1.purge_junk and mail.server.server1.purge_junk_interval are standard Thunderbird settings for automatic junk mail cleanup. Common intervals are 7, 14, or 30 days.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks both required preferences (purge_junk=true and purge_junk_interval=14)",
+        "Correct state extraction: get_vm_file getter correctly retrieves Thunderbird prefs.js from VM",
+        "Appropriate postconfig: Closes Thunderbird before reading prefs.js, ensuring preferences are written to disk",
+        "Correct metric logic: check_thunderbird_prefs parses prefs.js and validates preference values using _match_pref utility",
+        "Semantically correct expected values: purge_junk=true enables the feature, purge_junk_interval=14 sets the interval as specified in instruction",
+        "Proper data flow: VM file extraction -> preference parsing -> value comparison works correctly at runtime"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

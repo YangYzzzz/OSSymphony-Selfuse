@@ -1,0 +1,85 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7_traj_verify_0",
+  "snapshot": "base_setup",
+  "instruction": "Set VLC's recording directory to the Desktop folder.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "-f",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_vlc_recordings_folder",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc_v0.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Desktop"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_bba3381f-b5eb-4439-bd9e-80c22218d5a7_sid_1488205",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened VLC Media menu, navigated to Open Network Stream, entered HLS URL, and started playback in 11 turns.",
+    "capability_extraction": "Can navigate VLC menus, open dialogs, type URLs, interact with VLC UI controls.",
+    "task_rationale": "Tests VLC preferences navigation instead of streaming. Agent proved it can navigate VLC menus; now test changing a setting in Tools > Preferences.",
+    "explanation": "Task requires navigating to VLC Tools > Preferences > Input/Codecs and changing the recording directory. Evaluator kills VLC to force config save, then reads vlcrc to check input-record-path setting.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads the VLC config file (~/.config/vlc/vlcrc) from the VM, which contains the recording directory setting.",
+        "Metric (is_vlc_recordings_folder) correctly parses the vlcrc file, searches for the 'input-record-path' key, and compares its value to the expected path.",
+        "Expected value '/home/user/Desktop' is semantically correct for the Linux Desktop folder.",
+        "Postconfig properly kills VLC before reading config, ensuring the config file is saved to disk with any changes the agent made.",
+        "Metric correctly handles the 'rule' type expected parameter — accesses rule['recording_file_path'] directly from the rules dict passed by get_rule.",
+        "Single-step instruction (set recording directory) is fully covered by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

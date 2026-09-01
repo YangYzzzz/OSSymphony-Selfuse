@@ -1,0 +1,102 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_31",
+  "snapshot": "chrome",
+  "instruction": "Show me all men's medium-size short-sleeve shirts with a discount of 60% or more.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "short_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "M",
+          "Price_discount_range": "60_PERCENT_ off & more",
+          "short_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Variation 8: Changed size from L to M, discount from 50% to 60%, keeps short-sleeve. Maintains same complexity and interaction pattern as original task.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical semantic logic error: Getter function 'get_macys_product_url_parse' hardcodes check for '50_PERCENT_ off & more' (line 2551 in chrome.py) but expected value is '60_PERCENT_ off & more'",
+        "Logic mismatch: Instruction requires 60% discount but getter validates against 50% threshold, causing incorrect verification",
+        "Inconsistent return value: Getter returns 'not_50_PERCENT_ off & more' on failure, but expected value is '60_PERCENT_ off & more', guaranteed to fail comparison",
+        "Expected value mismatch: The task variation changed discount from 50% to 60%, but the getter function's hardcoded logic was not updated accordingly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update get_macys_product_url_parse function (chrome.py:2551-2554) to check for '60_PERCENT_ off & more' instead of '50_PERCENT_ off & more'",
+        "Make the discount threshold configurable or parameterized instead of hardcoding it in the getter function",
+        "Update the failure return value from 'not_50_PERCENT_ off & more' to match the expected format or use a generic failure indicator",
+        "Consider making the getter more flexible to handle different discount thresholds dynamically based on the parse_keys or configuration"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

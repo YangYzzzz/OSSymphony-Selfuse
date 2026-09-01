@@ -1,0 +1,113 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_14",
+  "snapshot": "chrome",
+  "instruction": "Bookmark both currently open tabs to the bookmarks bar for easy access.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation requires bookmarking both tabs to the bookmarks bar. Uses existing is_expected_bookmarks metric with bookmark_bar_websites_urls type. The metric checks if both URLs are subsets of bookmark bar URLs. Slightly more complex than original (2 bookmarks vs 1) but same type of operation.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "The evaluator checks that both URLs (https://blog.eleuther.ai/rotary-embeddings/ and https://jalammar.github.io/illustrated-transformer/) are present in the bookmark bar using is_expected_bookmarks with type bookmark_bar_websites_urls. The function verifies set(urls).issubset(bookmark_bar_websites_urls).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_bookmarks getter to read Chrome bookmarks file from filesystem",
+        "Metric is_expected_bookmarks with type 'bookmark_bar_websites_urls' correctly extracts bookmark bar URLs and compares using set equality",
+        "Expected values match the instruction: both URLs that were opened in tabs should be bookmarked",
+        "Postconfig appropriately restarts Chrome (pkill + relaunch + sleep) to ensure bookmarks are flushed to disk before verification",
+        "Complete coverage: instruction requires bookmarking 2 tabs, evaluator checks for exactly those 2 URLs",
+        "Set comparison logic correctly ignores order and checks for exact URL match"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

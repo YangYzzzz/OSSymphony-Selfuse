@@ -1,0 +1,100 @@
+{
+  "id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "I've decided to use my full name, Michael Anderson, as my Chrome profile name. Please change the profile name to Michael Anderson.",
+  "source": "https://superuser.com/questions/1393683/how-to-change-the-username-in-google-chrome-profiles?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "profile_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Michael Anderson"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing Chrome profile name to 'Michael Anderson' (full name with space). Uses existing get_profile_name getter and exact_match metric. Same complexity as original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts profile name from Chrome Preferences file (profile.name field)",
+        "Metric correctly performs exact string comparison for profile name verification",
+        "Expected value 'Michael Anderson' semantically matches the instruction requirement",
+        "Complete coverage: evaluator verifies the single requirement (profile name change)",
+        "Data flow is correct: user changes profile → Chrome writes to Preferences → postconfig restarts Chrome → getter reads Preferences → metric compares",
+        "Postconfig appropriately restarts Chrome to ensure preferences are persisted to disk",
+        "Edge cases handled: null/empty profile names and partial matches will correctly fail"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider increasing postconfig sleep from 3 to 5 seconds to ensure Chrome has sufficient time to fully restart and write preferences on slower systems (this is a robustness improvement, not a logical flaw)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "id": "347ef137-7eeb-4c80-a3bb-0951f26a8aff",
+  "new_id": "347ef137-7eeb-4c80-a3bb-0951f26a8aff_traj_verify_2",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Create a column chart on the current sheet showing the 2019 monthly total costs. Use months (column A) as categories and the totals in column I as values.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/347ef137-7eeb-4c80-a3bb-0951f26a8aff/Create_column_charts_using_statistics.xlsx",
+            "path": "/home/user/Create_column_charts_using_statistics.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Create_column_charts_using_statistics.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Create_column_charts_using_statistics.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_chart_exists__9affe8a59575f48a48ea3570040f007c",
+    "result": {
+      "type": "xlsx_chart_info__9affe8a59575f48a48ea3570040f007c",
+      "path": "/home/user/Create_column_charts_using_statistics.xlsx",
+      "sheet": 0
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_charts": 1,
+        "chart_type": "Bar",
+        "expected_value_column": "I",
+        "expected_category_column": "A"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_libreoffice_calc_347ef137-7eeb-4c80-a3bb-0951f26a8aff_sid_1488242",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to create two column charts for 2019 and 2020 monthly costs. It understood the data structure and SUM formulas but struggled with multi-range selection in the chart wizard. Created one incomplete chart for 2019 but never created the second chart. Ran out of 50 turns.",
+    "capability_extraction": "Can navigate LibreOffice Calc cells, understand data layout, use formulas (SUM), open Insert > Chart menu, interact with chart wizard dialog, select cell ranges",
+    "failure_analysis": "Failed to correctly select non-contiguous data ranges (months + totals) for chart creation. Spent excessive turns trying different selection methods. Only created one chart with incorrect data, never started second chart.",
+    "task_rationale": "Simplified from creating two charts to creating just one chart. The model nearly succeeded at creating one chart in the trajectory, so this is within reach if instructions are clearer about which data to use.",
+    "explanation": "Task asks model to create a single column chart for 2019 monthly totals using column A (months) as categories and column I (totals) as values. Evaluator checks: 1) at least one chart exists (0.34), 2) chart is bar/column type (0.33), 3) chart data references point to column A for categories and column I for values (0.33). Getter extracts chart series value and category references from openpyxl chart objects. [Fixed: added data range verification for columns A and I to prevent false positives from charts using wrong data]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_calc_347ef137-7eeb-4c80-a3bb-0951f26a8aff_sid_1488242_traj_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_libreoffice_calc_347ef137-7eeb-4c80-a3bb-0951f26a8aff_sid_1488242_traj_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "scoring_breakdown": {
+      "chart_exists": "0.34 - At least one chart present on the sheet",
+      "chart_type": "0.33 - Chart is a bar/column type",
+      "data_references": "0.33 - Chart uses column A as categories and column I as values"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Extended getter to extract chart series value references (val.numRef.f) and category references (cat.strRef.f/cat.numRef.f) from openpyxl chart objects",
+      "Fix 2: Added expected_value_column='I' and expected_category_column='A' to expected rules",
+      "Fix 3: Updated metric to verify chart data references point to correct columns using regex pattern matching, with partial credit for each verification step (0.34 existence + 0.33 type + 0.33 data refs)"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all major instruction requirements with three-step scoring: chart existence (0.34), chart type (0.33), and data column references (0.33).",
+        "Getter properly extracts chart series value references (val.numRef.f) and category references (cat.strRef.f/cat.numRef.f) from openpyxl chart objects, enabling column verification.",
+        "Metric correctly uses regex pattern matching (e.g., '$I$') to verify chart data references point to column I (values) and column A (categories).",
+        "Chart type check is semantically correct: openpyxl BarChart corresponds to column charts in LibreOffice Calc.",
+        "Metric parameter handling is correct: expected.get('min_charts') etc. directly access the rules dict as expected when type='rule'.",
+        "Postconfig correctly activates window and saves file (Ctrl+S) before getter reads, ensuring chart data is persisted to disk.",
+        "Minor gap: evaluator does not verify that the chart uses specifically the 2019 data rows (not 2020 or other years), but column verification (A and I) provides strong coverage since the instruction explicitly specifies these columns."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding row range verification to ensure the chart references only the 2019 data rows, not data from other years that may exist in the same columns."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

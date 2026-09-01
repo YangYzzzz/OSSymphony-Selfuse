@@ -1,0 +1,127 @@
+{
+  "id": "5990457f-2adb-467b-a4af-5c857c92d762",
+  "new_id": "task_verify_3",
+  "snapshot": "chrome",
+  "instruction": "Order the researchers listed in researchers.xlsx by 'All citations', starting with the highest value.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--proxy-server=http://127.0.0.1:18888",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/5990457f-2adb-467b-a4af-5c857c92d762/researchers.xlsx",
+            "path": "/home/user/Desktop/researchers.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Desktop"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sorted_descending__0bb065c40eddbc22359664651c190a18",
+    "result": {
+      "type": "xlsx_column_values__0bb065c40eddbc22359664651c190a18",
+      "path": "/home/user/Desktop/researchers.xlsx",
+      "sheet": 0,
+      "column": "B",
+      "start_row": 2,
+      "end_row": 5
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "descending": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires sorting researchers by citations in descending order. Verified by analyzing all 4 researchers' citations: Geoffrey Hinton (760513), Ilya Sutskever (479533), Andrew Ng (250530), Christopher D Manning (241145). Sorted order should be: 760513 >= 479533 >= 250530 >= 241145. Evaluator checks if column B values are sorted in descending order.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/5990457f-2adb-467b-a4af-5c857c92d762_aug_11_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/5990457f-2adb-467b-a4af-5c857c92d762_aug_11_task_verify_3/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the sorting requirement by extracting column B values (citations) and checking descending order",
+        "Getter logic is correct: extracts values from column B (All citations column) for rows 2-5, covering all 4 researchers mentioned in metadata",
+        "Metric logic is correct: converts values to float and checks if each value >= next value for descending order",
+        "Metric parameter handling is CORRECT: uses 'expected.get(\"descending\", True)' which properly handles type='rule' where expected IS the rules dict (not {\"type\": \"rule\", \"rules\": {...}})",
+        "Postconfig appropriately saves the file with Ctrl+S to persist sorting changes before verification",
+        "Expected value semantically correct: descending=true matches the instruction requirement",
+        "Static warning about type mismatch is a FALSE POSITIVE - the metric correctly receives rules dict directly when type='rule'"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness improvement: Consider using dynamic end_row detection (e.g., ws.max_row or omit end_row) instead of hardcoded end_row=5 to handle cases where the file might have additional researchers added",
+        "The current implementation assumes exactly 4 researchers (rows 2-5) based on metadata, which is correct for this specific task but less flexible for file variations"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_xlsx_sorted_descending__0bb065c40eddbc22359664651c190a18 second parameter type (Any) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "5990457f-2adb-467b-a4af-5c857c92d762_aug_11_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

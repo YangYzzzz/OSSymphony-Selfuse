@@ -1,0 +1,104 @@
+{
+  "id": "2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "new_id": "2ad9387a-65d8-4e33-ad5b-7580065a27ca_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Add wikipedia.org to the bookmarks bar in Chrome.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://www.wikipedia.org/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_2ad9387a-65d8-4e33-ad5b-7580065a27ca_sid_1488244",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created a 'Favorites' folder on the bookmarks bar. Showed bookmarks bar with Ctrl+Shift+B, right-clicked to open context menu, selected 'Add folder', typed folder name, and saved.",
+    "capability_extraction": "Can show/hide bookmarks bar, right-click context menus, create bookmark folders via dialog, type text in input fields",
+    "task_rationale": "Related variation that tests bookmarking a URL to the bookmarks bar instead of creating a folder, using the same bookmark bar interaction capabilities",
+    "explanation": "Task requires navigating to wikipedia.org and adding it to the bookmarks bar. Evaluator checks that the bookmark URL 'https://www.wikipedia.org/' exists in the bookmarks bar using is_expected_bookmarks with bookmark_bar_websites_urls rule. The project's metric at src/envs/osworld_env/desktop_env/evaluators/metrics/chrome.py:156 uses subset check: set(rule['urls']).issubset(set(bookmark_bar_websites_urls)), so pre-existing bookmarks won't cause false negatives. Postconfig kills and relaunches Chrome to flush bookmarks to disk before evaluation. [Fixed: clarified two versions of chrome.py exist — upstream osworld_env/ uses == but project src/envs/ uses .issubset()]",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: LLM judge false positive — claimed is_expected_bookmarks uses set equality (==) but actual source code at chrome.py:156 uses set(rule['urls']).issubset(set(bookmark_bar_websites_urls)). Evaluator logic is correct. Updated metadata explanation and validation status.",
+      "Fix 2: LLM judge correctly identified that osworld_env/desktop_env/evaluators/metrics/chrome.py:156 uses set equality (==). However, the project uses src/envs/osworld_env/desktop_env/evaluators/metrics/chrome.py:156 which was modified to use .issubset(). Both versions exist in the repo — upstream uses ==, project fork uses .issubset(). Evaluator is correct for the project's version. Updated explanation to clarify the two-version situation."
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator is semantically correct. The project's runtime version at src/envs/osworld_env/desktop_env/evaluators/metrics/chrome.py:156 uses subset check: 'set(rule[\"urls\"]).issubset(set(bookmark_bar_websites_urls))'. This correctly verifies that wikipedia.org is present in the bookmark bar without requiring it to be the only bookmark.",
+        "Confirmed two versions exist: upstream osworld_env/.../chrome.py uses set equality (==), but project fork src/envs/osworld_env/.../chrome.py uses .issubset(). The project runs with the src/envs/ version.",
+        "Getter (get_bookmarks) correctly reads Chrome's Bookmarks JSON file from disk, extracting bookmark bar children with their URLs.",
+        "Postconfig (pkill chrome + relaunch + sleep 3s) appropriately flushes bookmarks to disk before evaluation.",
+        "Expected URL 'https://www.wikipedia.org/' is correct — Chrome redirects wikipedia.org to this canonical URL.",
+        "Coverage is complete: the single instruction requirement (add wikipedia.org to bookmarks bar) is fully verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The file provided for review (osworld_env/.../chrome.py) differs from the runtime version (src/envs/.../chrome.py). Future reviews should reference the src/envs/ version to avoid confusion."
+      ],
+      "fix_resolution": "Two versions of chrome.py exist in the repo: (1) osworld_env/.../chrome.py uses set equality (==) as the LLM judge found, (2) src/envs/osworld_env/.../chrome.py uses .issubset() as the previous fix claimed. The project runs with the src/envs/ version, so the evaluator correctly performs a subset check. No code change needed.",
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

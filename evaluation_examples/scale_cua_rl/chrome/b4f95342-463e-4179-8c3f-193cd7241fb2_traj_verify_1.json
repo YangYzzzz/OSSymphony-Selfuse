@@ -1,0 +1,93 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "b4f95342-463e-4179-8c3f-193cd7241fb2_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the Diamond Campground on recreation.gov and add the page to your bookmarks bar.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_bookmark_contains__4f204bdf47ab63e0c0d3c2d7f8cbe638",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "url_substring": "recreation.gov/camping/campgrounds/233869"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_b4f95342-463e-4179-8c3f-193cd7241fb2_sid_1488101",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to recreation.gov, searched for 'Diamond', clicked on Diamond Campground in Uinta-Wasatch-Cache National Forest (URL: recreation.gov/camping/campgrounds/233869). Then spent remaining turns scrolling through availability calendar and clicking 'Next Available' button repeatedly without producing the expected HTML content.",
+    "capability_extraction": "Can navigate Chrome to recreation.gov, use the site search box, click on autocomplete results, navigate to campground detail pages, scroll and interact with page elements",
+    "failure_analysis": "Model got stuck in a loop clicking 'Next Available' and scrolling through the availability calendar for 50 turns. The evaluator expected specific HTML class content (camp-sortable-column-header) that the model never produced. The original task required interpreting and extracting specific calendar data, which was too complex.",
+    "task_rationale": "Extends the successful navigation sub-task by adding a bookmark action. The model demonstrated it can navigate to the campground page; this variation adds a standard Chrome action (bookmarking) to test broader capability.",
+    "explanation": "Task requires navigating to Diamond Campground on recreation.gov and bookmarking it. Custom metric iteratively searches the bookmark tree for a URL containing the campground path substring. [Fixed: replaced nested search_bookmarks function with iterative stack-based approach to pass naming validation]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_b4f95342-463e-4179-8c3f-193cd7241fb2_sid_1488101_traj_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "bookmark": "1.0 - Bookmark tree contains URL with recreation.gov/camping/campgrounds/233869"
+    },
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Replaced nested helper function 'search_bookmarks' with iterative stack-based traversal to avoid naming validation error (metric functions must follow check_{semantic}__{md5} pattern)"
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter 'get_bookmarks' correctly reads Chrome's Bookmarks JSON file and returns the roots dict, which contains the full bookmark tree structure suitable for traversal.",
+        "Metric correctly handles the expected parameter: since expected.type='rule', the metric receives the rules dict directly and accesses expected.get('url_substring') — this is correct.",
+        "The iterative stack-based traversal logic correctly searches the nested bookmark tree for any node containing a URL with the expected substring.",
+        "The URL substring 'recreation.gov/camping/campgrounds/233869' correctly identifies the Diamond Campground page, as confirmed by the trajectory summary.",
+        "Navigation verification is implicitly covered: if the bookmark contains the correct URL, the agent must have navigated to the correct page.",
+        "Minor issue: Instruction specifies 'bookmarks bar' but the metric searches the entire bookmark tree (bookmark_bar, other, synced). This is more lenient — it accepts bookmarks placed anywhere, not just the bookmarks bar. This could lead to a false positive if the user bookmarked to 'Other Bookmarks' instead of the bar."
+      ],
+      "llm_judge_fix_suggestions": [
+        "To strictly verify 'bookmarks bar' placement, the metric could check only within result.get('bookmark_bar', {}) rather than traversing the entire roots tree. However, the current lenient approach is acceptable for most practical purposes."
+      ]
+    }
+  }
+}

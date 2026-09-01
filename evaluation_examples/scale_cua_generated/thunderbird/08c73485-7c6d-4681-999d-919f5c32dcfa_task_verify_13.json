@@ -1,0 +1,112 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_13",
+  "snapshot": "thunderbird",
+  "instruction": "I want my Thunderbird to keep offline copies of all IMAP messages. Please configure this setting for me.",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.default.autosync_offline_stores": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires the user to enable offline message storage for IMAP accounts in Thunderbird. The evaluator checks that the preference 'mail.server.default.autosync_offline_stores' is set to true in the prefs.js file. This is similar to the original task in that it requires changing Thunderbird mail server settings through the preferences interface.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks the preference 'mail.server.default.autosync_offline_stores' which semantically verifies enabling offline IMAP message storage",
+        "Expected value (true) is correct for enabling the feature",
+        "Postconfig properly closes Thunderbird and waits 0.5s to ensure prefs.js is written to disk before verification",
+        "Getter (get_vm_file) correctly fetches the prefs.js file from VM",
+        "Metric (check_thunderbird_prefs) properly parses prefs.js using regex and JSON, then verifies the preference value",
+        "Metric handles None return from getter correctly by returning 0.0",
+        "Complete coverage: the single preference check fully verifies the instruction requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Static warning about type mismatch (str vs Union) is overly cautious - the metric already handles None properly at runtime"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_58",
+  "snapshot": "os",
+  "instruction": "When I executed \"rvm install ruby-3.0.0\" in terminal, I received \"rvm: command not found\". Please help me resolve this so rvm commands work immediately.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_4",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'Load RVM into a shell session' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'rvm: command not found' by adding RVM initialization to ~/.bashrc. Evaluator checks for the characteristic RVM comment 'Load RVM into a shell session' that appears when properly configured. Similar pattern to original conda task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for RVM's characteristic initialization comment in .bashrc.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "The evaluator correctly checks for RVM's characteristic comment 'Load RVM into a shell session' which is reliably added when RVM is properly configured in .bashrc",
+        "The getter logic using 'grep -q ... && echo 1 || echo 0' correctly returns '1\\n' when the pattern is found",
+        "The metric exact_match with expected '1\\n' correctly verifies the command output",
+        "State accessibility is correct - .bashrc file can be read at any time without special postconfig",
+        "Similar verification pattern has been validated in conda tasks",
+        "Minor limitation: Only checks for the comment presence, not the actual initialization code functionality, but this is a reasonable and reliable heuristic",
+        "Minor semantic gap: Instruction says 'work immediately' but .bashrc changes require shell reload, though this appears to be acceptable per task design"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a note in metadata about shell reload requirement if 'work immediately' is critical",
+        "Could optionally verify both the comment AND that the actual RVM path line exists, though current approach is sufficient"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

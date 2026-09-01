@@ -1,0 +1,105 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_40",
+  "snapshot": "thunderbird",
+  "instruction": "Tag all emails in the Bills folder as important",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select (select count(*) from messages where folderID = 13) = (select count(distinct messageID) from messageAttributes where attributeID = 18 and value = 1 and messageID in (select id from messages where folderID = 13));"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires marking all emails in the Bills folder (folderID=13) as important. The evaluator checks if ALL emails in folder 13 have the important attribute (attributeID=18) set to 1 by comparing the total count of emails in the folder with the count of emails that have the important attribute. This is verified via SQL query on the Thunderbird global-messages-db.sqlite database.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "SQL query correctly verifies that ALL emails in Bills folder (folderID=13) are tagged as important",
+        "Logic: Compares total email count in folder 13 with count of emails that have attributeID=18 (important flag) set to value=1",
+        "Returns 1 (true) only when both counts are equal, meaning every email in the folder has the important attribute",
+        "Complete coverage: Checks both the folder constraint and the important attribute requirement",
+        "Edge case handled correctly: Empty folder (0=0) evaluates to true, which is semantically correct (vacuous truth)",
+        "Postconfig properly closes Thunderbird to ensure database is flushed before verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

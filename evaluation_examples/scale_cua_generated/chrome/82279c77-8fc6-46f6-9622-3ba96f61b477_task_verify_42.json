@@ -1,0 +1,96 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "Find electric vehicles priced at $35,000 or less within 40 miles of 02101.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "35000",
+          "maximum_distance": "40",
+          "zip": "02101",
+          "fuel_slugs[]": "electric"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires finding electric vehicles with price ≤ $35,000 within 40 miles of Boston (02101). Evaluator validates URL query parameters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator checks ALL instruction requirements: price ≤ $35,000 (list_price_max=35000), distance within 40 miles (maximum_distance=40), location 02101 (zip=02101), and electric vehicles (fuel_slugs[]=electric)",
+        "Getter logic (get_active_tab_url_parse) correctly extracts URL query parameters from the active tab using accessibility tree and URL parsing",
+        "Metric logic (check_direct_json_object) performs exact string comparison for all 4 expected parameters",
+        "Edge cases handled correctly: returns None if required parameters are missing or empty, which fails evaluation as expected",
+        "Data flow is semantically correct: getter extracts state → metric compares → returns 1.0 only if all criteria match exactly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

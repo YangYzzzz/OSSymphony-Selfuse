@@ -1,0 +1,88 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_68",
+  "snapshot": "chrome",
+  "instruction": "Go to FlightAware discussions and navigate to any thread.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "https://discussions\\.flightaware\\.com/t/.+/\\d+"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation navigates to any FlightAware discussions thread. Uses regex pattern to match thread URL structure. Maintains consistent difficulty and navigation pattern with other variations.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "CRITICAL URL PREFIX MISMATCH: The evaluator has a fundamental logic error that will cause it to ALWAYS fail. The getter uses goto_prefix='https://www.' which will prepend 'https://www.' to the URL extracted from the accessibility tree, resulting in URLs like 'https://www.discussions.flightaware.com/t/thread/123'. However, the expected regex pattern is 'https://discussions\\.flightaware\\.com/t/.+/\\d+' which expects 'https://discussions.flightaware.com' (without 'www.'). These will NEVER match.",
+        "The getter function get_active_url_from_accessTree (chrome.py:710-800) extracts the URL from accessibility tree and prepends config['goto_prefix'] (which is 'https://www.'). The accessibility tree typically contains URLs without protocol prefix (e.g., 'discussions.flightaware.com/t/thread/123').",
+        "The metric function is_expected_url_pattern_match (chrome.py:70-99) will receive a URL like 'https://www.discussions.flightaware.com/t/thread/123' and try to match it against the pattern 'https://discussions\\.flightaware\\.com/t/.+/\\d+'. The extra 'www.' will cause the regex match to fail.",
+        "This is a semantic logic error in the evaluator configuration, not a structural issue. The evaluator will return 0.0 (fail) for ALL valid FlightAware discussion thread URLs because of the URL prefix mismatch."
+      ],
+      "llm_judge_fix_suggestions": [
+        "FIX REQUIRED: Change the goto_prefix in result config from 'https://www.' to 'https://' to match the expected URL pattern. The correct config should be: \"result\": {\"type\": \"active_tab_info\", \"goto_prefix\": \"https://\"}",
+        "Alternatively, update the expected regex pattern to include the 'www.' subdomain: 'https://www\\.discussions\\.flightaware\\.com/t/.+/\\d+'. However, this is less recommended because FlightAware discussions typically use the 'discussions.flightaware.com' domain without 'www.'",
+        "After fixing the prefix issue, verify that the regex pattern correctly matches FlightAware discussion thread URLs. The pattern 'https://discussions\\.flightaware\\.com/t/.+/\\d+' should match URLs like 'https://discussions.flightaware.com/t/some-thread-title/12345'",
+        "The instruction 'Go to FlightAware discussions and navigate to any thread' is correctly matched by the URL pattern (after fixing the prefix issue), as it only requires navigating to ANY thread on FlightAware discussions, without section restrictions."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

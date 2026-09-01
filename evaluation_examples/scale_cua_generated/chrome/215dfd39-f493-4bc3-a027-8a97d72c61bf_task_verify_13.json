@@ -1,0 +1,88 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "task_verify_13",
+  "snapshot": "chrome",
+  "instruction": "I find the maximum volume slider setting of 125% too limiting—can we increase it to allow 200% volume?",
+  "source": "https://superuser.com/questions/1224784/how-to-change-vlcs-splash-screen",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": 200
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing VLC's maximum volume setting from default 125% to 200%. The evaluator uses the existing check_qt_max_volume metric function to verify that qt-max-volume=200 is set in the VLC config file (~/.config/vlc/vlcrc). The get_vlc_config getter reads the config file and the metric checks if the qt-max-volume setting matches 200. No new functions needed - reusing existing VLC evaluation infrastructure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very similar - both tasks involve changing a single VLC preference setting through the UI. Original disables splash cone icon, this changes max volume limit.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to change VLC max volume to 200%",
+        "get_vlc_config getter properly reads VLC config file (~/.config/vlc/vlcrc) and returns cached path",
+        "check_qt_max_volume metric correctly parses config file for 'qt-max-volume=' setting and compares to expected value 200",
+        "Metric function correctly handles expected parameter - directly accesses rule['expected_qt_max_volume'] since framework passes rules dict when expected.type='rule'",
+        "Expected value of 200 is semantically correct for the task (changing from default 125% to 200%)",
+        "Postconfig appropriately restarts VLC to ensure fresh config state before verification",
+        "Complete coverage - instruction has single requirement (set max volume to 200%) and evaluator checks exactly that",
+        "Edge cases handled: config file not found returns 0, missing setting uses default '125' for comparison",
+        "Data flow is correct: getter extracts config -> metric parses qt-max-volume setting -> compares to expected 200"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

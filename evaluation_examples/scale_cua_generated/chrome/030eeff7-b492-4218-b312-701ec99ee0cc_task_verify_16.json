@@ -1,0 +1,101 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_16",
+  "snapshot": "chrome",
+  "instruction": "Enable the enhanced Safe Browsing feature in Google Chrome settings.",
+  "source": "https://support.google.com/chrome/answer/9890866",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_enhanced_safety_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires the agent to enable Enhanced Safe Browsing in Chrome's privacy and security settings. The evaluator uses the existing get_enable_enhanced_safety_browsing getter function to check if the setting is enabled. The task is similar in complexity to the original Do Not Track task - both involve navigating to Chrome settings and enabling a single privacy/security option. Verified by reading the Chrome Preferences file structure at lines 1296-1327 in chrome.py, which checks safebrowsing.enhanced field.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "original_task": "030eeff7-b492-4218-b312-701ec99ee0cc_aug_19",
+    "similarity_level": "very_high",
+    "verification_method": "Uses existing Chrome getter function get_enable_enhanced_safety_browsing which reads from Preferences file",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: getter reads safebrowsing.enhanced field from Chrome Preferences file at chrome.py:1300, which is the exact setting that controls Enhanced Safe Browsing protection",
+        "Metric function exact_match correctly compares the getter result ('true'/'false' string) with expected value ('true')",
+        "Postconfig logic is appropriate: killing and restarting Chrome ensures Preferences file is written to disk before verification, with 3-second sleep for initialization",
+        "Data flow is semantically correct: getter extracts the right state -> metric compares exact match -> expected value 'true' matches the instruction requirement",
+        "Complete coverage: evaluator checks the single requirement in the instruction (enable Enhanced Safe Browsing)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Getter robustness issue at chrome.py:1300: .get('enhanced', {}) uses wrong default value (should be False, not {}). However, this doesn't affect normal execution path when the setting exists",
+        "Getter error handling at chrome.py:1304: returns 'Google' on exception, which is nonsensical for a boolean check (should return 'false'). However, this only affects error cases, not normal verification logic"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "030eeff7-b492-4218-b312-701ec99ee0cc_aug_19_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

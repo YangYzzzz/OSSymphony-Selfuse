@@ -1,0 +1,111 @@
+{
+  "id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+  "new_id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Set the Reply-to address to \"reply-team@outlook.com\" for my email account in Thunderbird.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.reply_to": {
+            "method": "eq",
+            "ref": "reply-team@outlook.com"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_3f28fe4f-5d9d-4994-a456-efd78cfae1a3_sid_1488157",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened Thunderbird Account Settings, navigated to identity section, typed a 2-line plain text signature, and completed the task in 6 turns.",
+    "capability_extraction": "Can open Account Settings in Thunderbird, navigate identity settings panel, edit text fields (signature, organization, name), type multi-line text",
+    "task_rationale": "Tests a different identity field (Reply-to Address) in the same Account Settings panel. Slightly different from signature since it's a single-line email field.",
+    "explanation": "Task requires setting the Reply-to Address field in Thunderbird account identity settings. Evaluator checks mail.identity.id1.reply_to in prefs.js equals 'reply-team@outlook.com'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches Thunderbird prefs.js file from the right profile path",
+        "Metric check_thunderbird_prefs correctly parses user_pref lines and checks mail.identity.id1.reply_to, which is the correct preference key for Reply-to address",
+        "Expected value 'reply-team@outlook.com' exactly matches the instruction requirement",
+        "Postconfig correctly closes Thunderbird before reading prefs.js, ensuring preferences are flushed to disk",
+        "Parameter handling is correct: get_rule returns the rules dict, metric accesses rule.get('expect', {}) directly",
+        "Complete coverage: single instruction requirement fully verified by single evaluator check",
+        "Metric handles None result gracefully (returns 0.0)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "id": "47543840-672a-467d-80df-8f7c3b9788c9",
+  "new_id": "47543840-672a-467d-80df-8f7c3b9788c9_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "On budget.com, search for cars at Boston Logan Intl Airport and sort the results by price, lowest first.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.budget.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_budget_page_state__b76001106213215f01706a09eab507db",
+    "result": {
+      "type": "budget_page_state__b76001106213215f01706a09eab507db"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "url_pattern": "reservation",
+        "sort_text": "Price (Low to High)"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_47543840-672a-467d-80df-8f7c3b9788c9_sid_1488335",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated budget.com, entered Boston Logan Intl Airport as pickup location, adjusted dates multiple times, submitted search, reached vehicles page, attempted sorting. Encountered captcha and page unresponsive issues during the process.",
+    "capability_extraction": "Can navigate budget.com, fill location picker with airport name, adjust date fields, submit search form, reach vehicle results page, interact with sort dropdown, handle captcha dialogs",
+    "failure_analysis": "Original task required 3 strict checks (URL pattern, date/location HTML parsing with exact whitespace, sort xpath). Model reached vehicles page and changed sort but evaluator's strict format matching on dates and location text failed.",
+    "task_rationale": "Simplified original 3-step task to search + sort by price. The model demonstrated it can reach the vehicles page and change the sort dropdown (changed to Price Low to High in screenshot 40). Removes the strict date/location matching requirement.",
+    "explanation": "Task requires searching for cars at Boston Logan on budget.com and sorting by price. Custom getter extracts URL from accessibility tree and sort dropdown text. Metric gives 0.5 for reaching reservation page, 0.5 for correct sort selection.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_47543840-672a-467d-80df-8f7c3b9788c9_sid_1488335_traj_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_47543840-672a-467d-80df-8f7c3b9788c9_sid_1488335_traj_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "url_match": "0.5 - URL contains budget.com reservation pattern",
+      "sort_selection": "0.5 - Sort dropdown shows Price (Low to High)"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Metric correctly handles expected parameter for type='rule' — directly accesses expected.get('url_pattern') and expected.get('sort_text')",
+        "Getter extracts URL and sort dropdown text from accessibility tree using reasonable regex and pattern matching",
+        "Sort verification is correct: checks for 'Price (Low to High)' text which matches the instruction's 'sort by price, lowest first'",
+        "URL 'reservation' pattern check reasonably verifies that a car search was submitted and results page was reached",
+        "Partial credit scoring (0.5 URL + 0.5 sort) is logically sound for a 2-requirement task",
+        "COVERAGE GAP: Evaluator does not verify that the search location is 'Boston Logan Intl Airport' — any location search reaching a reservation page with correct sorting would score 1.0"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add location verification: extract location text from the accessibility tree (e.g., near 'Pick-Up Location' or similar label) and check it contains 'Boston Logan' to fully verify the instruction",
+        "Consider splitting the 0.5 URL score into 0.25 for reaching reservation page + 0.25 for correct location to maintain partial credit granularity"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

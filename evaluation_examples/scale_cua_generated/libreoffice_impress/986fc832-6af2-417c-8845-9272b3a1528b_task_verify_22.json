@@ -1,0 +1,108 @@
+{
+  "id": "986fc832-6af2-417c-8845-9272b3a1528b",
+  "new_id": "task_verify_22",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Apply strikethrough formatting to all text content on this slide (including the table).",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/986fc832-6af2-417c-8845-9272b3a1528b/154_3.pptx",
+            "path": "/home/user/Desktop/154_3.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/154_3.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "154_3.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_pptx_strikethrough__548d2621",
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/154_3.pptx",
+      "dest": "154_3.pptx"
+    },
+    "options": {}
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires applying strikethrough formatting to all text including table content. Evaluator checks all text runs to verify strikethrough attribute is set.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/986fc832-6af2-417c-8845-9272b3a1528b_task_verify_5/metrics/slides.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Incorrect API usage for checking strikethrough formatting - uses `run.font._element.attrib.get('strike', 'noStrike')` which accesses private XML attributes incorrectly",
+        "The comparison `if strike_attr == 'noStrike'` expects a string value, but python-pptx's strikethrough property returns boolean/None, not strings like 'noStrike'",
+        "Should use public API `run.font.strike` which returns True/False/None instead of accessing internal XML attributes",
+        "Logic will likely fail at runtime or return incorrect results because XML attrib dictionary may not contain 'strike' key at all",
+        "Positive: Good coverage - checks both regular text shapes and table cells as required by instruction",
+        "Positive: Appropriate postconfig with file save operation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace `strike_attr = run.font._element.attrib.get('strike', 'noStrike')` with proper python-pptx API call",
+        "Use `if run.font.strike is None or run.font.strike == False:` to check if strikethrough is not applied",
+        "Apply the same fix to both regular text shapes (line 29-30) and table cells (line 42-43)",
+        "Consider adding better error handling to distinguish between file read failures and verification failures"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

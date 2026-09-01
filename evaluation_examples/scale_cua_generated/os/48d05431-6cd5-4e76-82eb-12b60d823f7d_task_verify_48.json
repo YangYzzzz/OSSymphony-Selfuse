@@ -1,0 +1,95 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_48",
+  "snapshot": "os",
+  "instruction": "When I tried \"nodenv versions\" in the terminal, I got \"nodenv: command not found\". Please help me fix this so I can use nodenv commands right away.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_8",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'nodenv init' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'nodenv: command not found' by adding nodenv initialization to ~/.bashrc. Evaluator checks if 'nodenv init' is present in .bashrc, which indicates nodenv has been properly configured. Similar pattern to original conda task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for 'nodenv init' in .bashrc which is the standard nodenv configuration pattern.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification: Evaluator only checks if 'nodenv init' is present in ~/.bashrc, but doesn't verify that nodenv commands actually work",
+        "Instruction requires nodenv to work 'right away', but evaluator doesn't check if environment was refreshed (source ~/.bashrc or terminal restart)",
+        "False positive risk: Task could pass even if nodenv isn't installed, or if 'nodenv init' line is commented out, or if syntax is incorrect",
+        "Core requirement not verified: The instruction's main goal is to make 'nodenv versions' command work, but evaluator never tests whether nodenv commands are actually functional after the fix",
+        "Missing verification of nodenv installation: Evaluator doesn't check if nodenv binary exists in the system"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Test nodenv command functionality: Change command to 'source ~/.bashrc && nodenv versions 2>&1' and verify output doesn't contain 'command not found'",
+        "Add multi-step verification: Check both that 'nodenv init' is in .bashrc AND that nodenv commands work in current shell",
+        "Alternative approach: Execute 'bash -c \"source ~/.bashrc && nodenv --version\"' to test nodenv works in a fresh shell with sourced bashrc",
+        "Verify nodenv installation: Add check that nodenv binary exists (e.g., 'which nodenv' or 'command -v nodenv') before checking bashrc configuration"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

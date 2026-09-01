@@ -1,0 +1,143 @@
+{
+  "id": "a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "new_id": "task_verify_50",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Locate and bookmark the websites of the first two and last two authors from the author list in a folder called 'Core Team'.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a82b78bb-7fde-4cb3-94a4-035baf10bcf0/2206.08853.pdf",
+            "path": "/home/user/Desktop/2206.08853.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/2206.08853.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-20)"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/a82b78bb-7fde-4cb3-94a4-035baf10bcf0",
+  "related_apps": [
+    "chrome",
+    "pdf"
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "liked_authors_websites_urls",
+        "names": [
+          "Core Team"
+        ],
+        "urls": [
+          [
+            "https://jimfan.me/",
+            "https://research.nvidia.com/person/linxi-jim-fan",
+            "https://www.linkedin.com/in/drjimfan/"
+          ],
+          [
+            "https://guanzhi.me/",
+            "https://www.linkedin.com/in/guanzhi-wang/"
+          ],
+          [
+            "https://yukezhu.me/",
+            "https://www.cs.utexas.edu/people/faculty-researchers/yuke-zhu",
+            "https://experts.utexas.edu/yuke_zhu",
+            "https://research.nvidia.com/person/yuke-zhu",
+            "https://www.linkedin.com/in/yukez/"
+          ],
+          [
+            "https://tensorlab.cms.caltech.edu/users/anima/",
+            "http://tensorlab.cms.caltech.edu/users/anima/",
+            "https://www.eas.caltech.edu/people/anima",
+            "https://en.wikipedia.org/wiki/Anima_Anandkumar",
+            "https://www.linkedin.com/in/anima-anandkumar/"
+          ]
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "tmp_funcs/a82b78bb-7fde-4cb3-94a4-035baf10bcf0_aug_14_task_verify_9"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "explanation": "Task requires identifying first two authors (Linxi Fan, Guanzhi Wang) and last two authors (Yuke Zhu, Anima Anandkumar), finding their websites, and bookmarking in 'Core Team' folder. Similar complexity to original with 4 authors and requires careful position counting from both ends of the author list.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "CRITICAL semantic logic failure: Instruction requires bookmarks in folder named 'Core Team', but metric function hardcodes folder name as 'Liked Authors' (chrome.py:221)",
+        "The metric function is_expected_bookmarks checks 'bookmark[name] == Liked Authors' instead of using the configurable rule[names] parameter",
+        "Expected rules correctly specify names: [Core Team], but the metric completely ignores this configuration and only checks for 'Liked Authors'",
+        "This is not a configuration error - it is a fundamental logic flaw where the metric cannot semantically verify the instruction requirement",
+        "The evaluator will ALWAYS fail at runtime (score 0.0) regardless of whether the user correctly completes the task by creating a 'Core Team' folder",
+        "Even if a user perfectly completes the instruction (creates 'Core Team' folder with correct bookmarks), the evaluator will incorrectly return 0.0 because it is looking for the wrong folder name",
+        "Getter get_bookmarks can correctly extract bookmark data, and the URL list for 4 authors appears correct, but the metric logic cannot verify the correct folder"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify is_expected_bookmarks in chrome.py line 221: change bookmark[name] == Liked Authors to bookmark[name] in rule[names] or bookmark[name] == rule[names][0] to use configurable folder name",
+        "Alternative: Change instruction and expected.rules.names from Core Team to Liked Authors to match the hardcoded metric logic (but this just works around the bug)",
+        "Recommended: Create a new metric function that properly reads folder name from rule[names] parameter instead of hardcoding Liked Authors"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

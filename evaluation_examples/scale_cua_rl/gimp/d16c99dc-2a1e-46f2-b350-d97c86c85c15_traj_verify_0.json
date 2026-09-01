@@ -1,0 +1,130 @@
+{
+  "id": "d16c99dc-2a1e-46f2-b350-d97c86c85c15",
+  "new_id": "d16c99dc-2a1e-46f2-b350-d97c86c85c15_traj_verify_0",
+  "snapshot": "gimp",
+  "instruction": "Resize the dog layer to a width of 600 pixels while maintaining the aspect ratio.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/d16c99dc-2a1e-46f2-b350-d97c86c85c15/dog_with_background.png",
+            "path": "/home/user/Desktop/dog_with_background.png"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/d16c99dc-2a1e-46f2-b350-d97c86c85c15/dog_with_background_two_layers.xcf",
+            "path": "/home/user/Desktop/dog_with_background_two_layers.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/dog_with_background_two_layers.xcf"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "GNU Image Manipulation Program"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(2);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import subprocess; script = '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE \"/home/user/Desktop/dog_with_background_two_layers.xcf\" \"dog_with_background_two_layers.xcf\"))) (layers (gimp-image-get-layers image)) (num (car layers)) (layer-arr (cadr layers)) (port (open-output-file \"/home/user/Desktop/layer_dims.txt\"))) (let loop ((i 0)) (if (< i num) (let* ((layer (vector-ref layer-arr i)) (name (car (gimp-item-get-name layer))) (w (car (gimp-drawable-width layer))) (h (car (gimp-drawable-height layer)))) (display name port) (display \" \" port) (display w port) (display \" \" port) (display h port) (newline port) (loop (+ i 1))))) (close-output-port port) (gimp-quit 0))'; subprocess.run(['gimp', '-i', '--new-instance', '-b', script], timeout=60)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_image_dimensions__f8142f5206c8e9d081140bc00d3fc065",
+    "result": {
+      "type": "image_properties__f8142f5206c8e9d081140bc00d3fc065",
+      "path": "/home/user/Desktop/layer_dims.txt",
+      "target_layer": "dog"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "target_width": 600,
+        "target_height": 360,
+        "tolerance": 10
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_d16c99dc-2a1e-46f2-b350-d97c86c85c15_sid_1488067",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully resized the dog layer to 512px height by selecting the dog layer, opening Layer > Scale Layer dialog, setting height to 512 (auto-calculated width to 852), and applying the scale.",
+    "capability_extraction": "Can select specific layers in GIMP, navigate Layer menu, use Scale Layer dialog, set dimensions with aspect ratio lock, apply transformations.",
+    "task_rationale": "Variation targets width instead of height dimension, testing the same layer scaling capability with a different target axis.",
+    "explanation": "Task requires resizing only the dog layer to width 600px while maintaining aspect ratio (expected height ~360px from original 1578:948 ratio). Evaluator uses GIMP Script-Fu batch mode (gimp -i --new-instance -b) to save the XCF, load it in a headless GIMP instance, iterate all layers, and write each layer's name/width/height to a text file. Custom getter reads the layer_dims.txt file and finds the dog layer by name. Metric checks both width (600±10) and height (360±10) with partial credit. [Fixed: replaced flattened PNG export with Script-Fu batch layer query to correctly isolate dog layer dimensions; added height check for aspect ratio verification]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_gimp_d16c99dc-2a1e-46f2-b350-d97c86c85c15_sid_1488067_traj_verify_0/getters/gimp_image.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_gimp_d16c99dc-2a1e-46f2-b350-d97c86c85c15_sid_1488067_traj_verify_0/metrics/gimp_image.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 6,
+    "scoring_breakdown": {
+      "width_check": "0.5 - Dog layer width equals 600px (±10px tolerance)",
+      "height_check": "0.5 - Dog layer height equals 360px (±10px tolerance, verifies aspect ratio)"
+    },
+    "variation_index": 0,
+    "fix_history": [
+      "Fix 1: Replaced invalid 8-char MD5 suffix '76e46b75' with correct 32-char MD5 hash 'f8142f5206c8e9d081140bc00d3fc065' computed from 'd16c99dc-2a1e-46f2-b350-d97c86c85c15|0' in getter, metric, and task JSON",
+      "Fix 2: Replaced flattened PNG export postconfig (Shift+Ctrl+E) with Script-Fu batch mode (gimp -i --new-instance -b) that queries dog layer dimensions directly from saved XCF, avoiding layer flattening issue where background layer made content_width equal canvas width",
+      "Fix 3: Updated getter to parse layer_dims.txt (name width height per line) and find dog layer by name match instead of measuring non-transparent bounding box from exported PNG",
+      "Fix 4: Added target_height=360 check with tolerance=10 to verify aspect ratio is maintained (original ratio 1578:948), metric now gives partial credit for width and height separately"
+    ],
+    "verification": "Original dog layer dimensions 1578x948. At width=600: height = 600 * 948 / 1578 = 360.46 ≈ 360. Tolerance of 10px accounts for rounding.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Postconfig correctly saves the XCF file (Ctrl+S), then launches a headless GIMP instance (gimp -i --new-instance -b) with Script-Fu to load the saved XCF, iterate all layers, and write each layer's name/width/height to layer_dims.txt. This correctly isolates individual layer dimensions without flattening.",
+        "Getter correctly parses the layer_dims.txt file (name width height per line), uses rsplit to handle layer names with spaces, and finds the 'dog' layer by case-insensitive name match. Returns width, height, and layer_name.",
+        "Metric correctly handles the expected parameter for type='rule' — directly accesses expected.get('target_width'), expected.get('target_height'), expected.get('tolerance'). Gives partial credit (0.5 each for width and height).",
+        "Both width (600±10) and height (360±10) are verified, ensuring both the resize and aspect ratio maintenance. Expected height calculation is correct: 600 * 948 / 1578 = 360.46 ≈ 360.",
+        "Minor concern: The Script-Fu batch GIMP instance may conflict with the still-running interactive GIMP instance, though --new-instance flag should handle this. The 5-second sleep after Script-Fu execution provides reasonable buffer time."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

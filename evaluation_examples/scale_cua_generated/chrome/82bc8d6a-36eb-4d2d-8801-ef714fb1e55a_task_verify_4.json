@@ -1,0 +1,104 @@
+{
+  "id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a",
+  "new_id": "task_verify_4",
+  "snapshot": "chrome",
+  "instruction": "Look up flight options departing London and arriving in Dubai.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.qatarairways.com/en-hk/homepage.html"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "fromStation",
+        "toStation",
+        "departing"
+      ],
+      "replace": {
+        "departing": "time"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "fromStation": "LHR",
+          "toStation": "DXB"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation 0: Flight search from London (LHR) to Dubai (DXB). Uses the same evaluation pattern as the original task - parses URL parameters to verify the correct departure/arrival stations. No custom functions needed; reuses existing get_active_tab_url_parse getter and check_direct_json_object metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "variation_index": 0,
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixed_by": "claude",
+      "fix_description": "Changed expected.type from 'rule_relativeTime' to 'rule' and restructured the rules to match check_direct_json_object metric requirements. Removed date validation from instruction since we're only validating departure and arrival stations.",
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_active_tab_url_parse to extract URL parameters from the active tab",
+        "Metric check_direct_json_object appropriately compares extracted parameters against expected values",
+        "Expected values are semantically correct: LHR (London Heathrow) and DXB (Dubai) match the instruction requirements",
+        "Coverage is complete: verifies both departure (fromStation) and arrival (toStation) stations as required by the instruction",
+        "State extraction is reliable: uses accessibility tree to get URL, which doesn't require specific UI state or postconfig",
+        "Minor inefficiency: getter extracts 'departing' parameter and renames to 'time', but this field is not validated in expected rules - this is harmless as extra keys in result are ignored by the metric"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional optimization: Remove 'departing' from parse_keys in result config since it's not being validated in expected rules (currently parse_keys includes 'departing' which gets renamed to 'time' but expected only checks fromStation and toStation)"
+      ]
+    },
+    "augmented_from": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

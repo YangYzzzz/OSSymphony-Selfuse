@@ -1,0 +1,112 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_40",
+  "snapshot": "chrome",
+  "instruction": "Bookmark this tab to the bookmarks bar for quick access.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires bookmarking the current tab (Illustrated Transformer) to bookmarks bar. Uses existing is_expected_bookmarks metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Instruction ambiguity: 'Bookmark this tab' doesn't clearly specify which of the 2 open tabs should be bookmarked",
+        "Expected value assumes the second tab (illustrated-transformer) is 'this tab', but there's no guarantee which tab will be active when the instruction is given",
+        "Chrome opens 2 tabs in config, but instruction doesn't clarify which one is the target - could reasonably be either the first or second tab depending on which is active",
+        "The evaluator logic itself is correct - get_bookmarks properly reads bookmark file, is_expected_bookmarks correctly checks for URLs in bookmark bar",
+        "Postconfig appropriately restarts Chrome to ensure bookmarks are flushed to disk"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Clarify the instruction to specify which tab to bookmark, e.g., 'Bookmark the Illustrated Transformer tab to the bookmarks bar' or 'Bookmark the currently active tab to the bookmarks bar'",
+        "Alternatively, add a postconfig step before evaluation to ensure a specific tab is active, or reduce the config to only open one tab",
+        "Consider using both URLs in expected value with partial credit, or use get_active_url_from_accessTree to determine which tab was active and verify that one was bookmarked"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

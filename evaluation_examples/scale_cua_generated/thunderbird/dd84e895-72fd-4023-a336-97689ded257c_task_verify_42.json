@@ -1,0 +1,105 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_42",
+  "snapshot": "thunderbird",
+  "instruction": "Apply a tag label to every email in the Bills folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select (select count(distinct messageID) from messageAttributes where attributeID >= 64 and attributeID <= 68 and value = 1 and messageID in (select id from messages where folderID = 13)) = (select count(*) from messages where folderID = 13) and (select count(*) from messages where folderID = 13) > 0;"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires applying a tag label to all emails in the Bills folder (folderID=13). The evaluator checks if every email in folder 13 has a tag attribute (attributeID 64-68 represent different tag labels) set to 1 by verifying that the count of tagged emails equals the total count of emails in the folder. This is verified via SQL query on the Thunderbird global-messages-db.sqlite database.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "SQL query correctly verifies that ALL emails in Bills folder have tags by comparing count of distinct tagged messages with total message count",
+        "Query logic: count(distinct messageID with tags) = count(all messages in folder) ensures complete coverage",
+        "Properly handles edge case of empty folder with additional check: count(*) > 0",
+        "Uses count(distinct messageID) which correctly handles cases where a single email might have multiple tag attributes",
+        "AttributeID range 64-68 covers all possible tag labels in Thunderbird",
+        "Postconfig properly closes Thunderbird to ensure database consistency before reading"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

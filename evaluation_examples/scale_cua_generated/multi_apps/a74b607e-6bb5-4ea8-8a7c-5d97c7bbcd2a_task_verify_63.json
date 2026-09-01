@@ -1,0 +1,92 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_63",
+  "snapshot": "multiapps",
+  "instruction": "Navigate to chrome://extensions and manually load the unpacked extension located in the helloExtension folder on the Desktop.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    },
+    "postconfig": []
+  },
+  "metadata": {
+    "explanation": "More detailed instruction specifying to navigate to chrome://extensions page. Verifies the extension path appears in Chrome's installed extensions.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "new_functions_paths": [
+      "tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_12_task_verify_3"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is semantically correct: get_find_unpacked_extension_path reads Chrome Preferences file (~/.config/google-chrome/Default/Preferences) to extract all installed extension paths from extensions.settings[id].path",
+        "Metric logic correctly checks if expected path exists in the list of installed extensions using is_in_list (general.py:76-81)",
+        "Complete coverage: evaluator fully verifies the instruction requirement that the unpacked extension was loaded to chrome://extensions",
+        "Data flow is semantically correct: getter returns list[str] of extension paths, metric checks if '/home/user/Desktop/helloExtension' is in result list",
+        "No postconfig needed: getter reads persistent Preferences file (not transient UI state). Extension installation persists in file even after chrome://extensions page is closed. Static warning is false positive from heuristic.",
+        "Robust implementation: getter has good error handling (returns empty list on failure with error logging at chrome.py:1434)",
+        "Expected value is semantically correct: /home/user/Desktop/helloExtension matches the helloExtension folder on Desktop mentioned in instruction",
+        "Practical execution verified: Chrome Preferences file persists extension data, getter can successfully read this data to verify task completion"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

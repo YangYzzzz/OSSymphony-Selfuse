@@ -1,0 +1,103 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_39",
+  "snapshot": "thunderbird",
+  "instruction": "Export all emails from the inbox folder by saving them as individual .eml files to a new directory at ~/inbox_backup.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/inbox_backup"
+          ],
+          "stdout": "inbox_backup.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "inbox_backup.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "歡迎使用新的 Outlook.com 帳戶.*\\.eml",
+          "A Test E-mail.*\\.eml"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting all inbox emails as individual .eml files to ~/inbox_backup directory. The evaluator verifies that both expected emails appear as .eml files in the listing. Similar to original task but uses different target directory name.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses ls -R to list directory contents and verify .eml files were created",
+        "Metric check_list appropriately checks for regex patterns matching expected email filenames with .eml extension",
+        "Expected patterns correctly match the 2 emails that exist in the inbox ('歡迎使用新的 Outlook.com 帳戶' and 'A Test E-mail')",
+        "Directory existence is implicitly verified (ls would fail if directory doesn't exist)",
+        "Minor issue: Evaluator doesn't verify completeness - if additional emails exist in inbox beyond these 2, they wouldn't be checked. However, based on metadata explanation, inbox contains exactly these 2 emails, making the verification adequate",
+        "Minor issue: No explicit verification that ONLY expected files exist (no unexpected files), though check_list with 'expect' patterns does verify presence of required files"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding 'unexpect' patterns to check_list rules to ensure no unexpected files exist in the directory",
+        "Consider counting total number of .eml files to ensure exactly 2 files exist (matching inbox email count)",
+        "Could add explicit directory existence check in postconfig, though current approach implicitly handles this"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

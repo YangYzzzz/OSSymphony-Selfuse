@@ -1,0 +1,119 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_69",
+  "snapshot": "thunderbird",
+  "instruction": "Delete the Outlook email account with the username \"anonym-x2024@outlook.com\" from Thunderbird.",
+  "source": "https://www.wikihow.com/Remove-an-Email-Account-from-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "unexpect": [
+          {
+            "url": "imap://outlook.office365.com",
+            "user": "anonym-x2024@outlook.com"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This is a paraphrase of the original task. Task requires removing/deleting the email account with username 'anonym-x2024@outlook.com'. The evaluator uses the existing check_csv metric function to verify the account no longer exists in Thunderbird's account list by checking that the unexpect rules are satisfied (account should not be present). Verified by examining the original task evaluator configuration.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies account deletion by checking that the specified account does NOT exist in Thunderbird's account list",
+        "The 'unexpect' rule properly identifies the account to be deleted using both URL (imap://outlook.office365.com) and username (anonym-x2024@outlook.com)",
+        "check_csv metric function logic is sound: reads CSV, iterates through records, checks if any match unexpect rules, returns 0.0 if account still exists (failed deletion) or 1.0 if account is absent (successful deletion)",
+        "Complete coverage: instruction has one requirement (delete specific account) and evaluator verifies exactly that",
+        "Postconfig appropriately extracts fresh account state using firefox_decrypt.py after task execution",
+        "Expected values are semantically correct and uniquely identify the target Outlook account",
+        "No logical issues, edge cases handled properly by check_csv (returns 0.0 if result is None)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

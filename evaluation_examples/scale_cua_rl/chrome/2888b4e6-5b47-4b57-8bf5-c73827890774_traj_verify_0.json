@@ -1,0 +1,87 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "2888b4e6-5b47-4b57-8bf5-c73827890774_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the men's shirts section on Macy's website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "macys\\.com.*shop/mens.*shirts"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_2888b4e6-5b47-4b57-8bf5-c73827890774_sid_1488121",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated from macys.com homepage to Men's Shirts section, applied Short Sleeve and Size L filters, but failed to find and apply the 50% discount filter. Spent remaining turns cycling through Price dropdown (dollar ranges only), Filter sidebar, and product detail pages without finding the discount option.",
+    "capability_extraction": "Can navigate macys.com category hierarchy (Men > Clothing > Shirts), apply sleeve length filter (Short Sleeve), apply size filter (L, Men's Regular), open filter panels and dropdowns, click products and navigate back",
+    "failure_analysis": "Model could not locate the discount percentage filter. The Price dropdown only showed dollar ranges ($50, $50-100, etc.), not percentage off options. Model kept cycling through available filters without finding the correct one, exhausting all 50 turns.",
+    "task_rationale": "Decomposed original multi-filter task into simplest sub-task: just navigate to men's shirts section. Model demonstrated this capability in early screenshots.",
+    "explanation": "Task requires navigating from macys.com homepage to the men's shirts category page. Evaluator checks the active URL matches the men's shirts path pattern on macys.com.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active Chrome tab URL from the accessibility tree address bar, which is the right state to verify navigation.",
+        "Metric (is_expected_url_pattern_match) correctly receives the rules dict and accesses rules['expected'] for regex patterns, matching the framework's type='rule' parameter passing convention.",
+        "Expected regex pattern 'macys\\.com.*shop/mens.*shirts' is a reasonable match for Macy's men's shirts section URL (e.g., macys.com/shop/mens-clothing/shirts).",
+        "Data flow is correct: getter returns URL string -> metric regex-matches against expected pattern -> returns 1.0 on match.",
+        "Single-step instruction (navigate to men's shirts) is fully covered by a single URL pattern check."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The regex could be slightly more flexible (e.g., also allowing 'men' without the 's' or alternative URL structures), but the current pattern is reasonable for Macy's standard URL format."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

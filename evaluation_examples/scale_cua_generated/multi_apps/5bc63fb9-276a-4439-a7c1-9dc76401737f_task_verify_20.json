@@ -1,0 +1,108 @@
+{
+  "id": "5bc63fb9-276a-4439-a7c1-9dc76401737f",
+  "new_id": "task_verify_20",
+  "snapshot": "multiapps",
+  "instruction": "I have a JSON file with LLM responses opened on the Desktop. Extract all GPT4 responses (from both 'answer' fields in the nested structure) and create a Word document named 'gpt4_homer.docx' on the Desktop. Put each response as a separate paragraph with blank lines between them. Find and highlight all occurrences of the word 'Homer' in the document.",
+  "source": "",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/5bc63fb9-276a-4439-a7c1-9dc76401737f/LLM%20results.json",
+            "path": "/home/user/Desktop/llm_answers.json"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/llm_answers.json"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "gpt4_homer.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_docx_gpt4_homer__fc0ff0e3",
+    "result": {
+      "type": "docx_content_and_highlights__fc0ff0e3",
+      "path": "/home/user/Desktop/gpt4_homer.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_paragraphs": 3,
+        "highlight_word": "Homer",
+        "min_highlight_count": 1
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires extracting GPT4 responses from JSON (Multi_Hop, Date_modification, Word_Replacement sections contain GPT4 answer fields), creating a Word document with each response as a paragraph, and highlighting all 'Homer' words. Verified that GPT4 responses exist in the JSON structure and contain the word 'Homer'. Evaluator checks: (1) document has multiple paragraphs, (2) content length is reasonable, (3) 'Homer' is highlighted.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5bc63fb9-276a-4439-a7c1-9dc76401737f_task_verify_0/getters/docx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5bc63fb9-276a-4439-a7c1-9dc76401737f_task_verify_0/metrics/docx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.4 for having sufficient paragraphs, 0.3 for reasonable content length, 0.3 for highlighting the correct word",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator does not verify that content is actually from GPT4 responses - accepts any text with 3+ paragraphs and 100+ characters",
+        "CRITICAL: Getter highlight counting logic is broken (line 49: 'highlight_count += run.text.count(run.text.strip())' counts how many times text appears in itself, not actual Homer occurrences)",
+        "CRITICAL: Metric does not use highlight_count to verify ALL 'Homer' occurrences are highlighted - only checks if word 'Homer' appears somewhere in highlighted text",
+        "Missing verification: No check for blank lines between paragraphs as required by instruction",
+        "Weak content validation: 100 character threshold is too low and doesn't validate actual GPT4 content quality or correctness",
+        "If multiple different words are highlighted, getter only captures first one, may miss that wrong words are highlighted"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add content verification: Parse source JSON, extract expected GPT4 responses, verify document contains those specific responses (use fuzzy matching or substring checks)",
+        "Fix highlight counting in getter: Should count actual 'Homer' words in highlighted runs, e.g., 'highlight_count += len([w for w in run.text.split() if w.strip().lower() == highlight_word.lower()])'",
+        "Fix metric to verify highlight count: Compare result['highlight_count'] >= expected['min_highlight_count'], and verify all 'Homer' words in document are highlighted",
+        "Add blank line verification: Check that paragraphs have empty strings between them or verify paragraph spacing in document structure",
+        "Increase content validation threshold or add semantic checks: Verify minimum length per paragraph, or check for expected content patterns from GPT4 responses",
+        "Track all highlighted words in getter and verify only 'Homer' is highlighted (no incorrect highlights)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

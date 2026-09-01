@@ -1,0 +1,97 @@
+{
+  "id": "06fe7178-4491-4589-810f-2e2bc9502122",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Restore the recently closed browser tab.",
+  "source": "https://www.wikihow.com/Switch-Tabs-in-Chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.booking.com",
+          "https://www.expedia.com",
+          "https://www.kayak.com"
+        ]
+      }
+    },
+    {
+      "type": "chrome_close_tabs",
+      "parameters": {
+        "urls_to_close": [
+          "https://www.kayak.com"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.booking.com",
+          "https://www.expedia.com",
+          "https://www.kayak.com"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires agent to reopen the last closed tab (kayak.com) using Ctrl+Shift+T. Evaluator verifies all 3 travel booking websites are present in open tabs.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter 'get_open_tabs_info' correctly extracts all open tab URLs from Chrome via CDP",
+        "Metric 'is_expected_tabs' correctly compares actual tab URLs against expected URLs",
+        "Expected value correctly specifies the 3 URLs that should be present after restoration",
+        "Complete coverage: verifying all 3 tabs (booking.com, expedia.com, kayak.com) are present confirms the restoration was successful",
+        "State is directly accessible without postconfig - getter can query Chrome tabs at evaluation time",
+        "Logic will work correctly at runtime - setup closes kayak.com, agent restores it, evaluator verifies it's back"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor concern: The comparison may be order-sensitive via 'are_lists_equal'. If Chrome restores the tab in a different position than expected, this could cause false negatives. Consider using set-based comparison or documenting expected tab order behavior.",
+        "Consider adding logging to confirm tab order doesn't cause unexpected failures in practice"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

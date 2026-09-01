@@ -1,0 +1,80 @@
+{
+  "id": "e1fc0df3-c8b9-4ee7-864c-d0b590d3aa56",
+  "new_id": "task_verify_38",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Change the default font in LibreOffice Writer to Times New Roman with size 12.",
+  "source": "augmented",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "cat",
+            "/home/user/.config/libreoffice/4/user/registrymodifications.xcu"
+          ],
+          "stdout": "registrymodifications.out"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "registrymodifications.out"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "Times New Roman",
+          "<prop oor:name=\"FontHeight\".*<value>12"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing default font and size. Evaluator checks for both font name and size settings. Multi-parameter configuration.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "e1fc0df3-c8b9-4ee7-864c-d0b590d3aa56_2",
+    "variation_index": 5,
+    "hash_suffix": "5641e94b",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses postconfig to dump LibreOffice config file, which persists font settings",
+        "Both instruction requirements are covered: font name (Times New Roman) and font size (12)",
+        "Correct getter (get_cache_file) and metric (check_list) functions used with proper parameter handling",
+        "Data flow is correct: postconfig dumps config → getter reads file → metric checks regex patterns",
+        "Minor issue: Regex pattern '<prop oor:name=\"FontHeight\".*<value>12' may match values like 120, 123, 12.5 (not exact match). Should be '<prop oor:name=\"FontHeight\".*<value>12<' or similar to ensure exact value",
+        "Minor issue: Pattern doesn't verify Times New Roman is specifically the DEFAULT font - could match any occurrence in config, though this is acceptable for high-level verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Improve font size regex to ensure exact match: '<prop oor:name=\"FontHeight\".*<value>12</value>' or '<prop oor:name=\"FontHeight\".*<value>12<'",
+        "Consider adding more specific pattern to verify it's the default paragraph/character font, not just any font occurrence"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

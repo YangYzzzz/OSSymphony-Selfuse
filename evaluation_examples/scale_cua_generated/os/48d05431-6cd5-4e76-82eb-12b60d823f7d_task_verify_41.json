@@ -1,0 +1,93 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_41",
+  "snapshot": "os",
+  "instruction": "I'm getting an error \"python: command not found\" when trying to run Python scripts with 'python' instead of 'python3'. Could you create an alias in my shell configuration so that 'python' points to 'python3'?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -qE \"^[[:space:]]*alias[[:space:]]+python=['\\\"]?python3['\\\"]?\" ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding an alias 'python=python3' to .bashrc file. Evaluator checks if the alias line exists in .bashrc using grep. Similar complexity to the original conda task - both involve adding shell initialization code to .bashrc.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically sound - it correctly verifies that an alias was added to shell configuration",
+        "The grep pattern ['\\\"]?python3['\\\"]? is actually flexible and accepts multiple valid formats: no quotes (alias python=python3), single quotes (alias python='python3'), and double quotes (alias python=\\\"python3\\\")",
+        "Data flow is correct: getter extracts command output -> metric compares exact match -> expected value '1\\n' indicates success",
+        "Minor limitation: evaluator only checks ~/.bashrc, but instruction says 'shell configuration' which could include ~/.bash_profile, ~/.zshrc, etc. However, ~/.bashrc is the most common location for Ubuntu systems",
+        "No postconfig issues - .bashrc file persists and is accessible after task completion",
+        "The expected value '1\\n' is semantically correct for the grep command output"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider checking multiple shell config files if the instruction asks for 'shell configuration' generically: ~/.bashrc, ~/.bash_profile, ~/.profile, or ~/.zshrc depending on shell type",
+        "Alternative: verify functionality by running 'which python' or 'python --version' after sourcing config to confirm python command resolves correctly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

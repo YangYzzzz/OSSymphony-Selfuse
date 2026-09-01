@@ -1,0 +1,110 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_69",
+  "snapshot": "chrome",
+  "instruction": "Browse Spider-Man toys and sort by newest arrivals.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Spider-Man",
+          "Toys"
+        ],
+        "sbSelector": [
+          "Newest"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Spider-Man": "Spider-Man",
+        "spiderman": "Spider-Man",
+        "Toys": "Toys",
+        "S=1": "Newest"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "spider-man": true,
+          "toys": true,
+          "newest": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Same product but different category breadth (no Kids filter) and different sort (Newest instead of Price Low-High).",
+    "verification": "Task uses existing check_direct_json_object metric and get_active_tab_html_parse getter. No custom functions needed. Evaluator checks breadcrumb navigation and URL parameters match expected product category and sort order.",
+    "new_functions_paths": [],
+    "similarity_to_original": "high",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: browsing to Spider-Man toys category and sorting by newest arrivals",
+        "Getter logic (get_active_tab_html_parse with category='class&url') appropriately extracts breadcrumb navigation elements and URL parameters to verify navigation state",
+        "Metric logic (check_direct_json_object) correctly compares extracted state against expected values for all three requirements: spider-man presence, toys category, and newest sort",
+        "Complete coverage: evaluator checks breadcrumb elements (pmpSearch_breadcrumb, sbSelector) for visual confirmation AND URL parameters for technical confirmation",
+        "The url_include_expected_multichoice logic maps URL keywords to expected result keys correctly - 'S=1' parameter indicates newest sort",
+        "The is_other_exist check ensures no unexpected filters or categories are applied",
+        "Case handling is correct: getter lowercases keys when building return_json to match expected lowercase keys in rules"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

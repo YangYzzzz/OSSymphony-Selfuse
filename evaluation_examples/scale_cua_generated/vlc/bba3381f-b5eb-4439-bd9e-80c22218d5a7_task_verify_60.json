@@ -1,0 +1,72 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "task_verify_60",
+  "snapshot": "base_setup",
+  "instruction": "Stream the video content located at https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8 in VLC",
+  "source": "https://www.quora.com/How-do-I-play-online-videos-using-the-VLC-media-player",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "is_vlc_playing",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8"
+      }
+    },
+    "result": {
+      "type": "vlc_playing_info",
+      "dest": "status.xml"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires streaming bipbop advanced test stream in VLC. Uses existing is_vlc_playing metric. Same complexity as original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Reuses existing VLC evaluator functions. Bipbop advanced is another Apple HLS test stream.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: VLC is playing the specified HLS stream URL",
+        "Getter (get_vlc_playing_info) correctly extracts VLC's playing state via HTTP interface, returning the status.xml file path",
+        "Metric (is_vlc_playing) correctly checks if VLC state is 'playing' and verifies the URL matches the expected HLS stream",
+        "Metric has robust URL matching logic for HLS streams: direct URL match, filename match (VLC often shows just filename for .m3u8), and domain/path matching",
+        "Parameter handling is correct: metric function expects rules dict directly as 'rule' parameter and accesses rule['type'] and rule['url'] directly",
+        "Expected value is semantically correct: type='rule' with rules containing type='url' and the correct HLS stream URL",
+        "Complete coverage: evaluator checks both that VLC is playing AND that the correct URL is being played",
+        "No postconfig needed: VLC remains running after task completion, so getter can fetch fresh status immediately",
+        "Data flow is correct: get_vlc_playing_info returns file path → is_vlc_playing receives path and rules dict → parses XML and verifies URL"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

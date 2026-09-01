@@ -1,0 +1,105 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Extract the first name from LibreOffice Calc's B2 cell and perform a search for it in the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=mara(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires copying the first name 'Mara' from cell B2 (row 2, column B contains 'Mara') and searching it in Chrome. The evaluator uses the existing is_expected_search_query metric to check if the active tab URL matches a Google search for 'mara'. Verified data: Cell B2 contains 'Mara' (row index 2 in the Excel file).",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_active_tab_info getter to extract the active Chrome tab URL",
+        "Metric is_expected_search_query properly checks if the URL matches a Google search pattern for 'mara'",
+        "Expected value structure is correct - when type='rule', framework calls get_rule which returns rules dict, and metric receives it as the 'rules' parameter",
+        "Regex pattern correctly matches Google search URLs with query parameter 'q=mara' (case-insensitive)",
+        "Task verification is semantically sound - checking the search URL is a valid way to verify the search was performed",
+        "Coverage is complete - while clipboard operation cannot be directly verified, the search URL check confirms the correct value was searched"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: get_active_tab_info has a warning that it reloads the page, which could cause issues if search results have redirects. However, for standard Google search URLs this should work fine. Consider using get_active_url_from_accessTree if page reload causes issues in practice."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

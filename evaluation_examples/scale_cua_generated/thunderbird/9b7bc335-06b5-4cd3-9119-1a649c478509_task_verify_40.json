@@ -1,0 +1,114 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_40",
+  "snapshot": "thunderbird",
+  "instruction": "Using Thunderbird, configure a message filter on the anonym-x2024@outlook.com account to forward all incoming mail to 'backup@archive.com'.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Forward",
+            "actionValue": "backup@archive.com",
+            "condition": [
+              "ALL"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a Thunderbird message filter that forwards all incoming messages to a backup address. The evaluator uses the existing check_thunderbird_filter metric to verify the filter is created with 'Forward' action, actionValue set to 'backup@archive.com', and condition set to 'ALL' (matches all messages). This is very similar to the original task with a different destination email address.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly fetches the account-specific Thunderbird filter configuration file from the correct VM path",
+        "Metric function check_thunderbird_filter properly parses the msgFilterRules.dat format and extracts all filter properties (enabled, action, actionValue, condition)",
+        "Complete instruction coverage: verifies filter is enabled, has Forward action, correct destination email (backup@archive.com), and matches all incoming messages (condition=['ALL'])",
+        "Account specificity verified: file path includes outlook.office365.com which corresponds to the anonym-x2024@outlook.com account",
+        "Postconfig appropriately closes Message Filters window and waits for file to be written to disk",
+        "Correct parameter handling: metric receives rules dict directly (not wrapped) when expected.type='rule', accesses it correctly with rules.get('expect', [])",
+        "Logic is robust: checks all expected filters exist and none of the unexpected filters are present"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

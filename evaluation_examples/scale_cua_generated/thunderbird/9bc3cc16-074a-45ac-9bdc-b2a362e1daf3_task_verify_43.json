@@ -1,0 +1,105 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_43",
+  "snapshot": "thunderbird",
+  "instruction": "Could you help me export all messages from the inbox to ~/email_export? Save each one as an individual .eml file.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/email_export"
+          ],
+          "stdout": "email_export.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "email_export.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "歡迎使用新的 Outlook.com 帳戶.*\\.eml",
+          "A Test E-mail.*\\.eml"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires exporting all inbox emails to ~/email_export folder in .eml format. Evaluator verifies that .eml files with expected email subjects are created. Uses existing check_list metric with regex patterns to match the known email subjects in the Thunderbird profile.",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction requires exporting 'ALL messages from the inbox' but evaluator only checks for 2 specific email subjects",
+        "The evaluator would pass even if only 2 out of N emails in the inbox were exported, missing the completeness requirement",
+        "Without knowing the total number of emails in the Thunderbird inbox, we cannot verify all emails were exported",
+        "The evaluator logic itself is correct (ls -R + check_list with regex patterns works), but it doesn't verify the 'all messages' requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Determine the total number of emails in the Thunderbird inbox from the profile data",
+        "Add a check to verify that the number of .eml files exported matches the expected total count",
+        "Either: (1) verify all email subjects explicitly, or (2) add a count-based metric to check_list rules, or (3) clarify in instruction/metadata that only specific emails need to be verified",
+        "If only sample verification is intended, update the instruction to say 'export inbox emails' instead of 'export ALL messages' to match the evaluator scope"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

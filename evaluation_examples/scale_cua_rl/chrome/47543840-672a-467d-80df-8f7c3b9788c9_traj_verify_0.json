@@ -1,0 +1,91 @@
+{
+  "id": "47543840-672a-467d-80df-8f7c3b9788c9",
+  "new_id": "47543840-672a-467d-80df-8f7c3b9788c9_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Search for available rental cars at Boston Logan Intl Airport on budget.com.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.budget.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "budget\\.com.*reservation"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_47543840-672a-467d-80df-8f7c3b9788c9_sid_1488335",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated budget.com, entered Boston Logan Intl Airport as pickup location, adjusted dates multiple times, submitted search, reached vehicles page, attempted sorting. Encountered captcha and page unresponsive issues during the process.",
+    "capability_extraction": "Can navigate budget.com, fill location picker with airport name, adjust date fields, submit search form, reach vehicle results page, interact with sort dropdown, handle captcha dialogs",
+    "failure_analysis": "Original task required 3 strict checks (URL pattern, date/location HTML parsing with exact whitespace, sort xpath). Model reached vehicles page and changed sort but evaluator's strict format matching on dates and location text failed.",
+    "task_rationale": "Decomposed original 3-step task to just the search submission step. Model demonstrated it can reach the reservation page, so this tests the core navigation capability without the strict date/sort requirements.",
+    "explanation": "Task requires searching for cars at Boston Logan on budget.com. Evaluator uses official is_expected_url_pattern_match to check the URL contains 'reservation', confirming the search was submitted successfully.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "url_match": "1.0 - URL contains budget.com reservation pattern"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active Chrome tab URL, appropriate for verifying navigation outcome.",
+        "Metric is_expected_url_pattern_match correctly receives the rules dict (via get_rule for type='rule') and accesses rules['expected'] to get regex patterns — parameter handling is correct.",
+        "Pattern 'budget\\.com.*reservation' reasonably verifies that a car search was submitted on budget.com, since the search results page URL contains 'reservation'.",
+        "Coverage gap: Instruction specifies 'at Boston Logan Intl Airport' but the evaluator only checks that any reservation page was reached on budget.com. It does not verify that Boston Logan was the selected pickup location. A search for any airport would also pass this check.",
+        "No postconfig needed — URL-based verification doesn't depend on transient UI state."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second evaluator step to verify the pickup location (e.g., check URL query parameters or page HTML for 'Boston' or 'BOS') to ensure the correct airport was searched.",
+        "Alternatively, use a more specific URL pattern that includes location identifiers if budget.com encodes the airport in the reservation URL."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

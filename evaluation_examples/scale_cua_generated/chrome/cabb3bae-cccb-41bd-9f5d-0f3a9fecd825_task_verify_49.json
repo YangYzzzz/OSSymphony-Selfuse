@@ -1,0 +1,107 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "Look for Barbie toys that are suitable for kids and organize them from lowest to highest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Barbie",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Barbie": "Barbie",
+        "barbie": "Barbie",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "barbie": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Barbie toys on Kohls.com, filtering for kids category, and sorting by price from low to high. Evaluator verifies breadcrumbs contain 'Barbie', 'Toys', 'Kids' and sort selector shows 'Price Low-High' (S=4 in URL). Uses existing Chrome evaluator framework.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three instruction requirements: (1) searching for Barbie toys via breadcrumb/URL check, (2) filtering for kids category via breadcrumb/URL check, (3) sorting by price low-to-high via both breadcrumb selector and URL parameter S=4",
+        "Getter (active_tab_html_parse with category='class&url') extracts the right state: breadcrumb elements from 'pmpSearch_breadcrumb' and 'sbSelector' classes, plus URL parameter validation",
+        "Metric (check_direct_json_object) correctly compares extracted data against expected values with case-insensitive matching",
+        "Dual verification approach (breadcrumb text + URL parameter) provides robust validation of sort order",
+        "is_other_exist check ensures no unexpected breadcrumb elements are present",
+        "Minor limitation: breadcrumb order is not validated, only presence - but this is acceptable since the task only requires these filters to be applied, not in a specific order"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

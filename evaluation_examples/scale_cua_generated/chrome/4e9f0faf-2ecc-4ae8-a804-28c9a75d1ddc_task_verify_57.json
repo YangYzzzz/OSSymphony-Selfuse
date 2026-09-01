@@ -1,0 +1,146 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_57",
+  "snapshot": "chrome",
+  "instruction": "Get invoice.pdf from Google Drive, extract the invoice table, and create a LibreOffice Calc file 'invoice.xlsx' on the Desktop. For the last service item (Maintenance), verify its unit price by placing the value in cell E8.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_value__586b55e1",
+    "result": {
+      "type": "xlsx_cell__586b55e1",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0,
+      "cell": "E8"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 300.0
+      }
+    },
+    "options": {
+      "tolerance": 0.01
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting the Maintenance service unit price from the invoice PDF and placing it in cell E8. Verified: Maintenance (1 Year) unit price is $300. The evaluator reads cell E8 and checks if the value matches 300.0 (±0.01).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_4/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_4/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if E8 contains 300.0 (±0.01), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction's core requirement: checking if cell E8 contains the Maintenance unit price (300.0).",
+        "Getter correctly extracts cell E8 from the target file (/home/user/Desktop/invoice.xlsx) using openpyxl with data_only=True for calculated values.",
+        "Metric correctly handles the expected parameter: when expected.type='rule', it receives config['rules'] ({'value': 300.0}) and properly extracts expected['value'] with isinstance check.",
+        "Expected value is semantically correct: 300.0 matches the Maintenance (1 Year) unit price from the invoice PDF.",
+        "Postconfig appropriately activates the window and saves the file (Ctrl+S) to ensure data persistence before reading.",
+        "Minor limitation: Evaluator only verifies the final cell value (E8=300.0), not intermediate steps like table extraction correctness or other cells. However, the instruction specifically says 'verify its unit price by placing the value in cell E8', indicating E8 is the designated verification point."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding supplementary checks for table structure or key cells (e.g., verify column headers or other service items) to ensure comprehensive table extraction verification, though this may be outside the current task scope."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

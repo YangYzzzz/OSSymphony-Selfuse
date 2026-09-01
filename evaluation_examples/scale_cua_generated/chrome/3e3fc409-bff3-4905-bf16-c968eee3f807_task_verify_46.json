@@ -1,0 +1,137 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Create a compilation of quality films from the 2010s. In the opened Excel file, generate a new sheet called '2010s_quality' with all movies from 2010-2019 that have ratings of 8.3 or higher. Use the same column structure and arrange them by ratings from high to low.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_content__bcc8f272",
+    "result": {
+      "type": "xlsx_sheet_data__bcc8f272",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "dest": "movies.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet_name": "2010s_quality",
+        "expected_count": 8,
+        "year_min": 2010,
+        "year_max": 2019,
+        "rating_min": 8.3
+      }
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "metadata": {
+    "explanation": "Verified with Python: 8 movies from 2010-2019 with rating >= 8.3, sorted descending. Top rated: Inception (8.8), Django Unchained (8.5), Spider-Man: Into the Spider-Verse (8.4)",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_4/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_4/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.0": "Sheet does not exist",
+      "0.2": "Sheet exists but headers incorrect",
+      "0.4": "Sheet and headers correct, count correct",
+      "0.7": "All data valid (correct years and ratings)",
+      "1.0": "Perfect - all valid and sorted correctly by rating descending"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: sheet name '2010s_quality', year filtering (2010-2019), rating threshold (>= 8.3), column structure preservation, and descending sort by rating",
+        "Getter logic is correct: retrieves Excel file from VM and caches it locally for metric processing",
+        "Metric logic comprehensively checks: sheet existence, header structure, row count (8 expected), year range validation, rating threshold validation, and sort order verification",
+        "Granular scoring breakdown (0.0/0.2/0.4/0.7/1.0) provides appropriate partial credit for incomplete task completion",
+        "Postconfig (sleep + Ctrl+S) ensures file is saved before verification, addressing state freshness",
+        "Expected values are semantically correct: 8 movies from 2010-2019 with rating >= 8.3 verified through data analysis"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness improvement: Add try-except around int(year) and float(rating) conversions in lines 57-58 to handle potential non-numeric cell values gracefully (currently would raise exception). This is a minor runtime robustness issue, not a logical verification flaw."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

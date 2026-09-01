@@ -1,0 +1,102 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "I prefer the classic scrollbars in Chrome. Please enable the overlay scrollbars experiment for me.",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "overlay-scrollbars"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the overlay-scrollbars experiment in Chrome (via chrome://flags). Uses existing check_enabled_experiments metric and get_enabled_experiments getter. Similar difficulty to original - navigating to chrome://flags and enabling a specific experiment.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_enabled_experiments reads from Chrome's Local State file (browser.enabled_labs_experiments) which is the correct location for chrome://flags settings",
+        "Metric logic is correct: check_enabled_experiments properly extracts experiment names and compares against expected list using exact match",
+        "Postconfig is appropriate: Chrome restart ensures flags settings are persisted to Local State file, which the getter reads from",
+        "Data flow is semantically sound: instruction -> enable flag -> restart Chrome -> read from file -> verify in list",
+        "WARNING - Instruction has semantic contradiction: states preference for 'classic scrollbars' but asks to enable 'overlay scrollbars' experiment, which are opposites. However, evaluator correctly verifies what instruction requests (enabling overlay-scrollbars)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider clarifying the instruction to remove the contradiction - either change 'classic scrollbars' to 'overlay scrollbars' or change the action from 'enable overlay-scrollbars' to 'disable overlay-scrollbars'",
+        "The evaluator logic itself is correct and doesn't need fixes - the issue is in the task instruction wording"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

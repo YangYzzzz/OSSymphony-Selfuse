@@ -1,0 +1,116 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_7",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to locally copy any new email with 'Outlook' in its body to anonym-x2024@gmail.com using a rule.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Copy to folder",
+            "actionValue": "anonym-x2024@gmail.com",
+            "condition": [
+              "AND (body,contains,Outlook)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a message filter to copy emails containing 'Outlook' in body to anonym-x2024@gmail.com. The evaluator checks the msgFilterRules.dat file for a filter with enabled='yes', action='Copy to folder', actionValue set to the email address, and condition checking body contains 'Outlook'. Uses existing check_thunderbird_filter metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies all instruction requirements: filter enabled, copy action, correct email destination, and body condition matching 'Outlook'",
+        "Data flow is correct: get_vm_file retrieves msgFilterRules.dat from VM, check_thunderbird_filter parses and validates filter rules",
+        "Expected values are semantically correct and match Thunderbird filter syntax (enabled='yes', action='Copy to folder', condition='AND (body,contains,Outlook)')",
+        "Postconfig appropriately closes Message Filters window, ensuring clean state while preserving saved filter configuration",
+        "Edge cases handled: returns 0.0 when file retrieval fails (result is None), robust file parsing with value processing"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Static warning about type mismatch is a false positive: get_vm_file with multi=False returns str (single path), which correctly matches check_thunderbird_filter's str parameter"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "9b7bc335-06b5-4cd3-9119-1a649c478509_aug_15_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

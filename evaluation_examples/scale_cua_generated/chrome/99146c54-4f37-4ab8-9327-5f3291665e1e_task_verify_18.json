@@ -1,0 +1,96 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_18",
+  "snapshot": "chrome",
+  "instruction": "Please configure Chrome to open a new tab page every time I start the browser, instead of continuing where I left off.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "new_startup_page"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires configuring Chrome's startup behavior to open a new tab page. The evaluator uses the existing get_new_startup_page getter function which reads Chrome's Preferences file and checks if 'session.restore_on_startup' is set to 5 (which represents 'Open the New Tab page') or if the session key is missing (fresh-start mode). The expected value is 'true' indicating the new tab page startup mode should be enabled. Similar to the original task, this requires navigating Chrome settings (Settings > On startup > Open the New Tab page) and is of similar difficulty level.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - both tasks involve configuring Chrome behavior settings through the settings interface",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement: the getter reads Chrome's Preferences file and checks for 'session.restore_on_startup == 5' (New Tab page mode) or missing 'session' key (fresh-start mode)",
+        "Postconfig appropriately restarts Chrome to allow the startup setting to take effect, which is essential for verifying startup behavior",
+        "Expected value 'true' is semantically correct and matches the getter's return format",
+        "Metric (exact_match) correctly compares the string result with expected value",
+        "Complete coverage: the evaluator fully verifies that Chrome is configured to open new tab page on startup"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

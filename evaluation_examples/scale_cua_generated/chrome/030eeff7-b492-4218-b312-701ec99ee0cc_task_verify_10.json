@@ -1,0 +1,99 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_10",
+  "snapshot": "chrome",
+  "instruction": "Enable settings in Chrome so that cookies and site data are deleted every time all windows are closed for better privacy.",
+  "source": "https://support.google.com/chrome/answer/95647",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "data_delete_automacally__2c85759ee3c771990524833aa219e88b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "explanation": "This variation asks users to enable automatic deletion of cookies and site data when closing Chrome. Similar difficulty to Do Not Track task - requires navigating to Chrome Privacy and Security settings and enabling the 'Clear cookies and site data when you close all windows' option. The evaluator checks the Chrome Preferences JSON file for the 'profile.default_content_setting_values' field (should exist when auto-delete is enabled). Uses existing getter pattern from get_data_delete_automacally function.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_aug_3_task_verify_4/getters/chrome.py"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "The getter correctly checks Chrome's cookie settings to verify auto-delete on exit. It checks if 'default_content_setting_values.cookies' equals 4 (SESSION_ONLY mode), which is the correct Chrome setting when 'Clear cookies and site data when you close all windows' is enabled.",
+        "The implementation includes multiple robust fallback checks: cookies_setting == 4 (SESSION_ONLY), content_settings.cookies.clear_on_exit, and profile.clear_lso_data_enabled, ensuring compatibility across different Chrome versions and configurations.",
+        "The postconfig appropriately restarts Chrome to verify that the setting persists after browser restart, which is the correct verification approach for this privacy setting.",
+        "The evaluator uses exact_match metric to compare the getter result ('true'/'false') with expected value 'true', which correctly verifies whether the auto-delete feature is enabled.",
+        "Minor concern: The logic at chrome.py:76 '(exit_type is not None and cookies_setting is not None)' may be too permissive - it would return true if both fields exist regardless of their values. However, this is mitigated by the primary check for cookies_setting == 4."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider tightening the condition at chrome.py:76 from '(exit_type is not None and cookies_setting is not None)' to be more specific about the expected values, to avoid potential false positives."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "030eeff7-b492-4218-b312-701ec99ee0cc_aug_3_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "f5c13cdd-205c-4719-a562-348ae5cd1d91_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Add nancy@someuniversity.edu and stella@someuniversity.edu to the email's To field.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"nancy@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"stella@someuniversity.edu\"]"
+          ]
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_f5c13cdd-205c-4719-a562-348ae5cd1d91_sid_1488398",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened tuition_payment.xlsx, misread 2 of 4 unpaid students (typed john and sophia instead of iron and stella), added emails to To field, then spent remaining turns stuck on network save dialog.",
+    "capability_extraction": "Can open files from file manager, read spreadsheet data, switch between windows, type email addresses into Thunderbird compose To field, interact with Thunderbird dialogs.",
+    "failure_analysis": "Model hallucinated spreadsheet data - correctly identified fox and nancy as unpaid but incorrectly added john and sophia (who had 'Yes') instead of iron and stella. Then wasted ~20 turns waiting for stuck network save.",
+    "task_rationale": "Tests adding two email addresses directly (no spreadsheet reading). Addresses are given explicitly in the instruction to isolate the Thunderbird interaction capability from data lookup.",
+    "explanation": "Task requires adding two email addresses to the Thunderbird compose To field. Evaluator checks accessibility tree for address pills containing nancy@ and stella@someuniversity.edu. Partial credit: 0.5 per email.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "add_nancy_email": "0.5 - nancy@someuniversity.edu appears as address pill in To field",
+      "add_stella_email": "0.5 - stella@someuniversity.edu appears as address pill in To field"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses accessibility tree CSS selectors to verify both email addresses (nancy@someuniversity.edu and stella@someuniversity.edu) appear as address pills in the Thunderbird compose To field.",
+        "Complete coverage: both required emails from the instruction are checked by separate rules.",
+        "CSS selectors correctly target MsgHeadersToolbar > To label siblings with class 'address-pill' > pill-label containing the email, which matches Thunderbird's compose window accessibility tree structure.",
+        "Postconfig includes a 10-second sleep to allow Thunderbird UI to settle before reading the accessibility tree.",
+        "Minor issue: metadata claims partial credit (0.5 per email) but check_accessibility_tree returns 0 immediately if any rule fails — no actual partial credit. The evaluator is stricter than documented but still correctly verifies task completion."
+      ],
+      "llm_judge_fix_suggestions": [
+        "To support the claimed partial credit scoring, consider using separate evaluator entries (one per email) or modifying the evaluation approach so each email contributes 0.5 independently. Currently check_accessibility_tree returns 0 if any rule has no matching elements."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

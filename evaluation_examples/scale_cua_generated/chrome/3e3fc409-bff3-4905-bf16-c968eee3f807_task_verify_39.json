@@ -1,0 +1,138 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "I want to identify the most acclaimed films from earlier decades. Using the opened Excel file, create a new sheet named 'pre_2010_acclaimed' containing movies with ratings of 8.7 or higher released before 2010. Keep the same column headers and sort by ratings in descending order.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_content__541c0a48",
+    "result": {
+      "type": "xlsx_sheet_data__541c0a48",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "dest": "movies.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet_name": "pre_2010_acclaimed",
+        "expected_count": 12,
+        "year_min": 1920,
+        "year_max": 2009,
+        "rating_min": 8.7
+      }
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "metadata": {
+    "explanation": "Verified with Python: 12 highly acclaimed movies (rating >= 8.7, before 2010) sorted descending. Top: The Shawshank Redemption (9.3), The Godfather (9.2), down to Goodfellas (8.7)",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_8/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_8/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.0": "Sheet does not exist",
+      "0.2": "Sheet exists but headers incorrect",
+      "0.4": "Sheet and headers correct, count correct",
+      "0.7": "All data valid (correct years and ratings)",
+      "1.0": "Perfect - all valid and sorted correctly by rating descending"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: sheet name, headers, data filtering (rating >= 8.7, year < 2010), and descending sort",
+        "Getter correctly extracts Excel file from VM and returns cached path",
+        "Postconfig appropriately saves file with Ctrl+S before evaluation",
+        "Metric logic correctly checks sheet existence, header match, row count, data validity, and sort order",
+        "Expected values are correct: 12 movies with ratings >= 8.7 released 1920-2009, as verified by metadata explanation",
+        "Minor scoring inconsistency: Line 49 returns 0.4 when count is WRONG, but metadata states 0.4 should be for 'count correct'. This doesn't prevent verification but creates scoring ambiguity"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix scoring logic on line 49: When count is wrong, return a lower score (e.g., 0.3) to distinguish from the 0.4 score that should be given when 'sheet and headers correct, count correct' per the metadata",
+        "Add try-catch around int(year) and float(rating) conversions in the validation loop to handle malformed data more gracefully and provide clearer scoring"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

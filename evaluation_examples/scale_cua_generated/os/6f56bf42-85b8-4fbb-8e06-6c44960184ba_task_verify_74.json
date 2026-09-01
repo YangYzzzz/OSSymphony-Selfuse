@@ -1,0 +1,85 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "task_verify_74",
+  "snapshot": "os",
+  "instruction": "Rename file 'old.txt' to 'new.txt' in each of directories 'dir1', 'dir2', 'dir3'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "rm -rf dir1 dir2 dir3 && mkdir dir1 dir2 dir3 && echo 'Content 1' > dir1/old.txt && echo 'Content 2' > dir2/old.txt && echo 'Content 3' > dir3/old.txt",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'for d in dir1 dir2 dir3; do if [ -f \"$d/new.txt\" ] && [ ! -f \"$d/old.txt\" ]; then echo \"Success: new.txt exists and old.txt removed in $d.\"; else echo \"Failure: rename not completed in $d.\"; fi; done'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: new.txt exists and old.txt removed in dir1.",
+          "Success: new.txt exists and old.txt removed in dir2.",
+          "Success: new.txt exists and old.txt removed in dir3."
+        ],
+        "exclude": [
+          "Failure"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires renaming 'old.txt' to 'new.txt' in three directories. The evaluator checks that new.txt exists AND old.txt no longer exists in each directory. This ensures the rename operation (not copy) was performed correctly.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking bash script logic: the script verifies both conditions (new.txt exists AND old.txt does not exist) for each directory to ensure proper rename operation. The evaluator confirms all success messages are present.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vm_command_line executes bash commands and returns output, which is appropriate for file system verification",
+        "Verification command logic is correct: bash script checks both conditions (new.txt exists AND old.txt does not exist) for each directory, correctly distinguishing rename from copy operations",
+        "Metric logic is correct: check_include_exclude properly verifies all required success messages are present and failure messages are absent",
+        "Expected values are semantically correct: includes all 3 specific success messages (one per directory) and excludes 'Failure' to catch any incomplete operations",
+        "Coverage is complete: evaluator explicitly checks all 3 directories (dir1, dir2, dir3) as required by the instruction",
+        "Edge cases are handled: partial completion, copy instead of rename, and missing files will all result in score 0.0",
+        "Practical feasibility confirmed: bash commands will execute correctly at runtime with reliable file existence checks"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

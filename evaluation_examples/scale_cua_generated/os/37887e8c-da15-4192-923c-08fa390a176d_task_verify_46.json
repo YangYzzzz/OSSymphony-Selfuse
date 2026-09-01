@@ -1,0 +1,109 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_46",
+  "snapshot": "os",
+  "instruction": "List all files in the \"/tmp/test_files\" directory tree that were last modified 30 days ago and save the output to \"/tmp/old_files_list.txt\"",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cat /tmp/old_files_list.txt",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "old_file1.txt",
+          "old_file2.txt"
+        ],
+        "exclude": [
+          "new_file1.txt",
+          "new_file2.txt"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires listing files modified 30 days ago and saving to /tmp/old_files_list.txt. Verification reads the file content and checks it includes old_file1.txt and old_file2.txt but excludes new_file1.txt and new_file2.txt. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter correctly reads output file /tmp/old_files_list.txt using cat command",
+        "Metric check_include_exclude correctly verifies include/exclude patterns in the result",
+        "Evaluator only checks final output content but cannot verify the core requirement: that files were actually modified 30 days ago",
+        "Verification relies entirely on setup.sh creating files with correct modification times without validating this assumption",
+        "Time-dependent verification (30 days ago) is fragile - evaluation time vs setup time mismatch could cause false negatives",
+        "Does not verify that search was recursive (directory tree) or that expected files actually exist in /tmp/test_files",
+        "Evaluator checks symptoms (presence of filenames) rather than actual requirement (modification time filter)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that old_file1.txt and old_file2.txt actually have modification times ~30 days ago using stat command",
+        "Add verification that new_file1.txt and new_file2.txt have different modification times (not 30 days ago)",
+        "Consider using relative time verification (e.g., files modified between 29-31 days ago) to handle timing variations",
+        "Add check that files listed in output actually exist in /tmp/test_files directory tree",
+        "Consider verifying the find command logic used by checking file count or using stat to validate modification times"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

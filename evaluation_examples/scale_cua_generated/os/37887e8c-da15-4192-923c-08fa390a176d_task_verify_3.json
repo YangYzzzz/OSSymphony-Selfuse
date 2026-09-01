@@ -1,0 +1,130 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_3",
+  "snapshot": "os",
+  "instruction": "Move the contents of '/tmp/test_files/old_files' to a new 'archive' subdirectory under '/tmp/test_files'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "local_path": "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/37887e8c-da15-4192-923c-08fa390a176d_aug_17_task_verify_2/eval_v2.sh",
+          "remote_path": "eval_v2.sh"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x eval_v2.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_v2.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires moving old files to an archive subdirectory. The evaluator checks that an archive directory was created and old files were moved there (old_files directory becomes empty). Similar to original task but focuses on file organization instead of compression.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluation script checks for archive directory creation at /tmp/test_files/archive, verifies old_files directory is empty, confirms the exact count of files matches expected (2 files from setup.sh), and validates all required files are in the archive directory",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete instruction coverage: Evaluator verifies all requirements (archive directory creation, old files moved, correct location)",
+        "Correct getter logic: get_vm_command_line executes bash script and returns output (general.py:8-22)",
+        "Correct metric logic: check_include_exclude checks if output contains success message (general.py:28-38)",
+        "Archive directory verification: Script verifies /tmp/test_files/archive exists at correct location (eval_v2.sh:16-20)",
+        "Source directory verification: Script verifies old_files directory is empty or removed, ensuring ALL files were moved (eval_v2.sh:25-35)",
+        "File count verification: Script checks archive has exactly 2 files (EXPECTED_FILE_COUNT), preventing partial moves (eval_v2.sh:47-53)",
+        "File presence verification: Script verifies all required files (old_file1.txt, old_file2.txt) are in archive (eval_v2.sh:57-75)",
+        "No parameter handling errors: Metric correctly accesses rules.get('include') without incorrect 'expected.get(rules)' pattern",
+        "Correct data flow: Script output → get_vm_command_line returns output → check_include_exclude checks for success string",
+        "Prevents false positives: Multiple verification layers prevent partial completion from passing"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixes_applied": {
+        "timestamp": "2025-12-22",
+        "changes": [
+          "Restricted archive directory check to only /tmp/test_files/archive (removed /tmp/archive, archived, old_files_archive alternatives)",
+          "Added verification that old_files directory is empty or no longer exists (ensures ALL files were moved)",
+          "Added file count verification in archive directory to ensure files were actually moved",
+          "Removed overly lenient alternative check (lines 31-40) that accepted files anywhere in test_files",
+          "Added comprehensive verification that all required files are present in the archive directory",
+          "FINAL FIX: Added exact file count check (EXPECTED_FILE_COUNT=2) to verify ALL files were moved, not just specific ones",
+          "FINAL FIX: Archive file count must exactly match expected count, preventing partial moves from passing"
+        ]
+      }
+    },
+    "augmented_from": "37887e8c-da15-4192-923c-08fa390a176d_aug_17_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

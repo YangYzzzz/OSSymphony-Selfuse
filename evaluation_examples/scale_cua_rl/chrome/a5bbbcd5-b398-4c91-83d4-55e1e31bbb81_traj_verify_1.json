@@ -1,0 +1,89 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Set VLC's maximum volume to 200% so I can boost quiet audio files.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": 200
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_a5bbbcd5-b398-4c91-83d4-55e1e31bbb81_sid_1488184",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated VLC > Tools > Preferences > Interface, checked 'Start in minimal view mode', saved preferences, and restarted VLC to verify persistence.",
+    "capability_extraction": "Can launch VLC, navigate to Tools > Preferences, find and toggle checkbox settings in Interface tab, save preferences",
+    "task_rationale": "Harder variation requiring the agent to find the max volume setting in VLC preferences (likely under 'All' settings mode rather than 'Simple'), change its value to 200, and save. Same app and preference-editing pattern but requires deeper navigation.",
+    "explanation": "Task requires setting VLC maximum volume to 200%. Evaluator reads vlcrc config file and checks that qt-max-volume=200. Default is 125, so agent must navigate to the Interface > Main Interfaces > Qt settings and change the maximum volume value.",
+    "new_functions_paths": [],
+    "difficulty": "hard",
+    "estimated_steps": 7,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads the vlcrc config file from the VM, which contains the qt-max-volume setting",
+        "Metric (check_qt_max_volume) correctly parses the vlcrc file for 'qt-max-volume=' and compares against expected value of 200",
+        "Expected parameter handling is correct: metric receives rules dict directly and accesses rule['expected_qt_max_volume'] without incorrect nesting",
+        "Expected value 200 correctly matches the instruction requirement of 200% maximum volume",
+        "Default value of 125 in the metric is correct for VLC's qt-max-volume default",
+        "Postconfig kills and relaunches VLC to ensure the config file is written to disk before the getter reads it",
+        "Single instruction requirement (set max volume to 200%) is fully covered by the single evaluator check"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

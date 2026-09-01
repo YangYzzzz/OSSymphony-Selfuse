@@ -1,0 +1,125 @@
+{
+  "id": "f7dfbef3-7697-431c-883a-db8583a4e4f9",
+  "new_id": "task_verify_43",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Convert all legacy .doc files in the current directory to modern DOCX format using command line batch processing.",
+  "source": "https://www.thegeekdiary.com/libreoffice-command-examples-in-linux/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f7dfbef3-7697-431c-883a-db8583a4e4f9/doc.tar.gz",
+            "path": "/home/user/Desktop/doc.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "tar -zxf /home/user/Desktop/doc.tar.gz -C /home/user/Desktop/ && rm /home/user/Desktop/doc.tar.gz"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/Desktop",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "cd /home/user/Desktop && find . -maxdepth 1 -name '*.docx' -not -name '*.doc.docx' | tar -zcf docx_converted.tar.gz -T -"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "if [ ! -f /home/user/Desktop/docx_converted.tar.gz ]; then echo \"no conversion archive found\"; exit 0; fi; file_count=$(tar -tzf /home/user/Desktop/docx_converted.tar.gz 2>/dev/null | wc -l); if [ \"$file_count\" -gt 0 ]; then echo \"conversion successful: $file_count docx files created\"; else echo \"conversion failed: no docx files created\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "conversion successful"
+        ],
+        "exclude": [
+          "no conversion archive found",
+          "conversion failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 3: Convert legacy .doc files to modern DOCX format. Similar batch conversion using LibreOffice CLI. Evaluator verifies correct command pattern in bash history. Note: postconfig filters out existing .docx files to only archive newly converted ones.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies that .docx files were created by archiving and counting them",
+        "Postconfig creates docx_converted.tar.gz archive containing converted .docx files",
+        "Result command checks archive existence, counts files, and returns appropriate status message",
+        "Metric check_include_exclude correctly validates success message ('conversion successful') vs failure messages",
+        "Complete coverage: verifies the actual outcome (file creation) not just command execution",
+        "Smart filtering: excludes .doc.docx files to avoid counting files with double extensions",
+        "Logical flow is sound: postconfig archives converted files -> result counts them -> metric checks status"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

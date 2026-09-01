@@ -1,0 +1,85 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7_traj_verify_1",
+  "snapshot": "base_setup",
+  "instruction": "Disable the VLC cone background in the interface settings.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "-f",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_qt_bgcone",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc_v1.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_bgcone": "0"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_bba3381f-b5eb-4439-bd9e-80c22218d5a7_sid_1488205",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened VLC Media menu, navigated to Open Network Stream, entered HLS URL, and started playback in 11 turns.",
+    "capability_extraction": "Can navigate VLC menus, open dialogs, type URLs, interact with VLC UI controls.",
+    "task_rationale": "Tests VLC interface preference modification. Agent proved it can navigate VLC menus; now test disabling a visual setting in Tools > Preferences > Interface.",
+    "explanation": "Task requires navigating to VLC Tools > Preferences > Interface and unchecking the background cone option. Evaluator kills VLC to force config save, then reads vlcrc to check qt-bgcone setting is 0 (disabled).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads the VLC vlcrc configuration file from the VM, which is the right source for interface settings.",
+        "Postconfig correctly kills VLC before reading config, forcing VLC to write settings to disk on exit.",
+        "Metric (check_qt_bgcone) correctly parses vlcrc for 'qt-bgcone=' line and compares against expected value '0' (disabled).",
+        "Default value of '1' (enabled) in the metric is correct — VLC enables the background cone by default.",
+        "Expected parameter handling is correct: get_rule returns {'expected_qt_bgcone': '0'} and the metric accesses rule['expected_qt_bgcone'] directly.",
+        "Single instruction requirement (disable cone background) is fully covered by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "id": "8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f",
+  "new_id": "task_verify_40",
+  "snapshot": "base_setup",
+  "instruction": "Start playing the video file in VLC media player.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f/Optimus%20-%20Gen%202.mp4",
+            "path": "/home/user/Desktop/Gen 2.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=15 '/home/user/Desktop/Gen 2.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "is_vlc_playing",
+    "result": {
+      "type": "vlc_playing_info",
+      "dest": "vlc_status.xml"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "file_name",
+        "file_name": "Gen 2.mp4"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires ensuring VLC is playing the video file 'Gen 2.mp4'. Uses existing is_vlc_playing metric to verify playback status and file name match. The video is already launched by config, so agent just needs to ensure playback is active (press space if paused).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing is_vlc_playing function which checks VLC status XML for state='playing' and matches filename against 'Gen 2.mp4'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct - properly checks VLC playing state and filename match",
+        "CRITICAL: Config launches VLC in paused state (--start-time=15 without autoplay), relying on unreliable center-screen click to start playback",
+        "MISSING: No postconfig to ensure VLC is in playing state before verification runs",
+        "RISK: Evaluator may fail even if agent completes task, because verification happens while VLC might still be paused from initial launch",
+        "The evaluator correctly implements the verification logic, but the task setup doesn't guarantee the state needed for verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig to ensure VLC is in a known state before verification (e.g., click play button or press space key)",
+        "Alternative: Modify config launch command to use VLC autoplay flag so video starts playing automatically",
+        "Alternative: Add postconfig that re-fetches VLC status after a short delay to allow playback to stabilize",
+        "Consider adding a retry mechanism in the evaluator or getter to handle transient states"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

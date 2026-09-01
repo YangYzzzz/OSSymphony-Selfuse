@@ -1,0 +1,85 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_31",
+  "snapshot": "os",
+  "instruction": "Count the number of files in '/tmp/test_files' modified between 20 and 40 days ago, and write the result to '/tmp/file_count.txt'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /tmp/test_files/data && touch /tmp/test_files/data/old1.txt /tmp/test_files/data/old2.log /tmp/test_files/data/target1.txt /tmp/test_files/data/target2.txt /tmp/test_files/data/target3.dat /tmp/test_files/data/recent.txt && find /tmp/test_files/data -name 'old*' -exec touch -d '50 days ago' {} \\; && find /tmp/test_files/data -name 'target*' -exec touch -d '30 days ago' {} \\; && touch -d '5 days ago' /tmp/test_files/data/recent.txt",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'if [ -f \"/tmp/file_count.txt\" ]; then count=$(cat /tmp/file_count.txt | tr -d \"\\n\\r \" 2>/dev/null); if [ \"$count\" = \"3\" ]; then echo \"Success: The task was completed correctly.\"; else echo \"Failure: Count is $count but expected 3\"; fi; else echo \"Failure: File /tmp/file_count.txt does not exist\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation that requires finding and counting files modified in a specific date range (20-40 days ago) and saving the count to a file. Setup creates: old1/2 (50 days ago - outside range), target1/2/3 (30 days ago - in range), recent.txt (5 days ago - outside range). Expected count is 3.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification_details": "The evaluation checks that /tmp/file_count.txt exists and contains the value '3'. Setup creates 3 files modified 30 days ago (within 20-40 day range), 2 files at 50 days ago (outside range), and 1 file at 5 days ago (outside range). Only the 3 target files should be counted.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the end state: file /tmp/file_count.txt exists and contains the value '3'",
+        "The bash command in vm_command_line getter properly checks file existence, reads content with whitespace stripping, and compares against expected count",
+        "check_include_exclude metric correctly validates the success message in the output",
+        "Setup creates controlled test environment with 3 files at 30 days (in range), 2 files at 50 days (out of range), and 1 file at 5 days (out of range), making the expected count deterministic",
+        "The evaluator uses result-based verification (checking the count output) rather than process-based verification (checking if user used correct find commands with date filters), which is acceptable for this controlled environment"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor limitation: The evaluator cannot distinguish between a user who correctly used find with date-based filtering versus a user who simply wrote 'echo 3 > /tmp/file_count.txt' without actually finding files. However, this is acceptable for OSWorld tasks where the controlled environment and deterministic setup make result-based verification sufficient."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "37887e8c-da15-4192-923c-08fa390a176d_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

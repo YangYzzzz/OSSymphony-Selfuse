@@ -1,0 +1,134 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_19",
+  "snapshot": "chrome",
+  "instruction": "Add a new sheet called 'top_favorites' showing only my top 10 rated films, arranged in descending order by rating.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.click(640, 400); time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_top_movies__d36402da007fc0db68f4bce9a44252b7",
+    "result": {
+      "type": "xlsx_sheet_data__d36402da007fc0db68f4bce9a44252b7",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "top_favorites"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "top_n": 10,
+        "expected_count": 10
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a new sheet 'top_favorites' with exactly the top 10 highest-rated movies sorted by rating (highest to lowest). Verified with Python: Top 10 are The Shawshank Redemption (9.3), The Godfather (9.2), 12th Fail (9.1), and 7 movies rated 9.0 or 8.9. Evaluator checks header, count of exactly 10 movies, and descending rating sort. Includes postconfig to save the file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_3/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.3": "Correct header present",
+      "0.6": "Exactly 10 movies present",
+      "1.0": "Movies sorted by rating descending"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: sheet creation, top 10 count, and descending rating sort",
+        "Getter logic correctly extracts data from 'top_favorites' sheet using openpyxl with proper error handling for missing sheets",
+        "Metric logic correctly validates count (exactly 10 movies) and sorting order (descending by rating)",
+        "Postconfig appropriately saves file before verification to ensure state freshness",
+        "Partial credit scoring is reasonable (0.3 header + 0.3 count + 0.4 sorting = 1.0)",
+        "Expected parameter handling is correct - directly accesses expected.get('top_n') as the rules dict",
+        "Minor issue: Hardcoded header validation (['title', 'release year', 'ratings', 'description']) is overly strict - instruction doesn't mandate exact column names/order",
+        "Minor issue: Assumes rating column at index 2 without validation, brittle if columns reordered",
+        "Minor issue: Missing try-except for float(row[2]) conversion - could crash on non-numeric ratings"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making header check more flexible - verify essential columns exist rather than exact match and order",
+        "Add error handling for float conversion: try/except around float(row[2]) with fallback to 0.0 or skip invalid rows",
+        "Consider finding rating column dynamically by header name rather than hardcoded index 2",
+        "Add validation that row has enough columns before accessing row[2]"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

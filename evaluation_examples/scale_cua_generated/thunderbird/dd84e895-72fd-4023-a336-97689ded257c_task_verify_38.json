@@ -1,0 +1,106 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_38",
+  "snapshot": "thunderbird",
+  "instruction": "Mark all emails in the Bills folder as read",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select (select count(*) from messages where folderID = 13) = (select count(*) from messageAttributes where attributeID = 56 and value = 1 and messageID in (select id from messages where folderID = 13));"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires marking all emails in the Bills folder (folderID=13) as read. The evaluator checks if ALL emails in folder 13 have the read attribute (attributeID=56) set to 1 by comparing the total count of emails in the folder with the count of read emails. This is verified via SQL query on the Thunderbird global-messages-db.sqlite database.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "SQL query correctly compares total email count in folder 13 with count of read emails: '(SELECT COUNT(*) FROM messages WHERE folderID=13) = (SELECT COUNT(*) FROM messageAttributes WHERE attributeID=56 AND value=1 AND messageID IN (SELECT id FROM messages WHERE folderID=13))'",
+        "Evaluator properly verifies ALL emails are marked as read, not just some emails",
+        "Complete coverage: The logic ensures every email in the Bills folder has the read attribute set",
+        "Getter correctly fetches Thunderbird's SQLite database after closing the application to ensure data is flushed",
+        "Postconfig appropriately closes Thunderbird window and waits 1.5s for database commit"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor suggestion: If runtime testing reveals database write timing issues, consider increasing postconfig sleep from 1.5s to 2.0s for more conservative timing"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

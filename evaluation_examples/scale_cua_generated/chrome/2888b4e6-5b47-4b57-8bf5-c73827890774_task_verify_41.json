@@ -1,0 +1,104 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "Display all men's large-size short-sleeve shirts with a discount of 30% or more.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "short_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "L",
+          "Price_discount_range": "30_PERCENT_ off & more",
+          "short_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Variation 7: Changed discount from 50% to 30%, keeps L size and short-sleeve. Maintains same complexity and interaction pattern as original task.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical logic bug in getter function get_macys_product_url_parse (chrome.py:2550-2554): hardcoded to only recognize 50% discount",
+        "Getter returns 'not_50_PERCENT_ off & more' for ANY discount that is not exactly 50%, including the required 30% discount",
+        "Expected value is 'Price_discount_range': '30_PERCENT_ off & more', but getter will NEVER extract this value - it only returns '50_PERCENT_ off & more' or 'not_50_PERCENT_ off & more'",
+        "This causes systematic evaluation failure - even if user correctly completes the task (displays 30% off items), the evaluator will fail because getter cannot extract the actual discount value",
+        "Getter logic needs to be fixed to extract the actual discount percentage from URL rather than hardcoding 50% check",
+        "Other requirements (mens_clothing, shirts, size L, short_sleeve) can be verified correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix get_macys_product_url_parse to extract actual Price_discount_range value from URL instead of hardcoding 50% check",
+        "The logic at chrome.py:2550-2554 should return the actual extracted value from key_value_json[key] rather than converting everything to '50_PERCENT_' or 'not_50_PERCENT_'",
+        "Example fix: Simply use 'result[key] = key_value_json[key]' to preserve the actual discount value from the URL",
+        "Alternatively, if special handling is needed for discount ranges, implement proper parsing that can handle 20%, 30%, 40%, 50%, etc. discount values"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

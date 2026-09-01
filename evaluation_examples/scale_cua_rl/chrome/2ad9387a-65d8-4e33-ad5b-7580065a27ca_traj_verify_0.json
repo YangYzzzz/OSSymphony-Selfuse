@@ -1,0 +1,98 @@
+{
+  "id": "2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "new_id": "2ad9387a-65d8-4e33-ad5b-7580065a27ca_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Create a new folder called 'Work' on the bookmarks bar in Chrome.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_folders_names",
+        "names": [
+          "Work"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_2ad9387a-65d8-4e33-ad5b-7580065a27ca_sid_1488244",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created a 'Favorites' folder on the bookmarks bar. Showed bookmarks bar with Ctrl+Shift+B, right-clicked to open context menu, selected 'Add folder', typed folder name, and saved.",
+    "capability_extraction": "Can show/hide bookmarks bar, right-click context menus, create bookmark folders via dialog, type text in input fields",
+    "task_rationale": "Same bookmark folder creation pattern with a different folder name to verify the capability generalizes",
+    "explanation": "Task requires creating a folder named 'Work' on the bookmarks bar. Evaluator restarts Chrome and checks bookmark data for the folder name using is_expected_bookmarks with bookmark_bar_folders_names rule.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 6,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter (get_bookmarks) correctly reads Chrome's Bookmarks JSON file and returns the roots object containing bookmark_bar with children",
+        "Metric (is_expected_bookmarks) correctly filters bookmark_bar children for type='folder' and extracts folder names",
+        "Expected value 'Work' matches the instruction requirement to create a folder named 'Work'",
+        "Postconfig correctly restarts Chrome (pkill + relaunch + sleep) to ensure bookmarks are persisted to disk before reading",
+        "Minor: Uses strict set equality (==) instead of subset/superset check - if any pre-existing folders exist in the 'chrome' snapshot, the evaluator would incorrectly fail even if 'Work' was created. Assuming a clean snapshot this is fine."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using issubset check instead of strict set equality for folder names, to be robust against pre-existing bookmark folders in the snapshot (e.g., check that 'Work' is IN the folder names rather than requiring it to be the ONLY folder)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

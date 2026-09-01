@@ -1,0 +1,136 @@
+{
+  "id": "6ed0a554-cbee-4b44-84ea-fd6c042f4fe1",
+  "new_id": "task_verify_42",
+  "snapshot": "vscode",
+  "instruction": "Add the directories \"/home/user/images\" and \"/home/user/videos\" to my workspace.",
+  "source": "https://www.youtube.com/watch?v=B-s71n0dHUk",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/project"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/images"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/videos"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/6ed0a554-cbee-4b44-84ea-fd6c042f4fe1/project.code-workspace",
+            "path": "/home/user/project.code-workspace"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/project.code-workspace"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "folders": [
+            {
+              "path": "project"
+            },
+            {
+              "path": "images"
+            },
+            {
+              "path": "videos"
+            }
+          ]
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/project.code-workspace",
+      "dest": "project.code-workspace"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding media folders (images and videos) to workspace. Similar pattern to original with media-related folder names.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: check_json_settings confirms workspace JSON contains project, images, and videos folders.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "check_json_settings uses exact dictionary equality check (vscode.py:69-75), which is too strict for list-based verification",
+        "The function compares entire 'folders' list for exact match, making verification order-sensitive - if user adds folders in different order, it will fail",
+        "Expected value includes 'project' folder which likely already exists in workspace - instruction only asks to add 'images' and 'videos', not verify all three folders",
+        "No handling for absolute vs relative path variations - if user adds '/home/user/images' instead of 'images', verification will fail",
+        "Semantic mismatch: should verify that 'images' and 'videos' are ADDED/PRESENT in the workspace, not that the entire workspace exactly matches the expected structure"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use a metric that checks for list membership rather than exact equality - verify that folders list contains entries with path='images' and path='videos'",
+        "Expected value should only specify the folders being added ('images', 'videos'), not all workspace folders including pre-existing ones",
+        "Consider normalizing paths (absolute to relative or vice versa) before comparison, or accept both path formats",
+        "Use a more flexible comparison that checks if each expected folder exists in the actual folders list, regardless of order or additional folders"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

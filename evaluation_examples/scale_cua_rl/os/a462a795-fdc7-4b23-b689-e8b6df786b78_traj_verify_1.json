@@ -1,0 +1,80 @@
+{
+  "id": "a462a795-fdc7-4b23-b689-e8b6df786b78",
+  "new_id": "a462a795-fdc7-4b23-b689-e8b6df786b78_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Increase the desktop text scaling factor to 125%.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S su - charles",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "gsettings",
+        "get",
+        "org.gnome.desktop.interface",
+        "text-scaling-factor"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1.25"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_a462a795-fdc7-4b23-b689-e8b6df786b78_sid_1488150",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent navigated GNOME desktop, opened terminal via Activities search, ran 'grep Charles /etc/passwd' to check user existence, found no results, correctly identified task as infeasible and output [INFEASIBLE].",
+    "capability_extraction": "Can navigate GNOME desktop (Activities, system menu), open terminal via Activities search, execute shell commands, detect infeasible tasks",
+    "task_rationale": "Model demonstrated GNOME desktop navigation and terminal usage. This variation tests accessibility settings modification via either GNOME Settings UI or gsettings command.",
+    "explanation": "Task requires changing the text scaling factor to 1.25 (125%). Evaluator uses vm_command_line getter to query gsettings and exact_match metric to verify the output equals '1.25'. [Fixed: replaced check_text_enlarged (single-param, only checks >1.0) with exact_match for precise value comparison]",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "text_scaling": "1.0 - text-scaling-factor exactly matches '1.25'"
+    },
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Replaced check_text_enlarged metric (single-param, only checks >1.0) with exact_match metric (two-param, compares result against expected value '1.25')",
+      "Fix 2: Changed expected.rules from {expected_factor: 1.25} to {expected: '1.25'} to match exact_match metric interface"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter vm_command_line correctly runs 'gsettings get org.gnome.desktop.interface text-scaling-factor' to extract the current text scaling factor from the GNOME desktop environment.",
+        "Metric exact_match(result, rules) correctly extracts rules['expected'] = '1.25' and compares it against the getter output using strict string equality.",
+        "Expected value '1.25' correctly represents 125% text scaling factor as required by the instruction.",
+        "Full instruction coverage: the single requirement (set text scaling to 125%) is completely verified by this evaluator.",
+        "Previous issues (check_text_enlarged single-param metric) have been properly fixed by switching to exact_match with correct expected.rules format."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: gsettings output may include trailing whitespace/newline; consider using a trimmed comparison if exact_match fails at runtime due to whitespace differences."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}
