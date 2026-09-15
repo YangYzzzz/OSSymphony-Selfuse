@@ -1181,7 +1181,11 @@ def get_result(target_dir):
         return None
 
     # --- 0. Load Infeasible Task List (新增) ---
-    infeasible_path = "evaluation_examples/osworld/test_infeasible.json"
+    if "waa" in target_dir:
+        infeasible_path = "evaluation_examples/waa/test_infeasible.json"
+    else:
+        infeasible_path = "evaluation_examples/osworld/test_infeasible.json"
+        
     infeasible_task = {}
     if os.path.exists(infeasible_path):
         try:

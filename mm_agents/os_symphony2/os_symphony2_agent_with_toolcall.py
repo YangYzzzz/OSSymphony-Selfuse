@@ -20,6 +20,7 @@ from mm_agents.utils.qwen_vl_utils import (
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE,
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE_WITHOUT_CODE,
     QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE,
+    QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE_WITHOUT_CODE,
     smart_resize,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA,
     QWEN3VL_COMPUTER_USE_TOOL_SCHEMA_WITHOUT_CODE,
@@ -117,15 +118,15 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
         self.last_code_result: Optional[str] = None
         self.code_results_history: List[str] = []
 
+        self.enable_code_tool = enable_code_tool
+        self.benchmark = benchmark
         # 统一维护对话历史（system + user + assistant + tool）
         # 直接沿用 OpenAI/vLLM 的 messages 协议结构
-        self.system_prompt = QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE if enable_code_tool and benchmark == "osworld" else QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE if enable_code_tool and benchmark == "waa" else QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE_WITHOUT_CODE
+        self.system_prompt = self._get_system_prompt()
         self.messages: List[Dict[str, Any]] = []
 
         # 记录上一轮产生的 tool_calls，供下一轮填充 tool 结果
         self.pending_tool_calls: List[Any] = []
-
-        self.enable_code_tool = enable_code_tool
 
         self.collect_qwen_sft = collect_qwen_sft
         self.qwen_sft_image_hash_map: Dict[str, str] = {}
@@ -134,6 +135,18 @@ class OSSymphony2AgentWithToolCall(ComputerUseBaseAgent):
     @staticmethod
     def _py_string(text: str) -> str:
         return json.dumps("" if text is None else str(text), ensure_ascii=False)
+    
+    def _get_system_prompt(self):
+        if self.enable_code_tool and self.benchmark == "osworld":
+            return QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE
+        elif self.enable_code_tool and self.benchmark == "waa":
+            return QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE
+        elif not self.enable_code_tool and self.benchmark == "osworld":
+            return QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE_WITHOUT_CODE
+        elif not self.enable_code_tool and self.benchmark == "waa":
+            return QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_WAA_INFERENCE_WITHOUT_CODE
+        
+        return QWEN3VL_COMPUTER_USE_SYSTEM_PROMPT_FOR_OSWORLD_INFERENCE
     
     def predict(self, instruction: str, obs: Dict) -> Tuple[List[Dict], List[str]]:
         """Predict the next action(s) based on the current observation.
