@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+import inspect
 import logging
 import os
 import time
@@ -12,6 +13,10 @@ import gymnasium as gym
 from desktop_env.osworld.controllers.python import PythonController
 from desktop_env.osworld.controllers.setup import SetupController
 from desktop_env.osworld.evaluators import metrics, getters
+from desktop_env.osworld.evaluators.scalecua import (
+    resolve_getter as resolve_scalecua_getter,
+    resolve_metric as resolve_scalecua_metric,
+)
 from desktop_env.osworld.providers import create_vm_manager_and_provider
 
 logger = logging.getLogger("desktopenv.env")
@@ -20,6 +25,10 @@ Metric = Callable[[Any, Any], float]
 Getter = Callable[[gym.Env, Dict[str, Any]], Any]
 
 MAX_RETRIES = 5 # Maximum retries for environment setup
+
+
+class EnvironmentSetupError(RuntimeError):
+    """Raised when task setup fails after retries."""
             
 
 
@@ -150,6 +159,7 @@ class DesktopEnv(gym.Env):
         self.vnc_port = 8006
         self.vlc_port = 8080
         self.proxy = proxy
+        self.user_simulator = None
         
         # Initialize with default (no proxy) provider
         self.current_use_proxy = False
@@ -229,6 +239,7 @@ class DesktopEnv(gym.Env):
                 self.vlc_port = int(vm_ip_ports[4])
             self.controller = PythonController(vm_ip=self.vm_ip, server_port=self.server_port, width=self.screen_width, height=self.screen_height)
             self.setup_controller = SetupController(vm_ip=self.vm_ip, server_port=self.server_port, chromium_port=self.chromium_port, vlc_port=self.vlc_port, cache_dir=self.cache_dir_base, client_password=self.client_password, screen_width=self.screen_width, screen_height=self.screen_height)
+            self.v2_setup_controller = None
 
         except Exception as e:
             try:
@@ -258,6 +269,68 @@ class DesktopEnv(gym.Env):
         if self.provider:
             self.provider.stop_emulator(self.path_to_vm)
 
+    @staticmethod
+    def _task_get(task_config: Any, key: str, default: Any = None) -> Any:
+        if task_config is None:
+            return default
+        if hasattr(task_config, "get") and callable(getattr(task_config, "get")):
+            try:
+                return task_config.get(key, default)
+            except TypeError:
+                return task_config.get(key)
+        return getattr(task_config, key, default)
+
+    @staticmethod
+    def _has_custom_setup(task_config: Any) -> bool:
+        return hasattr(task_config, "setup") and callable(getattr(task_config, "setup"))
+
+    @staticmethod
+    def _has_custom_evaluate(task_config: Any) -> bool:
+        return hasattr(task_config, "evaluate") and callable(getattr(task_config, "evaluate"))
+
+    def _get_task_setup_controller(self, task_config: Any):
+        if self._has_custom_evaluate(task_config) and self._task_get(task_config, "evaluator", None) is None:
+            if getattr(self, "v2_setup_controller", None) is None:
+                from desktop_env.osworld.v2_compat.controllers.setup import SetupController as V2SetupController
+
+                self.v2_setup_controller = V2SetupController(
+                    vm_ip=self.vm_ip,
+                    server_port=self.server_port,
+                    chromium_port=self.chromium_port,
+                    vlc_port=self.vlc_port,
+                    cache_dir=getattr(self, "cache_dir", self.cache_dir_base),
+                    client_password=self.client_password,
+                    screen_width=self.screen_width,
+                    screen_height=self.screen_height,
+                )
+            return self.v2_setup_controller
+        return self.setup_controller
+
+    def _call_task_setup(self, task_config: Any, use_proxy: bool) -> None:
+        setup_fn = task_config.setup
+        setup_controller = self._get_task_setup_controller(task_config)
+        try:
+            params = inspect.signature(setup_fn).parameters
+        except (TypeError, ValueError):
+            setup_fn(setup_controller, use_proxy)
+            return
+
+        accepts_kwargs = any(param.kind == param.VAR_KEYWORD for param in params.values())
+        if "use_proxy" in params or accepts_kwargs:
+            setup_fn(setup_controller, use_proxy=use_proxy)
+        else:
+            setup_fn(setup_controller)
+
+    def _call_task_evaluate(self, task_config: Any):
+        eval_fn = task_config.evaluate
+        try:
+            params = inspect.signature(eval_fn).parameters
+        except (TypeError, ValueError):
+            result = eval_fn(self)
+        else:
+            result = eval_fn(self) if params else eval_fn()
+        return result if isinstance(result, dict) else float(result)
+
     # 每次新任务时先执行该函数
     def reset(self, task_config: Optional[Dict[str, Any]] = None, seed=None, options=None) -> Dict[str, Any]:
         
@@ -276,8 +349,9 @@ class DesktopEnv(gym.Env):
             
             if task_config is not None:
                 # Only consider task proxy requirement if proxy is enabled at system level
-                task_use_proxy = task_config.get("proxy", False) and self.enable_proxy
-                if not self.enable_proxy and task_config.get("proxy", False):
+                task_proxy = self._task_get(task_config, "proxy", False)
+                task_use_proxy = task_proxy and self.enable_proxy
+                if not self.enable_proxy and task_proxy:
                     logger.info("Task requires proxy but proxy is disabled at system level, ignoring proxy requirement.")
                 
                 if task_use_proxy != self.current_use_proxy:
@@ -307,18 +381,29 @@ class DesktopEnv(gym.Env):
                 self.setup_controller._execute_setup(system_proxy_command)
 
             if task_config is not None:
-                if task_config.get("proxy", False) and self.enable_proxy:
+                use_proxy = self._task_get(task_config, "proxy", False) and self.enable_proxy
+                if use_proxy:
                     # If using proxy and proxy is enabled, set up the proxy configuration
                     # 下面这么设置代理没用
                     self.setup_controller._proxy_setup(self.client_password)
+
                 self._set_task_info(task_config)
                 self.setup_controller.reset_cache_dir(self.cache_dir)
+                if getattr(self, "v2_setup_controller", None) is not None:
+                    self.v2_setup_controller.reset_cache_dir(self.cache_dir)
                 logger.info("Setting up environment...")
-                success = self.setup_controller.setup(self.config, task_config.get("proxy", False) and self.enable_proxy)
+                if self._has_custom_setup(task_config):
+                    try:
+                        self._call_task_setup(task_config, use_proxy)
+                    except Exception as e:
+                        raise EnvironmentSetupError(f"Custom task setup failed: {e}") from e
+                    success = True
+                else:
+                    success = self.setup_controller.setup(self.config, use_proxy)
 
                 if success:
                     # Mark environment as used when setup is successfully executed
-                    if self.config:  # Only mark as used if there were actual setup operations
+                    if self.config or self._has_custom_setup(task_config):
                         self.is_environment_used = True
                     break
                 else:
@@ -359,11 +444,20 @@ class DesktopEnv(gym.Env):
 
     def _set_task_info(self, task_config: Dict[str, Any]):
         """Set task info (proxy logic is handled in reset method)"""
-        self.task_id: str = task_config["id"]
+        self.task_config = task_config
+        self.task_id: str = self._task_get(task_config, "id")
         self.cache_dir: str = os.path.join(self.cache_dir_base, self.task_id)
         os.makedirs(self.cache_dir, exist_ok=True)
-        self.instruction = task_config["instruction"]
-        self.config = task_config["config"] if "config" in task_config else []
+        self.instruction = self._task_get(task_config, "instruction")
+        self.config = self._task_get(task_config, "config", []) or []
+
+        user_sim_config = self._task_get(task_config, "user_simulator", None)
+        if user_sim_config:
+            from desktop_env.user_simulator import create_user_simulator
+            self.user_simulator = create_user_simulator(user_sim_config)
+            self.user_simulator.reset(instruction=self.instruction)
+        else:
+            self.user_simulator = None
         
         self._set_evaluator_info(task_config)
 
@@ -409,6 +503,28 @@ class DesktopEnv(gym.Env):
 
         return func
 
+    def _resolve_metric_function(self, func_name: str) -> Metric:
+        func = getattr(metrics, func_name, None)
+        if callable(func):
+            return func
+
+        func = resolve_scalecua_metric(func_name)
+        if callable(func):
+            return func
+
+        raise AttributeError(f"Metric function '{func_name}' not found")
+
+    def _resolve_getter_function(self, getter_type: str) -> Getter:
+        func = getattr(getters, f"get_{getter_type}", None)
+        if callable(func):
+            return func
+
+        func = resolve_scalecua_getter(getter_type)
+        if callable(func):
+            return func
+
+        raise AttributeError(f"Getter function 'get_{getter_type}' not found")
+
     def _set_evaluator_info(self, task_config: Dict[str, Any]):
         """Set evaluator information from task config"""
         # evaluator dict
@@ -421,19 +537,23 @@ class DesktopEnv(gym.Env):
         # even if one of the metrics does not need expected or options field, it should be included in the list with None
         self.metric = None
 
-        if "evaluator" not in task_config.keys():
+        evaluator = self._task_get(task_config, "evaluator", None)
+        if not evaluator:
             return
-        
-        self.evaluator = task_config["evaluator"]
+        if not isinstance(evaluator, dict):
+            logger.warning("Skip evaluator setup because evaluator is not a dict: %s", type(evaluator).__name__)
+            return
+
+        self.evaluator = evaluator
 
         if "func" not in self.evaluator or not self.evaluator["func"]:
             return
         
         dynamic: bool = True if "dynamic" in self.evaluator.keys() else False
         if not dynamic: 
-            self.metric: Metric = [getattr(metrics, func) for func in self.evaluator["func"]] \
+            self.metric: Metric = [self._resolve_metric_function(func) for func in self.evaluator["func"]] \
                 if isinstance(self.evaluator["func"], list) \
-                else getattr(metrics, self.evaluator["func"])
+                else self._resolve_metric_function(self.evaluator["func"])
         else:
             code = [code for code in self.evaluator["code"]] if isinstance(self.evaluator["code"], list) else self.evaluator["code"]
             if code:
@@ -441,20 +561,20 @@ class DesktopEnv(gym.Env):
             
         self.metric_conj: str = self.evaluator.get("conj", "and")  # take conjunction of multiple metrics
         if "result" in self.evaluator and len(self.evaluator["result"]) > 0:
-            self.result_getter: Getter = [getattr(getters, "get_{:}".format(res["type"])) for res in
+            self.result_getter: Getter = [self._resolve_getter_function(res["type"]) for res in
                                           self.evaluator["result"]] \
                 if isinstance(self.evaluator["result"], list) \
-                else getattr(getters, "get_{:}".format(self.evaluator["result"]["type"]))
+                else self._resolve_getter_function(self.evaluator["result"]["type"])
         else:
             self.result_getter = [None] * len(self.metric) \
                 if isinstance(self.metric, list) \
                 else None
 
         if "expected" in self.evaluator and len(self.evaluator["expected"]) > 0:
-            self.expected_getter: Getter = [getattr(getters, "get_{:}".format(exp["type"])) if exp else None for exp in
+            self.expected_getter: Getter = [self._resolve_getter_function(exp["type"]) if exp else None for exp in
                                             self.evaluator["expected"]] \
                 if isinstance(self.evaluator["expected"], list) \
-                else getattr(getters, "get_{:}".format(self.evaluator["expected"]["type"]))
+                else self._resolve_getter_function(self.evaluator["expected"]["type"])
         else:
             self.expected_getter = [None] * len(self.metric) \
                 if isinstance(self.metric, list) \
@@ -522,6 +642,9 @@ class DesktopEnv(gym.Env):
         """
         Evaluate whether the task is successfully completed.
         """
+        if getattr(self, "task_config", None) is not None and self._has_custom_evaluate(self.task_config):
+            return self._call_task_evaluate(self.task_config)
+
         if not self.metric:
             return 0
         

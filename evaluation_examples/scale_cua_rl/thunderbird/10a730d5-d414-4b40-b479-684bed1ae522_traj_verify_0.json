@@ -1,0 +1,108 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "10a730d5-d414-4b40-b479-684bed1ae522_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Change the default font size in Thunderbird to 14.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "font.size.variable.x-western": {
+            "method": "eq",
+            "ref": 14
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_10a730d5-d414-4b40-b479-684bed1ae522_sid_1488450",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully enabled dark mode in Thunderbird by navigating hamburger menu -> Settings -> Add-ons and Themes -> Themes -> clicked Enable on Dark theme. Completed in 7 turns.",
+    "capability_extraction": "Can navigate Thunderbird menus, open Settings, browse Add-ons Manager, interact with UI buttons and checkboxes, scroll through settings pages",
+    "task_rationale": "Agent navigated through Settings and saw Fonts & Colors section with font size 16. Changing font size is a related settings task at similar difficulty.",
+    "explanation": "Task requires changing the default font size from 16 to 14 in Thunderbird Settings > General > Fonts & Colors. Evaluator checks prefs.js for font.size.variable.x-western set to 14.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches prefs.js from the Thunderbird profile directory, which stores all user preferences",
+        "Postconfig correctly closes Thunderbird before reading prefs.js, ensuring preferences are flushed to disk",
+        "Metric check_thunderbird_prefs correctly parses user_pref() lines and checks font.size.variable.x-western == 14, which is the correct pref key for default font size in Western locale",
+        "Expected parameter handling is correct: get_rule returns the rules dict directly, and the metric accesses rule.get('expect', {}) - matching the expected data structure",
+        "Single instruction requirement (change font size to 14) is fully covered by the evaluator"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_69",
+  "snapshot": "multiapps",
+  "instruction": "Download the two currently open blog pages as PDF files and save them to /home/user/Documents/Blog directory.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/Documents/Blog",
+        "shell": "true"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_recent_file_count__db5a3e05",
+    "result": {
+      "type": "recent_pdf_count__db5a3e05",
+      "directory": "/home/user/Documents/Blog",
+      "max_age_seconds": 300
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_count": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires downloading PDFs to the Blog directory. The evaluator checks that exactly 2 PDF files were modified within the last 5 minutes (300 seconds) to verify they were recently created. Hash suffix db5a3e05 ensures unique function names.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_8/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_8/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "db5a3e05",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the core requirements: 2 PDF files in the target directory that were recently created",
+        "Getter logic is correct: uses glob to find PDFs, filters by modification time (300 seconds), returns count",
+        "Metric logic is correct: compares actual count vs expected count (2), returns 1.0 for match",
+        "Correct parameter handling: metric uses 'expected.get(\"expected_count\")' which is correct for type=\"rule\"",
+        "Time-based filtering (max_age_seconds=300) ensures verification of recently created files, not pre-existing ones",
+        "Data flow is semantically correct: getter extracts right state → metric compares right aspect → expected value is correct",
+        "Edge cases handled: directory existence check, error handling for bash script execution, try/except for parsing",
+        "Minor limitation: evaluator only verifies count and recency, not PDF content or whether PDFs actually contain the blog pages. However, this is a reasonable pragmatic approach since: (1) exactly 2 URLs are opened in config, (2) verifying PDF content against web pages would be complex and potentially infeasible, (3) count + recency + location is a good proxy for task completion"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying file names contain keywords from the URLs (e.g., 'agent', 'human-data-quality') to increase confidence that correct pages were downloaded, though this may be overly strict if browsers use different naming conventions"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

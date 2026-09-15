@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_13_meshlab_printability_audit",
+  "snapshot": "weave_bench",
+  "instruction": "### Background\n\nYou are the **intake QA engineer** at an FDM print farm. A customer has submitted two STL files\nand asks that, before they are added to the print queue, you perform a mesh-topology / printability\naudit and reach a final decision for each part: **`auto_repaired`** (printable after automatic repair)\nor **`redesign_required`** (the customer must go back to CAD and redesign).\n\n### Inputs (already present in `/tmp_workspace/` when the task starts)\n\n- `meshes/bracket.stl` — an L-shaped bracket with two M5 holes\n- `meshes/knob.stl`    — a 25 mm diameter knurled knob\n- `printability_spec.json` — the print farm's spec (`min_wall_mm`, `max_overhang_deg`,\n  `max_nm_edges`, etc.)\n- `JOB_BRIEF.md`       — written description, containing the decision rules for the two\n  repair tracks (`auto_repaired` vs `redesign_required`)\n\n### Deliverables that must land in `/tmp_workspace/results/`\n\nNumeric data and logs (`results/logs/`):\n- `mesh_stats_before.json` — at the top level must contain at least the two keys `bracket` and\n  `knob`, with topology/geometry metrics under each key, including `non_manifold_edges` (or the\n  equivalent `non_two_manifold_edges`), `connected_components_number`, `boundary_edges`,\n  `is_mesh_two_manifold`, `bbox_min`/`bbox_max`, `mesh_volume`.\n- `mesh_stats_after.json` — same schema, but statistics for the repaired meshes; `bracket`'s\n  `non_manifold_edges` must be 0.\n- `overhang_fraction.json` — `{\"bracket\": <0..1>, \"knob\": <0..1>}`, each value being the\n  fraction of total surface area whose face normal makes an angle with `+Z` greater than\n  `max_overhang_deg`.\n- `repair.log` — process log of the standard repair pipeline; must mention both `bracket` and\n  `knob`, and contain at least 4 mesh-repair filter names (`meshing_remove_duplicate_vertices`,\n  `meshing_remove_duplicate_faces`, `meshing_repair_non_manifold_edges`,\n  `meshing_close_holes`).\n- `components_after.json` — `{\"bracket\": 1, \"knob\": 2}` (number of connected components after\n  fixing; this is the hard signal for the `redesign_required` decision).\n- `self_intersect.json` — `{\"bracket\": <int>, \"knob\": <int>}`, count of self-intersecting faces\n  on the fixed mesh; `knob` must be > 0.\n- `final_check.txt` — output of the final-state consistency self-check.\n\nRepaired geometry (`results/fixed/`):\n- `bracket_fixed.stl`, `knob_fixed.stl` — STL files after the standard repair pipeline has run;\n  size ≥ 1 KB.\n\nVisual-evidence screenshots (`results/shots/`, each one a real screenshot of a mesh-processing\ntool's interface, including a side layer/stats panel or highlighted defect edges):\n- `01_bracket_nm_edges.png` — view of the bracket after loading, with **non-manifold edges\n  visually highlighted**.\n- `02_bracket_wall_measure.png` — view showing a wall-thickness value on the bracket's vertical\n  plate **measured with the interface's measurement tool** (value must be legible).\n- `03_knob_boss_view.png` — knob rotated so the section/bottom view at the seam between the\n  central boss and the main disc is clearly visible.\n- `04_bracket_fixed_clean.png` — re-check view of the bracket after repair, with defect counts\n  reduced to zero.\n- `05_knob_fixed_still_bad.png` — view of the knob after repair where many self-intersecting\n  faces remain highlighted.\n\nAt least 1 screenshot must show actual text from a mesh statistics panel (the evaluation\nperforms an OCR check).\n\nFinal report:\n- `printability_report.json` — must contain at least the two keys `bracket` and `knob`, with\n  `non_manifold_edges_before`/`_after`, `connected_components_before`/`_after`, and\n  `decision` (**strictly** either `auto_repaired` or `redesign_required`, no other spellings)\n  under each. Bracket's decision is `auto_repaired`; knob's decision is `redesign_required`.\n- `printability_report.md` — line count ≥ 30, with two sections for `bracket` / `knob`, each\n  containing a before/after topology summary plus the rationale for the decision.\n- `printability_report.pdf` — converted from the markdown; size > 10 KB.\n- Also copy `printability_spec.json` into `results/` as part of the audit record.\n\n### Hard limits\n\n- `import bpy` and other Blender-private dependencies are not allowed; do not copy any file\n  from `gt/`; decision strings must match exactly (`auto_repaired` / `redesign_required`,\n  nothing else).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_13_meshlab_printability_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_13_meshlab_printability_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\nmkdir -p /tmp_workspace/results /tmp_workspace/state\nchmod -R 777 /tmp_workspace 2>/dev/null || true\napt-get update -qq 2>/dev/null || true\napt-get install -y -qq meshlab tesseract-ocr poppler-utils 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore trimesh manifold3d numpy scipy 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore trimesh manifold3d numpy scipy 2>/dev/null \\\n  || pip3 install -q --break-system-packages --root-user-action=ignore trimesh numpy scipy 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore trimesh numpy scipy 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore pymeshlab pytesseract 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore pymeshlab pytesseract 2>/dev/null || true\necho \"[warmup] using trimesh-only mesh QA (no GUI mesh tool)\" > /tmp_workspace/state/warmup_note.txt\nchmod -R 777 /tmp_workspace 2>/dev/null || true\necho \"[warmup] SPA_task_13 done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_13_meshlab_printability_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_13_meshlab_printability_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_13_meshlab_printability_audit/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_13_meshlab_printability_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_13_meshlab_printability_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_13_meshlab_printability_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_13_meshlab_printability_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_13_meshlab_printability_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_13_meshlab_printability_audit",
+    "workspace_relative": "SPA/task_13_meshlab_printability_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

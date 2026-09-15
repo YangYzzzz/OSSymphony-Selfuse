@@ -1,0 +1,130 @@
+{
+  "id": "236833a3-5704-47fc-888c-4f298f09f799",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "Access the Huggingface papers for March 1st, 2024 and document 3 more papers following the existing format. The file currently contains 2 complete paper entries. Each paper should have title, authors, abstract, and arxiv PDF link on separate lines.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://huggingface.co/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/236833a3-5704-47fc-888c-4f298f09f799/raw_paper_reading_2024_03_01.docx",
+            "path": "/home/user/Desktop/paper_reading_2024_03_01.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/paper_reading_2024_03_01.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.click(640, 400); time.sleep(0.3); pyautogui.hotkey('ctrl', 's'); time.sleep(0.5)"
+          ]
+        }
+      }
+    ],
+    "func": "check_para_count_range__59156416",
+    "result": {
+      "type": "docx_nonempty_para_count__59156416",
+      "path": "/home/user/Desktop/paper_reading_2024_03_01.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_papers": 5,
+        "min_paras": 19,
+        "max_paras": 25
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires adding 3 complete papers (each with 4 fields on separate lines). Evaluator parses document to extract paper entries, validates each paper has title, authors, abstract, and arxiv link. Checks for exactly 5 valid papers (2 original + 3 new) with proper structure and content.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/236833a3-5704-47fc-888c-4f298f09f799_task_verify_7/getters/docx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/236833a3-5704-47fc-888c-4f298f09f799_task_verify_7/metrics/docx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL ERROR in metrics/docx.py:25-28: Metric function incorrectly handles expected parameter. When expected.type='rule', the framework calls get_rule() which returns config['rules'] directly. The metric receives the rules dictionary as expected_state, NOT {'rules': {...}}. Line 25 'rules = expected_state.get('rules', {})' is wrong - should directly access 'expected_state.get('expected_papers', 5)'. This will cause the metric to always use default values instead of configured rules.",
+        "RUNTIME FAILURE RISK: Due to the parameter handling error, the metric will extract empty dict from expected_state.get('rules', {}), causing all rule parameters (expected_papers, min_paras, max_paras) to use defaults instead of configured values in evaluator.expected.rules",
+        "Semantic content verification gap: Evaluator does NOT verify that papers are actually from 'Huggingface papers for March 1st, 2024' - it would accept any 5 papers with arxiv links regardless of source or date",
+        "POSITIVE: Getter logic is correct - properly parses docx, extracts paragraphs, groups into 4-line paper entries, validates minimum lengths and arxiv links",
+        "POSITIVE: Metric logic (aside from parameter extraction error) is sound - checks paper count, validates paragraph range, checks for relevant keywords with partial credit scoring",
+        "POSITIVE: Postconfig properly saves the document before evaluation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "CRITICAL FIX REQUIRED in metrics/docx.py:25-28: Change 'rules = expected_state.get('rules', {})' to directly use 'expected_state' as the rules dictionary. Should be: 'expected_papers = expected_state.get('expected_papers', 5)' directly from expected_state, not from a nested 'rules' key. This is documented in section 5.1 of CLAUDE_VERIFY_JUDGE.md",
+        "After fixing parameter handling, the metric should work correctly with the configured rules (expected_papers: 5, min_paras: 19, max_paras: 25)",
+        "Consider strengthening date/source verification: Current keyword check is lenient (only needs 40% of papers to have keywords). Could be stricter or check for specific date mentions",
+        "Optional: Add format consistency verification to ensure new entries follow same style as existing 2 entries"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

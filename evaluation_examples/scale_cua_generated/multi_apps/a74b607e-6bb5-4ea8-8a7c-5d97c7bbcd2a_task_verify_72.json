@@ -1,0 +1,91 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_72",
+  "snapshot": "multiapps",
+  "instruction": "Add the helloExtension folder from Desktop as an unpacked extension in Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "extension_manifest_version__fb0f6c5b",
+      "extension_name": "Hello Extensions"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This variation verifies the extension is loaded by checking the manifest_version field. Verified from manifest.json: manifest_version is 3.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_3/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct: The metric function 'exact_match' properly handles rules dict format by extracting expect = rules['expected']",
+        "Data flow is correct: Getter returns integer 3 → Framework calls get_rule() returning {'expected': 3} → Metric receives rules={'expected': 3} → Metric extracts expect=3 → Compares 3 == 3",
+        "Getter logic is robust: Reads Chrome Preferences file at OS-specific paths (.config/google-chrome/Default/Preferences on Linux), searches extensions.settings by name 'Hello Extensions', extracts manifest_version field, handles errors appropriately",
+        "Expected value is correct: Metadata confirms manifest_version=3 from manifest.json, which matches the expected value in the evaluator",
+        "State accessibility is guaranteed: Chrome Preferences is a persistent file written when extension loads, not transient UI state. No postconfig needed",
+        "Complete coverage: Verifying the manifest_version field confirms the extension is loaded in Chrome, which satisfies the instruction requirement to add the extension",
+        "The static validation warning about UI/state-dependent task is a false positive - this getter reads persistent file state from Chrome's Preferences JSON, not transient UI state"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Decompress the extension file on /home/user/Desktop/ to the same location and install it in Chrome using the unpacked extension option.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation with different instruction wording. Task requires extracting the helloExtension.zip file and loading it as an unpacked extension in Chrome. The evaluator uses the existing get_find_unpacked_extension_path getter to retrieve all loaded extension paths from Chrome preferences, then checks if /home/user/Desktop/helloExtension is in the list using the is_in_list metric. No custom functions needed - reuses existing Chrome evaluator infrastructure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: get_find_unpacked_extension_path reads Chrome preferences file and extracts all extension paths, is_in_list checks if expected path is in the result list.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_find_unpacked_extension_path reads Chrome Preferences file and extracts all loaded extension paths from extensions.settings.<id>.path",
+        "Metric logic is correct: is_in_list checks if the expected path exists in the result list using simple membership check",
+        "Expected value is correct: /home/user/Desktop/helloExtension matches the extracted directory path from setup config",
+        "Complete coverage: The evaluator verifies the critical requirement - that the extension has been loaded as an unpacked extension in Chrome (extraction is a prerequisite)",
+        "No runtime issues expected: Chrome Preferences file is accessible post-execution, metric performs simple list membership check",
+        "Data flow is semantically correct: getter extracts list of paths → metric checks membership → expected value matches setup"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

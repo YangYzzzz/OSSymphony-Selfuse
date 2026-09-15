@@ -1,0 +1,104 @@
+{
+  "id": "8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f",
+  "new_id": "task_verify_33",
+  "snapshot": "base_setup",
+  "instruction": "Disable audio output in VLC.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f/Optimus%20-%20Gen%202.mp4",
+            "path": "/home/user/Desktop/Gen 2.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-video-title-show --start-time=15 '/home/user/Desktop/Gen 2.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "bash",
+            "-c",
+            "pgrep -x vlc > /dev/null && echo 'VLC is running' || (echo 'VLC is not running' && exit 1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_vlc_muted__eef15ca1487d76cdd0b6405615ef653d",
+    "result": {
+      "type": "vlc_volume__eef15ca1487d76cdd0b6405615ef653d"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "is_muted": true
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires the agent to mute the audio in VLC. The evaluator checks the VLC audio state via its HTTP interface.\n\nIMPORTANT API LIMITATION: VLC's HTTP interface (status.xml) does NOT expose a separate mute boolean flag. When the user clicks VLC's mute button, VLC internally sets volume to 0 and remembers the previous volume for unmute. However, the HTTP API only exposes the current volume level (0-256+), not the internal mute flag state.\n\nVERIFICATION APPROACH: The custom getter extracts volume level and VLC process state from VLC's HTTP interface. The custom metric checks if volume == 0 to determine mute state. This means both clicking the mute button and manually setting volume to 0 will be detected as muted, which is acceptable because both achieve the task goal of silencing audio in VLC.\n\nIMPROVEMENTS MADE:\n1. Getter now checks VLC responsiveness and extracts playback state in addition to volume\n2. Metric uses volume == 0 (not volume < 5) for precise mute detection\n3. Added postconfig to verify VLC process is still running before evaluation\n4. Comprehensive documentation of VLC HTTP API limitation\n5. Better error handling for VLC connection failures\n\nNote: VLC launched without --no-audio flag to ensure audio controls work properly.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_4/getters/vlc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_4/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the functional outcome of muting audio in VLC by checking if volume == 0",
+        "VLC's HTTP interface (status.xml) limitation is real and well-documented: it only exposes volume level (0-256+), not a separate mute flag. This is VLC's actual API behavior, not an implementation flaw",
+        "When VLC's mute button is clicked, VLC internally sets volume to 0 and saves the previous level for unmute. The HTTP API only sees volume=0, making it indistinguishable from manually setting volume to 0",
+        "Semantic correctness: The instruction 'mute the audio in VLC' asks for a functional outcome (no audio output), not a specific method (clicking mute button). Both clicking mute and setting volume to 0 achieve this outcome",
+        "Complete instruction coverage: Single requirement (mute audio) is fully verified by checking volume == 0",
+        "Postconfig present (lines 42-51): Verifies VLC process is still running before evaluation, ensuring state freshness",
+        "Metric uses volume == 0 (line 72 in metrics/vlc.py), which is precise and correct. Previous version used volume < 5 (overly tolerant), but this has been fixed",
+        "Robust error handling: Getter handles connection failures, missing data, and VLC unresponsiveness. Metric validates result structure before checking volume",
+        "Data flow is correct: Getter extracts volume from VLC HTTP API → Metric checks if volume == 0 → Compares with expected is_muted=true",
+        "Comprehensive documentation in both getter (lines 13-25) and metric (lines 10-33) clearly explains the VLC API limitation and verification approach"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding a comment in the postconfig explaining why VLC process check is needed (to ensure state is fresh and VLC hasn't crashed)",
+        "Optional: The metadata explanation (line 69) could briefly mention that clicking mute button vs setting volume to 0 are functionally equivalent for this verification due to VLC's HTTP API behavior"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -74,8 +74,11 @@ def call_openai_compatible(
     }
     
     try:
-        print(f"H Cluster Local VLLM: {base_url}")
-        client = openai.OpenAI(base_url=resolved_base_url, api_key=resolved_api_key, timeout=timeout_s, default_headers=custom_headers)
+        if "workspace.kubebrain.io" in resolved_base_url:
+            print(f"H Cluster Local VLLM: {resolved_base_url}")
+            client = openai.OpenAI(base_url=resolved_base_url, api_key=resolved_api_key, timeout=timeout_s, default_headers=custom_headers)
+        else:
+            client = openai.OpenAI(base_url=resolved_base_url, api_key=resolved_api_key)
     except TypeError:
         client = openai.OpenAI(base_url=resolved_base_url, api_key=resolved_api_key)
 

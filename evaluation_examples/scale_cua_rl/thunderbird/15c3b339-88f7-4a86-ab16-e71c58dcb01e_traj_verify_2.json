@@ -1,0 +1,109 @@
+{
+  "id": "15c3b339-88f7-4a86-ab16-e71c58dcb01e",
+  "new_id": "15c3b339-88f7-4a86-ab16-e71c58dcb01e_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Set up email credentials in Thunderbird: use name 'Jane Smith', email 'anonym-x2024@outlook.com', and password 'password'. Stay on the setup page without clicking Continue.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/15c3b339-88f7-4a86-ab16-e71c58dcb01e/thunderbird-profile-blank.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile-blank.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile-blank.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "xpath": "//application[@name='Thunderbird']//*[contains(text(), 'Jane Smith') or contains(@name, 'Jane Smith')]"
+        },
+        {
+          "xpath": "//application[@name='Thunderbird']//*[contains(text(), 'anonym-x2024@outlook.com') or contains(@name, 'anonym-x2024@outlook.com')]"
+        },
+        {
+          "xpath": "//application[@name='Thunderbird']//entry[(contains(@name, 'Password') or contains(@name, 'password')) and string-length(.) > 0]"
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_15c3b339-88f7-4a86-ab16-e71c58dcb01e_sid_1488389",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened Thunderbird, navigated to Account Setup form, filled name as 'Anonym User', email as 'anonym-x2024@outlook.com', and password. Stayed on setup page but never clicked Continue, so IMAP was never shown. Evaluator expected 'Anonym Tester' not 'Anonym User'.",
+    "capability_extraction": "Can interact with Thunderbird UI, click form fields, clear and type text, fill name/email/password fields, switch between windows",
+    "failure_analysis": "Model typed 'Anonym User' instead of expected 'Anonym Tester' for the name. Also never clicked Continue so IMAP protocol info was not displayed. The 4-xpath evaluator required all conditions including IMAP visibility.",
+    "task_rationale": "Similar to original but without the IMAP requirement (which needs clicking Continue and network lookup). Tests only form-filling capability which model demonstrated. Uses 3 checkpoints instead of 4, dropping the IMAP requirement that caused failure.",
+    "explanation": "Task requires filling all three fields (name, email, password) in Thunderbird account setup and staying on the page. Evaluator checks accessibility tree for name 'Jane Smith', email address, and password entry having non-empty content. Each xpath gives ~0.33 partial credit. [Fixed: password xpath now checks entry role with string-length(.) > 0 to verify text was actually entered, instead of just checking field existence]",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "name_filled": "0.33 - Display name 'Jane Smith' present in accessibility tree",
+      "email_filled": "0.34 - Email 'anonym-x2024@outlook.com' present in accessibility tree",
+      "password_filled": "0.33 - Password entry element has non-empty text content (bullets)"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Changed password xpath from '//*[contains(@name, 'password') or contains(@name, 'Password')]' (matches empty password field label) to '//entry[(contains(@name, 'Password') or contains(@name, 'password')) and string-length(.) > 0]' (verifies entry element has non-empty text content, i.e., password was actually typed)"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Rule 1 (name) correctly verifies 'Jane Smith' appears in the accessibility tree by checking both text() and @name attributes. Semantically sound.",
+        "Rule 2 (email) correctly verifies 'anonym-x2024@outlook.com' appears in the accessibility tree by checking both text() and @name attributes. Semantically sound.",
+        "Rule 3 (password) has been improved with the fix: xpath now targets 'entry' elements with 'Password'/'password' in @name AND string-length(.) > 0, which verifies the password field has non-empty text content. AT-SPI in GNOME/GTK typically does expose password entry text content at the system level (as a privileged accessibility service), so this check should work at runtime.",
+        "Minor limitation: Rule 3 only verifies that something was typed into the password field (non-empty content), but does not verify the specific password value 'password'. This is a reasonable trade-off given that password fields may mask their content in the accessibility tree XML representation.",
+        "'Stay on the setup page' requirement is implicitly verified: if all three form fields (name, email, password) are visible and populated in the accessibility tree, the setup page must still be open.",
+        "The check_accessibility_tree metric function correctly handles this: for each rule without a 'text' key, it checks xpath element existence (returns 0 if no match). Scoring is multiplicative across rules, providing implicit partial credit behavior."
+      ],
+      "llm_judge_fix_suggestions": [
+        "To strengthen the password check, consider verifying the actual password value if AT-SPI exposes it (e.g., add a 'text' key to rule 3 with value 'password' or masked bullet characters).",
+        "Consider adding an explicit check for the setup page state, such as verifying the 'Continue' button is still visible and not a post-Continue screen element."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_73",
+  "snapshot": "chrome",
+  "instruction": "Please decompress the extension archive located at /home/user/Desktop/ and install it in Chrome's extensions system. Verify the extension version is 1.0.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_extension_version__a366045b",
+    "result": {
+      "type": "extension_version__a366045b",
+      "extension_path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1.0"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task verifies the extension version field in manifest.json. Expected version is '1.0' as confirmed from the original manifest file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires 'install it in Chrome's extensions system' but evaluator only verifies manifest.json file existence, not actual Chrome installation",
+        "Wrong state verification: Evaluator checks filesystem (manifest.json) instead of Chrome's extension state (loaded extensions via CDP)",
+        "False positive risk: Agent could decompress archive WITHOUT installing in Chrome, and evaluator would still pass",
+        "Missing verification: No check that extension is actually loaded/enabled in Chrome's extension system"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to query Chrome's loaded extensions via Chrome DevTools Protocol (CDP) - use chrome.management API or CDP Extension domain",
+        "Verify extension ID appears in Chrome's extension list, not just that manifest.json exists on disk",
+        "Check extension status is 'enabled' or 'loaded' in Chrome's extension management",
+        "Alternative: Simplify instruction to only require decompression and version check (remove 'install in Chrome' requirement)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

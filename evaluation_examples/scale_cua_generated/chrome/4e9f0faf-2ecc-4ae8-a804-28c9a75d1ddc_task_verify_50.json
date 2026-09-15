@@ -1,0 +1,149 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "Download invoice.pdf from Google Drive, extract all services, and save as 'invoice.xlsx' on the Desktop. Find the 'Domain Registration' service and place its unit price in cell F6.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_invoice_data__39d2d2b1",
+    "result": {
+      "type": "xlsx_cell__39d2d2b1",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "service_name": "Domain Registration",
+        "unit_price": 15.0
+      }
+    },
+    "options": {
+      "tolerance": 0.01
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires downloading invoice.pdf from Google Drive, extracting all services, and saving as invoice.xlsx. The evaluator verifies: (1) proper column headers exist, (2) at least 8 service rows extracted to ensure all services were captured, (3) Domain Registration service exists anywhere in the spreadsheet, (4) cell F6 contains unit price 15.0, (5) multiple distinct services present, (6) typical invoice service keywords found.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_9/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_9/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if all 6 checks pass: (1) valid column headers with invoice fields, (2) ≥8 service rows extracted to ensure all services were captured, (3) Domain Registration service exists anywhere in spreadsheet, (4) cell F6 contains 15.0 (±0.01), (5) ≥3 distinct services, (6) ≥3 typical invoice service keywords found. 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly searches ALL rows for 'Domain Registration' service (calc.py:125-128), not limited to row 6. The comment explicitly states 'search ALL rows, not just row 6'.",
+        "Getter correctly reads cell F6 directly using ws['F6'].value (calc.py:131), which properly verifies the instruction requirement 'place its unit price in cell F6'.",
+        "Check 3 (calc.py:84-90) correctly verifies Domain Registration service exists anywhere in the spreadsheet using domain_registration_found boolean.",
+        "Check 4 (calc.py:92-105) correctly verifies cell F6 contains the expected unit price 15.0 with tolerance 0.01, using the f6_value extracted directly from cell F6.",
+        "The two requirements are properly decoupled: (1) Domain Registration service exists in the data (Check 3), (2) Cell F6 contains unit price 15.0 (Check 4).",
+        "Check 1 verifies proper invoice column headers exist, Check 2 requires ≥8 service rows to ensure all services were extracted (reasonable threshold), Check 5 ensures ≥3 distinct services, Check 6 verifies ≥3 typical invoice service keywords.",
+        "All 6 checks must pass for score 1.0, providing comprehensive verification of the instruction requirements.",
+        "Expected values are semantically correct: service_name='Domain Registration' and unit_price=15.0 match task requirements. Postconfig properly activates window and saves file state.",
+        "Minor issue: Check 2 requires ≥8 service rows, but the actual invoice content (number of services in invoice.pdf) is not verified. If the invoice has exactly 7 services, a correct extraction would fail. However, this is a conservative threshold to ensure 'all services' were extracted."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying the exact number of services in the source invoice.pdf to set the minimum service count threshold more precisely. Current threshold of 8 may be overly conservative or insufficient depending on actual invoice content."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

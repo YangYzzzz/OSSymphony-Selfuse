@@ -1,0 +1,85 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "fc6d8143-9452-4171-9459-7f515143419a_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Go to the check-in page on the Delta Airlines website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          ".*delta\\.com.*check-?in.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_fc6d8143-9452-4171-9459-7f515143419a_sid_1488093",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to find flights from JFK to ORD on delta.com. Successfully navigated the homepage, interacted with flight search form (typed airport codes, used autocomplete dropdowns, selected dates, changed trip type). However, flight search results page returned 'Access Denied' repeatedly. Also made form-filling errors (set ORD as both origin and destination). Used all 50 turns without completing the task.",
+    "capability_extraction": "Can navigate Chrome, dismiss cookie banners, click navigation menu items, type in form fields, use autocomplete dropdowns, interact with calendars, change dropdown selections",
+    "failure_analysis": "Delta.com's flight search results page blocked automated access with 'Access Denied'. Model also confused origin/destination fields at one point, setting ORD for both.",
+    "task_rationale": "Decomposed original flight search task into a simpler navigation sub-task. The CHECK-IN link is visible in delta.com's top navigation bar and clicking it should navigate to a check-in page without triggering the search results block.",
+    "explanation": "Task requires navigating from delta.com homepage to the check-in page by clicking the CHECK-IN link in the top navigation bar. Evaluator checks that the active tab URL contains 'delta.com' and 'checkin' or 'check-in' using regex pattern matching.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active Chrome tab URL from the accessibility tree, which is the right state to verify navigation to a specific page.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict (via get_rule for type='rule') and accesses rules['expected'] to get the pattern list, then applies regex matching against the URL.",
+        "Regex pattern '.*delta\\.com.*check-?in.*' correctly matches Delta's check-in page URLs (e.g., delta.com/checkin or delta.com/check-in), providing appropriate coverage for the instruction.",
+        "Single-step navigation task is fully covered by URL verification — no missing requirements.",
+        "No postconfig needed since URL state persists after navigation; no dialog or transient UI state to capture."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37",
+  "new_id": "task_verify_93",
+  "snapshot": "chrome",
+  "instruction": "I want to change the VLC progress slider colors to all black tones for a darker theme. How can I configure custom slider colors in VLC preferences?",
+  "source": "https://www.reddit.com/r/Fedora/comments/rhljzd/how_to_run_multiple_instances_of_vlc_media_player/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_slider_colours",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "blackish"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing VLC slider colors to black/dark tones. The evaluator checks the VLC config file for qt-slider-colours setting, verifying all color values are blackish (RGB values < 100). This uses the existing check_qt_slider_colours metric function with type 'blackish'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: changing VLC slider colors to black tones",
+        "Getter (get_vlc_config) correctly extracts the VLC config file (vlcrc) from the appropriate OS-specific path",
+        "Metric (check_qt_slider_colours) correctly parses the qt-slider-colours setting and validates all RGB values are < 100 (blackish threshold)",
+        "Complete coverage: All colors in the slider string are checked, not just some",
+        "Postconfig appropriately kills and relaunches VLC to ensure config file is written to disk",
+        "The 'blackish' type with threshold of 100 (out of 255) is semantically reasonable for dark/black tones (~39% brightness)",
+        "Data flow is correct: config file path -> metric receives path and rule dict -> parses and validates colors"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

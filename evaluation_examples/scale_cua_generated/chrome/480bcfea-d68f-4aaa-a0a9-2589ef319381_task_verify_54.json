@@ -1,0 +1,104 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_54",
+  "snapshot": "chrome",
+  "instruction": "I heard about some new Chrome features for tab organization. Can you enable both 'tab-groups-save' and 'tab-search-fuzzy-search' experiment flags?",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "tab-groups-save",
+          "tab-search-fuzzy-search"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling two experiment flags related to tab organization. Uses custom metric function to verify both flags are enabled using subset checking.",
+    "new_functions_paths": [
+      "tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_task_verify_3/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses custom metric function that checks if both required experiment flags are enabled using subset checking, allowing other experiments to be present.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Custom metric function correctly implements subset checking at tmp_funcs/.../chrome.py:31",
+        "Logic correctly verifies that both required experiment flags are present using: set(required_names).issubset(set(enabled_experiments_names))",
+        "Instruction 'enable both flags' is correctly interpreted as checking both are present, allowing other experiments to exist",
+        "Getter 'get_enabled_experiments' correctly extracts all enabled experiments from Chrome's Local State file",
+        "Expected values match the two experiment flags specified in the instruction: 'tab-groups-save' and 'tab-search-fuzzy-search'",
+        "Postconfig appropriately restarts Chrome to ensure state is persisted and readable from the file system"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

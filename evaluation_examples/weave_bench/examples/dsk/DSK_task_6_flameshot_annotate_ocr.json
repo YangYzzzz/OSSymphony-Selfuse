@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_6_flameshot_annotate_ocr",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal image processing task. All artifacts must be written to `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: `/tmp_workspace/exec/` already contains 6 UI screenshots and `instructions.json` (per-image annotation rules + expected_keywords). You must annotate each image according to the instructions (rectangles / arrows / text), then run mixed Chinese-English OCR on the annotated images, and compute hit rates against the expected_keywords.\n\nGoal: Produce the annotated images, OCR text, hit-rate statistics, process-evidence screenshots, and an analysis report — all written to `/tmp_workspace/results/`.\n\n### Hard constraints on primary deliverables\n\n- All three of `instructions_pretty.txt`, `keyword_hit_rate.csv`, and `per_image_summary.json` must exist.\n- `keyword_hit_rate.csv` must use the fixed columns `screenshot_id,total_keywords,hits,hit_rate` with 6 rows, of which at least 5 rows must have `hit_rate ≥ 0.60` (based on normalized matching between the OCR text and the expected_keywords in instructions).\n- `per_image_summary.json` must contain one object per image with fields `filename, keywords_total, keywords_hit, hit_rate, ocr_text_length`.\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File / directory | Requirement |\n|---|---|\n| `annotated/annotated_1.png` ~ `annotated_6.png` | 6 files, each applying the corresponding annotations (rectangles / arrows / text) from instructions on top of the original image; the PNGs must actually contain red / yellow / green annotation-color pixels; all 6 must have distinct md5s and each file ≥ 5 KB; annotations must not obscure key text |\n| `ocr_outputs/ocr_1.txt` ~ `ocr_6.txt` | 6 non-empty OCR text files covering mixed Chinese-English content; grading aggregates across all ocr_*.txt files and checks for the presence of common English function words — recognition quality must be good enough to reliably recall common short words |\n| `ocr_summary.md` | At least 4 paragraphs, each ≥ 80 characters, covering: a) hit rate and causes of failure; b) language model and parameter strategy for mixed Chinese-English OCR; c) impact of annotation styles on recognition and how to mitigate it; d) engineering recommendations for a batch OCR pipeline |\n\n### 4 process-evidence screenshots\n\nFixed filenames placed under `/tmp_workspace/results/`, all meeting: **each file ≥ 8 KB, resolution ≥ 800×600, all 4 md5s distinct** (reusing the same image or an empty desktop counts as fabrication). Grading runs OCR on the screenshots and they must show that you are actively using an image annotation tool (toolbar / annotation buttons visible).\n\n- `view_flameshot_step1.png`: annotation in progress on the first image.\n- `view_flameshot_step3.png`: annotation in progress around the middle (roughly the 3rd image).\n- `view_flameshot_step5.png`: annotation in progress toward the end (roughly the 5th image).\n- `view_flameshot_complete.png`: summary / wrap-up screen after all 6 images have been annotated.\n\nAnti-cheating: `actions.log` must not contain only CLI / batch-processing paths with zero traces of GUI annotation interaction.\n\nNote: the exact position / size of annotation boxes is dictated by the instructions descriptions and the image contents — do not hardcode them in your deliverables.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_6_flameshot_annotate_ocr.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_6_flameshot_annotate_ocr",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/exec /tmp_workspace/results /tmp_workspace/results/annotated /tmp_workspace/results/ocr_outputs || true\n# 把 case 素材 cp 到 exec/(框架可能未提前同步)\nif [ -d /opt/eyeson_workspace/exec ]; then\n  cp -r /opt/eyeson_workspace/exec/* /tmp_workspace/exec/ 2>/dev/null || true\nfi\n# GUI 应用兜底安装\nwhich flameshot >/dev/null 2>&1 || apt-get install -y -qq flameshot || true\n# OCR 通用依赖\napt-get install -y -qq tesseract-ocr tesseract-ocr-chi-sim || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_6_flameshot_annotate_ocr/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_6_flameshot_annotate_ocr /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_6_flameshot_annotate_ocr/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_6_flameshot_annotate_ocr/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_6_flameshot_annotate_ocr/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_6_flameshot_annotate_ocr/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_6_flameshot_annotate_ocr/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_6_flameshot_annotate_ocr.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_6_flameshot_annotate_ocr",
+    "workspace_relative": "DSK/task_6_flameshot_annotate_ocr",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

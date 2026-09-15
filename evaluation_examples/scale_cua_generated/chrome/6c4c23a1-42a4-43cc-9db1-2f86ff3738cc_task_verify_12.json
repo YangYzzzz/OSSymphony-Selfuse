@@ -1,0 +1,105 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "task_verify_12",
+  "snapshot": "chrome",
+  "instruction": "Look up flights from San Francisco to Boston for the 11th of next month and display only those that can be booked using miles.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time",
+        "mach-global-tabs-small__wrapper__tab--active": "category"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "11th next month"
+        },
+        "expected": {
+          "start": "SFO",
+          "end": "BOS",
+          "time": "{DoW}, {Month} {Day0D}, {Year}",
+          "category": "Miles"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation searching for flights from San Francisco (SFO) to Boston (BOS) on the 11th of next month, filtered for mile redemption. Uses the same evaluator structure as the original task - extracts flight search details from Delta.com HTML using get_active_tab_html_parse and validates them with check_direct_json_object. The get_rule_relativeTime getter converts '11th next month' to the absolute date format that Delta.com displays.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The evaluator checks: (1) departure city is SFO, (2) destination city is BOS, (3) date matches the 11th of next month in format 'DoW, Month Day, Year', (4) the 'Miles' tab is active indicating mile redemption filter is applied. All HTML class names match the original Delta.com structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator checks all 4 requirements from instruction (departure city SFO, destination city BOS, date on 11th next month, mile redemption filter)",
+        "Correct getter logic: get_active_tab_html_parse extracts appropriate HTML elements from Delta.com using class selectors for date, active tab category, and airport codes",
+        "Correct metric logic: check_direct_json_object performs exact string matching appropriate for airport codes and category verification",
+        "Correct expected values: get_rule_relativeTime converts '11th next month' to absolute date format matching Delta.com display",
+        "Correct data flow: Getter extracts 4 fields (start, end, time, category) -> time getter converts relative to absolute format -> metric compares all 4 fields exactly",
+        "Semantic verification: Evaluator can correctly verify that the user searched for flights from SFO to BOS on the specified date with mile redemption filter active"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_aug_1_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

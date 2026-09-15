@@ -1,0 +1,85 @@
+{
+  "id": "7f35355e-02a6-45b5-b140-f0be698bcf85",
+  "new_id": "7f35355e-02a6-45b5-b140-f0be698bcf85_traj_verify_0",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Save the stock.xlsx spreadsheet as a CSV file named stock_data.csv on the Desktop.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/7f35355e-02a6-45b5-b140-f0be698bcf85/stock.xlsx",
+            "path": "/home/user/Desktop/stock.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/stock.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_csv_export__02188a8f533477bfdcad341f72281666",
+    "result": {
+      "type": "csv_file_check__02188a8f533477bfdcad341f72281666",
+      "path": "/home/user/Desktop/stock_data.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_headers": [
+          "Symbol",
+          "Company",
+          "Stock Price",
+          "Revenue",
+          "Market Cap"
+        ],
+        "min_data_rows": 40
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_7f35355e-02a6-45b5-b140-f0be698bcf85_sid_1488066",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened stock.xlsx in LibreOffice Calc, used Save As to export as CSV (stock_data.csv), then opened terminal to write Python code for median price calculation with empty value filling. Spent 50 turns but failed to produce correct result.txt.",
+    "capability_extraction": "Can use LibreOffice Calc Save As dialog to export CSV, can open terminal, navigate filesystem, write Python scripts",
+    "failure_analysis": "Complex multi-step task (CSV export + code writing + median computation + empty value handling) was too much. Model got stuck writing/debugging Python code for filling empty values and computing median. Never produced correct result.txt.",
+    "task_rationale": "Decomposed the CSV export sub-task from the original. The model successfully performed this step in the trajectory (screenshots 5-10 show Save As dialog with CSV format). Tests file format conversion capability.",
+    "explanation": "Task requires exporting xlsx to CSV via Save As. Getter reads CSV from VM, metric checks header keywords and minimum data row count with partial credit (0.4 file exists + 0.3 headers + 0.3 row count).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_7f35355e-02a6-45b5-b140-f0be698bcf85_sid_1488066_traj_verify_0/getters/csv_export.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_7f35355e-02a6-45b5-b140-f0be698bcf85_sid_1488066_traj_verify_0/metrics/csv_export.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "file_exists": "0.4 - CSV file exists at expected path",
+      "headers_correct": "0.3 - CSV has correct column headers",
+      "data_rows": "0.3 - CSV contains at least 40 data rows"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads CSV file from /home/user/Desktop/stock_data.csv via env.controller.get_file(), parses it, and returns existence, headers, and data row count.",
+        "Metric correctly handles expected parameter for type='rule' (uses `rules = expected` to directly access the rules dict).",
+        "Partial credit scoring (0.4 file exists + 0.3 headers + 0.3 row count) is well-designed and appropriate for a CSV export verification task.",
+        "Case-insensitive substring header matching is robust against minor formatting differences from xlsx-to-CSV export.",
+        "Coverage is complete: verifies file existence at correct path, content preservation (headers), and data preservation (row count).",
+        "Minor: Row counting heuristic checks only if first column (row[0]) is non-empty, which could undercount rows where Symbol is empty but other columns have data. Unlikely to matter for stock data but not perfectly robust."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider counting data rows by checking if any column in the row has a non-empty value, not just the first column, to handle potential edge cases with missing Symbol values."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

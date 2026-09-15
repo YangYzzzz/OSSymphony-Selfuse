@@ -1,0 +1,87 @@
+{
+  "id": "da46d875-6b82-4681-9284-653b0c7ae241",
+  "new_id": "da46d875-6b82-4681-9284-653b0c7ae241_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the Charlie Service Center page on the MBTA website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.mbta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "mbta\\.com/fares/charlie-service-center"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_da46d875-6b82-4681-9284-653b0c7ae241_sid_1488042",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated from MBTA homepage to Charlie Service Center page, then clicked 'Book a time' to reach the Microsoft Bookings page. Selected TAP service but got stuck trying to navigate the calendar backwards to October 2024 (wrong direction). Spent remaining turns repeatedly clicking the same button. Eventually corrupted the URL and ended on blank pages. Never filled in personal details or selected correct date/time.",
+    "capability_extraction": "Can navigate MBTA website menus, find Charlie Service Center page, click 'Book a time' link, reach the Microsoft Bookings page, select services from the booking list",
+    "failure_analysis": "Model miscalculated the target date (tried going backward to Oct 2024 instead of forward to Oct 2026). Got stuck in a loop clicking the same calendar navigation button without progress. Eventually corrupted the booking page URL by manually editing it.",
+    "task_rationale": "Simplified to just the first navigation step (MBTA homepage -> Charlie Service Center), which the model successfully demonstrated in the trajectory",
+    "explanation": "Task requires navigating from MBTA homepage to the Charlie Service Center page. Evaluator checks the active tab URL matches the charlie-service-center pattern using regex pattern matching.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "navigation": "1.0 - URL matches mbta.com/fares/charlie-service-center"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active tab URL from the accessibility tree, which is the right state to check for a navigation task.",
+        "Metric (is_expected_url_pattern_match) correctly receives the rules dict and accesses rules['expected'] to get the regex pattern list, then performs regex matching against the URL — correct parameter handling for type='rule'.",
+        "Expected regex pattern 'mbta\\.com/fares/charlie-service-center' is semantically correct for verifying navigation to the MBTA Charlie Service Center page.",
+        "Single-step instruction (navigate to page) is fully covered by the single URL check — complete verification coverage.",
+        "No postconfig needed since the getter reads the active tab URL which persists after navigation."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

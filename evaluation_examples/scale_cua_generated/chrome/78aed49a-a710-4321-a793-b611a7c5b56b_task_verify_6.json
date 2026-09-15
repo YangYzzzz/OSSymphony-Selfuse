@@ -1,0 +1,142 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_6",
+  "snapshot": "chrome",
+  "instruction": "Identify the earliest email in Bills within Local Folders and transfer it to the 'have_seen' subfolder.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_folder_counts__4f3b75dbef7eff0e54cd50b24ff5fb5e",
+    "result": {
+      "type": "thunderbird_folder_counts__4f3b75dbef7eff0e54cd50b24ff5fb5e",
+      "paths": [
+        "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/Bills",
+        "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/have_seen"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_counts": {
+          "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/Bills": 1,
+          "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/have_seen": 1
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires moving the oldest message (AWS email from Jan 3, 2024, verified from cache data) from Bills to have_seen folder. Bills initially has 2 messages. After moving the oldest message, Bills should have 1 message remaining (the X/Twitter email from Jan 12) and have_seen should have 1 message (the moved AWS email). Evaluator extracts email metadata (subject, date, sender) from both folders and verifies that the email in have_seen is older than the email in Bills by comparing timestamps.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_4/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_4/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both requirements: (1) message counts in both folders after move operation, and (2) that the moved email is indeed the oldest via timestamp comparison",
+        "Getter appropriately reads Thunderbird mbox format files directly from filesystem, parses email metadata including subject, date, sender, and converts dates to timestamps for comparison",
+        "Metric logic is sound: checks expected counts (Bills=1, have_seen=1), then verifies the email in have_seen has an older timestamp than the email remaining in Bills",
+        "Edge cases handled: missing files/folders, date parsing failures, None/empty results, deleted messages (X-Mozilla-Status) are properly skipped",
+        "No UI dependencies - evaluator reads files directly, no need for postconfig",
+        "Expected values are semantically correct based on task setup: Bills starts with 2 emails, after moving oldest one should have 1 remaining, have_seen should have 1 moved email"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The count-based verification assumes specific initial state (2 emails in Bills, 0 in have_seen). If initial state varied, more robust verification might check that (a) total email count across folders is preserved, and (b) specific email subjects/IDs are tracked. However, for this task setup with known initial state, current approach is acceptable."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "78aed49a-a710-4321-a793-b611a7c5b56b_xhaug_1_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

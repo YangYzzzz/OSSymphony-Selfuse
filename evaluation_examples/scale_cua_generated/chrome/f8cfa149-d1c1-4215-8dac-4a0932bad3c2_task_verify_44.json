@@ -1,0 +1,123 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_44",
+  "snapshot": "chrome",
+  "instruction": "Find cell B4 in the spreadsheet, copy the name stored there, and search for it using the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=philip(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B4 value 'Philip' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'philip' (case-insensitive). Verified by reading complete Excel file: B4 contains 'Philip' at row 3, column 1 (0-indexed).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the final outcome: active tab URL matches Google search for 'philip' (case-insensitive)",
+        "Getter (get_active_tab_info at chrome.py:803-890) correctly extracts active Chrome tab info: first gets URL from accessibility tree, then uses Playwright to navigate and extract full tab details including URL",
+        "Metric (is_expected_search_query at chrome.py:247-256) correctly implements regex pattern matching against the tab URL",
+        "Metric parameter handling is CORRECT: function signature uses 'rules' parameter and correctly accesses rules['expect']['pattern'] (chrome.py:251-252), matching framework behavior where get_rule returns config['rules'] directly",
+        "Expected regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=philip(?:&|$|#).*' is semantically correct and appropriately flexible: case-insensitive (?i), allows http/https, optional www, handles query parameters and URL fragments",
+        "Data flow is correct: getter returns dict with 'url' field (chrome.py:857), metric accesses active_tab_info['url'] correctly (chrome.py:253)",
+        "Expected value is semantically correct: metadata confirms cell B4 contains 'Philip', and regex searches for 'philip' with case-insensitive matching",
+        "Coverage is complete: successful Google search for 'philip' proves user completed all steps (found cell B4, copied correct value, performed search)",
+        "Postconfig is present (launches Chrome at lines 61-79) which addresses the static validation warning about UI/state-dependent verification",
+        "Edge case handling: metric returns 0.0 if active_tab_info is None/empty (chrome.py:248-249)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

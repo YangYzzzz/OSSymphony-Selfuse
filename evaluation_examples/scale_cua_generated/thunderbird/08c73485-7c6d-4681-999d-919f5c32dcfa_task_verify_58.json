@@ -1,0 +1,117 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_58",
+  "snapshot": "thunderbird",
+  "instruction": "I want to enable BCC for all outgoing emails to keep a copy for myself. Could you help me configure Thunderbird to automatically BCC my email address on all sent messages?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.doBcc": {
+            "method": "eq",
+            "ref": true
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic BCC for outgoing emails. Verified in cache: mail.identity.id1.doBcc is currently false, task requires changing it to true.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Checked cache prefs.js - mail.identity.id1.doBcc is currently false, task requires changing it to true",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires 'automatically BCC my email address' but evaluator only checks if BCC is enabled (mail.identity.id1.doBcc=true), not whether an actual BCC address is configured",
+        "Missing critical verification: The evaluator does not check mail.identity.id1.doBcc_list to verify that the user's email address is actually set as the BCC recipient",
+        "Logical gap: Task could pass (return 1.0) even if BCC is enabled but no address is configured, failing to achieve the user's stated goal of keeping a copy for themselves",
+        "The evaluator correctly identifies the BCC enable flag and uses appropriate postconfig to close Thunderbird for preference persistence"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second rule to check mail.identity.id1.doBcc_list to verify it contains the user's email address (not empty/null)",
+        "Consider using a more comprehensive check that verifies both: (1) mail.identity.id1.doBcc is true AND (2) mail.identity.id1.doBcc_list is set to a valid email address",
+        "Alternative: If the BCC address is not known in advance, at minimum verify that mail.identity.id1.doBcc_list is non-empty when doBcc is enabled"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

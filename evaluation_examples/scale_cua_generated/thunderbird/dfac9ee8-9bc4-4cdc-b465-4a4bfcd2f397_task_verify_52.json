@@ -1,0 +1,124 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_52",
+  "snapshot": "thunderbird",
+  "instruction": "I need you to remove the \"personal.inbox@outlook.com\" account from Thunderbird.",
+  "source": "https://www.wikihow.com/Remove-an-Email-Account-from-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "unexpect": [
+          {
+            "url": "imap://outlook.office365.com",
+            "user": "personal.inbox@outlook.com"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires removing the personal email account 'personal.inbox@outlook.com' from Thunderbird. The evaluator validates that the account has been successfully removed by checking it's not in the account list.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement: account removal is checked by verifying absence of the account in exported CSV",
+        "Postconfig appropriately uses firefox_decrypt.py to export Thunderbird account data after agent completes the removal task",
+        "Metric check_csv correctly implements unexpect logic: returns 1.0 if no CSV records match the account pattern (url='imap://outlook.office365.com', user='personal.inbox@outlook.com')",
+        "Getter get_cache_file correctly retrieves the exported CSV file path",
+        "Complete coverage: evaluator checks the core requirement (account no longer exists in Thunderbird profile)",
+        "Minor dependency risk: relies on third-party script firefox_decrypt.py output format, assumes CSV columns named 'url' and 'user' - if script outputs different column names (e.g., 'hostname', 'username'), the pattern matching would fail even if account data is present"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider documenting the expected CSV format from firefox_decrypt.py to ensure column name compatibility",
+        "Could add robustness by checking multiple possible column name variations (url/hostname/server, user/username/login) if the script format is uncertain"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

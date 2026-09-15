@@ -1,0 +1,95 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_45",
+  "snapshot": "os",
+  "instruction": "I want to enable colorized output for ls commands automatically. Could you add the appropriate alias to my shell configuration so that ls always uses the --color=auto option?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q \"alias ls='ls --color=auto'\" ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding ls color alias to .bashrc for automatic colored output. Evaluator checks if the alias exists in .bashrc. Similar complexity - customizing shell behavior via aliases.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the core requirement: checks if ls color alias exists in ~/.bashrc",
+        "Getter logic (vm_command_line with grep) appropriately targets the shell configuration file",
+        "Metric (exact_match) correctly compares result ('1\\n' or '0\\n') against expected '1\\n'",
+        "Instruction coverage is complete: all requirements are verified (alias in config, colorized output enabled)",
+        "Minor robustness issue: grep pattern 'alias ls=\\'ls --color=auto\\'' is overly strict - only matches single-quote variant, would miss valid double-quote or escaped variations like 'alias ls=\"ls --color=auto\"'",
+        "Minor coverage gap: only checks ~/.bashrc, doesn't account for alternative config files like ~/.bash_aliases or ~/.zshrc",
+        "No state timing issues: file state is accessible after task completion, no UI dependencies"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a more flexible grep pattern like 'grep -qE \"alias ls=.*--color=auto\" ~/.bashrc' to match quote style variations",
+        "Optionally extend verification to check ~/.bash_aliases or other common shell config files for broader coverage",
+        "The current evaluator works correctly for the standard single-quote case, which is the most common pattern"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

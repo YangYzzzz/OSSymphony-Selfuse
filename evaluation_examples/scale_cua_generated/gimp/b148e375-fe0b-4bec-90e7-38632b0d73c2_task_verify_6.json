@@ -1,0 +1,131 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "task_verify_6",
+  "snapshot": "gimp",
+  "instruction": "Insert an additional layer into the image, calling it 'Overlay'.",
+  "source": "https://www.quora.com/How-do-I-add-layers-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1); pyautogui.hotkey(['ctrl', 's']); time.sleep(1);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "bash",
+            "-c",
+            "gimp -i -d -f -b '(let* ((image (car (gimp-file-load RUN-NONINTERACTIVE \"/home/user/Desktop/white_background.xcf\" \"/home/user/Desktop/white_background.xcf\"))) (layers (gimp-image-get-layers image)) (num-layers (car layers)) (layer-array (cadr layers)) (output-port (open-output-file \"/tmp/gimp_layers.txt\")) (i 0)) (while (< i num-layers) (let ((layer-name (car (gimp-item-get-name (aref layer-array i))))) (display layer-name output-port) (newline output-port)) (set! i (+ i 1))) (close-output-port output-port) (gimp-image-delete image) (gimp-quit 0))'"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1); pyautogui.hotkey(['ctrl', 'q']); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_layer_exists__b148e375_v3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "layer_name": "Overlay"
+      }
+    },
+    "result": {
+      "type": "gimp_layer_names__b148e375_v3",
+      "path": "/home/user/Desktop/white_background.xcf"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a new layer with name 'Overlay' in the GIMP XCF file. The evaluator uses a custom getter to extract layer names from the XCF file using GIMP's Script-Fu in batch mode, and a custom metric to check if the 'Overlay' layer exists in the layer list.",
+    "new_functions_paths": [
+      "tmp_funcs/b148e375-fe0b-4bec-90e7-38632b0d73c2_xhaug_1_task_verify_3/getters/get_gimp_layer_names__b148e375_v3.py",
+      "tmp_funcs/b148e375-fe0b-4bec-90e7-38632b0d73c2_xhaug_1_task_verify_3/metrics/check_layer_exists__b148e375_v3.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically and logically correct for verifying the instruction.",
+        "Getter correctly uses GIMP Script-Fu in batch mode to extract layer names from the XCF file by loading the image, iterating through layers, and writing layer names to /tmp/gimp_layers.txt.",
+        "Postconfig properly saves the file (Ctrl+S) before extraction, ensuring the layer changes are persisted to the XCF file.",
+        "Metric correctly checks if 'Overlay' exists in the extracted layer names list using exact string matching, which is appropriate for layer name verification.",
+        "Data flow is correct: postconfig saves and extracts layer metadata -> getter reads the layer names from temp file -> metric validates 'Overlay' exists in the list.",
+        "Expected value 'Overlay' correctly matches the instruction requirement.",
+        "Parameter handling is correct: metric receives the rules dict directly as expected_state (per framework's get_rule behavior for type='rule') and correctly accesses expected_state.get('layer_name')."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_layer_exists__b148e375_v3 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "b148e375-fe0b-4bec-90e7-38632b0d73c2_xhaug_1_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

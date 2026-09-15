@@ -1,0 +1,95 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "f5d96daf-83a8-4c86-9686-bada31fc66ab_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 17 Pro Max, iPhone 16 Pro Max, and iPhone 15 Pro Max on Apple's website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_model_list_unordered__68e1e5b5d5b054d1e9ca98b707844de8",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_models": [
+          "iphone-17-pro-max",
+          "iphone-16-pro-max",
+          "iphone-15-pro-max"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f5d96daf-83a8-4c86-9686-bada31fc66ab_sid_1488154",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated from apple.com to the iPhone compare page, used dropdown selectors to select iPhone 15 Pro Max, iPhone 14 Pro Max, and iPhone 13 Pro Max, resulting in the correct comparison URL.",
+    "capability_extraction": "Can navigate apple.com, find the iPhone compare page, use dropdown model selectors, select specific iPhone models from the list",
+    "task_rationale": "Uses the latest iPhone 17 Pro Max (visible in trajectory's dropdown as a 'New' model) alongside two previous Pro Max generations, testing the agent's ability to select from both 'New' and 'More' dropdown sections.",
+    "explanation": "Task requires navigating to Apple's iPhone comparison page and selecting 3 Pro Max models including the latest iPhone 17. Evaluator parses the modelList URL parameter via active_tab_url_parse and uses a custom metric to compare expected models as sets (order-independent). [Fixed: replaced check_direct_json_object with custom metric check_model_list_unordered to properly support order-independent list comparison, since ignore_list_order flag was misplaced and could not be read by the original metric]",
+    "new_functions_paths": [
+      "{tmp_func_dir}/metrics/chrome.py"
+    ],
+    "fix_history": [
+      "Fix 1: Replaced check_direct_json_object + ignore_list_order with custom metric check_model_list_unordered__68e1e5b5d5b054d1e9ca98b707844de8 that natively compares modelList as sets, avoiding the ignore_list_order flag placement bug"
+    ],
+    "difficulty": "medium",
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "The getter (active_tab_url_parse) correctly extracts the 'modelList' query parameter from the active tab URL and splits it by comma into a list, which is the right approach for verifying Apple's iPhone comparison page.",
+        "The custom metric (check_model_list_unordered) correctly handles the expected parameter: since expected.type='rule', the metric receives the rules dict directly as its second parameter, and accesses 'rules.get(\"expected_models\", [])' without incorrectly nesting into 'rules.get(\"rules\", {})'. This is correct per the framework's get_rule behavior.",
+        "The set-based comparison (expected_set == actual_set) properly handles order-independent model list comparison, which is essential since the agent may select models in any order on the compare page.",
+        "The expected model slugs ('iphone-17-pro-max', 'iphone-16-pro-max', 'iphone-15-pro-max') match the instruction requirements and follow Apple's URL slug naming convention.",
+        "The fix from the previous iteration (replacing check_direct_json_object with a custom set-comparison metric) correctly resolves the ignore_list_order flag placement bug identified in the prior judge review."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true
+    }
+  }
+}

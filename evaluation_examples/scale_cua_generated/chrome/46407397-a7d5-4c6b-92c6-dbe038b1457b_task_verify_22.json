@@ -1,0 +1,151 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "Generate a summary of the Notes folder listing each email's sender and subject in the format 'From: [sender] - Subject: [subject]' per line, save it as 'email_summary.txt', and upload it to the 'reports' folder on Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'reports' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_line_count__953256df836603c8857d4495861e4b63",
+    "result": {
+      "type": "gdrive_text_file__953256df836603c8857d4495861e4b63",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "query_list": [
+        [
+          "title = 'reports' and trashed = false and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+          "title = 'email_summary.txt' and trashed = false"
+        ]
+      ],
+      "dest": [
+        "email_summary.txt"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_lines": 2,
+        "max_lines": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires creating a summary report with sender and subject information from Notes folder emails, uploaded to Google Drive. The evaluator validates: (1) each line follows 'From: [sender] - Subject: [subject]' format with regex pattern matching, (2) sender contains valid email address format (contains @ and domain), (3) subjects are non-empty, (4) line count is 2-20 (based on typical Notes folder size). This ensures the file contains actual email summaries, not arbitrary text.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_4/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_4/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly retrieves text file from Google Drive at the correct path (reports/email_summary.txt)",
+        "Metric comprehensively validates content format using regex pattern 'From:\\s+([^\\s@]+@[^\\s@]+\\.[^\\s@]+)\\s+-\\s+Subject:\\s+(.+)'",
+        "Email address validation confirms sender contains '@' and domain structure",
+        "Subject validation ensures subjects are non-empty strings",
+        "Line count validation (2-20) provides reasonable bounds based on typical Notes folder size",
+        "Proportional scoring logic provides partial credit based on format compliance percentage",
+        "All instruction requirements are verified: file location, file name, line format, email addresses, and subjects",
+        "Data flow is correct: getter extracts text content -> metric validates format and semantics -> score reflects compliance"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

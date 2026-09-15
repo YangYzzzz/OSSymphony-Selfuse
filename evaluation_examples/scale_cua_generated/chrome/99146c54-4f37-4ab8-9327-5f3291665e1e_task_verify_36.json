@@ -1,0 +1,101 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Please configure Chrome to enable the 'Do Not Track' feature to send a request to websites not to track my browsing activity.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling Do Not Track in Chrome privacy settings. Uses existing get_enable_do_not_track getter which reads Chrome Preferences file and checks the 'enable_do_not_track' boolean field. Returns 'true' when enabled. Evaluator verifies the setting is enabled after browser restart.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing get_enable_do_not_track getter from chrome.py line 1263, which returns 'true' when enable_do_not_track is set in Chrome Preferences.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly extracts the Do Not Track setting from Chrome Preferences file (enable_do_not_track field)",
+        "Metric (exact_match) appropriately compares the boolean-like string result",
+        "Expected value 'true' semantically matches what the getter returns when Do Not Track is enabled",
+        "Postconfig correctly restarts Chrome to ensure settings are persisted to disk before verification",
+        "Complete coverage: evaluator checks the core requirement (Do Not Track enabled in Chrome settings)",
+        "Runtime feasibility confirmed: getter can access standard Chrome Preferences file location"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing postconfig sleep from 3 to 5 seconds for slower systems to ensure Chrome fully restarts and writes preferences",
+        "Minor robustness: could add validation that Chrome restart succeeded before reading preferences, though current implementation fails gracefully"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_15",
+  "snapshot": "thunderbird",
+  "instruction": "Make a local folder called \"Meetings\" and configure a filter to auto-move inbox emails that have \"conference\" in the subject to this Meetings folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Meetings",
+            "condition": [
+              "AND (subject,contains,conference)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation changes folder name to 'Meetings' and filter keyword to 'conference' (subject contains). Uses same evaluator structure as original with check_thunderbird_filter metric. Verified that filter format matches expected structure with enabled=yes, Move to folder action, and subject contains condition.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Filter configuration verification is semantically correct - checks enabled status, action type, target folder path, and subject condition",
+        "Data flow is correct: get_vm_file extracts msgFilterRules.dat, check_thunderbird_filter parses and validates filter rules",
+        "Expected values are semantically accurate: actionValue 'mailbox://nobody@Local%20Folders/Meetings' correctly targets Local Folders/Meetings, condition 'AND (subject,contains,conference)' matches instruction requirement",
+        "Postconfig appropriately closes Message Filters window before file extraction to ensure state consistency",
+        "Minor incompleteness: Evaluator verifies filter exists but does not directly verify the Meetings folder was created - however, folder existence is implicitly validated since the filter's actionValue references it"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding explicit folder existence check by reading Local Folders structure or msf files to verify 'Meetings' folder was actually created",
+        "Current evaluator relies on filter configuration correctness as proxy for folder existence, which is pragmatically reasonable but not comprehensive"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

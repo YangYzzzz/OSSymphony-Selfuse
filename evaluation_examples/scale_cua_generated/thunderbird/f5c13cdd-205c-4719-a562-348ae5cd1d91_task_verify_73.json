@@ -1,0 +1,125 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_73",
+  "snapshot": "thunderbird",
+  "instruction": "Count the total number of students with unpaid tuition in the payment record and update the email subject to include this count.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_subject_contains_count__04c070c4",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 4
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires counting students with Payment='No' (total=4: Fox, Iron, Nancy, Stella) and including this count in email subject. Verified by reading complete Excel file with Python.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f5c13cdd-205c-4719-a562-348ae5cd1d91_aug_12_task_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Metric correctly handles expected parameter - directly accesses expected.get('count') as required for type='rule'",
+        "Subject field extraction logic is robust with 3 different patterns to locate subject in accessibility tree",
+        "Metric properly isolates subject field before checking for count (lines 26-74), avoiding false positives from count appearing elsewhere in UI",
+        "Count verification uses word boundaries (\\b{count}\\b) and contextual patterns ('4 students', '4 unpaid', etc.) to avoid false matches",
+        "Returns 0.0 if subject field cannot be found, providing clear failure signal",
+        "Expected count (4) is semantically correct per metadata explanation (Fox, Iron, Nancy, Stella with Payment='No')",
+        "Missing verification of intermediate step - evaluator cannot confirm agent actually opened Excel file and performed counting, only verifies final output (subject contains count)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification that Excel file was opened/accessed, though this may require additional getters or filesystem access checks",
+        "Postconfig could be more robust - consider adding explicit window focus action for Thunderbird compose window instead of just sleep",
+        "Consider adding pattern validation to ensure count appears in meaningful context (e.g., must be near keywords like 'student' or 'unpaid') to further reduce false positive risk"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

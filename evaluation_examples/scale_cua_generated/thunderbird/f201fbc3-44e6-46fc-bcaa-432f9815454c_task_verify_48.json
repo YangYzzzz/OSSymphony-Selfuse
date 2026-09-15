@@ -1,0 +1,116 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_48",
+  "snapshot": "thunderbird",
+  "instruction": "I want to include my signature in replies and forwarded messages. Can you configure Thunderbird to automatically append my signature when replying to or forwarding emails?",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.sig_on_reply": {
+            "method": "eq",
+            "ref": true
+          },
+          "mail.identity.id1.sig_on_fwd": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires enabling signature inclusion in replies and forwards. The evaluator uses the existing check_thunderbird_prefs function to verify that the preference 'mail.identity.id1.sig_on_reply' is set to true. This is a common Thunderbird configuration task with similar complexity to the original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete instruction coverage: Evaluator checks both 'mail.identity.id1.sig_on_reply' and 'mail.identity.id1.sig_on_fwd' preferences, covering both replies and forwards as required",
+        "Getter logic correct: get_vm_file correctly retrieves the Thunderbird preferences file from the VM",
+        "Metric logic correct: check_thunderbird_prefs correctly parses prefs.js and validates both signature settings",
+        "Expected values semantically correct: Both sig_on_reply and sig_on_fwd set to true is the correct requirement for the instruction",
+        "Postconfig appropriate: Closes Thunderbird to ensure preferences are flushed to disk before reading",
+        "Error handling present: Metric correctly handles None result when file cannot be retrieved"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

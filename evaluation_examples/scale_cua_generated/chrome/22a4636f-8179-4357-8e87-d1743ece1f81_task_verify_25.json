@@ -1,0 +1,156 @@
+{
+  "id": "22a4636f-8179-4357-8e87-d1743ece1f81",
+  "new_id": "task_verify_25",
+  "snapshot": "chrome",
+  "instruction": "Create a PDF version of \"Meeting-Agenda.docx\" from the Desktop and upload the PDF to the meetings folder in my Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "mkdirs"
+        ],
+        "args": [
+          {
+            "query": "title = 'Meeting-Agenda.docx' or title = 'Meeting-Agenda.pdf'",
+            "trash": false
+          },
+          {
+            "path": [
+              "meetings"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/22a4636f-8179-4357-8e87-d1743ece1f81/Meeting-Agenda.docx",
+            "path": "/home/user/Desktop/Meeting-Agenda.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/Meeting-Agenda.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_pdf_contains_keywords__2c2512f5",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path": [
+        "meetings",
+        "Meeting-Agenda.pdf"
+      ],
+      "dest": "Meeting-Agenda.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "keywords": [
+          "Meeting",
+          "Agenda",
+          "Conference Room"
+        ],
+        "min_keywords_found": 2
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires converting Meeting-Agenda.docx to PDF and uploading to Google Drive. Evaluator checks if the PDF contains at least 2 of the key terms from the meeting agenda document (Meeting, Agenda, Conference Room).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/22a4636f-8179-4357-8e87-d1743ece1f81_task_verify_5/metrics/gdrive_pdf.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified from docx content that the document contains the keywords 'Conference Room B' and 'Meeting Objectives' and 'Agenda', confirming at least 2 of the specified keywords are present.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks for PDF existence in the target Google Drive location (meetings/Meeting-Agenda.pdf)",
+        "Content verification via keyword checking is reasonable - confirms the PDF contains expected content from the original docx",
+        "Metric logic is correct - extracts text from PDF using PyMuPDF and performs case-insensitive keyword matching",
+        "Expected values are semantically correct - keywords verified to exist in the source docx file",
+        "Minor weakness: Only requires 2 out of 3 keywords (66% threshold), could be more strict",
+        "Minor weakness: Generic keywords ('Meeting', 'Agenda') could theoretically match unrelated PDFs, though unlikely in practice",
+        "Limitation: Cannot verify that the PDF was actually converted from the Desktop file versus any other PDF with these keywords being uploaded - but this is a practical constraint of the environment",
+        "Overall: The evaluator provides reasonable verification that the task outcome is correct, though not perfect"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing min_keywords_found from 2 to 3 to require all keywords be present",
+        "Consider using more specific/unique keywords from the document content (e.g., 'Conference Room B' as a complete phrase rather than just 'Conference Room')",
+        "Consider checking for additional content markers to ensure more comprehensive conversion fidelity"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_contains_keywords__2c2512f5 first parameter type (str) may not match getter get_googledrive_file return type (Any)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

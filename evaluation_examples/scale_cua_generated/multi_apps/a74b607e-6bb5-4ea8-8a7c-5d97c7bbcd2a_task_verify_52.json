@@ -1,0 +1,91 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_52",
+  "snapshot": "multiapps",
+  "instruction": "Install my local Chrome extension that's saved in the helloExtension directory on the Desktop. Make sure it loads in the browser.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_ext_name__ca95b9f314589fd4b7b378e36374dfb0",
+    "result": {
+      "type": "find_installed_extension_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_name": "Hello Extension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 4: Similar to variation 1, checks extension name. Instruction emphasizes 'make sure it loads' but evaluation only verifies registration in Preferences (same as checking if it loaded successfully). Reuses metric from variation 1.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct: The getter (get_find_installed_extension_name) correctly reads Chrome's Preferences file and extracts extension names from extensions.settings[id].manifest.name, which is the authoritative source for installed extensions.",
+        "Metric logic is correct: The metric function properly handles the expected parameter as a direct rules dictionary (accessing expected.get('expected_name')), which is correct for type='rule' evaluators.",
+        "Complete coverage: The instruction requires both installing and loading the extension. Checking Chrome's Preferences file verifies both requirements because extensions only appear in Preferences when Chrome successfully registers and loads them.",
+        "Expected value is correct: The expected_name 'Hello Extension' matches the downloaded file 'Hello Extension.zip', maintaining semantic consistency.",
+        "Practical feasibility: The getter can successfully access Chrome's Preferences file after task completion without needing postconfig, as the file persists after the agent's actions.",
+        "Data flow is correct: Getter extracts list of extension names -> Metric checks if expected name is in list -> Returns 1.0 if found, 0.0 otherwise. This correctly verifies task completion."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

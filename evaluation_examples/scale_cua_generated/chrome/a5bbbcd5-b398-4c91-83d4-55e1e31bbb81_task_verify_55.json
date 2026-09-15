@@ -1,0 +1,90 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "When I double-click video files, VLC keeps opening multiple instances. Could you help me configure VLC to use only one instance and enqueue new files in the existing player instead of opening multiple windows?",
+  "source": "https://superuser.com/questions/776056/how-to-hide-bottom-toolbar-in-vlc",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 1
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling single instance mode in VLC. The evaluator checks the one-instance-when-started-from-file setting in VLC config file. Expected value is 1 (enabled). Uses existing check_one_instance_when_started_from_file metric function.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Checked existing VLC metric functions. check_one_instance_when_started_from_file reads vlcrc file and verifies one-instance-when-started-from-file=1. Default is 1 (already enabled), but task simulates changing it.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts VLC config file (vlcrc) from platform-specific path",
+        "Metric function correctly checks 'one-instance-when-started-from-file' setting which directly controls single instance mode when starting from file",
+        "Expected value of 1 is semantically correct (1 = enabled, single instance mode)",
+        "Parameter handling is correct: metric accesses rule['expected_one_instance_when_started_from_file'] directly (correct for type='rule')",
+        "Complete coverage: instruction asks to enable single instance mode, evaluator checks the exact setting that controls this behavior",
+        "Postconfig appropriately manages VLC state (kills and relaunches VLC to ensure clean state for config file reading)",
+        "The 'one-instance-when-started-from-file' setting is the correct setting for the user's scenario (double-clicking video files)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

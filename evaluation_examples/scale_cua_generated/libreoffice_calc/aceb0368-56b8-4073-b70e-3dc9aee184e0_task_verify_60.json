@@ -1,0 +1,148 @@
+{
+  "id": "aceb0368-56b8-4073-b70e-3dc9aee184e0",
+  "new_id": "task_verify_60",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Identify and update the grade for the student with the highest score by comparing all answer sheets with the reference answers.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/aceb0368-56b8-4073-b70e-3dc9aee184e0/exam.zip",
+            "path": "/home/user/exam.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "unzip",
+          "/home/user/exam.zip",
+          "-d",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/exam/ReferenceAnswers.docx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/exam/grades.xlsx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/exam/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "libreoffice_writer",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_top_student__ca376890",
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "grades.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/exam/grades.xlsx",
+      "dest": "grades.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "student_name": "David Brown",
+        "student_row": 11,
+        "expected_scores": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "expected_total": 100
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires identifying top student (David Brown, row 11 with perfect score 100) and grading. Verified from gold data.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_aug_1_task_verify_4/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 15,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.3 if graded student has highest total score (identification), 0.35 if all scores correct, 0.35 if total correct",
+    "fix_applied": true,
+    "fix_description": "Fixed column indexing (columns 3-12 for Q1-Q10, column 13 for Total). Added explicit verification that the graded student (row 11) has the highest total score among all students, which verifies the 'identify' requirement. Also verifies grading accuracy with expected perfect score (all 1s, total 100).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete coverage: The evaluator verifies both requirements from the instruction: (1) identifying the top student by checking row 11 has the highest total score among all students (lines 59-80), and (2) grading correctness with expected perfect scores (lines 82-99).",
+        "Correct identification verification: The metric explicitly iterates through all student rows (2-11) and verifies that the graded student (row 11) has the highest total score (lines 68-73). This confirms the 'identify' requirement was met.",
+        "Sound grading verification: The metric correctly reads Q1-Q10 scores from columns 3-12 and total from column 13, comparing against expected perfect score (all 1s, total 100). Column indexing is correct.",
+        "Appropriate scoring breakdown: 0.3 for correct identification (highest total), 0.35 for individual scores, 0.35 for total. This properly weights both identification and grading accuracy.",
+        "Minor limitation: The evaluator verifies that row 11 has the highest total score after grading, but doesn't directly verify that the agent compared answer sheets with reference answers during the identification process. However, this is an acceptable limitation since verifying intermediate reasoning steps would be overly complex, and the final result (correct student with highest score) is a reasonable proxy for correct identification."
+      ],
+      "llm_judge_fix_suggestions": [
+        "The evaluator is functionally correct. The minor limitation mentioned could be addressed by adding verification that other student rows remain ungraded (no data in columns 3-13), which would confirm that only the identified top student was graded. However, this is optional and not critical."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

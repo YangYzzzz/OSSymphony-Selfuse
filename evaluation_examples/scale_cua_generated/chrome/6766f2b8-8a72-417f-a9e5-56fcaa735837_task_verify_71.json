@@ -1,0 +1,96 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_71",
+  "snapshot": "chrome",
+  "instruction": "Unpack the downloaded helloExtension.zip file from /home/user/Desktop/ to /home/user/Desktop/ and set up the extension in Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_dir_exists__79fc6dbb",
+    "result": {
+      "type": "extension_dir_exists__79fc6dbb",
+      "extension_path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": true
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task verifies that the extension directory exists at /home/user/Desktop/helloExtension after unpacking and loading into Chrome.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_1/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_1/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction has TWO requirements (1. unpack zip file, 2. set up extension in Chrome), but evaluator only checks directory existence and ignores the Chrome setup requirement",
+        "Wrong verification target: Config already unpacks the zip in setup phase (line 22), so the directory exists BEFORE the agent starts. Evaluator cannot distinguish between pre-existing directory and agent's work",
+        "Missing Chrome extension verification: Instruction explicitly requires 'set up the extension in Chrome' but evaluator does not check if extension is loaded/enabled in Chrome (should verify via chrome://extensions/ or Chrome DevTools Protocol)",
+        "Cannot verify task completion: Even if directory exists, this does not prove the extension was set up in Chrome, which is the main requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add getter to check Chrome extension state via Chrome DevTools Protocol (check if extension with specific ID or name is loaded and enabled)",
+        "Either split instruction into two separate tasks (1. unpack only, 2. set up in Chrome only) OR verify both requirements in evaluator",
+        "Remove the unzip command from config setup (line 22) so the agent must perform the unpacking, making the verification meaningful",
+        "Consider adding postconfig to navigate to chrome://extensions/ if UI-based verification is needed"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

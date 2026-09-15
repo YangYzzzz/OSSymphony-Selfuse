@@ -1,0 +1,126 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "In the movies Excel file, create a new sheet named 'top_10'. Copy the 10 highest-rated movies to this sheet with the same column headers, and sort them by rating from highest to lowest.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "movies.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_top_title__b985b2a4e8be32e6adbcbc28cd034e20",
+    "result": {
+      "type": "xlsx_top_cell_title__b985b2a4e8be32e6adbcbc28cd034e20",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet": "top_10"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "title": "The Shawshank Redemption"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a new sheet 'top_10' with 10 highest-rated movies sorted by rating descending. Verified with Python: The top 10 movies sorted by rating are: 1. The Shawshank Redemption (9.3), 2. The Godfather (9.2), 3. 12th Fail (9.1), 4-7. Four movies with 9.0, 8-9. Two movies with 8.9, 10. Fight Club (8.8). Evaluator checks if the first data row (row 2) in the new sheet contains 'The Shawshank Redemption' as the title.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_aug_19_task_verify_4/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_aug_19_task_verify_4/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all major requirements - sheet existence, exactly 10 movies, headers presence, correct movies, and descending sort order",
+        "Correct data extraction: Getter extracts all movie titles and ratings from the top_10 sheet, not just first cell",
+        "Proper sorting verification: Metric checks that ratings are in descending order (lines 46-48 in metrics/xlsx.py)",
+        "Exact count verification: Verifies exactly 10 movies via row_count and len(movies) checks",
+        "Specific movie validation: Validates 4 key movies by name and rating (Shawshank 9.3, Godfather 9.2, 12th Fail 9.1, Fight Club 8.8)",
+        "Rating range validation: Ensures top movie rating >= 8.8 to catch incorrect data",
+        "Proper postconfig: Includes Ctrl+S to save file before verification",
+        "Edge case handling: Handles None values, empty rows, and type conversion errors in getter"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Header validation only checks len(headers) >= 3, could verify exact header names match original sheet (e.g., 'Title', 'Year', 'Rating')",
+        "Minor improvement: Only 4 out of 10 movies are validated by specific title. Could add validation for positions 4-7 (9.0 rating) and 8-9 (8.9 rating) to be more thorough",
+        "Minor improvement: Hardcoded assumption that rating is in column 3. Could make this more robust by finding the 'Rating' column header dynamically"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

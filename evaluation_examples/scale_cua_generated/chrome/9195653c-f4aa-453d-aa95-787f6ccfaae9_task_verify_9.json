@@ -1,0 +1,89 @@
+{
+  "id": "9195653c-f4aa-453d-aa95-787f6ccfaae9",
+  "new_id": "task_verify_9",
+  "snapshot": "chrome",
+  "instruction": "I want to be able to control VLC playback using a global hotkey even when VLC is not the active window. Can you configure a global hotkey for play/pause in VLC?",
+  "source": "https://superuser.com/questions/1513285/how-can-i-increase-the-maximum-volume-output-by-vlc?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_global_key_play_pause",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_global_key_play_pause": "1"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires configuring a global hotkey for play/pause in VLC (global-key-play-pause should have a value set). Evaluator uses existing check_global_key_play_pause metric and get_vlc_config getter to read VLC configuration file and verify that global-key-play-pause is configured (has a non-empty value). Default is empty (no global hotkey), so the agent must navigate to Tools > Preferences > Hotkeys and set a global hotkey for play/pause. This is similar in complexity to the original task (changing a single VLC configuration setting).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to configure a global hotkey for play/pause in VLC",
+        "Getter (get_vlc_config) correctly extracts the VLC configuration file from the appropriate OS-specific location",
+        "Metric (check_global_key_play_pause) correctly checks the 'global-key-play-pause' config setting, which specifically controls global hotkeys (vs 'key-play-pause' for local hotkeys)",
+        "Logic correctly distinguishes between 'not configured' (empty value) and 'configured' (any non-empty value), which semantically matches the task requirement",
+        "Expected value '1' correctly represents 'hotkey is configured' - the metric returns '1' when the config value is non-empty",
+        "Postconfig appropriately kills and relaunches VLC to ensure configuration changes are persisted to disk and readable",
+        "Complete coverage: the single requirement (configure global hotkey) is fully verified by the evaluator",
+        "Data flow is correct: config file path -> read file -> parse for setting -> binary check (configured vs not configured) -> return score"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

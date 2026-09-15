@@ -1,0 +1,103 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_86",
+  "snapshot": "multiapps",
+  "instruction": "Load the Chrome extension from the helloExtension folder available on Desktop.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "chrome://extensions"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "extension_popup__8aee113e",
+      "extension_name": "Hello Extensions"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "hello.html"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This variation verifies the extension by checking its default_popup configuration. Verified from manifest.json: action.default_popup is 'hello.html'. The postconfig section opens chrome://extensions to ensure Chrome is running with extensions loaded, addressing the UI/state-dependent nature of this task.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_6/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Semantic verification is correct: The evaluator can successfully verify that the Chrome extension was loaded by checking (1) extension exists in Chrome Preferences, (2) extension is enabled (state==1 at chrome.py:75-79), and (3) manifest has correct default_popup configuration.",
+        "Getter logic is well-implemented: Correctly reads Chrome Preferences file from OS-specific paths (Windows/Darwin/Linux), searches for extension by name 'Hello Extensions', checks if extension is enabled, and extracts default_popup from manifest (supports both Manifest V3 'action' and V2 'browser_action' fields).",
+        "Metric-expected pairing is correct: The 'exact_match' metric correctly handles the rules parameter. When expected.type='rule', framework calls get_rule() from misc.py:88-92 returning {'expected': 'hello.html'}, and exact_match correctly accesses rules['expected'] for comparison (general.py:42).",
+        "Data flow is semantically correct: Getter extracts 'hello.html' from extension manifest → Framework calls get_rule() returning {'expected': 'hello.html'} → Metric receives result='hello.html' and rules={'expected': 'hello.html'} → Compares result == rules['expected'] → Returns 1.0 on match.",
+        "Expected value is semantically correct: 'hello.html' matches the actual default_popup value from the Hello Extension manifest.json (verified in metadata explanation). This is the correct expected value for this task.",
+        "Postconfig is appropriate: Opens chrome://extensions to ensure Chrome is running with extensions loaded, allowing the getter to read fresh state from the persistent Preferences file.",
+        "Complete coverage: The instruction requires loading the extension, and the evaluator verifies all necessary aspects: extension presence, enabled state, and correct manifest configuration. This provides complete verification of the task requirement.",
+        "Minor semantic note: The evaluator uses manifest configuration as a proxy for verifying the 'load' action, rather than directly observing the loading action itself. However, checking that the extension exists, is enabled (state==1), and has correct manifest is a reasonable and practical verification method that effectively confirms the extension was loaded."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

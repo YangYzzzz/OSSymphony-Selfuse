@@ -1,0 +1,92 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_62",
+  "snapshot": "chrome",
+  "instruction": "Identify the community discussion topic with the top number of responses and open it.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://discussions.flightaware.com/t/the-banter-thread/4412"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires identifying and accessing the discussion with the highest response count. Evaluator checks for successful URL navigation.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic flaw: The expected URL is hardcoded as 'https://discussions.flightaware.com/t/the-banter-thread/4412' but the instruction requires identifying 'the community discussion topic with the top number of responses'",
+        "The 'top discussion by response count' is dynamic and can change over time as users add responses to different topics, but the evaluator uses a static expected URL",
+        "The evaluator cannot verify that the agent correctly IDENTIFIED the top discussion - it only checks if a specific hardcoded URL was opened",
+        "Incomplete verification: The instruction has two requirements (identify top discussion + open it), but the evaluator only verifies the second step (opening a URL) without verifying the identification logic",
+        "At evaluation time, if the actual top discussion is a different topic (e.g., a different thread has more responses now), the evaluator will incorrectly fail even if the agent correctly identified and opened the real top discussion"
+      ],
+      "llm_judge_fix_suggestions": [
+        "The evaluator should dynamically scrape the FlightAware discussions page to identify which topic actually has the most responses at evaluation time",
+        "Use a getter that extracts discussion metadata (topic titles and response counts) from the discussions listing page",
+        "Compare the opened URL against the dynamically-identified top discussion URL, not a hardcoded static URL",
+        "Alternative: Add a getter that parses the opened discussion page to extract its response count, then verify this count is the maximum among all discussions (requires scraping all discussion counts)",
+        "Consider adding metadata about when the expected URL was verified to be the top discussion, and flag tasks that may have stale expected values"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,140 @@
+{
+  "id": "8e116af7-7db7-4e35-a68b-b0939c066c78",
+  "new_id": "task_verify_33",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Add all the transactions from the receipts to the bookkeeping file, then count how many are expenses versus income and record the expense count in cell F2.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Desktop/my_bookkeeping.xlsx",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/8e116af7-7db7-4e35-a68b-b0939c066c78/my_bookkeeping.xlsx"
+          },
+          {
+            "path": "/home/user/Desktop/receipt_0.jpeg",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/8e116af7-7db7-4e35-a68b-b0939c066c78/receipt_0.jpeg"
+          },
+          {
+            "path": "/home/user/Desktop/receipt_1.jpg",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/8e116af7-7db7-4e35-a68b-b0939c066c78/receipt_1.jpg"
+          },
+          {
+            "path": "/home/user/Desktop/receipt_2.jpg",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/8e116af7-7db7-4e35-a68b-b0939c066c78/receipt_2.jpg"
+          },
+          {
+            "path": "/home/user/Desktop/receipt_3.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/8e116af7-7db7-4e35-a68b-b0939c066c78/receipt_3.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/receipt_4.jpg",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/8e116af7-7db7-4e35-a68b-b0939c066c78/receipt_4.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/my_bookkeeping.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "my_bookkeeping.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "check_bookkeeping_complete__78b29b2f",
+    "result": {
+      "type": "xlsx_cell_value__78b29b2f",
+      "path": "/home/user/Desktop/my_bookkeeping.xlsx",
+      "sheet": 0,
+      "initial_row_count": 1
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "f2_value": 5,
+        "min_transactions": 6,
+        "initial_row_count": 1,
+        "expected_new_rows": 5,
+        "expected_expense_indicators": [
+          "expense",
+          "debit",
+          "out",
+          "payment",
+          "paid"
+        ],
+        "min_unique_amounts": 3,
+        "min_transaction_rows_with_data": 5
+      }
+    },
+    "options": {
+      "tolerance": 0.1
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires counting expense vs income transactions from receipts. All 5 receipts are expenses (none are income). Verified: receipt_0 (grocery), receipt_1 (cash transfer out), receipt_2 (restaurant), receipt_3 (bike repair), receipt_4 (McDonald's) = 5 expenses, 0 income.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/8e116af7-7db7-4e35-a68b-b0939c066c78_task_verify_6/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/8e116af7-7db7-4e35-a68b-b0939c066c78_task_verify_6/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL RUNTIME BUG - Incorrect expected parameter handling (metrics/calc.py:59-65): When expected.type='rule', metric receives rules dict DIRECTLY, not {'rules': {...}}. Code does 'rules = expected.get('rules', {})' which will return {} at runtime, causing all rule lookups to fail. Should be: 'expected_f2 = expected.get('f2_value', 5)' NOT 'rules.get('f2_value', 5)'.",
+        "CRITICAL gaming vulnerability persists: Agent can write generic data (5 rows with keywords 'grocery'/'restaurant'/'transfer'/'repair'/'mcdonald' + any amounts + '5' in F2) and score 70%+ without opening receipt files. Structural checks (has_amount_column, unique_amounts) don't prevent this - they just require slightly more structured fake data.",
+        "No receipt-specific data verification: Getter extracts ANY amounts/dates/keywords from spreadsheet (getters/calc.py:80-119). Does NOT verify data matches actual receipt content from receipt_0.jpeg, receipt_1.jpg, receipt_2.jpg, receipt_3.pdf, receipt_4.jpg. Cannot distinguish real OCR/processing from manual keyword insertion.",
+        "Expected rules lack ground truth (lines 87-95): Only contain generic thresholds (min_transactions:6, min_unique_amounts:3, expected_expense_indicators:generic keywords). NO actual receipt amounts, merchants, or dates to verify against. Evaluator has no way to know if correct receipts were processed.",
+        "Incomplete instruction coverage: Instruction has 3 requirements: (1) 'Add transactions from receipts' - NOT verified (only checks for any structured data), (2) 'count expenses vs income' - PARTIALLY verified (checks for expense keywords, not actual counting logic), (3) 'record expense count in F2' - VERIFIED. Only 1 of 3 properly covered.",
+        "Categorization verification is weak (metrics/calc.py:107-134): Checks if category_labels contain expense keywords OR if classification structure exists. Doesn't verify that actual counting/categorization happened (e.g., agent implemented logic to distinguish expense vs income). Just keyword presence check."
+      ],
+      "llm_judge_fix_suggestions": [
+        "FIX CRITICAL BUG: In metrics/calc.py lines 59-65, change 'rules = expected.get('rules', {})' to direct access: 'expected_f2 = expected.get('f2_value', 5)', 'expected_new_rows = expected.get('expected_new_rows', 5)', etc. When expected.type='rule', expected IS the rules dict.",
+        "Add receipt ground truth to expected.rules: After manually analyzing the 5 receipt files, add: 'expected_amounts': [amount1, amount2, amount3, amount4, amount5], 'expected_merchants': [merchant1, ...], 'expected_dates': [date1, ...]. Getter should extract these and metric should verify at least 3-4 matches.",
+        "Implement specific data matching: Metric should score based on how many expected_amounts/expected_merchants are found in new rows. Example: 40% transaction score = 0.1 if 3+ expected amounts found, 0.05 if 2 found, 0.0 otherwise. This prevents generic keyword gaming.",
+        "Add receipt file analysis metadata: In task JSON metadata, document actual receipt content (amounts, merchants, dates from each receipt file). This provides ground truth for verification and makes gaming impossible.",
+        "Strengthen categorization verification: Instead of keyword search, verify that spreadsheet has a dedicated category column (e.g., column with header 'Type' or 'Category') AND that at least 5 rows have 'expense' labels in that column. Current check allows keywords anywhere in any cell."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

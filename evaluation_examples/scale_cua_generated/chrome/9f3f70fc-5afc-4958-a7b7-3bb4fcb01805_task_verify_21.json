@@ -1,0 +1,111 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_21",
+  "snapshot": "chrome",
+  "instruction": "Browse the list of women's Adidas t-shirts under $30.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "under $30",
+          "women",
+          "t-shirts",
+          "adidas"
+        ]
+      },
+      "url_include_expected": [
+        "under $30",
+        "women",
+        "t-shirts",
+        "adidas"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "under $30": true,
+          "women": true,
+          "t-shirts": true,
+          "adidas": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation: Browse women's Adidas t-shirts under $30. Same pattern as original task (filter-based shopping on NBA.com), different filter criteria. Evaluator checks filter elements and URL contain the expected filters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "very_high",
+    "verification": "Reuses existing check_direct_json_object metric and active_tab_html_parse getter with class&url category.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "URL encoding mismatch: The evaluator expects 'under $30' to appear literally in the URL, but URLs encode spaces and special characters (e.g., 'under%20%2430' or 'under+$30'). The getter's simple substring check at chrome.py:2000 will fail to match URL-encoded versions.",
+        "The term 'under $30' contains both a space and dollar sign which are typically percent-encoded in URLs, causing the url_include_expected check to likely fail even when filters are correctly applied.",
+        "Case-insensitive matching is used for HTML elements (chrome.py:1884), which is good, but the URL check may still fail due to encoding differences.",
+        "The evaluator uses dual verification (HTML elements + URL), which means if either check fails, the entire evaluation fails. The URL encoding issue makes this highly likely to produce false negatives."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify the URL checking logic in get_active_tab_html_parse to handle URL encoding: decode the page URL before checking, or encode the expected values before comparison.",
+        "Alternative: Remove the url_include_expected check for filters with special characters (spaces, $, etc.) and rely only on the HTML element check via class_multiObject.",
+        "Alternative: Use URL parsing to extract query parameters and check filter values from structured URL components rather than substring matching.",
+        "Test with actual NBA.com URLs to verify the class name 'filter-selector-link' exists and contains the expected filter text."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

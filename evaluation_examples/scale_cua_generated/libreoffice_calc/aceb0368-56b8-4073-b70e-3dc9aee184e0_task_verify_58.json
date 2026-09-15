@@ -1,0 +1,149 @@
+{
+  "id": "aceb0368-56b8-4073-b70e-3dc9aee184e0",
+  "new_id": "task_verify_58",
+  "snapshot": "libreoffice_calc",
+  "instruction": "I am grading students' English exam papers. After comparing the remaining students' answers with the answer key and recording the detailed scoring in the spreadsheet, please calculate how many students passed the exam (scored 60 or above) and write this number in cell O2.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/aceb0368-56b8-4073-b70e-3dc9aee184e0/exam.zip",
+            "path": "/home/user/exam.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "unzip",
+          "/home/user/exam.zip",
+          "-d",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/exam/ReferenceAnswers.docx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/exam/grades.xlsx"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/exam/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "grades.xlsx"
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's')"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_exact_match_v8__d4477d7a",
+    "result": {
+      "type": "xlsx_cell_o2_v8__d4477d7a",
+      "path": "/home/user/exam/grades.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": 8,
+        "expected_scores": {
+          "Richard Smith": 70,
+          "Jennifer Rodriguez": 70,
+          "Michael Gonzalez": 80,
+          "Mary Williams": 80,
+          "Joseph Thomas": 60,
+          "James Martinez": 60,
+          "Barbara Wilson": 90,
+          "David Brown": 100,
+          "Karen Davis": 50
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires grading all students' exams and counting passing students. Verified with Python: 8 out of 9 students scored >=60 (Richard Smith 70, Jennifer Rodriguez 70, Michael Gonzalez 80, Mary Williams 80, Joseph Thomas 60, James Martinez 60, Barbara Wilson 90, David Brown 100). Only Karen Davis (50) failed. Agent must: 1) Grade all 9 students, 2) Count students with score>=60, 3) Write count (8) in cell O2.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_task_verify_8/getters/xlsx_cell_o2_v8__d4477d7a.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/aceb0368-56b8-4073-b70e-3dc9aee184e0_task_verify_8/metrics/check_exact_match_v8__d4477d7a.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator successfully verifies ALL instruction requirements: grading work, score calculation accuracy, and final pass count",
+        "Metric implements multi-level verification: (1) checks pass_count in O2, (2) verifies student_scores are recorded (at least 5 students), (3) calculates pass count from scores and validates it matches O2 value, (4) compares recorded scores against expected_scores with 70% match threshold",
+        "Anti-hardcoding protection: metric calculates expected pass count from student_scores and verifies it matches O2 value, preventing agents from simply hardcoding '8' without actual grading",
+        "Comprehensive partial credit logic: scores range from 0.0 (no work) to 1.0 (perfect), with intermediate scores for partial completion (0.95 for correct count+grading, 0.7 for count+work, 0.5 for count only, 0.4 for correct grading but wrong count, 0.2 for some grading work)",
+        "Getter correctly extracts both pass_count from O2 and student_scores from spreadsheet (scans rows 2-20, columns M/N for total scores), and checks for formula presence",
+        "Expected values are semantically correct: expected_value=8 matches actual pass count, expected_scores provides validation data for 9 students with correct individual scores",
+        "Postconfig appropriately saves file (Ctrl+S) before reading to ensure state freshness",
+        "Minor limitation: getter scans only rows 2-20 (max ~18 students) and assumes scores in columns M/N, but this is reasonable for this specific task with 9 students"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making row scanning range configurable or dynamic (currently hardcoded to rows 2-20)",
+        "Consider making score column detection more robust (currently tries only columns M and N) to handle varied spreadsheet structures"
+      ]
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

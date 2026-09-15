@@ -1,0 +1,92 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Locate the community discussions and access the conversation with the maximum reply count.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://discussions.flightaware.com/t/the-banter-thread/4412"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Paraphrased instruction requiring navigation to discussions and opening the most-replied thread. Uses existing is_expected_active_tab metric with the same target URL.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that the expected URL is accessible and corresponds to a FlightAware discussion thread.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction by checking if the active tab URL matches the expected discussion thread URL",
+        "Getter (active_tab_info) appropriately extracts the active tab's URL from accessibility tree and loads the page to get full tab information",
+        "Metric (is_expected_active_tab) correctly compares actual URL vs expected URL using compare_urls() for proper URL normalization",
+        "Data flow is correct: getter extracts tab info dict with 'url' field, metric extracts URL and compares it",
+        "Expected URL (https://discussions.flightaware.com/t/the-banter-thread/4412) is verified to be a FlightAware discussion thread per metadata",
+        "Evaluator checks the correct end state (being on the right discussion thread) which implicitly verifies both navigation steps",
+        "Edge cases handled: returns 0.0 for empty/None active_tab_info, compare_urls() handles URL variations"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor concern: The 'maximum reply count' assumption may become stale over time if a different discussion thread gains more replies. This is a task design limitation rather than an evaluator logic issue. Consider adding a timestamp or version to the task metadata to track when the expected URL was verified.",
+        "Consider adding a postconfig to ensure Chrome is focused and the page is fully loaded before evaluation, though current getter implementation already handles page loading"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

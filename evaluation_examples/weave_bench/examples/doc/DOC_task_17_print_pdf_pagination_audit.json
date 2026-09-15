@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_17_print_pdf_pagination_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: The editorial team receives a long-form article `/tmp_workspace/article/longform_article.html` (10 sections, several `<figure>` + `<figcaption>` pairs) ready for print. The same stylesheet `/tmp_workspace/article/article.css` must feed two independent print-to-PDF rendering pipelines: one is a CSS Paged Media engine (consumes `@page` rules directly, output can have its page count and per-page text extracted by structured PDF tools, hereafter referred to as **engine=weasy**), the other is a headless browser print pipeline (also the renderer behind the print-preview pane, hereafter referred to as **engine=chromium**). The default `@page size` on the two sides is not consistent (A4 vs Letter), and the current `article.css` is known to contain at least 3 `@page` / break-related bugs, so that in the baseline state the two pipelines' outputs differ noticeably in total page count, figure/caption co-location, and section start positions.\n\nTicket **PRINT-PAG-024** requires: the two sides must have a **total page-count difference ≤ 1**, and **every `<figure>` together with its `<figcaption>` must land on the same page** — a figure at the bottom of page N with the caption alone at the top of page N+1 is not allowed.\n\nTask goal: complete the \"evidence collection → localization → repair → re-verification\" loop, with structured artifacts (dual-engine PDFs + page-count metadata + per-page text diff + per-page rasterized bitmaps + fixed CSS + report) and rendered-state visual evidence (multi-page thumbnails in the print-preview pane, PDF reader sidebar showing the orphan caption across pages) cross-verified across two channels. All deliverables go uniformly under `/tmp_workspace/results/`.\n\n### Hard constraints on the main deliverable `pagination_report.json`\n\nThe schema must be:\n\n```json\n{\n  \"weasy_pages\":    <int>,\n  \"chromium_pages\": <int>,\n  \"page_diff_abs\":  <int>,\n  \"parity_ok\":      true|false,\n  \"figure_caption_same_page\": {\n    \"weasy\":    [true|false, ...],\n    \"chromium\": [true|false, ...]\n  },\n  \"all_figures_intact\": true|false\n}\n```\n\n- `weasy_pages` / `chromium_pages` must match the real page counts of the fixed PDFs (read from structured PDF metadata);\n- `page_diff_abs == |weasy_pages - chromium_pages|`, `parity_ok == (page_diff_abs <= 1)`, and must finally be `true`;\n- The length of `figure_caption_same_page.<engine>` arrays must equal the actual figure count in the document; each element indicates whether the i-th figure and its caption land on the same page in the fixed PDF;\n- `all_figures_intact` is `true` if and only if all elements of both arrays are `true`, and must finally be `true`.\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `baseline_weasy.pdf` / `baseline_chromium.pdf` | PDFs rendered by each pipeline with the unfixed CSS; > 1 KB, page count readable by structured tools; in the baseline stage the page-count difference between the two sides **should be ≥ 2** |\n| `baseline_weasy.log` / `baseline_chromium.log` | Full stdout+stderr of the above two renders |\n| `baseline_pages.jsonl` | Exactly two JSON Lines, schema `{\"engine\":\"weasy\"\\|\"chromium\",\"pages\":<int>,\"sha256\":\"<hex>\"}`; `pages` truly read from PDF metadata, `sha256` is the sha256 of the corresponding PDF byte stream |\n| `baseline_text_diff.txt` | First 200 lines of unified diff between the two baseline PDFs after extracting text with layout preservation split by form-feed; contains ≥ 8 lines of real diff (starting with `+` or `-` and not the `+++`/`---` file headers), of which ≥ 2 lines hit section names / Figure / page numbers / form-feed markers |\n| `weasy_pages/page-*.png` | Per-page rasterized bitmaps of `baseline_weasy.pdf` (DPI ≈ 90), ≥ 3 images, file names like `page-1.png` / `page-2.png` / … |\n| `preview_save.pdf` | PDF exported through the browser print-preview pane's *Save as PDF* channel; > 5 KB and sha256 **different** from `baseline_chromium.pdf` (must come from the rendered-state channel; do not overwrite this file name with a headless PDF output) |\n| `article.fixed.css` | A minimal-patch copy of `/tmp_workspace/article/article.css`, modifying only the 3 bugs and leaving all other non-bug lines as-is (the grader checks that non-bug lines are preserved at ≥ 80%):<br>• **bug-A** — the `@page { ... }` block contains both an explicit `size: Letter` (or `A4`) and `margin: ...`<br>• **bug-B** — the `figure` selector contains `break-inside: avoid` (or alias `page-break-inside: avoid`)<br>• **bug-C** — the `h2` selector contains `break-before: page`/`always` (or alias `page-break-before: always`)<br>Wholesale CSS rewrites are not allowed |\n| `fixed_weasy.pdf` / `fixed_chromium.pdf` + same-name `.log` | PDFs and logs from re-running both engines after applying `article.fixed.css` |\n| `fixed_pages.jsonl` | Two records with the same schema as baseline (sourced from the fixed PDFs), `|weasy.pages - chromium.pages| <= 1` |\n| `pagination_report.json` | See the \"main deliverable\" hard constraints above |\n| `notes.md` | ≥ 250 characters, based on actual run output (do not copy the prompt), describing how you cross-located the `@page` / `figure` / `h2` CSS lines corresponding to bug-A / bug-B / bug-C across the structured channel (PDF metadata + per-page text diff) and the rendered-state channel (print preview + PDF reader sidebar) |\n\n### 3 work-process screenshots (under `/tmp_workspace/results/`, each > 3 KB)\n\n| File name | Content requirement |\n| --- | --- |\n| `view_chromium_preview_before.png` | Full-window screenshot after opening `file:///tmp_workspace/article/longform_article.html` in the browser print-preview pane before fixing: contains the main window (title bar + print-preview pane), ≥ 3 multi-page thumbnails, output destination settings area (Save as PDF or similar), and genuinely shows visual evidence of at least one `<figure>` / `<figcaption>` split across pages |\n| `view_okular_orphan_caption.png` | Full-window screenshot after opening `baseline_weasy.pdf` in a PDF reader, enabling the page-thumbnail sidebar, and navigating to the broken page: contains the main window (with thumbnail sidebar) + an orphan `<figcaption>` in the main display area (caption alone at the top of one page, separated from the figure at the bottom of the previous page) |\n| `view_chromium_preview_after.png` | Full-window screenshot of the print-preview pane after re-rendering with the fixed CSS: ≥ 3 multi-page thumbnails, output destination settings area, all visible figures together with their captions on the same page (no orphaned figures) |\n\nThe grader runs both OCR and VLM dual-channel review on the 3 screenshots, requiring real interactive UI; white background / collage / placeholder images, or screenshots that do not actually show multi-page thumbnails + output destination settings + cross-page or same-page figures, will be scored 0.\n\n### Anti-cheat and isolation\n\n- It is not allowed to copy any file from `/tmp_workspace/setup_gt/` (grader-only) into `/tmp_workspace/results/`; the grader reads only `/tmp_workspace/results/`.\n- `actions.log` must not contain the literals `bug-A` / `bug-B` / `bug-C`; the agent must locate them by observation.\n- `preview_save.pdf` must truly be exported through the print-preview pane's *Save as PDF* channel; do not overwrite that file name with a headless PDF render output (the grader compares sha256).\n\nNeutral background knowledge: CSS Paged Media (W3C css-page-3) declares paper size and margins via `@page` rules, and `break-inside: avoid` / `break-before: page` (and the legacy aliases `page-break-*`) control element behavior relative to page boundaries. The default `@page size` of the two mainstream print-to-PDF implementations is not consistent — the CSS Paged Media engine defaults to A4, whereas the headless browser print pipeline defaults to Letter — so if `@page` does not explicitly set `size:`, the same HTML will drift between the two sides in total page count and per-page start positions. `<figure>` / `<figcaption>` are independent blocks; without `break-inside: avoid`, page splits are common. Without `break-before: page` on `h2`, section start positions land on different page numbers depending on font metrics differences between the two sides. Structured artifacts can only tell you \"page counts don't match / a piece of text landed on page X\", but the human-readable \"orphan figure\" phenomenon can only be seen directly in multi-page thumbnails / PDF reader sidebars — the two channels must corroborate each other to attribute the bug to a specific CSS selector and a specific break rule.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_17_print_pdf_pagination_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_17_print_pdf_pagination_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/gt /tmp_workspace/article /opt/doc17_gt\nwhich pdfinfo || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils imagemagick python3-pip tesseract-ocr fonts-dejavu-core libpango-1.0-0 libcairo2) || true\nwhich diff-pdf || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq diff-pdf) || true\npip3 install --break-system-packages --quiet --ignore-installed blinker 2>/dev/null || true\npip3 install --break-system-packages --quiet pdfminer.six pillow pytesseract pymupdf 'weasyprint==60.2' 2>/dev/null || pip3 install --quiet pdfminer.six pillow pytesseract pymupdf 'weasyprint==60.2' 2>/dev/null || true\n# Move expected.json to a root-only path so the agent cannot read the\n# expected_css_keys (which directly enumerates the @page bugs to fix).\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/doc17_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/doc17_gt 2>/dev/null || true\n  chmod 700 /opt/doc17_gt 2>/dev/null || true\n  chmod 600 /opt/doc17_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\n# Move generate_article.py out of agent-visible /tmp_workspace (its source comment\n# `# --- CSS with 3 deliberate bugs ---` and the subsequent rules document exactly\n# which @page bugs the agent must find). Pattern mirrors DAV_10.\nmkdir -p /opt/doc17_priv\nchmod 700 /opt/doc17_priv\n[ -f /tmp_workspace/generate_article.py ] && mv /tmp_workspace/generate_article.py /opt/doc17_priv/generate_article.py\nchown -R root:root /opt/doc17_priv 2>/dev/null || true\n[ -s /tmp_workspace/article/longform_article.html ] || (cd /tmp_workspace/article && python3 /opt/doc17_priv/generate_article.py --html longform_article.html --css article.css 2>/dev/null) || true\nrm -f /opt/doc17_priv/generate_article.py 2>/dev/null || true\n# belt-and-suspenders: ensure source never lands back in /tmp_workspace\nrm -f /tmp_workspace/generate_article.py 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_17_print_pdf_pagination_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_17_print_pdf_pagination_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_17_print_pdf_pagination_audit/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_17_print_pdf_pagination_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_17_print_pdf_pagination_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_17_print_pdf_pagination_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_17_print_pdf_pagination_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_17_print_pdf_pagination_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_17_print_pdf_pagination_audit",
+    "workspace_relative": "DOC/task_17_print_pdf_pagination_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

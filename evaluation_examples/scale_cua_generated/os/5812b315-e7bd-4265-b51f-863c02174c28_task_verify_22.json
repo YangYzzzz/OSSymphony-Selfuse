@@ -1,0 +1,92 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_22",
+  "snapshot": "os",
+  "instruction": "Please create an SSH user named \"iris\" with password \"!r!sS3cur3@2024\" on Ubuntu who is only allowed to access the folder \"/home/temp1\".",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/temp1",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get install -y expect",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > check_password.sh << 'EOFSCRIPT'\n#!/bin/bash\n\nUSERNAME=$1\nPASSWORD=$2\n\n# Verify the user exists\nif ! id \"$USERNAME\" &>/dev/null; then\n    echo \"User does not exist\"\n    exit 1\nfi\n\n# Check if expect is installed\nif ! command -v expect &>/dev/null; then\n    echo \"expect is not installed\"\n    exit 1\nfi\n\n# Test SSH password using expect\nexpect << EOF\nset timeout 10\nspawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $USERNAME@localhost\nexpect {\n    \"password:\" {\n        send \"$PASSWORD\\r\"\n        expect {\n            \"$ \" { exit 0 }\n            \"# \" { exit 0 }\n            timeout { exit 1 }\n            eof { exit 1 }\n        }\n    }\n    timeout { exit 1 }\n    eof { exit 1 }\n}\nEOF\n\nexit $?\nEOFSCRIPT\n",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x check_password.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"iris\"; HOMEDIR=\"/home/temp1\"; PASSWORD=\"!r!sS3cur3@2024\"; ./check_password.sh \"$USERNAME\" \"$PASSWORD\" && [ \"$(getent passwd \"$USERNAME\" | cut -d: -f6)\" = \"$HOMEDIR\" ] && [ $(stat -c \"%A\" \"$HOMEDIR\" | cut -b 3) = \"w\" ] && echo \"Password, home directory, and write permission check passed\" || echo \"Check failed\"",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Password, home directory, and write permission check passed"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task creates SSH user 'iris' with password '!r!sS3cur3@2024' restricted to folder '/home/temp1'. Evaluator verifies: (1) SSH password authentication works, (2) home directory is set to /home/temp1, (3) user has write permission to the folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5812b315-e7bd-4265-b51f-863c02174c28_task_verify_7/scripts/check_password.sh"
+    ],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical coverage gap: The instruction requires user 'iris' to be 'only allowed to access the folder /home/temp1', which implies SSH restriction/chroot jail mechanism. The evaluator only verifies: (1) password authentication works, (2) home directory is set to /home/temp1, (3) write permission exists. It does NOT verify that the user is restricted to only that folder.",
+        "The evaluator cannot verify the core requirement 'only allowed to access' - a user could pass all checks but still have access to other directories on the system.",
+        "Write permission check is incomplete: The command 'stat -c \"%A\" \"$HOMEDIR\" | cut -b 3' checks the 3rd character (owner write bit) but doesn't verify WHO owns the directory or whether the user 'iris' actually has write access. If the folder is owned by root with 755 permissions, the check would incorrectly fail.",
+        "No verification of SSH restriction mechanisms: Common methods include chroot jail configuration in /etc/ssh/sshd_config (ChrootDirectory), ForceCommand, restricted shell (rbash), or Match User directives. The evaluator does not check for any of these."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification of SSH restriction mechanism: Check /etc/ssh/sshd_config for Match User iris with ChrootDirectory /home/temp1, or verify the user is assigned a restricted shell like rbash.",
+        "Add actual access restriction test: After SSH login, attempt to access a directory outside /home/temp1 (e.g., 'cd /tmp') and verify it fails or is restricted.",
+        "Fix write permission check: Instead of checking stat output, use 'sudo -u iris touch /home/temp1/test_file && rm /home/temp1/test_file' to verify the user actually has write access.",
+        "Verify folder ownership/permissions correctly: Check that either (a) iris owns the folder, or (b) iris has group write access, or (c) folder has world-writable permissions with sticky bit for iris."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

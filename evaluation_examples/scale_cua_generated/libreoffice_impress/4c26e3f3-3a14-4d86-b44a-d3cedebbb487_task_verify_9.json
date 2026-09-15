@@ -1,0 +1,89 @@
+{
+  "id": "4c26e3f3-3a14-4d86-b44a-d3cedebbb487",
+  "new_id": "task_verify_9",
+  "snapshot": "libreoffice_impress",
+  "instruction": "The background image on the second slide looks too dark. Could you please increase its brightness to make it more visible? Save the enhanced image on the Desktop as \"background.png\". Thanks!",
+  "source": "https://www.quora.com/How-do-I-edit-a-photo-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4c26e3f3-3a14-4d86-b44a-d3cedebbb487/PPT-Template_widescreen.pptx",
+            "path": "/home/user/Desktop/PPT-Template_widescreen.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/PPT-Template_widescreen.pptx"
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "execute_python",
+      "parameters": {
+        "script": "from pptx import Presentation\nfrom PIL import Image\nimport io\nimport os\n\n# Load presentation\npres = Presentation('/home/user/Desktop/PPT-Template_widescreen.pptx')\n\n# Get slide 2 (index 1)\nif len(pres.slides) > 1:\n    slide = pres.slides[1]\n    \n    # Extract background image from slide\n    if slide.background.fill.type == 6:  # MSO_FILL_TYPE.PICTURE\n        image_blob = slide.background.fill.fore_color.pattern.part.blob\n        image = Image.open(io.BytesIO(image_blob))\n        \n        # Save reference image\n        ref_path = '/home/user/.cache/osworld_reference_bg.png'\n        os.makedirs(os.path.dirname(ref_path), exist_ok=True)\n        image.save(ref_path)\n        print(f'Saved reference background image to {ref_path}')\n    else:\n        print('No background image found on slide 2')\nelse:\n    print('Presentation has less than 2 slides')\n"
+      }
+    }
+  ],
+  "trajectory": "trajectories/4c26e3f3-3a14-4d86-b44a-d3cedebbb487_task_verify_0",
+  "related_apps": [
+    "gimp",
+    "libreoffice_impress",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_brightness_increased__42b8076d",
+    "result": {
+      "type": "image_brightness__42b8076d",
+      "path": "/home/user/Desktop/background.png",
+      "reference_path": "/home/user/.cache/osworld_reference_bg.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_brightness": 45.0,
+        "min_similarity": 0.6
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires extracting the background image from slide 1 (0-indexed), increasing its brightness in GIMP, and saving to Desktop. Evaluator checks if the saved image has brightness >= 45.0 (original ~39.9, target ~50.5 after 30% increase). Verified with Python: original brightness=39.90, recommended threshold=45.0.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4c26e3f3-3a14-4d86-b44a-d3cedebbb487_task_verify_0/getters/image.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4c26e3f3-3a14-4d86-b44a-d3cedebbb487_task_verify_0/metrics/image.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "COMPLETE COVERAGE: Evaluator verifies all 3 instruction requirements: (1) image source via SSIM similarity check against slide 2 background reference, (2) brightness increase via min_brightness threshold, (3) correct save location via file path check.",
+        "PROVENANCE VERIFICATION PRESENT: The getter compares saved image against reference image (extracted in postconfig from slide 2 background) using SSIM (Structural Similarity Index). The metric requires similarity >= 0.6, which prevents users from saving random bright images.",
+        "Getter logic is CORRECT: Extracts both brightness (PIL grayscale + numpy mean on 0-255 scale) and similarity (SSIM) from saved image. Properly retrieves files from VM using get_vm_file. Good error handling with fallback to {brightness: 0.0, similarity: 0.0}.",
+        "Metric logic is CORRECT: Requires BOTH conditions to pass: brightness >= 45.0 AND similarity >= 0.6. Correctly handles expected parameter as rules dict (direct access via rules.get(), which is the CORRECT pattern for type='rule'). Returns 1.0 only if both checks pass.",
+        "Expected values are CORRECT: min_brightness=45.0 is appropriate (original ~39.9, target ~50.5 after brightness increase). min_similarity=0.6 is reasonable for verifying image provenance while allowing brightness adjustments.",
+        "Postconfig is CORRECT: Extracts slide 2 (index 1) background image to /home/user/.cache/osworld_reference_bg.png for comparison. Handles edge cases (no background image, < 2 slides).",
+        "Data flow is CORRECT: postconfig extracts reference → getter compares saved image against reference → metric validates both brightness AND similarity thresholds.",
+        "Minor issue: SSIM similarity threshold of 0.6 might be slightly low - brightness adjustments could potentially drop SSIM below this. A threshold of 0.7-0.8 would be more robust, but 0.6 is still functional."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing min_similarity threshold from 0.6 to 0.7 or 0.8 for more robust provenance verification, as SSIM can remain high (0.7-0.9) even after significant brightness adjustments."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

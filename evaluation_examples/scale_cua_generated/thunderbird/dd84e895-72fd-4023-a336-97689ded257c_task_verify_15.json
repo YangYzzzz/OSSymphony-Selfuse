@@ -1,0 +1,111 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_15",
+  "snapshot": "thunderbird",
+  "instruction": "Update all messages in the Bills folder to show they have been replied to.",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(distinct messageID) = 2 from messageAttributes where attributeID = 60 and value = 1 and messageID in (select id from messages where folderID = 13);"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires marking all emails in Bills folder (folderID=13) as replied. There are 2 emails (messageID 44, 45) in this folder. The evaluator uses run_sqlite3 to check that attribute 60 (replied flag) has value 1 for all messages in the Bills folder. The SQL query verifies that exactly 2 distinct messages in folderID 13 have the replied attribute set, ensuring all emails are marked.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by querying the Thunderbird database: folderID 13 contains 2 emails (IDs 44, 45). Attribute 60 represents the 'repliedTo' flag in Thunderbird. The SQL query checks for messages marked as replied in the Bills folder.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "SQL query logic is correct: Uses 'count(distinct messageID) = 2' to verify exactly 2 messages in folderID 13 have the replied attribute (attributeID=60, value=1). This correctly verifies ALL emails in the Bills folder are marked as replied.",
+        "Complete coverage: The evaluator checks all requirements - it verifies that all messages in the Bills folder (folderID=13) have the replied flag set, using the correct attribute ID (60) and value (1) for Thunderbird's replied status.",
+        "Minor robustness issue: If get_vm_file fails and returns None, run_sqlite3 will raise an exception when attempting sqlite3.connect(None). However, this would result in evaluation failure rather than a false positive, so it's a robustness concern rather than a correctness issue."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add null-safety to run_sqlite3 metric function: Check if result parameter is None before calling sqlite3.connect() and return 0.0 if None, providing better error handling for file fetch failures.",
+        "Optional: Add logging in postconfig to verify database file was successfully closed and saved before attempting to fetch it."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "dd84e895-72fd-4023-a336-97689ded257c_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

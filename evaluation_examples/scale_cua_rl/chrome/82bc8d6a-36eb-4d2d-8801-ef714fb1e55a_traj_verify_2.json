@@ -1,0 +1,97 @@
+{
+  "id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a",
+  "new_id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Search for a one-way flight from Mumbai to Dubai on Qatar Airways.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.qatarairways.com/en-hk/homepage.html"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_flight_params__c2e765147c6269817e33ad57cd24dd1a",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "fromStation",
+        "toStation"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "fromStation": "BOM",
+        "toStation": "DXB"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_sid_1488147",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated Qatar Airways booking form: dismissed cookies, switched to One way, entered Mumbai (BOM) and Stockholm, selected ARN (Arlanda) instead of STO (general Stockholm code), picked correct next Monday date (Feb 16), clicked Search flights, reached flight results page.",
+    "capability_extraction": "Can dismiss cookie popups, interact with airline booking forms, type city names and select from dropdowns, switch trip types (Return/One way), navigate date calendar and select dates, click Search flights button",
+    "failure_analysis": "Model selected Stockholm Arlanda Airport (ARN) instead of general Stockholm city code (STO). The evaluator expected toStation=STO but got toStation=ARN. The model completed the task functionally but chose a specific airport instead of the city-level code.",
+    "task_rationale": "Same origin (Mumbai/BOM) as original task but with unambiguous destination Dubai (DXB is the sole major Dubai airport code). Tests the model's proven ability to fill the From field correctly while avoiding the multi-airport ambiguity issue.",
+    "explanation": "Task requires searching a one-way flight from Mumbai to Dubai on Qatar Airways. Evaluator parses URL query parameters fromStation and toStation. Partial credit: 0.5 for correct origin (BOM), 0.5 for correct destination (DXB).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_sid_1488147_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "fromStation": "0.5 - Correct departure airport (BOM)",
+      "toStation": "0.5 - Correct destination airport (DXB)"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter (active_tab_url_parse) correctly extracts fromStation and toStation URL query parameters from Qatar Airways flight search results page",
+        "Metric correctly handles expected parameter for type='rule' - accesses expected.get('fromStation') directly without unwrapping rules",
+        "Expected values are correct: BOM is Mumbai's IATA code, DXB is Dubai's IATA code",
+        "Partial credit scoring (0.5 per parameter) is reasonable for a 2-parameter check",
+        "Minor coverage gap: instruction specifies 'one-way' flight but evaluator does not verify trip type (e.g., tripType parameter in URL). Only origin and destination are checked.",
+        "Qatar Airways is implicitly verified via the config opening qatarairways.com homepage"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding tripType to parse_keys and expected rules to verify the one-way requirement (e.g., tripType=O or similar Qatar Airways URL parameter)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

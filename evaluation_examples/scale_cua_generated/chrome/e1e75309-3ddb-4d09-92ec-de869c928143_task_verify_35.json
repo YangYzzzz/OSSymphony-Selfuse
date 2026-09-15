@@ -1,0 +1,88 @@
+{
+  "id": "e1e75309-3ddb-4d09-92ec-de869c928143",
+  "new_id": "task_verify_35",
+  "snapshot": "chrome",
+  "instruction": "Please save the current webpage as a PDF to the Desktop using the default filename.",
+  "source": "https://in5stepstutorials.com/google-chrome/save-web-page-as-pdf-in-chrome.php",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_pdf_exists_with_pages__d36b36f1df35c32e48eb7411bf5a6c33",
+    "result": {
+      "type": "pdf_basic_info__d36b36f1df35c32e48eb7411bf5a6c33",
+      "path": "/home/user/Desktop/LLM Powered Autonomous Agents _ Lil'Log.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_pages": 1
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "task_type": "chrome_pdf_save",
+    "variation": 0,
+    "explanation": "Task requires saving the webpage as PDF to Desktop. Evaluator verifies that the PDF file exists at the expected location and contains at least 1 page. Uses custom getter to extract PDF metadata (exists, page_count, file_size) and custom metric to verify file existence and minimum page count.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/e1e75309-3ddb-4d09-92ec-de869c928143_task_verify_0/getters/pdf.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/e1e75309-3ddb-4d09-92ec-de869c928143_task_verify_0/metrics/pdf.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "verification_details": "Verified that PDF file path matches Chrome's default naming pattern for the webpage title. Minimum page count set to 1 as the webpage contains substantial content that will generate at least one PDF page.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: (1) PDF saved, (2) to Desktop location, (3) with default filename",
+        "Getter logic is correct: retrieves PDF file from VM, parses with pypdf, extracts existence and page count",
+        "Metric logic is correct: verifies file exists and contains at least 1 page (reasonable for webpage content)",
+        "Expected value is semantically correct: min_pages=1 is appropriate, filepath matches Chrome's default naming pattern for the webpage title",
+        "Data flow is correct: getter extracts {exists, page_count, file_size} -> metric checks exists and page_count >= min_pages",
+        "No postconfig needed: PDF file is persisted to disk, state is stable",
+        "Minor issue: Type annotation mismatch (getter returns Optional[Dict], metric expects Dict), but runtime-safe due to 'if not result' check at metric line 19"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional: Fix type annotation consistency - change getter return type from Optional[Dict] to Dict, or change metric parameter type to Optional[Dict]. Current code is runtime-safe but type annotations could be more precise."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

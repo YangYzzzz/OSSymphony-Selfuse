@@ -1,0 +1,89 @@
+{
+  "id": "1704f00f-79e6-43a7-961b-cedd3724d5fd",
+  "new_id": "1704f00f-79e6-43a7-961b-cedd3724d5fd_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Bookmark the current page in Chrome's bookmarks bar.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.rentalcars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://www.rentalcars.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_1704f00f-79e6-43a7-961b-cedd3724d5fd_sid_1488050",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent was blocked by CAPTCHA on rentalcars.com for all 50 turns. Repeatedly attempted to solve image CAPTCHAs (buckets, curtains, bags, chairs) but always failed verification. Never reached the rental car search page.",
+    "capability_extraction": "Can interact with Chrome UI elements (click images, buttons), type in address bar, navigate between pages",
+    "failure_analysis": "Model completely blocked by CAPTCHA human verification on rentalcars.com. Spent all 50 turns clicking CAPTCHA images and getting 'Incorrect. Please try again.' errors. Could not bypass the bot detection.",
+    "task_rationale": "Simplified to a bookmark management task. Even though the current page is a CAPTCHA page, the model can still bookmark it. Tests the model's ability to use Chrome's bookmark feature (Ctrl+D or star icon) rather than interacting with external websites.",
+    "explanation": "Task requires bookmarking the current page (rentalcars.com) to the bookmarks bar. Evaluator uses bookmarks getter to read Chrome's bookmark data and is_expected_bookmarks metric to verify rentalcars.com URL appears in the bookmarks bar.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter get_bookmarks correctly reads Chrome's Bookmarks JSON file and returns the roots dict containing bookmark_bar data.",
+        "Metric is_expected_bookmarks correctly handles the bookmark_bar_websites_urls rule type, extracting URLs from bookmark_bar children and comparing against expected URLs.",
+        "Expected parameter handling is correct: since expected.type='rule', the metric receives the rules dict directly and accesses rule['type'] and rule['urls'] properly.",
+        "Coverage is complete: the single instruction requirement (bookmark current page to bookmarks bar) is fully verified by checking the bookmark bar URLs.",
+        "Minor concern: Metric uses exact set equality (==) rather than subset check (⊇). If there are any pre-existing bookmarks in the bookmarks bar, verification will fail even if the correct bookmark was added. In a controlled VM this is typically fine.",
+        "Moderate concern: The expected URL is 'https://www.rentalcars.com/' but the site is known to redirect to CAPTCHA pages. If Chrome's address bar URL changes due to redirect, the bookmarked URL may differ from the expected URL, causing a false negative."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a subset check (expected URLs ⊆ actual URLs) instead of exact set equality to be more robust against pre-existing bookmarks.",
+        "Consider whether the actual URL in Chrome's address bar after navigating to rentalcars.com matches the expected URL exactly, especially given the CAPTCHA redirect behavior noted in the trajectory."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

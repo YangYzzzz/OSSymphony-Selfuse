@@ -1,0 +1,92 @@
+{
+  "id": "c1fa57f3-c3db-4596-8f09-020701085416",
+  "new_id": "task_verify_72",
+  "snapshot": "chrome",
+  "instruction": "Access the United Airlines check-in page.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.united.com/en/us"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "united.com/en/us/checkin"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires navigating to the United Airlines check-in page. Similar complexity to original task - simple navigation on the same website. Uses existing metric 'is_expected_url_pattern_match' to verify URL.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same website, similar navigation pattern",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses active_tab_info getter to extract the active tab URL from Chrome's address bar via accessibility tree",
+        "Metric is_expected_url_pattern_match correctly performs regex pattern matching on the URL",
+        "Expected pattern 'united.com/en/us/checkin' semantically matches the instruction requirement to access United Airlines check-in page",
+        "Data flow is correct: getter extracts URL -> metric checks pattern match -> expected value is appropriate",
+        "Coverage is complete for this simple navigation task - only URL verification is needed",
+        "Minor issue: Pattern matching uses substring search (re.search) without anchors, which could allow false positives from URLs like 'evil.com/phishing?redirect=united.com/en/us/checkin' - should use more strict URL validation",
+        "Minor issue: goto_prefix assumption 'https://www.' might be incorrect if the address bar already shows the full URL with scheme",
+        "No verification that page actually loaded successfully - only URL is checked, not page content or state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using stricter URL pattern with anchors (e.g., '^https?://(www\\.)?united\\.com/en/us/checkin/?$') to prevent false positives",
+        "Consider validating the URL structure more carefully instead of substring matching",
+        "Optionally add page content verification to ensure the check-in page actually loaded (not just URL navigation)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

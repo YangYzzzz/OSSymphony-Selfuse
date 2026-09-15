@@ -1,0 +1,84 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "task_verify_62",
+  "snapshot": "os",
+  "instruction": "Copy file 'source.txt' to 'backup.txt' in each of directories 'dir1', 'dir2', 'dir3'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "rm -rf dir1 dir2 dir3 && mkdir dir1 dir2 dir3 && echo 'Source data 1' > dir1/source.txt && echo 'Source data 2' > dir2/source.txt && echo 'Source data 3' > dir3/source.txt",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'for d in dir1 dir2 dir3; do if [ -f \"$d/backup.txt\" ] && [ -f \"$d/source.txt\" ]; then echo \"Success: backup.txt created in $d.\"; else echo \"Failure: backup not completed in $d.\"; fi; done'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: backup.txt created in dir1.",
+          "Success: backup.txt created in dir2.",
+          "Success: backup.txt created in dir3."
+        ],
+        "exclude": [
+          "Failure"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires copying 'source.txt' to 'backup.txt' within each directory (not across directories). The evaluator checks that both source.txt and backup.txt exist in each directory, confirming the copy operation maintained the original file.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking bash script logic: the script verifies both files exist in each directory (source.txt should remain, backup.txt should be created). The evaluator confirms all success messages are present.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts the required state: bash script checks for both backup.txt and source.txt existence in all 3 directories (dir1, dir2, dir3)",
+        "Metric comparison logic is correct: check_include_exclude properly verifies all 3 success messages are present and no failure messages exist",
+        "Complete coverage: evaluator checks all 3 directories as required by the instruction",
+        "Expected values are semantically correct: success messages match the exact output format of the bash verification script",
+        "Verification logic will work correctly at runtime: bash script uses standard file existence test [-f] which reliably checks if files were created",
+        "No state timing issues: file operations can be verified after task completion without needing postconfig"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

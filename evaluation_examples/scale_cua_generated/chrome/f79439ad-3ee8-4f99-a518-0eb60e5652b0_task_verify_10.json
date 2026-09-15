@@ -1,0 +1,110 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_10",
+  "snapshot": "chrome",
+  "instruction": "Locate a one-way airfare for three adults traveling from Paris to Rome on the 10th day of the upcoming month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "10th next month"
+        },
+        "expected": {
+          "originIata": "BVA",
+          "destinationIata": "FCO",
+          "tpAdults": "3",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation 1: Search for one-way flight from Paris Beauvais (BVA) to Rome Fiumicino (FCO) for 3 adults on 10th of next month. Uses existing evaluator functions to verify URL parameters. Similar complexity to original - same interaction pattern with different values.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic can correctly verify the instruction: The task uses '10th next month' which IS supported in relativeTime_to_IntDay mapping (misc.py:69)",
+        "Getter logic is correct: get_active_tab_url_parse (chrome.py:2258-2288) properly extracts URL query parameters including originIata, destinationIata, tpAdults, tpTeens, tpChildren, tpStartDate, and isReturn",
+        "Metric logic is correct: check_direct_json_object (general.py:382-481) properly compares the extracted JSON object against expected values",
+        "Expected values are semantically correct: BVA (Paris Beauvais) for Paris, FCO (Rome Fiumicino) for Rome, tpAdults='3', tpTeens='0', tpChildren='0', isReturn='false' for one-way flight",
+        "Instruction coverage is complete: All requirements in the instruction are verified - origin city (Paris->BVA), destination city (Rome->FCO), passenger count (3 adults), date (10th next month), and trip type (one way)",
+        "Relative time handling is correct: The get_rule_relativeTime function (misc.py:93-338) will successfully convert '10th next month' to absolute date format {Year}-{Month0D}-{DayD} using the logic at lines 146-150",
+        "Data flow is correct: URL params are extracted -> parsed into JSON -> compared against expected values with proper date conversion -> all aspects match instruction requirements",
+        "Runtime execution will succeed: No KeyError will occur because '10th next month' is in the supported mapping, and the evaluator will properly verify the flight search URL"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_aug_14_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

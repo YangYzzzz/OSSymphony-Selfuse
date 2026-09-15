@@ -1,0 +1,119 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "Get the invoice PDF from my Google Drive and convert the table data into a LibreOffice Calc file saved as 'invoice.xlsx' on the Desktop with proper data extraction.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_has_data__529e41fe",
+    "result": {
+      "type": "xlsx_has_data__529e41fe",
+      "path": "/home/user/Desktop/invoice.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_data": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task verifies that the extracted invoice data contains substantial information (at least 10 cells with data). The evaluator checks if the file has sufficient data cells populated.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_8/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_8/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "529e41fe",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks for file existence at the specified path (/home/user/Desktop/invoice.xlsx)",
+        "Getter logic properly extracts state by counting cells with data, which is a reasonable proxy for 'proper data extraction'",
+        "Threshold of 10 cells with data is appropriate for invoice table content (headers, line items, amounts, etc.)",
+        "Data flow is semantically correct: getter returns boolean -> metric compares boolean -> expected is boolean",
+        "Edge cases are handled: file not found, corrupt file, and empty file all return False",
+        "Search area (20 rows x 10 columns) is reasonable for typical invoice data",
+        "Minor limitation: evaluator cannot verify data accuracy or whether content actually matches the source invoice PDF, but this is a practical trade-off for automated verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification of specific invoice-related content (e.g., column headers, numeric values in amount fields) if ground truth is available",
+        "Could enhance by checking data structure (e.g., at least 2 rows and 3 columns of data) rather than just cell count"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

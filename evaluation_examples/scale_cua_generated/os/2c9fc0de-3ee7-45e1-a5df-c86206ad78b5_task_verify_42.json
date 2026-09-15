@@ -1,0 +1,102 @@
+{
+  "id": "2c9fc0de-3ee7-45e1-a5df-c86206ad78b5",
+  "new_id": "task_verify_42",
+  "snapshot": "os",
+  "instruction": "In the binder project working directory, stage all files, commit with message \"baseline version\", and upload the commit to the main branch of the remote repository.",
+  "source": "https://nikki-ricks.medium.com/how-to-use-git-add-commit-and-push-in-vs-code-and-command-line-35c0e8c47b62",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2c9fc0de-3ee7-45e1-a5df-c86206ad78b5/binder.zip",
+            "path": "/home/user/Downloads/binder.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "git config --global user.name \"xlang\" && git config --global user.email \"xlang2024anonym@gmail.com\" && mkdir -p /home/user/projects/remote_project && cd /home/user/projects/remote_project && git init --initial-branch=main && git config receive.denyCurrentBranch ignore "
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "unzip -q /home/user/Downloads/binder.zip -d /home/user/projects/ && cd /home/user/projects/binder && git init --initial-branch main && git remote add origin /home/user/projects/remote_project"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/projects/binder",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "cd /home/user/projects/remote_project && git log --oneline | head -n 1 | awk '{for (i=2; i<=NF; i++) {printf \"%s%s\", $i, (i==NF ? \"\" : \" \")}; print \"\"}'; remote_id=$(git log --oneline | head -n 1 | awk '{print $1}'); cd /home/user/projects/binder && local_id=$(git log --oneline | head -n 1 | awk '{print $1}'); if [ \"${local_id}\" = \"${remote_id}\" ]; then echo \"repo is synchronous\"; else echo \"repo is not synchronous\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "baseline version",
+          "repo is synchronous"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires staging files, committing with message 'baseline version', and pushing to remote. The evaluator checks the commit message in remote and verifies synchronization between local and remote repositories.",
+    "new_functions_paths": [],
+    "verification": "Tested evaluator logic: Command extracts commit message from remote and compares commit IDs to ensure repositories are synchronized.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies commit message 'baseline version' by extracting it from the remote repository",
+        "Synchronization check successfully verifies that the local commit was pushed to remote by comparing commit IDs",
+        "check_include_exclude metric appropriately checks for both required strings in command output",
+        "Complete coverage of instruction requirements: commit message verification and successful push verification",
+        "Command logic is sound: navigates to remote repo, extracts commit message, compares commit hashes, outputs sync status"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator doesn't explicitly verify that 'git add' staged ALL files, but this is implicitly verified through the commit existence and push success"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "terminal"
+  ],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

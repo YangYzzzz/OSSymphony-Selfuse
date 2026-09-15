@@ -1,0 +1,98 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Please configure Chrome's default text size to the smallest available option.",
+  "source": "https://www.howtogeek.com/680260/how-to-change-chromes-default-text-size/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "range",
+        "min": 9,
+        "max": 12
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting Chrome's default text size to the smallest option (typically 9-10). Evaluator checks if default_font_size is in range [9, 12). Original task checks for largest size (16+), this checks for smallest size (9-11). Using existing get_chrome_font_size getter and fixed check_font_size metric with correct range comparison.",
+    "new_functions_paths": [
+      "tmp_funcs/af630914-714e-4a24-a7bb-f9af687d3b91_aug_13_task_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is CORRECT and can properly verify the instruction.",
+        "Getter logic (get_chrome_font_size) correctly reads Chrome Preferences file and extracts default_font_size from webkit.webprefs settings.",
+        "Metric logic (check_font_size) correctly implements range comparison with inclusive lower bound and exclusive upper bound: 'rule['min'] <= default_font_size < rule['max']'. This properly evaluates range [9, 12) to accept values 9, 10, 11.",
+        "Expected range [9, 12) is semantically appropriate for 'smallest available option'. Chrome's smallest font size is typically 9-10, so range covers 9, 10, 11 which correctly targets smallest sizes without being too permissive.",
+        "Postconfig appropriately restarts Chrome to ensure Preferences file is written and persisted, allowing verification of the saved setting.",
+        "Complete instruction coverage: evaluator checks that default text size was configured to smallest option (9-11 range)."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

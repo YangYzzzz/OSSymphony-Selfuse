@@ -1,0 +1,90 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "82279c77-8fc6-46f6-9622-3ba96f61b477_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Enable the 'Do Not Track' request in Chrome's privacy settings.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_do_not_track__8d6140655fd3ffdbb0f2973a3475732a",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "enabled": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_82279c77-8fc6-46f6-9622-3ba96f61b477_sid_1488099",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to find electric cars on cars.com but encountered ERR_HTTP2_PROTOCOL_ERROR. Spent all 50 turns trying to access cars.com via Chrome, Firefox, curl, and Python requests. Investigated proxy settings but could not bypass the connection issue.",
+    "capability_extraction": "Can open Chrome, type URLs in address bar, open terminal, run bash/curl/Python commands, open Firefox, navigate Chrome UI menus, investigate system settings",
+    "failure_analysis": "cars.com was inaccessible due to HTTP/2 protocol errors through the configured proxy. The model could not complete the original task because the target website was unreachable, not due to agent capability limitations.",
+    "task_rationale": "Tests Chrome privacy settings modification. The model demonstrated it can navigate Chrome UI and investigate settings. Enabling Do Not Track requires navigating to chrome://settings/privacy and toggling a setting, which is achievable without external network access.",
+    "explanation": "Task requires enabling the 'Do Not Track' setting in Chrome's privacy settings. Evaluator uses official enable_do_not_track getter (reads Chrome preferences file, returns string 'true'/'false') and a custom metric that converts the string result to boolean before comparing with expected value. [Fixed: metric now handles string return type from getter]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_82279c77-8fc6-46f6-9622-3ba96f61b477_sid_1488099_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "do_not_track_enabled": "1.0 - Do Not Track setting is True"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Updated metric check_do_not_track__8d6140655fd3ffdbb0f2973a3475732a to handle string return type from official getter get_enable_do_not_track. The getter returns 'true'/'false' strings, not Python booleans. Added isinstance(result, str) branch to convert string to bool before comparison."
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter get_enable_do_not_track correctly reads Chrome Preferences file and returns 'true'/'false' string indicating Do Not Track state.",
+        "Custom metric correctly handles string-to-boolean conversion: isinstance(result, str) branch converts 'true'/'false' to Python bool before comparing with expected boolean value.",
+        "Expected value {'enabled': true} is semantically correct — the instruction asks to enable Do Not Track, so expected is True.",
+        "Complete instruction coverage: the single requirement (enable Do Not Track) is fully verified by checking the preference file state.",
+        "Data flow is correct: getter returns 'true' string -> metric converts to True bool -> compares with expected True -> returns 1.0 for success."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

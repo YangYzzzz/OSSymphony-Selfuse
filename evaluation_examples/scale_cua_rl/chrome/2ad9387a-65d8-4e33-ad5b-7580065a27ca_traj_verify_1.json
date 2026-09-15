@@ -1,0 +1,103 @@
+{
+  "id": "2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "new_id": "2ad9387a-65d8-4e33-ad5b-7580065a27ca_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Create two new folders on the bookmarks bar in Chrome: one called 'News' and another called 'Social'.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_bookmark_folders_subset__50cc0236f8d2558ccc3fa0de1fd3e9f1",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_folders_names",
+        "names": [
+          "News",
+          "Social"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_2ad9387a-65d8-4e33-ad5b-7580065a27ca_sid_1488244",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created a 'Favorites' folder on the bookmarks bar. Showed bookmarks bar with Ctrl+Shift+B, right-clicked to open context menu, selected 'Add folder', typed folder name, and saved.",
+    "capability_extraction": "Can show/hide bookmarks bar, right-click context menus, create bookmark folders via dialog, type text in input fields",
+    "task_rationale": "Harder variation requiring two folder creation operations instead of one, testing the agent's ability to repeat the bookmark folder creation workflow",
+    "explanation": "Task requires creating two folders 'News' and 'Social' on the bookmarks bar. Evaluator uses custom metric check_bookmark_folders_subset which checks that expected folder names are a subset of actual bookmark bar folder names, correctly handling pre-existing folders. Getter get_bookmarks reads the Chrome Bookmarks file. Postconfig kills and relaunches Chrome to persist bookmarks to disk. [Fixed: replaced official is_expected_bookmarks (exact set equality) with custom subset-check metric to handle pre-existing folders on the bookmarks bar]",
+    "new_functions_paths": [
+      "{tmp_func_dir}/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Replaced official is_expected_bookmarks metric (exact set equality at chrome.py:152) with custom check_bookmark_folders_subset__50cc0236f8d2558ccc3fa0de1fd3e9f1 that uses set.issubset() to correctly handle pre-existing folders on the bookmarks bar when the instruction says 'Create two new folders' (additive operation)"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Custom metric check_bookmark_folders_subset correctly uses set.issubset() to verify that expected folder names ('News', 'Social') are present in the bookmark bar, properly handling pre-existing folders for this additive instruction.",
+        "Expected parameter handling is correct: with expected.type='rule', the metric receives the rules dict directly and accesses rule.get('type') and rule.get('names') properly.",
+        "Getter get_bookmarks correctly reads the Chrome Bookmarks JSON file and returns the roots dict containing bookmark_bar with children — data flow from getter to metric is correct.",
+        "Metric correctly filters children by type=='folder' to extract folder names, ignoring bookmark entries.",
+        "Postconfig correctly kills and relaunches Chrome with a 3-second sleep to ensure bookmarks are persisted to disk before the getter reads the file.",
+        "Complete coverage: both required folder names are checked via the subset operation in a single evaluator step."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

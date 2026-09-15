@@ -1,0 +1,117 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_63",
+  "snapshot": "thunderbird",
+  "instruction": "I notice Thunderbird is using the old 'Deleted' folder name for trash. Could you help me change the trash folder name to 'Trash' instead?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.server1.trash_folder_name": {
+            "method": "eq",
+            "ref": "Trash"
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing trash folder name from 'Deleted' to 'Trash'. Verified in cache: mail.server.server1.trash_folder_name is currently 'Deleted', task requires changing it to 'Trash'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Checked cache prefs.js - mail.server.server1.trash_folder_name is currently 'Deleted', task requires changing it to 'Trash'",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly reads Thunderbird preferences file (prefs.js) which stores folder configuration",
+        "Checks the correct preference key: mail.server.server1.trash_folder_name",
+        "Uses appropriate exact string comparison (eq method) to verify the value is 'Trash'",
+        "Postconfig appropriately closes Thunderbird before reading prefs.js to ensure preferences are written to disk",
+        "Complete coverage: instruction has one requirement (change trash folder name) and evaluator verifies exactly that",
+        "Expected value ('Trash') is semantically correct and matches the instruction requirement",
+        "Metric function check_thunderbird_prefs handles edge cases (None values, parsing errors) robustly",
+        "Data flow is logically correct: close app → read prefs file → parse preferences → compare expected value"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

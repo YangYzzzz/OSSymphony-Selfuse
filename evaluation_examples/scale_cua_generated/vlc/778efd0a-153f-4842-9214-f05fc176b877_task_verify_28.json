@@ -1,0 +1,126 @@
+{
+  "id": "778efd0a-153f-4842-9214-f05fc176b877",
+  "new_id": "task_verify_28",
+  "snapshot": "vlc",
+  "instruction": "Add a hyperlink to the text 'Learn More' on the first slide that points to 'https://example.com/info'.",
+  "source": "https://researchguides.case.edu/c.php?g=1286426",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/Minimalist_Business_Slides.pptx",
+            "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/planet.mp4",
+            "path": "/home/user/Desktop/planet.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/planet.mp4",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress",
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Minimalist_Business_Slides.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_ppt_hyperlink__b5b18c2b",
+    "result": {
+      "type": "ppt_hyperlink__b5b18c2b",
+      "ppt_file_path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "slide_index": 0,
+        "link_text": "Learn More",
+        "link_url": "https://example.com/info"
+      }
+    },
+    "options": {}
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding a hyperlink to specific text on first slide. Evaluator checks: (1) First slide contains text 'Learn More' (0.5 points), (2) That text has a hyperlink to 'https://example.com/info' (0.5 points). Verified by parsing slide XML for hyperlink relationships.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/778efd0a-153f-4842-9214-f05fc176b877_task_verify_8/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/778efd0a-153f-4842-9214-f05fc176b877_task_verify_8/metrics/slides.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.50": "First slide contains text 'Learn More'",
+      "1.00": "Text 'Learn More' has hyperlink to 'https://example.com/info'"
+    },
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Getter logic issue: Lines 54-60 in impress.py extract URLs from XML but set 'text' to empty string, creating incomplete hyperlink entries that won't match expected text",
+        "Metric matching is too flexible: Lines 26-29 in slides.py use substring matching ('expected_text in link_text', 'expected_url in link_url') which would incorrectly match partial URLs like 'https://example.com/info/more' or text containing 'Learn More' as substring",
+        "Partial credit logic flaw: Metric awards 0.5 points if text 'Learn More' exists anywhere in hyperlinks list (line 33-34), even if that text comes from an incomplete XML-parsed entry with empty text field, not verifying text is actually hyperlinked",
+        "Redundant extraction approaches: Getter uses both manual ZIP/XML parsing (incomplete) and python-pptx library (correct), potentially adding duplicate or inconsistent entries to the hyperlinks list"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove the manual ZIP/XML parsing approach (lines 30-60) and rely solely on python-pptx library (lines 63-74) which correctly extracts both text and URL",
+        "Change metric matching to exact comparison: Use 'link_text.strip() == expected_text' and 'link_url.strip() == expected_url' instead of substring matching to prevent false positives",
+        "Fix partial credit logic to ensure text match only counts when the text is actually part of a hyperlink (not an empty-text entry from XML parsing)",
+        "Add validation in getter to filter out hyperlink entries with empty text fields before returning the result"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

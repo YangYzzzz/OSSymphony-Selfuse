@@ -1,0 +1,87 @@
+{
+  "id": "f3b19d1e-2d48-44e9-b4e1-defcae1a0197",
+  "new_id": "task_verify_96",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the about page to learn more about the company.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://premier.ticketek.com.au/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "about"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires user to navigate from Ticketek homepage to the about page. Evaluator checks if the active tab URL contains 'about' pattern.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Using existing is_expected_url_pattern_match metric. Pattern 'about' will match URLs like '/about-us', '/about', etc.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction - pattern 'about' will match about pages like '/about', '/about-us', etc.",
+        "Metric is_expected_url_pattern_match correctly handles both string URLs and dict with 'url' field from getter",
+        "Complete coverage: evaluator checks that active tab URL contains 'about' pattern, which verifies navigation to about page",
+        "Minor concern: get_active_tab_info getter reloads the target URL which could cause unexpected behavior if the page has cache/cookie dependencies (though metadata notes this was tested)",
+        "Minor concern: No postconfig to ensure Chrome/tab remains accessible, but getter has retry logic and error handling (2 retries with 60s timeout)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to activate Chrome window before evaluation to ensure accessibility tree can read the active tab URL",
+        "If the about page has authentication or session requirements, consider using get_active_url_from_accessTree instead of get_active_tab_info to avoid page reload issues"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

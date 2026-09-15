@@ -1,0 +1,159 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Take each email from the Bills folder in Thunderbird, save it as a .eml file with the email subject as the filename, then move these files to the Google Drive emails folder.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_eml_files__74b11cf6",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path_list": [
+        [
+          "emails",
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml"
+        ],
+        [
+          "emails",
+          "Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      ],
+      "dest": [
+        "pred1.eml",
+        "pred2.eml"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_count": 2,
+        "check_headers": [
+          "Subject:",
+          "From:"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires saving Bills folder emails as .eml files and uploading to Google Drive. Evaluator checks that 2 files exist and contain essential email headers (Subject and From) to validate they are proper email files.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_4/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.55,
+      "llm_judge_reasons": [
+        "Parameter handling is CORRECT: Lines 36-38 properly access expected.get() directly without wrapping in expected.get('rules'). The metric correctly receives the rules dictionary as the expected parameter.",
+        "OVERLY STRICT subject-to-filename matching (lines 86-93): Uses exact string comparison (subject_line != expected_subject) which will fail for minor formatting differences, encoding variations, or special character handling between email headers and filenames. Real .eml files may have Subject headers formatted differently than filenames.",
+        "HARDCODED ASSUMPTIONS about sender addresses (lines 97-100): The metric assumes specific sender emails (no-reply@amazon.com, info@x.com) without analyzing actual Bills folder data. These hardcoded values are assumptions that may not match the actual emails in the Thunderbird Bills folder.",
+        "VERIFICATION LOGIC TOO FRAGILE: The combination of exact string matching for subjects and hardcoded sender verification creates a brittle evaluator that may produce false negatives when the task is actually completed correctly but with minor variations in email formatting.",
+        "CORRECT in principle: The evaluator checks the right aspects (file count, email headers present, content matching), but the implementation is too strict for real-world email file handling where formatting variations are normal."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use fuzzy/normalized string matching for subject comparison: Strip special characters, normalize whitespace, and use case-insensitive comparison. Email subjects in .eml files may be encoded differently than filenames.",
+        "Remove hardcoded sender assumptions: Either extract expected senders from actual Bills folder data during task generation, or use more flexible sender validation (e.g., check domain matches like '@amazon.com' instead of exact address).",
+        "Add tolerance for email header variations: .eml files can have different encodings (quoted-printable, base64) and formatting. Consider using email parsing libraries (email.parser) instead of simple string matching.",
+        "Consider relaxing to warning-level checks: If exact matching is desired, make it a partial credit deduction rather than complete failure, or provide clear documentation that exact formatting is required."
+      ]
+    }
+  }
+}

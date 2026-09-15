@@ -1,0 +1,76 @@
+{
+  "id": "dbbf4b99-2253-4b10-9274-45f246af2466",
+  "new_id": "dbbf4b99-2253-4b10-9274-45f246af2466_traj_verify_0",
+  "snapshot": "gimp",
+  "instruction": "Change the GIMP application theme to 'Light' in the Preferences.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/dbbf4b99-2253-4b10-9274-45f246af2466/yicun.raw",
+            "path": "/home/user/Desktop/yicun.raw"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/yicun.raw"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_config_status",
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "config.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "key": "theme",
+        "value": "\"Light\""
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_dbbf4b99-2253-4b10-9274-45f246af2466_sid_1488124",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to convert RAW image to JPEG using GIMP. GIMP showed error 'no RAW loader installed'. Model dismissed error, installed darktable and dcraw via terminal, attempted CLI conversions (dcraw, darktable-cli), explored GIMP Filters menu, tried File > Open dialog. All attempts failed after 50 turns.",
+    "capability_extraction": "Can navigate GIMP menus (File, Edit, Filters), open/close dialogs, use terminal commands, install packages via apt, browse file system in GIMP Open dialog, interact with GIMP UI elements",
+    "failure_analysis": "Original task was intentionally infeasible - GIMP cannot open RAW files without external RAW loader plugins (darktable/RawTherapee). Even after installing darktable, the CLI conversion also failed due to decoder issues with the specific RAW file format.",
+    "task_rationale": "Simplified to a basic GIMP preference change task. Model demonstrated ability to navigate GIMP menus, so changing theme via Edit > Preferences is within capability. No image loading required.",
+    "explanation": "Task asks model to change GIMP theme to 'Light'. Evaluator uses official check_config_status metric with gimp_config_file getter to read gimprc and verify theme setting. check_config_status parses gimprc lines by stripping parens and splitting by space, then matches rule['key'] against items[0] and rule['value'] against items[-1]. GIMP 2.10 stores theme as (theme \"Light\") so after parsing items=['theme', '\"Light\"']. [Fixed: changed rules from {expected: {theme: Light}} to {key: theme, value: \"Light\"} to match check_config_status expected format]",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "fix_history": [
+      "Fix 1: Changed rules structure from {'expected': {'theme': 'Light'}} to {'key': 'theme', 'value': '\"Light\"'} to match check_config_status which expects rule['key'] and rule['value']. Also ensured value includes surrounding quotes to match gimprc parsed format (theme \"Light\") -> items[-1] = '\"Light\"'."
+    ],
+    "verification": "Verified by reading check_config_status source (gimp.py:517-539): function parses gimprc lines with lstrip('(').rstrip(')\\n').split(), then checks items[0]==rule['key'] and items[-1]==rule['value']. For gimprc line '(theme \"Light\")', items=['theme', '\"Light\"'], so key='theme' and value='\"Light\"' is correct.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (gimp_config_file) correctly reads ~/.config/GIMP/2.10/gimprc and returns the local file path for the metric to consume.",
+        "Expected type='rule' causes get_rule to return {'key': 'theme', 'value': '\"Light\"'} as the rule parameter to check_config_status, which correctly matches the function's expected format (rule['key'] and rule['value']).",
+        "check_config_status parses gimprc lines with lstrip('(').rstrip(')\\n').split(). For line '(theme \"Light\")', this yields items=['theme', '\"Light\"']. items[0]='theme' matches rule['key']='theme', and items[-1]='\"Light\"' matches rule['value']='\"Light\"' (JSON '\\\"Light\\\"' decodes to Python string '\"Light\"').",
+        "Complete coverage: the single instruction requirement (change theme to Light) is fully verified by checking the gimprc theme setting.",
+        "No postconfig needed since the evaluator reads a persistent config file, not transient UI state."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

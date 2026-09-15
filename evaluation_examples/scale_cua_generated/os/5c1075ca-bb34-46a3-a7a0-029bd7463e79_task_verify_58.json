@@ -1,0 +1,121 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_58",
+  "snapshot": "os",
+  "instruction": "Copy all files matching \"*old.csv\" in the current directory tree to \"./archive\" preserving the directory hierarchy",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "src": "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5c1075ca-bb34-46a3-a7a0-029bd7463e79_task_verify_5/setup.sh",
+        "dest": "/home/user/setup.sh"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x /home/user/setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "upload_file",
+      "parameters": {
+        "src": "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5c1075ca-bb34-46a3-a7a0-029bd7463e79_task_verify_5/eval.sh",
+        "dest": "/home/user/eval.sh"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x /home/user/eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "/home/user/setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash /home/user/eval.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Evaluation successful."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation 5: Copy all *old.csv files to ./archive with preserved hierarchy. Setup creates 3 matching files (dir1/data_old.csv, dir2/subdir1/records_old.csv, dir3/sales_old.csv). Evaluator verifies directory structure preservation and file copying completion.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.65,
+      "llm_judge_reasons": [
+        "Critical issue: Evaluator does not distinguish between 'copy' and 'move' operations. The instruction explicitly requires 'Copy' but eval.sh only checks if files exist in destination, not if they still exist in source. A move operation would incorrectly pass.",
+        "Evaluator correctly verifies directory hierarchy preservation by comparing source and destination structures (excluding archive directory).",
+        "Evaluator correctly checks that all *old.csv files (data_old.csv, records_old.csv, sales_old.csv) are present in destination with preserved paths.",
+        "Minor issue: No content verification - only checks file existence by name, not that files are actual copies with same content.",
+        "Minor issue: Potential false positive if archive directory contains files from previous runs, though this is mitigated by typical clean test environments."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification in eval.sh that source files still exist after copying: check that dir1/data_old.csv, dir2/subdir1/records_old.csv, and dir3/sales_old.csv still exist in test_environment directory.",
+        "Optionally add content comparison (e.g., using diff or checksums) to verify files are true copies, not just files with matching names.",
+        "Consider adding a cleanup step in setup.sh to remove any existing archive directory to prevent false positives from previous runs."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

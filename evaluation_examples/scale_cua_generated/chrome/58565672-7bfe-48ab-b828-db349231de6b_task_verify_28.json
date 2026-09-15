@@ -1,0 +1,120 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_28",
+  "snapshot": "chrome",
+  "instruction": "Please help me by opening the link found in the most recent email in the Bills folder in a new Chrome tab.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 0: Paraphrased instruction. Task requires opening the first link (https://www.amazon.com/) from the latest email in the Bills folder in a new Chrome tab. The evaluator checks that all three tabs are open: the two initial tabs (apple.com, scholar.google.com) plus the newly opened amazon.com tab. Uses existing is_expected_tabs function with open_tabs_info getter.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the end result: checks if amazon.com tab is opened in Chrome alongside the initial tabs",
+        "Getter (get_open_tabs_info) can properly extract Chrome tab state via CDP connection with retry logic",
+        "Metric (is_expected_tabs) correctly compares expected vs actual URLs using proper URL comparison",
+        "Expected values are semantically correct: 2 initial tabs + 1 newly opened amazon.com tab",
+        "State is accessible at runtime - Chrome tabs persist after actions, no postconfig needed"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider that the evaluator only verifies the end state (tab opened) but doesn't verify intermediate steps (opening Thunderbird, finding email, extracting link). While this is acceptable for result-based verification, it means an agent could pass by directly opening amazon.com without following the correct process. This is a common trade-off in verification design and not a critical flaw for this task type."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

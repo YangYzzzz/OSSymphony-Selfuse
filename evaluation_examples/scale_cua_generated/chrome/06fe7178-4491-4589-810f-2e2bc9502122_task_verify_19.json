@@ -1,0 +1,99 @@
+{
+  "id": "06fe7178-4491-4589-810f-2e2bc9502122",
+  "new_id": "task_verify_19",
+  "snapshot": "chrome",
+  "instruction": "Reopen the last closed tab to access TripAdvisor again.",
+  "source": "https://www.wikihow.com/Switch-Tabs-in-Chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.lonelyplanet.com",
+          "https://www.airbnb.com",
+          "https://www.tripadvisor.com"
+        ]
+      }
+    },
+    {
+      "type": "chrome_close_tabs",
+      "parameters": {
+        "urls_to_close": [
+          "https://www.tripadvisor.com"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.lonelyplanet.com",
+          "https://www.airbnb.com",
+          "https://www.tripadvisor.com"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires undoing the TripAdvisor tab closure by restoring it. The evaluator verifies all 3 travel website tabs are present using is_expected_tabs metric. Agent needs to use Chrome's 'Reopen closed tab' feature. No custom functions needed - reuses official Chrome getters/metrics.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "variation_index": 2,
+    "md5_hash": "b794741f1927b7e6594e15ac958c71a1",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (get_open_tabs_info) correctly extracts all open tab URLs from Chrome browser state",
+        "Metric (is_expected_tabs) correctly compares actual tab URLs against expected URLs using URL comparison logic",
+        "Expected value semantically correct: lists all 3 URLs that should be present after undoing tab closure (lonelyplanet, airbnb, tripadvisor)",
+        "Evaluator provides complete coverage: verifying all 3 tabs are present confirms TripAdvisor was successfully restored",
+        "Minor potential issue: are_lists_equal may be order-sensitive. When reopening a closed tab via Ctrl+Shift+T, Chrome typically reopens it at the end of the tab list rather than its original position. If the comparison function requires exact order matching, the evaluator could fail even when all correct tabs are present. However, without access to are_lists_equal implementation, cannot confirm this is actually a problem - the function may handle unordered comparison correctly."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying that are_lists_equal (used in is_expected_tabs metric) handles unordered comparison or uses set-based comparison rather than strict list order matching, to account for potential tab position changes when reopening closed tabs"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "06fe7178-4491-4589-810f-2e2bc9502122_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

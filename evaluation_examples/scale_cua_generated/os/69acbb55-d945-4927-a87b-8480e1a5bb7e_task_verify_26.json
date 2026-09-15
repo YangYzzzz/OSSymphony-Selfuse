@@ -1,0 +1,88 @@
+{
+  "id": "69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "new_id": "task_verify_26",
+  "snapshot": "os",
+  "instruction": "I'm working on computer vision tasks and need to set up the YOLOv5 object detection framework. Please clone 'https://github.com/ultralytics/yolov5' into the /home/user directory and install the required dependencies as specified in their requirements file.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "related_apps": [
+    "os",
+    "chrome",
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_error",
+      "command": [
+        "python",
+        "-c",
+        "import torch; import cv2; print('Dependencies OK')"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Dependencies OK"
+        ],
+        "exclude": [
+          "Error:",
+          "ModuleNotFoundError",
+          "ImportError"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation testing YOLOv5 environment setup. Evaluator verifies that key dependencies (torch, cv2) can be imported and checks for successful output message. The check_include_exclude metric ensures 'Dependencies OK' is present and no error strings appear.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Wrong getter used - get_vm_command_error returns stderr, but 'Dependencies OK' is printed to stdout. The evaluator will fail to find the expected success message.",
+        "INCOMPLETE COVERAGE: Instruction requires TWO tasks: (1) clone YOLOv5 repository to /home/user, and (2) install dependencies. Evaluator ONLY verifies dependency installation, completely ignores repository cloning verification.",
+        "INSUFFICIENT DEPENDENCY CHECK: YOLOv5 has 15+ dependencies in requirements.txt (numpy, matplotlib, pyyaml, requests, scipy, tqdm, etc.), but evaluator only tests 2 packages (torch, cv2). This provides weak verification of successful installation.",
+        "MISSING YOLOV5 VERIFICATION: Does not verify that YOLOv5 itself was actually installed or can be imported (e.g., 'import yolov5' or checking for yolov5 directory existence)."
+      ],
+      "llm_judge_fix_suggestions": [
+        "CRITICAL FIX: Change getter from 'get_vm_command_error' to 'get_vm_command_line' so it captures stdout where 'Dependencies OK' is printed.",
+        "Add repository verification: Use get_vm_command_line or file existence getter to verify /home/user/yolov5 directory exists with key files (detect.py, train.py, requirements.txt).",
+        "Enhance dependency verification: Test more critical YOLOv5 dependencies or attempt to import yolov5 utilities (e.g., 'from models.common import DetectMultiBackend').",
+        "Consider partial credit: Award 0.5 for dependencies only, 0.5 for repository cloning (if implemented)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

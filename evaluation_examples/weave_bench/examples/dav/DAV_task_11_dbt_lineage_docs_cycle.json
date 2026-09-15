@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_11_dbt_lineage_docs_cycle",
+  "snapshot": "weave_bench",
+  "instruction": "You have inherited a dbt project (a jaffle_shop fork using the dbt-duckdb adapter). CI reports that a test related to `stg_orders` is failing, with the error `Binder Error: type mismatch on column \"amount\"`. The model-level lineage you can see in `manifest.json` is flat — it only tells you that `fct_customer_orders` depends on `stg_orders` and `stg_payments`, but **at the column level the `amount` field actually has two upstream sources whose types are inconsistent**. This conflict is hard to spot in the flat structure of manifest.json / catalog.json; only by expanding nodes in the dbt-docs DAG / column-lineage visualization and laying out the upstream edges of the `amount` column can you intuitively see two arrows in different colors pointing to different staging models.\n\nEnvironment and assets (already prepared):\n- Project root: `/tmp_workspace/jaffle_shop/`; warmup has already run `dbt deps && dbt seed`, and profiles are written to `/root/.dbt/profiles.yml`.\n- The backend is dbt-duckdb, persisted to `jaffle_shop.duckdb` under the project root.\n- The dbt-docs site must be generated and served by you (you may choose the port); warmup does not pre-start it because rendering needs to reflect the current fix state.\n\nTask goal: combine the model-level + column-level lineage visualization with SQL forensics to locate the source of the `amount` column's type conflict, fix the staging model that causes it, get `dbt build` passing, and leave behind \"before vs after\" visual evidence together with a machine-readable report.\n\nThe following deliverables must be produced under `/tmp_workspace/results/`:\n\n1. **Execution log forensics (before / after)**\n   - `run_before.log`: the full stdout of one `dbt run` on the original project (containing model counts, \"Done.\", \"Completed successfully\" or similar markers).\n   - `test_before.log`: the full stdout of running tests on the original project; must contain one of `FAIL` / `ERROR` / `Failure` to prove the problem is reproducible in the initial state.\n   - `build_after.log`: the full stdout of running `dbt build` again after the fix; must contain `PASS` and must no longer contain `FAIL` / `ERROR`.\n\n2. **Dependency forensics**\n   - `manifest_deps.json`: the `depends_on.nodes` subset of the failing model (not the full manifest.json — the file should be far smaller than the original manifest, so a reviewer only sees the upstream list of the target model).\n\n3. **Column type forensics**\n   - `column_types.json`: keys are `<table>.<column>` and values are the column's actual SQL type string; must contain at least the three entries `stg_orders.amount`, `stg_payments.amount`, and `fct_customer_orders.amount`. These values must be queried from the real duckdb / dbt schema and may not be guessed.\n   - In the pre-fix stage, the type of `stg_orders.amount` should appear as one of `VARCHAR` / `TEXT` / `STRING` (i.e. the conflict scene).\n\n4. **Fixed staging model source**\n   - `fixed_models/`: at least one `.sql` file preserving the project-relative path (e.g. `models/staging/stg_orders.sql`) containing the fixed version; the fix must be done at the SQL layer using `cast(... as ...)` or `::double` / `::numeric` / `::float` / `::decimal` type conversion to normalize the `amount` column to a numeric type consistent with downstream usage. Bypassing the test by deleting a schema test or running sed is not allowed.\n   - The fix must actually land under `/tmp_workspace/jaffle_shop/` (so that dbt build can pass), and the same file must also be copied into `fixed_models/` for archival.\n\n5. **dbt-docs visual evidence** (each ≥ 4 KB, from actual dbt-docs page renders)\n   - `view_dbt_dag_overview.png`: the dbt-docs landing screen; both the left project tree and the central DAG view must be visible at the same time (≥ 5 nodes/edges visible).\n   - `view_dbt_lineage_expanded.png`: the DAG view after focusing on the failing model (the node `fct_customer_orders` / `customer_orders`), with at least 2 levels of ancestors expanded, showing the target model connected to two staging upstreams via distinguishable edges.\n   - `view_dbt_column_lineage.png`: in the column-lineage view or the node-detail Columns panel, the visible column lineage of the `amount` column — the column name `amount` and a tooltip / arrow pointing to multiple upstream columns must be readable.\n   - `view_dbt_column_lineage_after.png`: after the fix and regenerating docs, the re-rendered column lineage for the same node's `amount` column — it must be visible that the conflict has been resolved (only a single upstream source of consistent type remains, or the upstream column types have been unified).\n\n6. **Final report**\n   - `findings.json`, which must contain all of the following keys:\n     ```json\n     {\n       \"failing_test\": \"<test name>\",\n       \"failing_model\": \"<model name>\",\n       \"conflicting_column\": \"amount\",\n       \"upstream_models\": [\"stg_orders\",\"stg_payments\"],\n       \"upstream_types_before\": {\"stg_orders.amount\":\"VARCHAR\",\"stg_payments.amount\":\"DOUBLE\"},\n       \"fix_summary\": \"<one sentence describing the cast / column rename you added>\",\n       \"fixed_files\": [\"models/staging/stg_orders.sql\"],\n       \"evidence_screenshots\": [\"view_dbt_dag_overview.png\",\"view_dbt_lineage_expanded.png\",\"view_dbt_column_lineage.png\",\"view_dbt_column_lineage_after.png\"]\n     }\n     ```\n     `upstream_models` must contain both `stg_orders` and `stg_payments`; `conflicting_column` must be `amount`; `upstream_types_before` must give at least the actual types on both the stg_orders and stg_payments sides.\n\nHard constraints:\n- After the fix, `dbt build` must pass (`build_after.log` must show pass).\n- After the fix, the actual data type of `stg_orders.amount` in duckdb must be in the numeric family (DOUBLE / NUMERIC / DECIMAL / FLOAT / INTEGER / BIGINT).\n- It is not allowed to \"trick\" the test by deleting a schema test, modifying the manifest, or bypassing dbt compilation; the fix must be done at the SQL layer.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_11_dbt_lineage_docs_cycle.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_11_dbt_lineage_docs_cycle",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/dav11_gt\nwhich jq || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip git jq tesseract-ocr poppler-utils curl)\npip3 install --break-system-packages --quiet 'dbt-core>=1.7,<1.9' 'dbt-duckdb>=1.7' 'duckdb>=0.10' pytesseract pillow 2>/dev/null || pip3 install --quiet 'dbt-core>=1.7,<1.9' 'dbt-duckdb>=1.7' 'duckdb>=0.10' pytesseract pillow || true\ntest -d /tmp_workspace/jaffle_shop || (cp -r /tmp_workspace/exec/jaffle_shop /tmp_workspace/jaffle_shop 2>/dev/null || true)\nif [ ! -d /tmp_workspace/jaffle_shop/models ]; then rm -f /tmp_workspace/state/jaffle.tgz; ok=0; for i in $(seq 1 3); do for url in \"https://github.com/dbt-labs/jaffle_shop/archive/refs/tags/v0.3.0.tar.gz\" \"https://ghproxy.net/https://github.com/dbt-labs/jaffle_shop/archive/refs/tags/v0.3.0.tar.gz\" \"https://gh-proxy.com/https://github.com/dbt-labs/jaffle_shop/archive/refs/tags/v0.3.0.tar.gz\" \"https://mirror.ghproxy.com/https://github.com/dbt-labs/jaffle_shop/archive/refs/tags/v0.3.0.tar.gz\"; do timeout 90 curl -fsSL --max-time 60 --connect-timeout 15 -o /tmp_workspace/state/jaffle.tgz \"$url\" 2>/dev/null && ok=1 && break; done; if [ \"$ok\" = \"1\" ]; then break; fi; sleep 3; done; if [ -s /tmp_workspace/state/jaffle.tgz ]; then tar -xzf /tmp_workspace/state/jaffle.tgz -C /tmp_workspace/state 2>/dev/null && rm -rf /tmp_workspace/jaffle_shop && mv /tmp_workspace/state/jaffle_shop-* /tmp_workspace/jaffle_shop 2>/dev/null || true; fi; fi || true\nif [ -d /tmp_workspace/exec/overlay ]; then cp -r /tmp_workspace/exec/overlay/* /tmp_workspace/jaffle_shop/ 2>/dev/null || true; fi\nif [ -d /tmp_workspace/overlay ]; then cp -r /tmp_workspace/overlay/* /tmp_workspace/jaffle_shop/ 2>/dev/null || true; fi\nmkdir -p /root/.dbt\ncp /tmp_workspace/jaffle_shop/profiles.yml /root/.dbt/profiles.yml 2>/dev/null || true\ncd /tmp_workspace/jaffle_shop && dbt deps >/tmp/dbt_deps.log 2>&1 || true\ncd /tmp_workspace/jaffle_shop && dbt seed --quiet >/tmp/dbt_seed.log 2>&1 || true\n# Move the agent-visible gt/expected.json to a root-only path so it can\n# only be read by the grader (which runs as root). The agent must\n# discover failing_model / conflicting_column / upstream types by\n# running dbt and inspecting duckdb, not by reading the answer file.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/dav11_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/dav11_gt 2>/dev/null || true\n  chmod 700 /opt/dav11_gt 2>/dev/null || true\n  chmod 600 /opt/dav11_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\necho \"[warmup] jaffle_shop ready at /tmp_workspace/jaffle_shop\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_11_dbt_lineage_docs_cycle/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_11_dbt_lineage_docs_cycle /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_11_dbt_lineage_docs_cycle/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_11_dbt_lineage_docs_cycle/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_11_dbt_lineage_docs_cycle/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_11_dbt_lineage_docs_cycle/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_11_dbt_lineage_docs_cycle/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_11_dbt_lineage_docs_cycle.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_11_dbt_lineage_docs_cycle",
+    "workspace_relative": "DAV/task_11_dbt_lineage_docs_cycle",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

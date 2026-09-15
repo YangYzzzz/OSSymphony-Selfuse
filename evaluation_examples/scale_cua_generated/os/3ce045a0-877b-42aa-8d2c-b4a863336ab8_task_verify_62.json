@@ -1,0 +1,70 @@
+{
+  "id": "3ce045a0-877b-42aa-8d2c-b4a863336ab8",
+  "new_id": "task_verify_62",
+  "snapshot": "os",
+  "instruction": "I need audio assistance to navigate the computer. Could you turn on the screen reader so it can read out what's on the screen?",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/a11y-font-size.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "SCREEN_READER=$(timeout 10 gsettings get org.gnome.desktop.a11y.applications screen-reader-enabled 2>/dev/null | grep -c true); if [ \"$SCREEN_READER\" -gt 0 ]; then echo \"Screen reader enabled\"; else echo \"Screen reader not enabled\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Screen reader enabled"
+        ],
+        "exclude": [
+          "Screen reader not enabled",
+          "error"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling screen reader (Orca) via Settings > Accessibility > Screen Reader. Evaluator checks screen-reader-enabled setting. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts screen reader state via gsettings command for org.gnome.desktop.a11y.applications.screen-reader-enabled",
+        "Command logic is robust with timeout, error suppression, and clear if/else output formatting",
+        "Metric check_include_exclude correctly verifies 'Screen reader enabled' is present and 'Screen reader not enabled'/'error' are absent",
+        "Complete coverage: instruction requires enabling screen reader, evaluator verifies screen reader is enabled",
+        "Expected rules are semantically correct for the task requirements",
+        "No postconfig needed - gsettings values are persistent system state readable at any time",
+        "Edge cases handled well: timeout prevents hanging, stderr suppressed, grep count ensures binary result"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

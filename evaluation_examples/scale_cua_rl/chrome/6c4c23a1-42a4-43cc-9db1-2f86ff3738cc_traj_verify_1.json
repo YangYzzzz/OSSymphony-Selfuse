@@ -1,0 +1,88 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's browsing history page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "chrome://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://history"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_sid_1488357",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to delta.com, successfully entered SEA as origin and NYC as destination, but got stuck interacting with the date picker calendar widget. Spent all 50 turns unable to set correct departure/return dates. Repeatedly received 'please correct the 1 item indicated' validation error. Never clicked SEARCH, never reached flight results page.",
+    "capability_extraction": "Can navigate Chrome, type in text input fields, select from autocomplete dropdown suggestions, interact with web form checkboxes and buttons",
+    "failure_analysis": "Model struggled with the delta.com date picker calendar widget. Could not properly select the 5th of next month as departure date. Kept toggling between months and dates without confirming. The complex calendar UI with month navigation proved too difficult.",
+    "task_rationale": "Decomposed original complex flight search into a simple Chrome navigation task. Opening the history page tests the model's ability to navigate to Chrome internal pages via address bar or menu, a fundamental prerequisite for complex web tasks.",
+    "explanation": "Task requires navigating to chrome://history. Evaluator uses active_url_from_accessTree to get the current URL and checks it matches the chrome://history pattern.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "navigation": "1.0 - Active URL matches chrome://history"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the current URL from Chrome's address bar via accessibility tree, with goto_prefix='chrome://' to reconstruct chrome:// internal URLs",
+        "Metric is_expected_url_pattern_match correctly receives the rules dict (with 'expected' key containing patterns) and uses re.search to match the URL against 'chrome://history'",
+        "The regex pattern 'chrome://history' will correctly match both 'chrome://history' and 'chrome://history/all' (the actual Chrome history page URL), providing robust verification",
+        "Full coverage: the instruction only requires opening the history page, and a single URL check fully verifies this",
+        "No postconfig needed since the getter reads the address bar state which persists after navigation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "fc6d8143-9452-4171-9459-7f515143419a_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the 'My Trips' page on the Delta Airlines website to manage trip reservations.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          ".*delta\\.com.*(my-?trips|mytrips|manage.*reservation).*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_fc6d8143-9452-4171-9459-7f515143419a_sid_1488093",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to find flights from JFK to ORD on delta.com. Successfully navigated the homepage, interacted with flight search form (typed airport codes, used autocomplete dropdowns, selected dates, changed trip type). However, flight search results page returned 'Access Denied' repeatedly. Also made form-filling errors (set ORD as both origin and destination). Used all 50 turns without completing the task.",
+    "capability_extraction": "Can navigate Chrome, dismiss cookie banners, click navigation menu items, type in form fields, use autocomplete dropdowns, interact with calendars, change dropdown selections",
+    "failure_analysis": "Delta.com's flight search results page blocked automated access with 'Access Denied'. Model also confused origin/destination fields at one point, setting ORD for both.",
+    "task_rationale": "Decomposed original flight search task into navigating to the My Trips page. The MY TRIPS link is visible in delta.com's top navigation bar. This tests a slightly different navigation path and provides variety in the decomposed sub-tasks.",
+    "explanation": "Task requires navigating from delta.com homepage to the My Trips page by clicking the MY TRIPS link in the top navigation bar. Evaluator checks that the active tab URL contains 'delta.com' and 'mytrips' or 'my-trips' or 'manage reservation' using regex pattern matching.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active tab URL from the accessibility tree, which is the right state to check for navigation tasks.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict (via get_rule) and accesses rules['expected'] to get the pattern list. Parameter handling is correct.",
+        "Regex pattern '.*delta\\.com.*(my-?trips|mytrips|manage.*reservation).*' covers reasonable URL variants for Delta's My Trips page (my-trips, mytrips, manage...reservation).",
+        "Complete coverage: the single instruction requirement (navigate to My Trips page) is fully verified by checking the resulting URL.",
+        "No postconfig needed since the URL state persists after navigation."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

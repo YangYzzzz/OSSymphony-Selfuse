@@ -1,0 +1,126 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "task_verify_12",
+  "snapshot": "thunderbird",
+  "instruction": "Extract the three oldest emails from the daily folder in Thunderbird, record their sender name, sender email, and date in a LibreOffice Calc file called 'report.xlsx', and save it to the Desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-the-first-1000-gmail-emails-from-the-current-month-in-a-new-google-sheets-report",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_tb_oldest3__dcd1e9d2ff68b2e8e650947cdbb3db16",
+    "result": {
+      "type": "tb_oldest3_xlsx__dcd1e9d2ff68b2e8e650947cdbb3db16",
+      "path": "/home/user/Desktop/report.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "emails": [
+          {
+            "sender_name": "eNotices System",
+            "sender_email": "enotices.daily.digest@hku.hk",
+            "date": "2024-01-21"
+          },
+          {
+            "sender_name": "HKU Bulk Email Delivery System",
+            "sender_email": "mail.service@intranet.hku.hk",
+            "date": "2024-01-22"
+          },
+          {
+            "sender_name": "eNotices System",
+            "sender_email": "enotices.daily.digest@hku.hk",
+            "date": "2024-01-23"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting the oldest 3 emails from Thunderbird's daily folder (verified: 2024-01-21, 2024-01-22, 2024-01-23) and creating an Excel report with sender_name, sender_email, and date columns. Evaluator reads the Excel file and compares against expected values. Custom getter extracts data from Excel, custom metric validates all 3 emails match. Postconfig saves the file with Ctrl+S to persist data.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_0/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_0/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified with Python: Oldest 3 emails are from dates 2024-01-21, 2024-01-22, 2024-01-23 by parsing all 9 emails in daily folder and sorting by date",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "PASS: Date normalization correctly implemented in getter (lines 59-71 in getters/thunderbird.py) - converts datetime objects to 'YYYY-MM-DD' string format",
+        "PASS: Header validation correctly implemented in getter (lines 36-47) - verifies columns match ['sender_name', 'sender_email', 'date'] before extraction",
+        "PASS: Chronological order verification implemented in metric (lines 23-41 in metrics/thunderbird.py) - ensures dates are in ascending order",
+        "PASS: Complete row handling implemented in getter (line 57) - requires all three fields to be non-empty with 'if sender_name and sender_email and date_value'",
+        "PASS: Postconfig appropriately uses Ctrl+S to save file before verification, ensuring data persistence",
+        "MINOR ISSUE: Metric enforces strict ascending order (line 37: 'result_dates[i] >= result_dates[i + 1]'), which fails if any two emails have the same date. If the oldest emails include duplicates dates, this would incorrectly fail."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using '>' instead of '>=' in chronological order check (line 37) to allow multiple emails on the same date, OR update expected values to ensure dates are strictly increasing"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

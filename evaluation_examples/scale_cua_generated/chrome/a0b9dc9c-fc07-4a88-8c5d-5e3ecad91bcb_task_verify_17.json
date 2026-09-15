@@ -1,0 +1,147 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_17",
+  "snapshot": "chrome",
+  "instruction": "Export the Amazon Web Services invoice email from the 'Bills' folder in Thunderbird as an .eml file using its subject as the filename, and upload it to the 'emails' folder on my Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_single_eml_file__54c9c002bd0d5132155806dba06b543e",
+    "result": {
+      "type": "gdrive_single_file__54c9c002bd0d5132155806dba06b543e",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "emails",
+      "filename": "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml",
+      "dest": "pred_aws.eml"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "subject_pattern": "Amazon Web Services Invoice"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting only the AWS invoice email from Thunderbird 'Bills' folder with its subject as filename to Google Drive 'emails' folder. Evaluator checks if the file exists in Google Drive with the exact filename 'Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml' and verifies it contains the expected subject pattern. Score: 1.0 if file exists with correct subject, 0.0 otherwise.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_1/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_1/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary scoring: 1.0 if AWS invoice file exists in Google Drive with correct subject, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: file upload to Google Drive 'emails' folder, exact filename match using email subject, and email content validation",
+        "Getter logic correctly searches Google Drive for the specific file by exact filename in the 'emails' folder and downloads it locally",
+        "Metric logic correctly validates file existence and reads .eml content to verify subject pattern 'Amazon Web Services Invoice' using regex",
+        "Complete coverage: checks file location (Google Drive/emails folder), filename correctness (exact subject match), and content validation (AWS invoice subject pattern)",
+        "Parameter handling is correct: metric receives rules dict directly from get_rule() and correctly accesses 'subject_pattern' via expected.get()",
+        "Expected value 'Amazon Web Services Invoice' is semantically correct for validating AWS invoice emails",
+        "Data flow is sound: Getter extracts file from Google Drive → Metric validates file content → Returns binary score based on validation"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_single_eml_file__54c9c002bd0d5132155806dba06b543e second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

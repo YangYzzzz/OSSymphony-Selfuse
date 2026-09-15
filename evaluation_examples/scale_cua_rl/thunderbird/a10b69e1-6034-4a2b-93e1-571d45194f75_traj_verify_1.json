@@ -1,0 +1,117 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "a10b69e1-6034-4a2b-93e1-571d45194f75_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Create a subfolder called 'Receipts' inside the existing 'Bills' local folder in Thunderbird.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder-v1.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder-v1.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bBills\\.sbd\\b",
+          "\\bReceipts\\.msf\\b",
+          "\\bReceipts/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_a10b69e1-6034-4a2b-93e1-571d45194f75_sid_1488346",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created two local folders (COMPANY, UNIVERSITY) by right-clicking Local Folders, selecting New Folder, typing name, and clicking Create Folder. Completed in 9 turns.",
+    "capability_extraction": "Can navigate Thunderbird sidebar, right-click context menus, create local folders via New Folder dialog, type folder names",
+    "task_rationale": "Tests subfolder creation inside an existing folder, which is a natural extension of the demonstrated folder creation capability but requires navigating to a specific parent folder first",
+    "explanation": "Task requires creating a subfolder Receipts under existing Bills folder. When a subfolder is created in Thunderbird, it creates a Bills.sbd directory containing Receipts and Receipts.msf. Evaluator uses ls -R and check_list to verify the .sbd directory and subfolder entries exist.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "bills_sbd": "0.34 - Bills.sbd directory exists (proves subfolder was created under Bills)",
+      "receipts_msf": "0.33 - Receipts.msf exists inside Bills.sbd",
+      "receipts_dir": "0.33 - Receipts directory exists inside Bills.sbd"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Postconfig correctly uses 'ls -R' on the Thunderbird Local Folders directory to capture filesystem state after task completion",
+        "cache_file getter correctly reads the ls output for check_list metric consumption",
+        "Parameter handling is correct: expected.type='rule' → get_rule returns rules dict → check_list receives {'expect': [...]} and accesses rules.get('expect', []) properly",
+        "Regex pattern '\\bBills\\.sbd\\b' correctly verifies the .sbd directory that Thunderbird creates when a folder has subfolders",
+        "Regex pattern '\\bReceipts\\.msf\\b' correctly verifies the mail summary file for the Receipts subfolder",
+        "Regex pattern '\\bReceipts/?(?!\\.msf)' uses negative lookahead to correctly match the Receipts mbox file/directory while excluding Receipts.msf, ensuring the actual folder storage exists",
+        "All three patterns together provide comprehensive verification that the subfolder was created in the correct location under Bills",
+        "Coverage is complete: the instruction requires creating subfolder 'Receipts' inside 'Bills', and the evaluator verifies both the parent .sbd structure and the child folder artifacts"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: check_list returns binary 0/1 for all patterns combined, so the scoring_breakdown in metadata suggesting partial credit (0.34/0.33/0.33) is aspirational but not enforced by the metric — consider if partial credit is needed"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

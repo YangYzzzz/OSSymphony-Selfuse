@@ -1,0 +1,71 @@
+{
+  "id": "3ce045a0-877b-42aa-8d2c-b4a863336ab8",
+  "new_id": "task_verify_60",
+  "snapshot": "os",
+  "instruction": "I have visual impairment and need better contrast to see the screen clearly. Can you enable high contrast mode to make interface elements more distinguishable?",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/a11y-font-size.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "CONTRAST_MODE=$(timeout 10 gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null); if echo \"$CONTRAST_MODE\" | grep -i \"high-contrast\\|highcontrast\\|contrast\" > /dev/null; then echo \"High contrast theme enabled: $CONTRAST_MODE\"; else echo \"Standard theme in use\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "High contrast theme enabled"
+        ],
+        "exclude": [
+          "Standard theme in use",
+          "error"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling high contrast theme via Settings > Accessibility. Evaluator checks gsettings gtk-theme for high-contrast theme name. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks GTK theme setting via gsettings, which is the proper method to verify high contrast mode on Ubuntu/GNOME",
+        "Command logic is sound: executes gsettings query, uses grep to detect high-contrast theme keywords, outputs clear success/failure messages",
+        "Metric (check_include_exclude) correctly verifies the presence of success message and absence of failure messages",
+        "Complete coverage: instruction asks to enable high contrast mode, evaluator verifies if high-contrast theme is enabled",
+        "Good error handling: includes timeout (10s), stderr redirection, and checks for 'error' in exclude list",
+        "State is persistent (system setting), so no postconfig needed - can verify directly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The grep pattern 'high-contrast|highcontrast|contrast' might match non-high-contrast themes that contain the word 'contrast' (e.g., 'low-contrast'). Consider using a more specific pattern like 'high-contrast|highcontrast|HighContrast' to avoid false positives, though this is unlikely to cause issues in practice since standard Ubuntu themes don't typically include 'contrast' in their names"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

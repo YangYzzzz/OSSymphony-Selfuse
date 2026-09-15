@@ -1,0 +1,141 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Delete all emails from the 'Bills' folder in Thunderbird that contain 'Amazon' in the subject line.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_amazon_deleted__4bba48e3",
+    "result": {
+      "type": "thunderbird_folder_emails__4bba48e3",
+      "profile_path": "/home/user/.thunderbird/t5q2a5hp.default-release",
+      "folder": "Bills"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "no_amazon": true,
+        "min_remaining": 1
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires deleting emails with 'Amazon' in subject (1 email). Verified: Bills has 2 emails, 1 Amazon email should be deleted, 1 should remain.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_2/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "PASS: Metric function correctly handles expected parameter for type='rule'. Lines 32-34 correctly access expected_state.get('no_amazon') and expected_state.get('min_remaining') directly, which is the correct pattern when get_rule() returns the rules dict.",
+        "Getter logic is correct: reads Thunderbird mbox file from Mail/Local Folders/{folder}, parses mbox format correctly, extracts subject lines, and crucially filters out deleted messages (X-Mozilla-Status 0008/0009).",
+        "Metric logic is correct: verifies no emails with 'Amazon' in subject remain (case-insensitive), and checks that at least min_remaining emails exist after deletion.",
+        "Coverage is complete: instruction requires 'delete emails with Amazon in subject' → metric checks (1) no Amazon emails remain, (2) at least 1 email remains (the non-Amazon email).",
+        "Expected values are semantically correct: no_amazon=true verifies Amazon emails are deleted, min_remaining=1 verifies the non-Amazon email remains (Bills folder has 2 emails total: 1 Amazon to delete, 1 non-Amazon to keep).",
+        "Edge cases handled: checks for None result_state, case-insensitive Amazon search, filters deleted messages correctly (critical for Thunderbird).",
+        "Data flow is correct: Getter extracts non-deleted emails with subjects → Metric checks subjects for 'Amazon' substring → Verification logic is sound."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

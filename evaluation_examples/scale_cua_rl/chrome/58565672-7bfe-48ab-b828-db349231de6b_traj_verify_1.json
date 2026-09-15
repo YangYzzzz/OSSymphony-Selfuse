@@ -1,0 +1,119 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "58565672-7bfe-48ab-b828-db349231de6b_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Add the Apple homepage to Chrome's bookmarks bar.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://www.apple.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_58565672-7bfe-48ab-b828-db349231de6b_sid_1488089",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated Thunderbird Bills folder, opened latest X/Twitter email, found link (help.twitter.com), right-clicked 'Open Link in Browser' to open in Chrome. The link timed out (ERR_TIMED_OUT) and model spent remaining turns retrying. Evaluator expected amazon.com in tabs but got help.twitter.com which was unreachable.",
+    "capability_extraction": "Can navigate Thunderbird folder tree, open/select emails, read email content, identify links, use right-click context menu 'Open Link in Browser', switch between apps, interact with Chrome tabs",
+    "failure_analysis": "Model opened the wrong link (help.twitter.com from X/Twitter email instead of amazon.com from AWS email) and the URL was unreachable in the VM environment (ERR_TIMED_OUT). Model spent 12+ turns waiting and retrying the unreachable URL.",
+    "task_rationale": "Tests model's ability to bookmark an already-loaded page. The Apple homepage is pre-loaded in a Chrome tab, so the model just needs to navigate to it and add it to bookmarks bar. No external URL dependency.",
+    "explanation": "Task requires adding the Apple homepage to Chrome's bookmarks bar. Apple.com is already open in a tab from config. Evaluator uses is_expected_bookmarks to verify the bookmarks bar contains apple.com.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "bookmark_added": "1.0 - Apple homepage URL found in bookmarks bar"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter get_bookmarks correctly reads Chrome's Bookmarks JSON file and returns the roots dict containing bookmark_bar, which is the correct state for verifying bookmarks bar contents.",
+        "Metric is_expected_bookmarks with rule type bookmark_bar_websites_urls correctly extracts URLs from bookmark_bar children and compares against expected URLs. The expected parameter handling is correct (rule dict accessed directly).",
+        "Instruction coverage is complete: the single requirement (add Apple homepage to bookmarks bar) is verified by checking bookmark_bar contains https://www.apple.com/.",
+        "Minor concern: Metric uses exact set equality (==) rather than superset check (issuperset). If pre-existing bookmarks exist in the bar (e.g., from Chrome defaults or the snapshot), the evaluator would return 0.0 even if Apple was correctly added. This is acceptable only if the environment starts with an empty bookmarks bar.",
+        "Apple.com is pre-loaded in a Chrome tab via config, making the task feasible without external URL dependencies."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using issuperset instead of exact set equality in the metric check: 'set(bookmark_bar_websites_urls) >= set(rule[\"urls\"])' to handle cases where pre-existing bookmarks exist in the bar.",
+        "If the Chrome snapshot has default bookmarks, either clear them in config setup or include them in the expected URLs list."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

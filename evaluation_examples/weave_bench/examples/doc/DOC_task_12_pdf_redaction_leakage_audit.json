@@ -1,0 +1,71 @@
+{
+  "id": "DOC_task_12_pdf_redaction_leakage_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Background: The compliance team received an HR personnel compensation roster `/tmp_workspace/exec/redaction_project/personnel_redacted.pdf` returned by an external reviewer who claims \"sensitive fields have been blacked out and the document is safe to forward to outside counsel.\" When opened, the first page does show 9 black rectangles covering each employee's SSN / Salary / Account fields, so **no sensitive characters are visually visible**. However, the compliance SOP requires at least two mutually independent text-extraction channels to re-verify whether the underlying text operators have truly been removed, and requires this \"overlay-mask\" PDF to be reworked into a true character-deletion form and re-verified.\n\nTask goal: Complete the closed-loop audit of \"initial visual inspection → multi-channel text-extraction forensics → true-redaction repair → multi-channel re-verification,\" and produce a report that can be sent back to the original author for remediation (ticket number **REDACT-2024-Q4**). All structured and visual artifacts go to `/tmp_workspace/results/`; the repaired PDF goes to `/tmp_workspace/exec/redaction_project/personnel_safe.pdf`.\n\nNeutral background: A PDF content stream is composed of text operators, image operators, and vector operators; a \"black rectangle overlay\" simply adds a graphics operator on top of the text — **the underlying text operators are not removed**, so any standard PDF text-extraction implementation can still read the original characters. To perform a compliance-grade true redaction, the original characters themselves must be replaced or deleted at the document-object / content-stream level.\n\n### Hard constraints on the primary deliverable `leak_findings.json`\n\n- Top-level keys all present: `extractors_agree`, `leak_token_classes`, `leaked_strings`, `per_employee`\n- `leak_token_classes` contains at least the three classes `SSN` / `Salary` / `Account`\n- `leaked_strings` has ≥ 12 distinct PII substrings after deduplication\n- `per_employee` is an array whose entries are of the form `{\"name\": \"<employee name>\", \"leaked\": [\"SSN: ...\", \"Salary: ...\", \"Account: ...\"]}`, correctly and completely attaching each of the 3 visible employees' three leaked SSN / Salary / Account substrings to the right person\n\n### Companion deliverables (in `/tmp_workspace/results/`, except for `personnel_safe.pdf`)\n\n| File | Requirement |\n| --- | --- |\n| `pdfinfo.txt` | Text dump of the original PDF's metadata, non-empty |\n| `meta.json` | All four fields present: `{\"pages\": <int>, \"producer\": \"<str>\", \"creator\": \"<str>\", \"title\": \"<str>\"}` |\n| `leak_pdftotext.txt` | Output of the first independent text-extraction channel; contains the title `Personnel Compensation Roster` and several PII substrings |\n| `leak_mutool.txt` | Output of a second independent channel from a different implementation than `leak_pdftotext.txt`, non-empty |\n| `leak_qdf.pdf` | Low-level structural copy of the original PDF (readable PDF form with object streams decompressed), > 1 KB |\n| `pdfgrep_hits.txt` | Hit output of a third-party independent text-search channel against the original PDF, non-empty |\n| `notes.md` | ≥ 2 paragraphs briefly explaining the cross-comparison logic (intersection / union of the two channels, employee-name localization, PII classification rationale) |\n| `/tmp_workspace/exec/redaction_project/personnel_safe.pdf` | New PDF exported after true-redaction repair (> 1 KB) |\n| `safe_pdftotext.txt` | Output of the first extraction channel after repair: **does not contain** any SSN (`\\d{3}-\\d{2}-\\d{4}`) / salary digits / bank-account digit strings; **still contains** the 3 employee names and the title `Personnel Compensation Roster` |\n| `safe_mutool.txt` | Output of the second independent channel after repair, containing the `[REDACTED]` placeholder |\n| `safe_pdfgrep.txt` | Text-search channel hits after repair — should only contain `[REDACTED]` or be empty |\n| `safe_render-1.png` | Page raster render of the first page of the repaired PDF (≥ 120 dpi) |\n| `redaction_report.md` | ≥ 25 non-empty lines, with the six markdown header sections `Summary` / `Root cause` / `Evidence` / `Fix` / `Verification` / `Recommendation` |\n\n### 5 process screenshots (PNG, fixed filenames, in `/tmp_workspace/results/`)\n\n- `view_01_initial_render.png` — Full-page screenshot of the original PDF opened in a PDF reader; the image contains the reader's window chrome (title bar / toolbar) + the title + at least 6 visible black rectangular bars\n- `view_02_zoom_bar.png` — Close-up focused on any single row of black bars zoomed to ≥ 300%, with the window chrome or status bar showing clear magnification\n- `view_03_draw_loaded.png` — Full-window screenshot of the PDF opened in a vector document editor in \"per-object editable layer\" form; contains the editor's main window (title bar + left/right sidebars + central canvas) + 9 black rectangle objects\n- `view_04_draw_after_edit.png` — Full-window screenshot after completing the true redaction (rewriting PII text-object contents to the literal `[REDACTED]` and deleting the corresponding black mask rectangles), with multiple `[REDACTED]` strings — not black bars — readable on the canvas\n- `view_05_safe_in_okular.png` — Full-window screenshot of `personnel_safe.pdf` opened in a PDF reader; the image contains the reader's main window + visible `[REDACTED]` text\n\n### Anti-cheating and hard constraints\n\n- The critical diagnostic signal is **not in the pixels**: simply looking at the rendered original PDF appears \"completely clean\"; PII can only be read by extracting from the text-operator layer.\n- The critical repair signal is **not in the structured channels**: parsing the PDF into a per-object editable layer, rewriting each PII text object to `[REDACTED]`, and deleting the mask rectangles must be done in an interactive rendering UI and captured in screenshots.\n- Visual evidence must come from real interactive screen captures; blank / placeholder / pure-render substitute images will be automatically flagged as fabricated.\n- The 5 screenshots must all be distinct from each other (no reusing the same image).\n- Copying any file from `/tmp_workspace/gt/` (grader-only) into `results/` is not allowed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_12_pdf_redaction_leakage_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/wen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/exec\nwen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/gt\nwen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/tmp",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/gt /tmp_workspace/exec/redaction_project /opt/doc12_gt\n# Move expected.json to a root-only path so the agent cannot read the\n# leaked SSN / salary / account literals or per-employee field maps.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/doc12_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/doc12_gt 2>/dev/null || true\n  chmod 700 /opt/doc12_gt 2>/dev/null || true\n  chmod 600 /opt/doc12_gt/expected.json 2>/dev/null || true\nfi\nwhich pdftotext || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils pdfgrep mupdf-tools qpdf tesseract-ocr)\nwhich pdfgrep || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq pdfgrep)\nwhich mutool || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mupdf-tools)\nwhich qpdf || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq qpdf)\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tesseract-ocr)\npip3 install --break-system-packages --quiet pdfminer.six pillow pytesseract reportlab pymupdf 2>/dev/null || pip3 install --quiet pdfminer.six pillow pytesseract reportlab pymupdf\necho \"ZnJvbSByZXBvcnRsYWIucGRmZ2VuIGltcG9ydCBjYW52YXMKZnJvbSByZXBvcnRsYWIubGliLnBhZ2VzaXplcyBpbXBvcnQgTEVUVEVSCmZyb20gcmVwb3J0bGFiLmxpYi5jb2xvcnMgaW1wb3J0IGJsYWNrCmltcG9ydCBzeXMKT1VUID0gc3lzLmFyZ3ZbMV0KRU1QID0gWwogICAgKCJFbGVhbm9yIFdoaXR0YWtlciIsIjQxMi03Ny05MTgzIiwiJDE0OCw1MDAiLCIwMDk0LTU1ODIxNyIpLAogICAgKCJNYXJjdXMgSG9sbG93YXkiLCI1ODMtMjEtNDQwNiIsIiQyMjEsNzUwIiwiMDE4OC0zMzA5NDUiKSwKICAgICgiUHJpeWEgUmFuZ2FuYXRoYW4iLCIyOTctMDgtNjYyMCIsIiQxMDksMjAwIiwiMDI3MS00NDEwODkiKSwKXQpjID0gY2FudmFzLkNhbnZhcyhPVVQsIHBhZ2VzaXplPUxFVFRFUikKYy5zZXRUaXRsZSgiUGVyc29ubmVsIENvbXBlbnNhdGlvbiBSb3N0ZXIiKQpjLnNldEF1dGhvcigiSFIgQ29tcGxpYW5jZSIpCmMuc2V0U3ViamVjdCgiSFItUk9TVEVSLTIwMjQtUTQiKQpjLnNldENyZWF0b3IoIkhSIFBpcGVsaW5lIikKVywgSCA9IExFVFRFUgpjLnNldEZvbnQoIkhlbHZldGljYS1Cb2xkIiwgMTYpCmMuZHJhd1N0cmluZyg3MiwgSCAtIDcyLCAiUGVyc29ubmVsIENvbXBlbnNhdGlvbiBSb3N0ZXIiKQpjLnNldEZvbnQoIkhlbHZldGljYSIsIDEwKQpjLmRyYXdTdHJpbmcoNzIsIEggLSA5MCwgIkRvY3VtZW50IElEOiBIUi1ST1NURVItMjAyNC1RNCIpCmMuc2V0Rm9udCgiSGVsdmV0aWNhIiwgMTEpCnkgPSBIIC0gMTQwCmZvciBpLCAobiwgc3NuLCBzYWwsIGFjKSBpbiBlbnVtZXJhdGUoRU1QLCAxKToKICAgIGMuZHJhd1N0cmluZyg3MiwgeSwgZiJ7aX0uIHtufSIpCiAgICBjLmRyYXdTdHJpbmcoNzIsIHkgLSAxNCwgZiIgICBTU046IHtzc259ICAgIFNhbGFyeToge3NhbH0gICAgQWNjb3VudDoge2FjfSIpCiAgICBjLnNldEZpbGxDb2xvcihibGFjaykKICAgIGMucmVjdCgxMTAsIHkgLSAxOCwgOTUsIDE0LCBzdHJva2U9MCwgZmlsbD0xKQogICAgYy5yZWN0KDIzNSwgeSAtIDE4LCA3NSwgMTQsIHN0cm9rZT0wLCBmaWxsPTEpCiAgICBjLnJlY3QoMzM1LCB5IC0gMTgsIDEwMCwgMTQsIHN0cm9rZT0wLCBmaWxsPTEpCiAgICBjLnNldEZpbGxDb2xvclJHQigwLCAwLCAwKQogICAgeSAtPSA1MApjLnNob3dQYWdlKCkKYy5zYXZlKCkK\" | base64 -d > /tmp_workspace/state/_gen_redaction_pdf.py\n[ -s /tmp_workspace/exec/redaction_project/personnel_redacted.pdf ] || python3 /tmp_workspace/state/_gen_redaction_pdf.py /tmp_workspace/exec/redaction_project/personnel_redacted.pdf 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_12_pdf_redaction_leakage_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_12_pdf_redaction_leakage_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_12_pdf_redaction_leakage_audit/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_12_pdf_redaction_leakage_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_12_pdf_redaction_leakage_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/wen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/exec\nwen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/gt\nwen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/tmp",
+    "workspace_relative": "wen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/exec\nwen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/gt\nwen_tasks/batch3/workspace/DOC/task_12_pdf_redaction_leakage_audit/tmp",
+    "uses_vlm_helper": true,
+    "has_gt": false
+  }
+}

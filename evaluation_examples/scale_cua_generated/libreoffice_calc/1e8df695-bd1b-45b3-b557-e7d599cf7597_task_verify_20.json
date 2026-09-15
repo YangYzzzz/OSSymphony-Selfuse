@@ -1,0 +1,114 @@
+{
+  "id": "1e8df695-bd1b-45b3-b557-e7d599cf7597",
+  "new_id": "task_verify_20",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Calculate the total sales by summing all values in the 'Sales' column and enter the result in cell B12.",
+  "source": "SheetCopilot@203",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/1e8df695-bd1b-45b3-b557-e7d599cf7597/WeeklySales.xlsx",
+            "path": "/home/user/WeeklySales.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/WeeklySales.xlsx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/1e8df695-bd1b-45b3-b557-e7d599cf7597",
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "WeeklySales.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_cell_value__8a2150bf",
+    "result": {
+      "type": "xlsx_cell_value__8a2150bf",
+      "path": "/home/user/WeeklySales.xlsx",
+      "sheet": 0,
+      "cell": "B12"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 901745
+      }
+    },
+    "options": {
+      "tolerance": 1
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires calculating the sum of all Sales values (column B, rows 2-11) and entering it in cell B12. Verified with Python: total_sales = 901745 (sum of 10 weeks of sales data).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/1e8df695-bd1b-45b3-b557-e7d599cf7597_task_verify_0/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/1e8df695-bd1b-45b3-b557-e7d599cf7597_task_verify_0/metrics/calc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction requires TWO steps: (1) Calculate the sum using a formula, and (2) Enter the result in cell B12. Evaluator only checks step 2 (final value in B12), but does NOT verify step 1 (that a calculation/formula was used).",
+        "The evaluator cannot distinguish between correct completion (user enters =SUM(B2:B11) in B12) vs. incorrect shortcuts (user manually types 901745 or uses copy-paste). Both would pass evaluation despite only one following the instruction to 'calculate'.",
+        "Missing formula verification: The getter reads only the cell value (data_only=True in openpyxl), not the cell formula. To properly verify the instruction, the evaluator should check that B12 contains a SUM formula, not just the numeric result.",
+        "Expected value is semantically correct (901745 is verified as the actual sum), and the tolerance of 1 is reasonable for numeric calculations.",
+        "Postconfig correctly saves the file before reading, ensuring data persistence.",
+        "The getter and metric logic are technically sound for what they check, but they check the wrong aspect of the instruction."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second getter to read the cell formula (use openpyxl with data_only=False to access cell.value as formula string)",
+        "Add a metric to verify that the formula in B12 is a SUM formula (e.g., check if formula string contains 'SUM' and references the Sales column range like B2:B11)",
+        "Consider using multi-step evaluation with partial credit: 0.5 points for correct value in B12, 0.5 points for correct formula in B12",
+        "Alternative: Modify the instruction to be less strict (e.g., 'Enter 901745 in cell B12') if formula verification is not required, making instruction match what evaluator can verify"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

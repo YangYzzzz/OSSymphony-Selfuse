@@ -1,0 +1,114 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "task_verify_86",
+  "snapshot": "os",
+  "instruction": "I want Vim to show the current cursor position at all times. Please look up online how to display the cursor position in Vim and apply this setting permanently to my local Vim configuration.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b337d106-053f-4d37-8da0-7f9c4043a66b/eval.sh",
+              "path": "eval_ruler__d43432b5.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > eval_ruler__d43432b5.sh << 'EOF'\n#!/bin/bash\nif grep -q \"set ruler\" ~/.vimrc 2>/dev/null || grep -q \"set ru\" ~/.vimrc 2>/dev/null; then\n    echo \"Cursor Position Display Enabled!\"\nelse\n    echo \"Ruler not configured\"\nfi\nEOF\nchmod +x eval_ruler__d43432b5.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_ruler__d43432b5.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Cursor Position Display Enabled!"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires searching for how to display cursor position in Vim and adding 'set ruler' (or abbreviated 'set ru') to ~/.vimrc. Evaluator checks if either command is present. Similar complexity to original (search tutorial, configure vim display feature).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if ruler is enabled in .vimrc, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks for 'set ruler' or 'set ru' in ~/.vimrc, which are the proper Vim commands to enable cursor position display",
+        "Complete coverage: Verifies both the correct command AND permanent application (in .vimrc file)",
+        "Logical flow is sound: bash script checks file content, outputs success/failure message, metric validates the output",
+        "Expected value is correct: 'Cursor Position Display Enabled!' matches script output for success case",
+        "No state timing issues: Simply reading a file, no dependencies on UI state or ephemeral data",
+        "Binary scoring (1.0/0.0) is appropriate for this binary requirement (ruler enabled or not)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

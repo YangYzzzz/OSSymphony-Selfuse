@@ -1,0 +1,84 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_27",
+  "snapshot": "os",
+  "instruction": "Archive all files from '/tmp/test_files/archive_dir' modified exactly 45 days ago into a tar.gz file, and save it in '/tmp/test_files/'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /tmp/test_files/archive_dir && touch /tmp/test_files/archive_dir/file1.txt /tmp/test_files/archive_dir/file2.log /tmp/test_files/archive_dir/file3.dat /tmp/test_files/archive_dir/recent.txt && find /tmp/test_files/archive_dir -name 'file*.txt' -o -name 'file*.log' -o -name 'file*.dat' | xargs -I {} touch -d '45 days ago' {} && touch -d '5 days ago' /tmp/test_files/archive_dir/recent.txt",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'BASE_DIR=\"/tmp/test_files\"; ARCHIVE_DIR=\"/tmp/test_files/archive_dir\"; SUCCESS=true; ARCHIVE_PATH=\"\"; for archive in $(find \"$BASE_DIR\" -maxdepth 1 -type f \\( -name \"*.tar.gz\" -o -name \"*.tgz\" \\) 2>/dev/null); do if tar -tzf \"$archive\" >/dev/null 2>&1; then ARCHIVE_PATH=\"$archive\"; break; fi; done; if [ -z \"$ARCHIVE_PATH\" ]; then echo \"Failure: No valid tar.gz archive found in /tmp/test_files\"; exit 0; fi; ARCHIVE_CONTENTS=$(tar -tzf \"$ARCHIVE_PATH\" 2>/dev/null | grep -v \"/$\" | xargs -n1 basename | sort); EXPECTED_FILES=(\"file1.txt\" \"file2.log\" \"file3.dat\"); for expected_file in \"${EXPECTED_FILES[@]}\"; do if ! echo \"$ARCHIVE_CONTENTS\" | grep -q \"^${expected_file}$\"; then echo \"Failure: Archive missing expected file: $expected_file\"; SUCCESS=false; fi; done; if echo \"$ARCHIVE_CONTENTS\" | grep -q \"^recent.txt$\"; then echo \"Failure: Archive contains recent.txt which should be excluded\"; SUCCESS=false; fi; FILE_COUNT=$(echo \"$ARCHIVE_CONTENTS\" | grep -c \".\"); if [ \"$FILE_COUNT\" -ne 3 ]; then echo \"Failure: Archive should contain exactly 3 files, found $FILE_COUNT\"; SUCCESS=false; fi; if [ ! -f \"$ARCHIVE_DIR/recent.txt\" ]; then echo \"Failure: recent.txt should still exist in archive_dir\"; SUCCESS=false; fi; if $SUCCESS; then echo \"Success: The task was completed correctly.\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation that requires creating a tar.gz archive of files modified 45 days ago. Setup creates archive_dir with file1/2/3 (modified 45 days ago) and recent.txt (modified 5 days ago). Evaluator verifies a tar.gz archive exists containing at least 3 files and recent.txt still exists unarchived.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification_details": "The evaluation checks: (1) a valid tar.gz archive exists in /tmp/test_files directory, (2) the archive contains exactly the three expected files (file1.txt, file2.log, file3.dat) that were modified 45 days ago, (3) recent.txt (modified 5 days ago) is NOT included in the archive contents, (4) recent.txt still exists in archive_dir. This ensures the agent correctly identified files by modification date and created an archive of only the old files while excluding the recent file.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies archive contains exactly the 3 expected files (file1.txt, file2.log, file3.dat) by checking each file explicitly with grep",
+        "Evaluator correctly verifies recent.txt is NOT included in the archive contents with explicit grep check",
+        "Evaluator correctly verifies the archive has exactly 3 files total, preventing inclusion of extra files",
+        "Evaluator correctly verifies recent.txt still exists in the original directory (wasn't moved/deleted)",
+        "Evaluator correctly searches for valid tar.gz archives in the specified output directory /tmp/test_files/",
+        "All instruction requirements are fully verified: correct files archived, recent file excluded, archive placed in correct location"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "37887e8c-da15-4192-923c-08fa390a176d_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

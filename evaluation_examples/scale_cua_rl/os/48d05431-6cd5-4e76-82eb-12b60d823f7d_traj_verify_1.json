@@ -1,0 +1,85 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "48d05431-6cd5-4e76-82eb-12b60d823f7d_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Create the nested directory structure ~/projects/python/src using the terminal.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "test -d /home/user/projects/python/src && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_48d05431-6cd5-4e76-82eb-12b60d823f7d_sid_1488341",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to fix 'conda: command not found' by downloading and installing Miniconda3. Successfully opened terminal, ran which conda, downloaded installer via curl, and ran batch install. However, the Miniconda3 directory was not created after installation. Agent then tried interactive install but got stuck scrolling through the license pager for remaining turns.",
+    "capability_extraction": "Can open and use terminal, execute shell commands (curl, ls, which, source, bash), navigate between applications, understand PATH and shell configuration concepts",
+    "failure_analysis": "Model failed because: (1) Miniconda batch install appeared to complete but directory wasn't actually created (possible disk/download issue), (2) model got stuck in interactive license pager (--More--) and couldn't proceed, (3) never successfully ran conda init to modify .bashrc",
+    "task_rationale": "Simplified to a basic directory creation task using mkdir -p. The model demonstrated ability to use ls and navigate the filesystem. This tests whether the model can create directory structures, which is a fundamental terminal operation.",
+    "explanation": "Task requires creating nested directories ~/projects/python/src. Evaluator uses test -d to check if the deepest directory exists, returning 1 if found, 0 if not.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'test -d /home/user/projects/python/src' to check if the deepest directory in the nested structure exists, which implicitly verifies all parent directories were created",
+        "Metric exact_match correctly accesses rules['expected'] matching the framework's get_rule behavior for type='rule', comparing command output against expected '1\\n'",
+        "Complete coverage: the instruction only requires creating the directory structure ~/projects/python/src, and the evaluator fully verifies this requirement",
+        "Expected value '1\\n' is correct — 'test -d' succeeds and 'echo 1' outputs '1\\n' when the directory exists"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

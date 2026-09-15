@@ -1,0 +1,134 @@
+{
+  "id": "72f83cdc-bf76-4531-9a1b-eb893a13f8aa",
+  "new_id": "task_verify_7",
+  "snapshot": "gimp",
+  "instruction": "Expand the canvas of the berry image to 1400x1000 pixels and save it as berry_canvas.png",
+  "source": "https://www.youtube.com/watch?v=V3slJcft6Tw",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/72f83cdc-bf76-4531-9a1b-eb893a13f8aa/berry.jpeg",
+            "path": "/home/user/Desktop/berry.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/berry.png"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "GNU Image Manipulation Program"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"shift\", \"ctrl\", \"e\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.write(\"berry_canvas\");time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_image_size",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "width": 1400,
+        "height": 1000
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/berry_canvas.png",
+      "dest": "berry_canvas.png"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires expanding the canvas size of the berry image to 1400x1000 pixels in GIMP (adding borders/margins) and exporting it. Uses existing check_image_size metric to verify the final canvas dimensions are 1400x1000.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Critical: Postconfig actively performs the save/export operation (Shift+Ctrl+E, types filename, presses Enter), which is part of what should be verified. This creates potential false positives if the agent didn't complete the save step.",
+        "Significant: The evaluator cannot distinguish between 'canvas expansion' (adding borders/margins to reach 1400x1000) vs 'image resize/scale' (resizing content to 1400x1000). Both produce 1400x1000 dimensions but are fundamentally different GIMP operations. The instruction specifically asks for canvas expansion.",
+        "The check_image_size metric only verifies final dimensions, not the method used to achieve them.",
+        "Postconfig may overwrite a correctly saved file or create a new file if the agent used a different filename, masking verification of the actual save action."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove the export/save logic from postconfig (lines 41-86). The save operation should be performed by the agent and verified, not done by the evaluator.",
+        "To properly verify canvas expansion vs resize: compare the original berry.png content size/position within the final berry_canvas.png. Canvas expansion should show the original image centered or positioned with added borders, while resize would show a scaled version filling the entire canvas.",
+        "Consider using structure similarity checks between the original berry content and the center region of the expanded canvas to verify it's expansion, not resize.",
+        "Alternative: Simplify the instruction to just verify 'resize to 1400x1000' if canvas expansion verification is too complex, and update the instruction accordingly."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

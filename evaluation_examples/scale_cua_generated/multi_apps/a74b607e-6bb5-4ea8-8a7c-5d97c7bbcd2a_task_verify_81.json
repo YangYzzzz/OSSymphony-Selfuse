@@ -1,0 +1,99 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_81",
+  "snapshot": "multiapps",
+  "instruction": "Please install the unpacked Chrome extension from the helloExtension folder on the Desktop into the browser.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing an unpacked Chrome extension from Desktop. Evaluator checks if the extension path '/home/user/Desktop/helloExtension' appears in the list of unpacked extension paths. Uses existing getter 'get_find_unpacked_extension_path' which reads Chrome Preferences and extracts all extension paths. Postconfig sleep added to ensure Chrome has sufficient time to write extension installation to Preferences file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_find_unpacked_extension_path (chrome.py:1401-1436) reads Chrome Preferences file and extracts all extension paths from extensions.settings[id].path, returning a list of all installed extension paths",
+        "Metric logic is correct: is_in_list (general.py:76-81) checks if expected value is in result list using 'expect in result', which is the correct list membership check",
+        "Data flow is correct: getter extracts list of extension paths -> metric checks if expected path '/home/user/Desktop/helloExtension' is in that list",
+        "Expected value is semantically correct: '/home/user/Desktop/helloExtension' matches the setup config which unzips helloExtension.zip to /home/user/Desktop/",
+        "Complete coverage: evaluator verifies the single requirement - that the unpacked extension from the specified folder is installed in Chrome",
+        "State accessibility is correct: getter reads from Chrome Preferences file (persistent state), not from UI, so no UI-dependent postconfig is needed. The 2-second sleep in postconfig is sufficient for Chrome to write to Preferences",
+        "Logic will work correctly at runtime: straightforward file read from JSON Preferences file and list membership check"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

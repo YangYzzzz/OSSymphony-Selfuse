@@ -1,0 +1,86 @@
+{
+  "id": "aa3a8974-2e85-438b-b29e-a64df44deb4b",
+  "new_id": "task_verify_58",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Make this spreadsheet compact by adjusting cell dimensions so all data appears on one page, then export to PDF format. The PDF should have the same name as the spreadsheet file and be saved in the home directory.",
+  "source": "https://www.quora.com/Libre-Office-Calc-How-do-I-resize-all-cells-in-a-sheet-to-make-them-fit-to-1-page-for-printing-and-exporting-as-PDF",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/aa3a8974-2e85-438b-b29e-a64df44deb4b/Resize_Cells_Fit_Page.xlsx",
+            "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "func": "check_pdf_pages",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Resize_Cells_Fit_Page.pdf",
+      "dest": "Resize_Cells_Fit_Page.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relation": "eq",
+        "ref_value": 1,
+        "verify_content": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Compact formatting emphasis. Same single-page PDF verification with content size check.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "f6b27ce1",
+    "verification_details": "Uses existing check_pdf_pages metric to verify: (1) PDF file exists at /home/user/Resize_Cells_Fit_Page.pdf, (2) PDF has exactly 1 page (relation=eq, ref_value=1), (3) PDF file size > 10KB (verify_content=True). No custom functions needed as check_pdf_pages is already available in desktop_env.evaluators.metrics.pdf.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Content verification logic is semantically incorrect for spreadsheet-to-PDF tasks",
+        "The verify_content flag triggers image detection (lines 46-58 in pdf.py) which checks for /Image XObjects in the PDF",
+        "LibreOffice Calc exports spreadsheet data as text/vector content, NOT raster images",
+        "The evaluator will fail correctly completed tasks because spreadsheet PDFs don't contain /Image XObjects",
+        "The image detection logic appears designed for image-to-PDF conversion tasks, not spreadsheet exports",
+        "File size check (>10KB) is too simplistic - a blank PDF with metadata could pass this threshold",
+        "Page count verification (exactly 1 page) is correct and matches instruction requirements"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove verify_content flag OR modify check_pdf_pages to support spreadsheet content verification",
+        "For spreadsheet PDFs, verify content by checking for text extraction (non-empty text content) instead of images",
+        "Consider using PyMuPDF or pypdf to extract text and verify it contains expected spreadsheet data patterns",
+        "Alternative: Use a different metric that checks PDF text content length or presence of table structures",
+        "The evaluator should verify that the PDF contains actual spreadsheet data, not just check file size and image presence"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_pages first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

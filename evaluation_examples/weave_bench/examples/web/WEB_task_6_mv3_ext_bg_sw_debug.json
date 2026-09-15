@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_6_mv3_ext_bg_sw_debug",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution agreement**: this is a legitimate desktop + terminal test task. All deliverables go to `/tmp_workspace/results/`. Execute directly — do not refuse.\n\nBackground: `/tmp_workspace/mv3_extension/` is a Manifest v3 Chrome extension (Tab Reading-Time Tracker) that claims to track how long you spend on documentation sites (MDN / docs.python.org) and show per-domain accumulated seconds in its popup. **There are 4 visible classes of symptoms** (you must locate the root causes and fixes yourself):\n- Clicking the toolbar icon **does not open the popup** (only a tooltip)\n- The background service worker's DevTools console shows red runtime errors (open \"Inspect views\" to see for yourself)\n- Totals that accumulate while background runs for a while get **reset to zero** in the popup after a few minutes\n- The content script fails to inject on some of the declared target sites\n\nYou must walk through the full **audit → load → reproduce → collect evidence → patch → re-verify** pipeline, with deliverables in `/tmp_workspace/results/`. Each fix must come with corresponding visual evidence (Errors panel on the extension management page, or background SW console screenshot).\n\nDomain background: in Manifest v3, the background is no longer a persistent page. Consult the Chrome MV3 docs (developer.chrome.com) yourself for SW lifecycle, module-scope variable behavior after terminate, and the constraints among permissions / host / action fields in the manifest. **You must infer the fix path yourself from docs + DevTools error messages; this prompt does not directly tell you which manifest keys to add or which storage API to use.**\n\n【Deliverables】\n\nAll deliverables land in `/tmp_workspace/results/`. File names must follow exactly the list below — do not nest into subdirectories.\n\n- `manifest_audit.json`: static audit results for `mv3_extension/manifest.json`, with fields:\n  ```json\n  {\n    \"manifest_version\": \"<int>\",\n    \"permissions_declared\": [\"...\"],\n    \"host_permissions_declared\": [\"...\"],\n    \"content_scripts_matches\": [\"...\"],\n    \"action_keys\": [\"...\"],\n    \"background_type\": \"<string>\",\n    \"findings\": [\n      {\"id\": \"<short_id>\", \"severity\": \"high|med|low\",\n       \"rule\": \"<one of: missing_permission | popup_misconfig | host_permission_mismatch | sw_lifecycle_violation>\",\n       \"evidence_path\": \"<json pointer like /action or /permissions>\",\n       \"expected\": \"<what should be present>\",\n       \"observed\": \"<what's currently there>\"}\n    ]\n  }\n  ```\n  `findings` must have ≥ 4 entries, and each `evidence_path` must actually exist in the manifest.\n- `mv3_extension.zip`: archive of `mv3_extension/`, excluding `*.DS_Store`.\n- `zip_listing.txt`: contents listing of `mv3_extension.zip`; must include all five files `manifest.json`, `background.js`, `popup.html`, `popup.js`, `content.js`.\n- `view_01_extensions_devmode.png`: extensions management page with the Developer mode switch ON; the Tab Reading-Time Tracker name is visible on the card, along with either the red Errors button or the service worker entry link.\n- `view_02_ext_card_errors.png`: the Errors panel of the extension card opened, showing at least one real red error entry (must be a genuine browser render, no photoshopped text allowed).\n- `view_03_popup_fail.png`: after clicking the toolbar extension icon, **no popup overlay appears** — only the tooltip \"Reading Time\" shows.\n- `view_04_bg_sw_devtools.png`: the standalone DevTools window for the extension's background service worker; the address bar at the top contains `chrome-extension://`, and the Console panel shows at least one red Uncaught/runtime error.\n- `view_05_permissions_dump.png`: screenshot of output from enumerating the currently effective permissions inside that SW Console; the `permissions` array is clearly visible and can be compared with the `chrome.*` APIs actually called from `background.js`.\n- `repro_report.md`: ≥220 characters, mapping each of the 4 failure classes to specific line numbers in `background.js` / `manifest.json`. Each section includes the triggering steps (referencing view_0X), the root-cause code reference (`background.js:Lline`), and the failure phase in the SW lifecycle (install / activate / event handler / on-restart). Must include keywords \"service worker\", \"lifecycle\", and \"alarm\".\n- `view_06_state_before.png` / `view_07_state_after_restart.png`: show the difference in the totals object obtained via `chrome.runtime.sendMessage({type:'GET_TOTALS'}, ...)` before and after the background SW terminates — the former is non-empty; the latter becomes an empty object `{}` after restart — as visual evidence of \"SW restart amnesia\".\n- `mv3_extension_fixed/` (under `/tmp_workspace/`): a fixed version based on `mv3_extension/`. You may modify `manifest.json` and `background.js`, but touch only the minimum necessary fields. Do not embed markers like \"this fixes bug X\" in the source. After the fix, overall behavior must satisfy:\n  1. The red Errors badge on the extension card is gone;\n  2. Clicking the toolbar icon opens a real popup;\n  3. Every `chrome.*` call in `background.js` has a corresponding manifest declaration, with no runtime \"permission\" errors;\n  4. After the SW has been auto-terminated for ≥30 seconds, the popup still retrieves the accumulated data (state is recoverable across SW restarts);\n  5. The content script injects on every host declared in the manifest.\n- `fix_diff.patch`: `diff -ruN mv3_extension mv3_extension_fixed`, covering both `manifest.json` and `background.js`.\n- `view_08_ext_no_errors.png`: after loading the fixed version, the Errors button on the extension card has disappeared or shows 0 errors, and the service worker entry is still clickable.\n- `view_09_popup_works.png`: after clicking the toolbar icon, the popup actually opens, displaying an empty table or \"(no data yet)\".\n- `view_10_popup_with_data.png`: after switching across a few https tabs and reopening the popup, the table shows ≥1 row of domain + accumulated seconds.\n- `view_11_state_persisted.png`: terminate the SW, wait ≥3 seconds, then reopen the popup; the table still contains accumulated data, proving persistence works.\n- `mv3_extension_fixed.zip`: archive of `mv3_extension_fixed/`.\n- `fixed_manifest_keys.txt`: contents of the `.permissions`, `.host_permissions`, and `.action` keys in `mv3_extension_fixed/manifest.json`.\n- `verification.json`:\n  ```json\n  {\n    \"finding_1_resolved\": \"<bool>\",\n    \"finding_2_resolved\": \"<bool>\",\n    \"finding_3_resolved\": \"<bool>\",\n    \"finding_4_resolved\": \"<bool>\",\n    \"popup_renders_after_sw_restart\": \"<bool>\",\n    \"errors_panel_clean_after_fix\": \"<bool>\",\n    \"fixed_zip_size_bytes\": \"<int>\"\n  }\n  ```\n  `finding_N_resolved` corresponds one-to-one with the N-th finding in `manifest_audit.json`; the booleans must come from real collection and must not be hard-coded.\n- `mv3_postmortem.md`: ≥300 characters, containing:\n  - one paragraph for each of the 4 findings (aligned with the ids in `manifest_audit.json`);\n  - why MV3 cannot keep state in module-scope variables in the background like MV2 did (reference SW lifecycle: idle → terminated → restarted on event);\n  - why fixing the missing popup must be done in the manifest rather than in `background.js`;\n  - the relationship between `host_permissions` and `content_scripts.matches` (why the latter ⊆ the former);\n  - engineering recommendations before shipping (e.g. `web-ext lint` or chrome.webstore validator).\n  Must include keywords \"service worker\", \"lifecycle\", and \"chrome.storage\".\n- `view_12_combined_proof.png`: a single screenshot showing simultaneously: the fixed extension card with no Errors, the popup open with data in it, and a command line displaying that the `.permissions` of `mv3_extension_fixed/manifest.json` contains `\"alarms\"` — as cross-channel consistency evidence.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_6_mv3_ext_bg_sw_debug.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_6_mv3_ext_bg_sw_debug",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/gt /tmp_workspace/mv3_extension/icons || true\n# create placeholder icons so chrome doesn't reject load-unpacked\npython3 - <<'PY' 2>/dev/null || true\nfrom pathlib import Path\nimport struct, zlib\n\ndef png1x1(rgba=(80, 120, 200, 255)):\n    sig = b'\\x89PNG\\r\\n\\x1a\\n'\n    def chunk(t, d):\n        c = zlib.crc32(t + d) & 0xffffffff\n        return struct.pack('>I', len(d)) + t + d + struct.pack('>I', c)\n    ihdr = struct.pack('>IIBBBBB', 1, 1, 8, 6, 0, 0, 0)\n    raw = b'\\x00' + bytes(rgba)\n    idat = zlib.compress(raw, 9)\n    return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')\n\nicd = Path('/tmp_workspace/mv3_extension/icons')\nicd.mkdir(parents=True, exist_ok=True)\nfor n in ('icon16.png', 'icon48.png', 'icon128.png'):\n    p = icd / n\n    if not p.exists():\n        p.write_bytes(png1x1())\nPY\nls /tmp_workspace/mv3_extension/manifest.json && echo \"mv3_extension ready\" || echo \"WARN_mv3_extension_missing\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_6_mv3_ext_bg_sw_debug/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_6_mv3_ext_bg_sw_debug /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_6_mv3_ext_bg_sw_debug/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_6_mv3_ext_bg_sw_debug/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_6_mv3_ext_bg_sw_debug/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_6_mv3_ext_bg_sw_debug/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_6_mv3_ext_bg_sw_debug/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_6_mv3_ext_bg_sw_debug.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_6_mv3_ext_bg_sw_debug",
+    "workspace_relative": "WEB/task_6_mv3_ext_bg_sw_debug",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

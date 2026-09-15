@@ -1,0 +1,76 @@
+{
+  "id": "2373b66a-092d-44cb-bfd7-82e86e7a3b4d",
+  "new_id": "2373b66a-092d-44cb-bfd7-82e86e7a3b4d_traj_verify_2",
+  "snapshot": "multiapps",
+  "instruction": "Use iostat to collect disk I/O statistics 5 times at 3-second intervals and save the output to 'Disk_IO_Report.txt' on Desktop.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update && echo {CLIENT_PASSWORD} | sudo -S apt-get install sysstat",
+        "shell": "true"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_iostat_report__d175f88bb1991b0561f10b03c2a108ce",
+    "result": {
+      "type": "vm_file_content__d175f88bb1991b0561f10b03c2a108ce",
+      "path": "/home/user/Desktop/Disk_IO_Report.txt",
+      "dest": "Disk_IO_Report.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "keywords": [
+          "avg-cpu",
+          "%iowait",
+          "Device",
+          "tps"
+        ],
+        "min_report_sections": 5
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened terminal, installed sysstat, ran 'sar 1 30' to collect CPU stats every 1 second for 30 seconds, and redirected output to System_Resources_Report.txt on Desktop. Task completed in 24 turns.",
+    "capability_extraction": "Can open terminal, install packages via apt, use sysstat tools (sar), redirect command output to files, navigate file paths",
+    "task_rationale": "Variation uses iostat (another sysstat tool) for disk I/O monitoring instead of sar for CPU. Tests agent's ability to use a different sysstat utility with similar interval/count parameters.",
+    "challenge_additions": "Uses iostat instead of sar, requires knowledge of disk I/O monitoring tool from sysstat package",
+    "explanation": "Task requires running 'iostat 3 5' to collect disk I/O stats at 3-second intervals for 5 iterations and save to file. Evaluator checks file contains iostat headers (avg-cpu, %iowait, Device, tps) and has at least 5 distinct report sections by counting 'avg-cpu' occurrences. [Fixed: changed device line counting to report section counting to prevent false positives from multiple loop devices in a single iteration]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393_traj_verify_2/getters/sysstat.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393_traj_verify_2/metrics/sysstat.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "keywords_present": "0.5 - File contains iostat headers (avg-cpu, %iowait, Device, tps)",
+      "device_reports": "0.5 - File contains at least 5 distinct iostat report sections (counted by 'avg-cpu' occurrences)"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Changed metric from counting individual device data lines (regex matching sda/vda/loop/nvme) to counting distinct report sections via 'avg-cpu' string occurrences. Renamed min_device_reports to min_report_sections in both metric and expected rules. This prevents false positives where a single iostat iteration with many loop devices could satisfy the count threshold."
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly reads file from /home/user/Desktop/Disk_IO_Report.txt and returns content dict with 'content' key — path and extraction logic are correct.",
+        "Keyword check (avg-cpu, %iowait, Device, tps) correctly verifies iostat output headers — semantically valid for 0.5 partial credit.",
+        "Metric parameter handling is correct: expected.get('keywords') and expected.get('min_report_sections') access rules dict keys directly, which is correct for type='rule'.",
+        "Report section counting via len(re.findall(r'avg-cpu', content)) correctly counts distinct iostat iterations, since each iteration outputs exactly one 'avg-cpu' header block. min_report_sections=5 matches the instruction's requirement of 5 iterations.",
+        "Previous false-positive issue (counting device data lines) has been properly fixed by switching to 'avg-cpu' occurrence counting.",
+        "Coverage is complete: verifies both that the output is from iostat (keywords) and that 5 iterations were captured (report sections). Partial credit scoring (0.5 + 0.5) is reasonable.",
+        "Minor note: the evaluator does not verify the 3-second interval between reports, but this is impractical to verify from file content alone and is an acceptable limitation."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

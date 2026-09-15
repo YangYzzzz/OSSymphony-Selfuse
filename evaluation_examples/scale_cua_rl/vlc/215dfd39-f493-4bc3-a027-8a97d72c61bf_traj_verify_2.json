@@ -1,0 +1,84 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "215dfd39-f493-4bc3-a027-8a97d72c61bf_traj_verify_2",
+  "snapshot": "vlc",
+  "instruction": "Enable VLC's minimal view mode in the preferences.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_qt_minimal_view",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_minimal_view": 1
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_215dfd39-f493-4bc3-a027-8a97d72c61bf_sid_1488187",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated VLC advanced preferences (Tools > Preferences > All > Interface > Main interfaces > Qt) to disable the background cone icon, saved settings, and restarted VLC to verify the change.",
+    "capability_extraction": "Can navigate VLC advanced preferences, find specific settings, toggle checkboxes, save preferences, restart VLC",
+    "task_rationale": "Related VLC Qt preferences task: enabling minimal view mode is in the same Qt interface settings area, testing the ability to toggle a different checkbox setting. Slightly harder as the setting name is less obvious.",
+    "explanation": "Task requires enabling VLC's minimal view mode via Qt preferences. Evaluator uses existing get_vlc_config getter to read vlcrc file, and check_qt_minimal_view metric to verify qt-minimal-view is set to 1. Default is 0 (disabled).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts VLC config: get_vlc_config reads ~/.config/vlc/vlcrc from the VM and caches it locally, providing the config file path to the metric.",
+        "Metric correctly verifies the instruction: check_qt_minimal_view reads the vlcrc file, searches for 'qt-minimal-view=' line, and compares the value against the expected value of 1 (enabled). Default is 0 (disabled), matching the instruction to 'enable' minimal view.",
+        "Expected value is semantically correct: expected_qt_minimal_view=1 means enabled, which is what the instruction requires.",
+        "Parameter handling is correct: expected.type='rule' causes get_rule to return {'expected_qt_minimal_view': 1}, and the metric accesses rule['expected_qt_minimal_view'] directly, which is correct.",
+        "Postconfig properly kills VLC before reading config, ensuring VLC saves its settings to disk (SIGTERM triggers config save). Sleep of 1 second allows time for file write.",
+        "Complete coverage: the single instruction requirement (enable minimal view mode) is fully verified by checking qt-minimal-view=1 in vlcrc."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

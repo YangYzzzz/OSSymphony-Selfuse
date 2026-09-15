@@ -1,0 +1,124 @@
+{
+  "id": "a1af9f1c-50d5-4bc3-a51e-4d9b425ff638",
+  "new_id": "task_verify_48",
+  "snapshot": "thunderbird",
+  "instruction": "Enable Thunderbird for alerts@monitoring.net so it can send outgoing emails while disabling any incoming message reception.",
+  "source": "https://superuser.com/questions/1764409/how-to-send-email-with-thunderbird-without-configuring-an-incoming-email-service",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/15c3b339-88f7-4a86-ab16-e71c58dcb01e/thunderbird-profile-blank.tar.gz",
+            "path": "/home/user/thunderbird-profile-blank.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile-blank.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.useremail": {
+            "method": "==",
+            "ref": "alerts@monitoring.net"
+          },
+          "mail.smtpservers": {
+            "method": "contains",
+            "ref": "smtp"
+          }
+        },
+        "unexpect": {
+          "mail.server.server1.type": {
+            "method": "in",
+            "ref": [
+              "pop3",
+              "imap"
+            ]
+          }
+        }
+      }
+    },
+    "func": "check_thunderbird_prefs"
+  },
+  "metadata": {
+    "explanation": "This task verifies Thunderbird is configured for send-only mode by checking: (1) email identity is alerts@monitoring.net, (2) SMTP server is configured for outgoing mail, (3) no incoming POP3/IMAP server is configured.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three requirements from the instruction",
+        "Requirement 1 (email identity): Checks mail.identity.id1.useremail == 'alerts@monitoring.net' - correctly verifies the email identity configuration",
+        "Requirement 2 (outgoing mail): Checks mail.smtpservers contains 'smtp' - correctly verifies SMTP server is configured for sending emails",
+        "Requirement 3 (no incoming mail): Checks mail.server.server1.type not in ['pop3', 'imap'] - correctly verifies no incoming mail server is configured",
+        "Data flow is correct: get_vm_file extracts prefs.js (contains Thunderbird settings) -> check_thunderbird_prefs parses and validates preferences",
+        "Postconfig appropriately closes Thunderbird to ensure prefs.js is flushed to disk before verification",
+        "Metric function logic is sound: parses user_pref() lines, evaluates JSON values, applies expect/unexpect rules correctly",
+        "Complete coverage: all aspects of send-only configuration (identity, SMTP enabled, incoming disabled) are verified"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

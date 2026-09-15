@@ -1,0 +1,105 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_43",
+  "snapshot": "os",
+  "instruction": "Copy all files in the \"/tmp/test_files\" directory that were last modified 30 days ago to a backup directory at \"/tmp/backup_30days\"",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'BACKUP_COUNT=$(find /tmp/backup_30days -type f 2>/dev/null | wc -l); OLD_COUNT=$(find /tmp/test_files/old_files -type f 2>/dev/null | wc -l); NEW_COUNT=$(find /tmp/test_files/new_files -type f 2>/dev/null | wc -l); if [ \"$BACKUP_COUNT\" -eq 2 ] && [ \"$OLD_COUNT\" -eq 2 ] && [ \"$NEW_COUNT\" -eq 2 ]; then echo \"Success: Old files copied to backup, all originals preserved\"; else echo \"Fail: BACKUP=$BACKUP_COUNT OLD=$OLD_COUNT NEW=$NEW_COUNT\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files copied to backup, all originals preserved"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying old files (30+ days) to /tmp/backup_30days while keeping originals intact. Verification checks that 2 files exist in backup directory, 2 files remain in old_files, and 2 files remain in new_files. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Semantic verification failure: Evaluator only checks file counts in predefined directories (old_files, new_files, backup_30days) but does not verify that copied files actually have modification times of 30 days ago",
+        "Missing core requirement verification: The evaluator assumes setup script organizes files into old_files/new_files directories rather than checking actual mtime values, making it impossible to verify the 30-day selection criteria",
+        "Weak correctness guarantee: The evaluator would pass even if wrong files were copied (e.g., copying new_files instead of old_files) as long as file counts match (2+2+2)",
+        "Incomplete coverage: Does not verify file identity, names, or attributes - only counts files in directories",
+        "Logic flaw: Success condition 'BACKUP_COUNT=2 AND OLD_COUNT=2 AND NEW_COUNT=2' does not guarantee that the 2 files in backup are the same as (or copies of) the 2 files in old_files"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that files in /tmp/backup_30days have modification times approximately 30 days old using 'find /tmp/backup_30days -type f -mtime +29 -mtime -31' or similar",
+        "Add verification that copied file names/checksums match the old files: compare file lists or use checksums/stat to verify identity",
+        "Use a command that compares file lists: 'diff <(ls -1 /tmp/test_files/old_files | sort) <(ls -1 /tmp/backup_30days | sort)' to ensure correct files were copied",
+        "Verify the actual mtime criteria on source files before counting: 'find /tmp/test_files -type f -mtime +29 -mtime -31 | wc -l' to confirm 2 files meet the criteria",
+        "Add check that /tmp/test_files/new_files files do NOT appear in backup (to verify correct selection logic)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

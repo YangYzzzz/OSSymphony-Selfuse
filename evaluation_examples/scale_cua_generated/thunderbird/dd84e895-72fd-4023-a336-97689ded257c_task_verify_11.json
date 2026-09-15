@@ -1,0 +1,111 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_11",
+  "snapshot": "thunderbird",
+  "instruction": "Mark every message in the local Bills folder as read.",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "SELECT (SELECT COUNT(*) FROM messages WHERE folderID = 13) = (SELECT COUNT(*) FROM messageAttributes WHERE attributeID = 59 AND value = 1 AND messageID IN (SELECT id FROM messages WHERE folderID = 13));"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires marking all emails in Bills folder (folderID=13) as read. There are 2 emails (messageID 44, 45) in this folder. The evaluator uses run_sqlite3 to check that attribute 59 (read flag) has value 1 for ALL messages in the Bills folder. The SQL query verifies that the count of messages in folderID 13 equals the count of messages with the read attribute set.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by querying the Thunderbird database: folderID 13 contains 2 emails (IDs 44, 45). Attribute 59 represents the 'read' flag in Thunderbird. The SQL query checks for messages marked as read in the Bills folder.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "SQL query correctly verifies that ALL emails in Bills folder (folderID=13) are marked as read by comparing total message count with read message count",
+        "Left side of equality: COUNT(*) FROM messages WHERE folderID=13 gets total messages in Bills folder",
+        "Right side of equality: COUNT(*) of messageAttributes with attributeID=59 (read flag) and value=1 for messages in folderID=13",
+        "Equality check ensures 100% of emails are marked as read, not just partial",
+        "Postconfig correctly closes Thunderbird to ensure database is flushed before verification",
+        "Database-level verification is reliable and appropriate for this task"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "dd84e895-72fd-4023-a336-97689ded257c_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

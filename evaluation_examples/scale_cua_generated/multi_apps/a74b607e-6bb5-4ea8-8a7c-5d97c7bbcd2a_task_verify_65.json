@@ -1,0 +1,99 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_65",
+  "snapshot": "multiapps",
+  "instruction": "Manually add the Chrome extension that is located in the helloExtension folder on the Desktop.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome"
+          ]
+        }
+      }
+    ],
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Paraphrased instruction with slightly different wording. Verifies extension path is in the list of installed unpacked extensions.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic (get_find_unpacked_extension_path at chrome.py:1401-1435) correctly reads Chrome Preferences file and extracts all unpacked extension paths from extensions.settings dictionary",
+        "Metric logic (is_in_list at general.py:76-81) correctly checks if expected path exists in result list using exact string matching",
+        "Expected value '/home/user/Desktop/helloExtension' semantically matches the extension path from task setup (config unzips to /home/user/Desktop/helloExtension)",
+        "Complete coverage: evaluator verifies the only requirement (extension was installed) by checking if path appears in Chrome's extension settings",
+        "Evaluation is file-based, not UI-dependent - reads Chrome Preferences file directly from ~/.config/google-chrome/Default/Preferences, so no postconfig needed",
+        "Data flow is semantically correct: getter returns List[str] of extension paths, metric checks if string is in list",
+        "Edge cases handled: getter returns empty list [] if Preferences file missing or extensions.settings not found, metric returns 0.0 if path not in list"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_notes": "Rule validation warning about postconfig was a false positive - LLM judge confirmed evaluation is file-based (reads Chrome Preferences) and does not require UI state. No fixes needed."
+    }
+  }
+}

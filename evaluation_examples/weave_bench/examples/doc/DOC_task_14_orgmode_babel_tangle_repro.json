@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_14_orgmode_babel_tangle_repro",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: `/tmp_workspace/paper/paper.org` is a \"reproducible mini study\" written in Org-mode that analyzes the mean sepal length and the difference \\(\\Delta\\) between *setosa* and *versicolor* in the Fisher Iris dataset. The pipeline is driven by `data/iris_subset.csv` (53 rows, the two target species plus a small amount of virginica as a distractor). The document contains 4 named source blocks (`load-clean` / `compute-means` / `bar-chart` / `verify-rows`), but it currently **cannot** produce a reproducible report — three known bugs are hidden in `:tangle` headers, noweb references, and `:results` header attributes respectively:\n\n- **bug-A**: the `:tangle` of the `load-clean` block points to an incorrect filename containing `_WRONG`, so the tangled output is inconsistent with how it is referenced elsewhere in the document.\n- **bug-B**: the `compute-means` block contains a `<<missing-helper>>` noweb reference, but no block in the document has a `#+name:` that matches it, so execution fails with `mean` being unbound.\n- **bug-C**: the `:results` of the `bar-chart` block is currently `silent`; even when the plotting code is executed, no `[[file:...]]` link appears in the document, so inline image preview will not embed the PNG.\n\nTask goal: close the loop \"reproduce the failure on the batch backend → fix paper.org → re-tangle/execute → export a reproducible HTML report + visual sign-off\". The batch backend can only tangle/execute and has no equivalent output for rendering-state signals such as font-lock colors / minibuffer messages / whether an inline image was actually embedded. The interactive rendering UI and the batch logs corroborate each other, so locating and fixing the three bugs must use information from both sides. You are free to use any interactive editor and export toolchain that supports Org-mode (Emacs + pandoc is the most direct reference path; other solutions producing equivalent artifacts are also acceptable).\n\n### Hard constraints on the main deliverable `/tmp_workspace/results/paper.fixed.org`\n\n- Contains `:tangle src/load_data.py`, and `load_data_WRONG.py` no longer appears anywhere in the file.\n- A new Python named block `#+name: helper-mean` is added that defines `def mean(xs): return sum(xs)/len(xs)`; the noweb reference in `compute-means` is changed to `<<helper-mean>>`, and the original `<<missing-helper>>` text is gone.\n- The `:results` header of the `bar-chart` block contains both the `file` and `graphics` keywords (for example, `:results file graphics :file build/figs/means_bar.png`) so that the inline image can be embedded in the buffer.\n- All non-bug lines are preserved unchanged; avoid wholesale rewriting.\n\n### Supporting deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `baseline_tangle.log` | Combined stdout+stderr of the batch tangle run on the **original** paper.org **before** the fix; must genuinely capture at least one failure signal among the three bugs (`_WRONG` filename / unbound `mean` / unresolved `missing-helper`), and the batch command used must be visible in the log. |\n| `baseline_tangle_files.txt` | Absolute paths of `src/*.py` actually produced by tangle before the fix (one per line), for comparison with the post-fix artifacts. |\n| `fixed_tangle.log` | Combined stdout+stderr of the batch tangle + execute on paper.org after the fix. |\n| `pandoc.log` | Combined stdout+stderr of exporting the fixed paper.org to HTML. |\n| `paper.html` | HTML exported from the fixed paper.org; byte count ≥ 1500, body contains keywords such as `Iris` / `setosa` / `versicolor`, and formulas can be rendered by the browser in MathJax typeset form. |\n| `means.txt` | Three lines of key/value (4 decimal places is sufficient): `setosa_mean <num>` / `versicolor_mean <num>` / `delta <num>`; the numbers must be produced by the real pipeline and fall within the intervals given by the GT. |\n| `repro_hash.json` | `{\"fig_sha256\": \"<hex64>\", \"fig_bytes\": <int>, \"html_bytes\": <int>}`; `fig_sha256` must equal the actual sha256 of `/tmp_workspace/paper/build/figs/means_bar.png`, and `fig_bytes` / `html_bytes` must be the actual file byte sizes. |\n| `notes.md` | ≥ 200 characters, describing how the three bugs were located: which one was first exposed in the batch log, which one could only be observed from interactive rendering signals (font-lock / minibuffer / inline image preview). Write this based on what you actually saw, not by copying from the task statement. |\n\nYou must also produce real derived artifacts under `/tmp_workspace/paper/`:\n\n- `src/load_data.py` / `src/compute_means.py` / `src/plot_bar.py` — source files produced by tangling the fixed paper.org. Old artifacts such as `src/load_data_WRONG.py` must not remain.\n- `build/figs/means_bar.png` — the bar chart PNG produced by the bar-chart block; file size ≥ 5 KB.\n\n### Four work-process screenshots (saved to `/tmp_workspace/results/`)\n\nFilenames and required visual elements are fixed; each screenshot will be checked with OCR + VLM and must come from a real interactive UI (pure-white background / collages / placeholder images score 0):\n\n- `view_emacs_fontlock.png`: full-window screenshot of paper.org opened in an interactive Org-mode editor, showing the editor main window (title bar + modeline), syntax highlighting on at least 2 `#+begin_src` blocks, and a visible `#+TITLE:` line.\n- `view_emacs_tangle_msg.png`: screenshot taken after triggering tangle in the interactive editor, showing the status/message area with the word `Tangled` and the block count / file count.\n- `view_emacs_inline_image.png`: screenshot taken with inline image display enabled in the editor and focused near the `#+RESULTS: bar-chart` block; the image must **visually** show the means_bar bar chart embedded in the buffer, not appearing as the text link `[[file:...]]`.\n- `view_browser_mathjax.png`: full-window screenshot of `paper.html` opened in a browser, showing the browser main window + document body + math formulas (e.g., \\(\\bar{x}\\), \\(\\Delta\\)) rendered as typeset math symbols, not as raw LaTeX source with backslashes.\n\n### Anti-cheating and hard constraints\n\n- The three bugs must actually be fixed in `paper.fixed.org`; the three numbers in `means.txt` must be produced by the genuinely rebuilt pipeline and must not be fabricated or hard-coded.\n- `repro_hash.json.fig_sha256` must match the byte stream of `build/figs/means_bar.png`.\n- It is not allowed to copy any files from `/tmp_workspace/gt/` (reserved for grading) into `results/`.\n\nNeutral background: Org-mode literate programming wraps executable code blocks with `#+begin_src`, uses the `:tangle` header attribute to extract code into external source files, and uses the `<<name>>` noweb syntax to compose blocks together.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_14_orgmode_babel_tangle_repro.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_14_orgmode_babel_tangle_repro",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/gt /tmp_workspace/paper /tmp_workspace/paper/data /tmp_workspace/paper/src /tmp_workspace/paper/build/figs\npip3 install --break-system-packages --quiet --ignore-installed blinker 2>/dev/null || true\nwhich pandoc || (apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq pandoc python3-matplotlib python3-pip imagemagick poppler-utils tesseract-ocr) || true\npip3 install --break-system-packages --quiet pdfminer.six pillow pytesseract orgparse httpx beautifulsoup4 lxml 2>/dev/null || pip3 install --quiet pdfminer.six pillow pytesseract orgparse httpx beautifulsoup4 lxml 2>/dev/null || true\n[ -s /tmp_workspace/paper/paper.org ] || cp -f /tmp_workspace/setup/paper.org /tmp_workspace/paper/paper.org 2>/dev/null || true\n[ -s /tmp_workspace/paper/data/iris_subset.csv ] || cp -f /tmp_workspace/setup/data/iris_subset.csv /tmp_workspace/paper/data/iris_subset.csv 2>/dev/null || true\n[ -s /tmp_workspace/gt/expected.json ] || cp -f /tmp_workspace/setup_gt/expected.json /tmp_workspace/gt/expected.json 2>/dev/null || true\n# Move expected.json to a root-only path so the agent cannot read the\n# expected_tangle_files / forbidden / named_helper_block / html_must_contain\n# answer set.\nmkdir -p /opt/doc14_gt\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/doc14_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/doc14_gt 2>/dev/null || true\n  chmod 700 /opt/doc14_gt 2>/dev/null || true\n  chmod 600 /opt/doc14_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_14_orgmode_babel_tangle_repro/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_14_orgmode_babel_tangle_repro /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_14_orgmode_babel_tangle_repro/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_14_orgmode_babel_tangle_repro/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_14_orgmode_babel_tangle_repro/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_14_orgmode_babel_tangle_repro/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_14_orgmode_babel_tangle_repro/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_14_orgmode_babel_tangle_repro.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_14_orgmode_babel_tangle_repro",
+    "workspace_relative": "DOC/task_14_orgmode_babel_tangle_repro",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

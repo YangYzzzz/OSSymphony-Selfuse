@@ -1,0 +1,118 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_10",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder called \"Events\" and create a filter to auto move the inbox emails whose subject contains \"invitation\" to the new folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Events",
+            "condition": [
+              "AND (subject,contains,invitation)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation 8: Create Events folder and filter for emails with subject containing 'invitation'. Uses existing check_thunderbird_filter metric function. Evaluator verified by examining the msgFilterRules.dat format and matching against expected filter structure with correct folder path encoding and condition syntax.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "variation_description": "Similar to original but filters for 'invitation' keyword into Events folder",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all instruction requirements - filter enabled, correct action type, correct folder path, and correct subject condition",
+        "Correct getter logic: get_vm_file fetches the Thunderbird msgFilterRules.dat file from the correct profile directory path",
+        "Correct metric logic: check_thunderbird_filter parses filter definitions correctly, extracts all required properties, and matches against expected rules using _match_record",
+        "Correct expected values: Folder path encoding 'mailbox://nobody@Local%20Folders/Events' is correct for Thunderbird Local Folders, condition syntax 'AND (subject,contains,invitation)' matches Thunderbird's filter format",
+        "Appropriate postconfig: Closes Message Filters window to ensure filter configuration is saved before verification",
+        "Proper parameter handling: Metric function uses 'rules' parameter correctly with rules.get('expect'), no incorrect expected.get('rules') pattern",
+        "Robust edge case handling: Returns 0.0 if file is None, handles multiple filters, supports both expect and unexpect rules"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

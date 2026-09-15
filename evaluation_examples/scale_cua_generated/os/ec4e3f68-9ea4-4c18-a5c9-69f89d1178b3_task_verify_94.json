@@ -1,0 +1,86 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_94",
+  "snapshot": "os",
+  "instruction": "Ensure exactly two applications remain in your favorites: Vim and the web browser.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "vim.desktop",
+          "google-chrome.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires removing Thunderbird while keeping Chrome and Vim. Uses existing check_gnome_favorite_apps metric to verify exactly two apps remain.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correct: get_vm_command_line executes 'gsettings get org.gnome.shell favorite-apps' which retrieves the exact state needed for verification",
+        "Metric logic correct: check_gnome_favorite_apps parses the string, checks count (exactly 2), and verifies content using set comparison",
+        "Complete coverage: instruction requires exactly 2 apps (Vim and browser) - metric verifies both count and identity",
+        "Expected values semantically correct: vim.desktop and google-chrome.desktop correctly correspond to 'Vim' and 'web browser' mentioned in instruction",
+        "Data flow correct: Framework calls get_rule which returns rules dict directly; metric correctly accesses rule['expected']",
+        "Set-based comparison handles order independence: both ['vim.desktop', 'google-chrome.desktop'] and ['google-chrome.desktop', 'vim.desktop'] pass",
+        "No state dependencies: gsettings command is always accessible without requiring UI/dialog state; no postconfig needed",
+        "Edge cases handled: metric checks length before content comparison, preventing index errors"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

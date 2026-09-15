@@ -1,0 +1,85 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7_traj_verify_2",
+  "snapshot": "base_setup",
+  "instruction": "Set VLC's maximum volume to 200% in the preferences.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "-f",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc_v2.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": "200"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_bba3381f-b5eb-4439-bd9e-80c22218d5a7_sid_1488205",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened VLC Media menu, navigated to Open Network Stream, entered HLS URL, and started playback in 11 turns.",
+    "capability_extraction": "Can navigate VLC menus, open dialogs, type URLs, interact with VLC UI controls.",
+    "task_rationale": "Tests VLC preference modification for volume setting. Agent proved it can navigate VLC menus; now test changing a numeric setting in Tools > Preferences > Interface > Max volume.",
+    "explanation": "Task requires navigating to VLC Tools > Preferences and setting the maximum volume to 200%. Evaluator kills VLC to force config save, then reads vlcrc to check qt-max-volume setting equals 200.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config/get_vlc_config) correctly reads the VLC vlcrc configuration file from the VM, which is the right source for preference settings.",
+        "Metric (check_qt_max_volume) correctly parses the vlcrc file for the 'qt-max-volume=' key and compares it to the expected value '200', which maps to 200% max volume.",
+        "Expected parameter handling is correct: with type='rule', get_rule returns {'expected_qt_max_volume': '200'}, and the metric accesses rule['expected_qt_max_volume'] directly - no incorrect nesting.",
+        "Postconfig correctly kills VLC before reading the config, ensuring vlcrc is saved to disk with the latest preferences.",
+        "Default value of '125' (VLC's default max volume) ensures correct failure if the setting was never changed.",
+        "Complete coverage: the single instruction requirement (set max volume to 200%) is fully verified."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

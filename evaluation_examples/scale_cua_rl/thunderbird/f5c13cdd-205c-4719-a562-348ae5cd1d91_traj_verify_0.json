@@ -1,0 +1,124 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "f5c13cdd-205c-4719-a562-348ae5cd1d91_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Add fox@someuniversity.edu to the receiver field of the email draft.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"fox@someuniversity.edu\"]"
+          ]
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_f5c13cdd-205c-4719-a562-348ae5cd1d91_sid_1488398",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened tuition_payment.xlsx, misread 2 of 4 unpaid students (typed john and sophia instead of iron and stella), added emails to To field, then spent remaining turns stuck on network save dialog.",
+    "capability_extraction": "Can open files from file manager, read spreadsheet data, switch between windows, type email addresses into Thunderbird compose To field, interact with Thunderbird dialogs.",
+    "failure_analysis": "Model hallucinated spreadsheet data - correctly identified fox and nancy as unpaid but incorrectly added john and sophia (who had 'Yes') instead of iron and stella. Then wasted ~20 turns waiting for stuck network save.",
+    "task_rationale": "Simplified to adding a single known email address directly, removing the spreadsheet reading step that caused the original failure. Tests basic Thunderbird compose To field interaction.",
+    "explanation": "Task requires adding a single email address to the Thunderbird compose To field. Evaluator checks accessibility tree for the address pill containing fox@someuniversity.edu.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "add_fox_email": "1.0 - fox@someuniversity.edu appears as address pill in To field"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_accessibility_tree) correctly extracts the Thunderbird UI state as XML accessibility tree",
+        "Metric (check_accessibility_tree) correctly parses XML and applies CSS selector to find matching elements",
+        "CSS selector accurately targets the To field address pill containing fox@someuniversity.edu using substring match (name*=)",
+        "Complete coverage: the single instruction requirement (add email to To field) is fully verified by the evaluator",
+        "Data flow is correct: get_rule returns the rules list, check_accessibility_tree receives it as the rules parameter",
+        "Postconfig (10s sleep) is reasonable to allow UI to settle before reading accessibility tree"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

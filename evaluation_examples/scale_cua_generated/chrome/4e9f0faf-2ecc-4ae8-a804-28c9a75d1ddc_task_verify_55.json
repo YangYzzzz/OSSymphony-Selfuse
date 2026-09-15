@@ -1,0 +1,150 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "Access invoice.pdf from Google Drive, extract all service data, and create 'invoice.xlsx' on the Desktop. Identify the minimum unit price from all services and write it in cell D11.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_value__2e7499af",
+    "result": {
+      "type": "xlsx_cell__2e7499af",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0,
+      "cell": "D11"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 15.0
+      }
+    },
+    "options": {
+      "tolerance": 0.01
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding the minimum unit price. Verified: Domain Registration at $15 is the lowest. The evaluator reads cell D11 and checks if the value matches the expected value.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_3/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_3/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if D11 contains 15.0 (±0.01), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly reads cell D11 from /home/user/Desktop/invoice.xlsx using openpyxl with data_only=True",
+        "Metric comparison logic works correctly - compares numeric values with appropriate tolerance (0.01)",
+        "Postconfig properly activates window and saves file before reading, ensuring file state is fresh",
+        "Data flow is correct: getter extracts cell value -> metric compares with expected 15.0 -> returns binary score",
+        "Edge case handling present: metric handles None results and conversion errors appropriately",
+        "Minor issue: Metric uses pattern 'expected.get('value', expected)' which works but is semantically suboptimal - should directly access 'expected.get('value')' or 'expected['value']' since expected IS the rules dict when type='rule'",
+        "Coverage limitation: Evaluator only verifies final output (D11 value) rather than intermediate steps (whether ALL service data was extracted, whether file structure is complete). This is acceptable as a design choice - verifying the correct minimum in D11 implicitly requires correct extraction and analysis",
+        "Expected value (15.0) is stated to be verified as 'Domain Registration at $15 is the lowest' but cannot independently confirm without seeing invoice.pdf source data"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Simplify metric line 21 from 'expected_val = float(expected.get('value', expected))' to 'expected_val = float(expected['value'])' for clearer semantics",
+        "Consider adding intermediate verification steps if complete coverage is desired: check that xlsx contains all service rows, verify calculation logic for finding minimum, etc.",
+        "If possible, include source data reference or calculation proof in metadata to verify expected value is correct"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,104 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_65",
+  "snapshot": "thunderbird",
+  "instruction": "Give all emails in the Sent folder a star",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "SELECT (SELECT COUNT(*) FROM messages WHERE folderID = 10) = (SELECT COUNT(*) FROM messageAttributes WHERE attributeID = 58 AND value = 1 AND messageID IN (SELECT id FROM messages WHERE folderID = 10));"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires starring all emails in Sent folder (folderID=10, contains 2 emails based on query). The evaluator checks if star attribute (attributeID=58, value=1) is set for messages in folder 10. Verified from database: folder 10 is Sent with 2 emails.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "SQL query logic is correct: compares total count of emails in Sent folder (folderID=10) with count of starred emails (attributeID=58, value=1)",
+        "The equality check ensures ALL emails must be starred (not just some) for the evaluator to return 1.0",
+        "Postconfig correctly closes Thunderbird to ensure database is flushed before verification",
+        "Getter correctly fetches the Thunderbird SQLite database file",
+        "Metric function run_sqlite3 correctly executes SQL and returns result as float (0.0 or 1.0)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

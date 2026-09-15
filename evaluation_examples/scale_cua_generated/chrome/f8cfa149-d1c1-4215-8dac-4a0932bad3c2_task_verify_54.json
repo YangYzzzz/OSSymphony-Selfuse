@@ -1,0 +1,122 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_54",
+  "snapshot": "chrome",
+  "instruction": "Please help me copy the value in Cell B7 from the Calc file and look it up on Google using Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "wmctrl",
+          "-a",
+          "Google Chrome"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=etta(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying cell B7 (first name 'Etta' from row 7) and searching it in Chrome. Evaluator verifies Google search URL contains 'etta' as query parameter. Verified by reading Excel file: cell B7 (row 7, col 1) contains 'Etta'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter 'active_tab_info' (chrome.py:803-890) correctly extracts Chrome active tab state: first retrieves URL from accessibility tree via get_active_url_from_accessTree (line 814), then uses Playwright to navigate to that URL and extract full tab info including URL, title, and HTML content (lines 851-858). Returns dict with 'url', 'title', and 'content' keys.",
+        "Metric 'is_expected_search_query' (chrome.py:247-256) correctly implements verification logic: receives active_tab_info dict, extracts 'expect' pattern from rules (line 251), gets 'pattern' from expect (line 252), applies regex search on active_tab_info['url'] (line 253), returns 1.0 if match found else 0.0. This is the correct verification approach.",
+        "Expected regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=etta(?:&|$|#).*' is semantically correct and comprehensive: case-insensitive flag (?i) handles both 'etta' and 'Etta', matches both http and https protocols, handles optional www subdomain, verifies query parameter q=etta, uses (?:&|$|#) to ensure 'etta' is complete query value (not substring), allows additional query parameters or URL fragments after etta",
+        "Complete coverage of instruction requirements: evaluator verifies the final state (Google search URL with correct query parameter) which semantically confirms all task steps were completed correctly - user opened Calc file, copied cell B7 value ('Etta'), and performed Google search with that value",
+        "Expected value 'etta' semantically matches cell B7 content: metadata confirms cell B7 contains 'Etta' (from Excel row 7, column B which is index 1). The case-insensitive regex correctly handles variations like 'etta', 'Etta', 'ETTA'",
+        "Postconfig correctly focuses Chrome window (wmctrl -a 'Google Chrome') which ensures the accessibility tree and active tab getter read the correct Chrome window state at verification time. This is essential for reliable verification.",
+        "Data flow is semantically correct and traceable: get_active_url_from_accessTree extracts URL string from accessibility tree -> get_active_tab_info navigates to that URL via Playwright and returns dict {'url': string, 'title': string, 'content': string} -> is_expected_search_query receives this dict, extracts dict['url'], applies regex pattern matching -> returns 1.0 (pass) or 0.0 (fail)",
+        "Edge case handling: getter handles timeouts with 60s limit (line 828), metric handles empty result gracefully by returning 0.0 (line 249), regex pattern correctly distinguishes 'etta' as standalone query value vs substring in longer query",
+        "Second review confirms all semantic and logical verification aspects are correct. The evaluator can reliably verify that the user completed the task of copying cell B7 value ('Etta') from the Calc file and searching it on Google."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor timing consideration: get_active_tab_info (chrome.py:851-852) performs page.goto(active_tab_url) which reloads the active tab URL. For Google search result pages this should be stable and not trigger redirects, but there is theoretical risk if Google applies dynamic redirects based on session state. In practice Google search result URLs are stable on reload so this should work reliably."
+      ],
+      "llm_judge_second_review": true,
+      "llm_judge_second_review_date": "2025-12-20",
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true,
+      "fix_notes": "Task validated successfully. The postconfig is already correctly configured to focus Chrome window for verification using 'wmctrl -a Google Chrome'. The initial heuristic warning about UI/state-dependent tasks was a false positive since the postconfig appropriately focuses Chrome to verify the search results. LLM judge passed with score 0.95, confirming all semantic checks are correct with comprehensive verification logic. All evaluator functions (active_tab_info getter and is_expected_search_query metric) exist in chrome.py and work correctly."
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

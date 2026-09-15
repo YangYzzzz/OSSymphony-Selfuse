@@ -1,0 +1,124 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_24",
+  "snapshot": "chrome",
+  "instruction": "Chrome autofill keeps filling in the wrong information on forms. I want to completely disable the autofill feature. How can I turn it off?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"autofill\":{\"enabled\": true}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "kill_all",
+      "parameters": {
+        "keyword": "chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "sleep 2",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_autofill_disabled__cb0362f4",
+    "result": {
+      "type": "chrome_autofill_setting__cb0362f4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": false
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires user to disable the autofill feature in Chrome. The evaluator checks that autofill.enabled is set to false. Verified by analyzing Chrome preferences autofill settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_7/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_7/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correct: Extracts autofill.enabled from Chrome preferences JSON at the correct OS-specific path",
+        "Metric logic correct: Compares boolean result with boolean expected value using direct equality check",
+        "Expected value semantically correct: Expected value is false (disabled), matching the instruction requirement to disable autofill",
+        "Data flow correct: Getter returns boolean -> Framework calls get_rule() returning {expected_value: false} -> Metric compares result_state == expected_value",
+        "Complete coverage: Instruction has single requirement (disable autofill), evaluator checks exactly that requirement",
+        "Postconfig appropriate: Restarts Chrome to ensure preferences file is persisted and changes take effect",
+        "Parameter handling correct: Metric accesses expected_state.get('expected_value') which correctly matches the rules dict structure returned by get_rule()",
+        "Edge case handling reasonable: Getter returns True (default enabled state) on error, which is a safe default for this verification"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

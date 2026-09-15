@@ -1,0 +1,104 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_64",
+  "snapshot": "chrome",
+  "instruction": "I want Chrome to ask before allowing sites to access my camera. Can you set this up?",
+  "source": "https://support.google.com/chrome/answer/2693767",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "camera_ask_permission__317af54d"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to set camera permission to 'Ask'. The getter reads Chrome Preferences to verify profile.default_content_setting_values.media_stream_camera is 3 (ASK) or not set to 1 (ALLOW).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_8/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "task_category": "chrome_permission_settings",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Core verification logic is correct: getter properly reads Chrome Preferences file and checks camera permission setting",
+        "Postconfig appropriately restarts Chrome to ensure Preferences file reflects current state (pkill + relaunch + sleep)",
+        "Metric (exact_match) correctly compares getter result against expected value 'true'",
+        "Expected value semantically correct: 'true' means camera is set to 'Ask'",
+        "Getter correctly handles value 0 (default/ask) and not-set cases (defaults to 0)",
+        "Instruction coverage complete: single requirement (camera ask permission) verified by single check",
+        "Minor issue: Getter includes value 3 in the 'ask' check, but Chrome's standard camera permission values are 0 (default/ask), 1 (allow), 2 (block). Value 3 is not documented as a standard camera permission setting and may be erroneous or platform-specific"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify if value 3 is actually used for camera permissions in any Chrome version/platform, or remove it from the check (line 38 in chrome.py)",
+        "If value 3 is not valid, simplify the return statement to: return 'true' if camera_setting in [0] or camera_setting is None else 'false'",
+        "Add comment explaining why value 3 is included if it's a platform-specific behavior"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,115 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_3",
+  "snapshot": "thunderbird",
+  "instruction": "Activate automatic checking for new emails on the default account in Thunderbird.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.server1.check_new_mail": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling automatic new mail checking for server1 (the primary email account). The evaluator checks that mail.server.server1.check_new_mail is set to true. Current value in profile is false, so agent needs to change it to true. Uses existing check_thunderbird_prefs metric function.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by reading prefs.js from cache: mail.server.server1.check_new_mail is currently false. Task asks to enable automatic checking (value should be true).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly identifies and checks the specific Thunderbird preference (mail.server.server1.check_new_mail) required for automatic new mail checking",
+        "Getter (get_vm_file) properly extracts the prefs.js file from VM to local cache for analysis",
+        "Metric (check_thunderbird_prefs) correctly parses prefs.js using regex and validates the preference value against expected rule",
+        "Postconfig appropriately closes Thunderbird before reading prefs.js, ensuring all in-memory changes are flushed to disk",
+        "Expected value (true) is semantically correct for enabling automatic checking, and comparison method (eq) is appropriate",
+        "Edge cases properly handled: file missing returns None (metric returns 0.0), preference key missing results in False",
+        "Complete instruction coverage: single requirement to enable automatic checking is fully verified",
+        "Static type warning about Union return type is not a runtime issue - metric correctly handles None case"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "f201fbc3-44e6-46fc-bcaa-432f9815454c_aug_8_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

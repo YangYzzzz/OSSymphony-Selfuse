@@ -1,0 +1,121 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_19",
+  "snapshot": "thunderbird",
+  "instruction": "Establish a local folder named \"Orders\" and design a filter to automatically move inbox messages with \"purchase\" in the subject to this Orders folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Orders",
+            "condition": [
+              "AND (subject,contains,purchase)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation changes folder name to 'Orders' and filter keyword to 'purchase' (subject contains). Uses same evaluator structure as original with check_thunderbird_filter metric. Verified that filter format matches expected structure with enabled=yes, Move to folder action, and subject contains condition.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction has TWO requirements - (1) establish local folder 'Orders' and (2) create filter. Evaluator only verifies filter creation, NOT folder existence",
+        "The evaluator checks the filter rule correctly (enabled=yes, action=Move to folder, actionValue=mailbox://nobody@Local%20Folders/Orders, condition=subject contains purchase)",
+        "The getter correctly fetches msgFilterRules.dat file and metric check_thunderbird_filter parses it correctly",
+        "Postconfig appropriately closes Message Filters window and waits for file write",
+        "CRITICAL GAP: If user creates filter but forgets to create 'Orders' folder, evaluator would still pass even though task is incomplete",
+        "Expected values are semantically correct for filter verification but don't address folder existence requirement"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second evaluation step to verify the 'Orders' folder exists in Thunderbird's Local Folders structure",
+        "Could check for folder existence by verifying the folder directory exists at /home/user/.thunderbird/*/Mail/Local Folders/Orders or Orders.msf file",
+        "Alternatively, split into two separate tasks: one for folder creation, one for filter creation",
+        "Current evaluator should be marked as partial - it validates filter creation correctly but misses folder creation verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

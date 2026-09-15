@@ -1,0 +1,119 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_60",
+  "snapshot": "chrome",
+  "instruction": "Retrieve the data from Cell B12 in the Calc spreadsheet and use it as a search query in Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=franklyn(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "postconfig": [
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "LibreOffice Calc"
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires copying cell B12 (first name 'Franklyn' from row 12) and searching it in Chrome. Evaluator verifies Google search URL contains 'franklyn' as query parameter. Verified by reading Excel file: cell B12 (row 12, col 1) contains 'Franklyn'.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (active_tab_info) correctly extracts active Chrome tab information including URL, title, and content fields from the active tab",
+        "Metric (is_expected_search_query) correctly performs regex pattern matching on the 'url' field of active_tab_info dictionary",
+        "Expected pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=franklyn(?:&|$|#).*' correctly verifies Google search URL with query parameter q=franklyn using case-insensitive matching",
+        "Complete coverage: evaluator verifies the end state (Google search performed with correct query from cell B12) rather than intermediate steps",
+        "Expected value semantically correct: pattern matches 'Franklyn' from cell B12 as documented in metadata explanation",
+        "No state timing issues: Google search URL is persistent and accessible via active tab after search is performed, does not require dialog reopening",
+        "Postconfig correctly includes activate_window for both LibreOffice Calc and Chrome, ensuring proper window focus for accessibility tree extraction by active_tab_info getter",
+        "Data flow semantically correct: active_tab_info getter returns dict with 'url' field → metric extracts URL string → regex.search() performs pattern matching",
+        "Metric function correctly handles expected parameter for type='rule': directly accesses rules['expect']['pattern'] without incorrectly accessing rules['rules'] or expected.get('type')",
+        "Edge case handling: metric returns 0.0 if active_tab_info is falsy/empty or if pattern doesn't match, ensuring robust verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

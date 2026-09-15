@@ -1,0 +1,116 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "task_verify_75",
+  "snapshot": "os",
+  "instruction": "I want to configure Vim to use 4 spaces instead of tabs for indentation. Please look up how to set up Vim to use spaces for indentation and apply this configuration to my local Vim as the default behavior.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b337d106-053f-4d37-8da0-7f9c4043a66b/eval.sh",
+              "path": "eval_spaces__3abb97cd.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > eval_spaces__3abb97cd.sh << 'EOF'\n#!/bin/bash\nhas_expandtab=false\nhas_tabstop=false\nhas_shiftwidth=false\n\nif [ -f ~/.vimrc ]; then\n    if grep -q \"expandtab\" ~/.vimrc; then\n        has_expandtab=true\n    fi\n    if grep -q \"tabstop=4\" ~/.vimrc; then\n        has_tabstop=true\n    fi\n    if grep -q \"shiftwidth=4\" ~/.vimrc; then\n        has_shiftwidth=true\n    fi\nfi\n\nif [ \"$has_expandtab\" = true ] && [ \"$has_tabstop\" = true ] && [ \"$has_shiftwidth\" = true ]; then\n    echo \"Vim Configured For 4 Spaces!\"\nelse\n    echo \"Configuration incomplete\"\nfi\nEOF\nchmod +x eval_spaces__3abb97cd.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_spaces__3abb97cd.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Vim Configured For 4 Spaces!"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires searching for how to configure Vim to use spaces instead of tabs and adding expandtab, tabstop=4, and shiftwidth=4 to ~/.vimrc. Evaluator checks for all three settings. Similar complexity to original (search tutorial, configure vim settings).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if all three settings (expandtab, tabstop=4, shiftwidth=4) are present in .vimrc, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three required Vim settings (expandtab, tabstop=4, shiftwidth=4) in ~/.vimrc",
+        "Bash script logic is sound: checks file existence, uses grep for each setting, requires all three to be present",
+        "Complete instruction coverage: instruction requires configuring Vim to use 4 spaces instead of tabs, evaluator checks all necessary settings",
+        "Correct data flow: get_vm_command_line executes bash script → script outputs success message → check_include_exclude verifies message presence",
+        "Expected value is correct: 'Vim Configured For 4 Spaces!' matches script output when all settings are present",
+        "Binary scoring is appropriate: task is pass/fail (either all settings configured or not)",
+        "No state timing issues: reads persisted .vimrc file, not transient UI state",
+        "Edge cases handled: script gracefully handles missing .vimrc file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

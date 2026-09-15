@@ -1,0 +1,132 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "Chrome keeps prompting me to save passwords and I find it annoying. I want to turn off the password manager feature. Can you show me how?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"profile\":{\"password_manager_enabled\": true}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_password_manager_disabled__09e00537",
+    "result": {
+      "type": "chrome_password_manager__09e00537"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": false
+      }
+    },
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "pkill -f chrome || true",
+          "shell": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "socat",
+            "tcp-listen:9222,fork",
+            "tcp:localhost:1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires user to disable the password manager feature in Chrome. The evaluator checks that password_manager_enabled in profile settings is set to false. Verified by analyzing Chrome preferences profile settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_6/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_6/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator correctly verifies the single requirement (disable password manager by checking password_manager_enabled == false)",
+        "Getter logic correct: Extracts password_manager_enabled from profile.password_manager_enabled in Chrome Preferences file at OS-specific correct locations",
+        "Metric comparison correct: Uses boolean equality comparison (result_state == expected_value) which is semantically appropriate",
+        "Expected value correct: false semantically represents disabled state as required by instruction",
+        "Parameter handling correct: Metric correctly handles expected parameter when type='rule' - directly accesses expected_state.get('expected_value') instead of incorrect patterns like expected.get('rules')",
+        "Data flow correct: Getter returns boolean -> Metric compares boolean -> Semantically compatible types",
+        "State accessibility: Getter reads from disk file (Chrome Preferences JSON), not transient UI state, so verification is reliable",
+        "Postconfig appropriate: Restarts Chrome to ensure Preferences file is written to disk and can be read by getter",
+        "Cross-platform support: Handles Windows/macOS/Linux path differences correctly",
+        "Error handling: Has try/except with reasonable default (True = enabled by default in Chrome)"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,99 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "f5d96daf-83a8-4c86-9686-bada31fc66ab_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 16 Pro Max with iPhone 15 Pro Max and iPhone 14 Pro Max on Apple's website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_unordered_json_list__d7ef119cb2976be7a75aaacedec7ea6b",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-16-pro-max",
+            "iphone-15-pro-max",
+            "iphone-14-pro-max"
+          ]
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f5d96daf-83a8-4c86-9686-bada31fc66ab_sid_1488154",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated from apple.com to the iPhone compare page, used dropdown selectors to select iPhone 15 Pro Max, iPhone 14 Pro Max, and iPhone 13 Pro Max, resulting in the correct comparison URL.",
+    "capability_extraction": "Can navigate apple.com, find the iPhone compare page, use dropdown model selectors, select specific iPhone models from the list",
+    "task_rationale": "Shifts the Pro Max comparison one generation forward (16/15/14 instead of 15/14/13), testing the same pattern with newer models that require scrolling through the dropdown.",
+    "explanation": "Task requires navigating to Apple's iPhone comparison page and selecting 3 Pro Max models. Evaluator parses the modelList URL parameter and checks all 3 models are present (order-independent). Custom metric check_unordered_json_list sorts both lists before comparison to handle non-deterministic dropdown selection order. [Fixed: replaced check_direct_json_object with custom metric to avoid ignore_list_order bug where the flag was iterated as a comparison key causing sorted(True) TypeError]",
+    "fix_history": [
+      "Fix 1: Moved ignore_list_order from rules level into rules.expected dict so that check_direct_json_object metric can find and use it for order-independent list comparison",
+      "Fix 2: Replaced check_direct_json_object with custom metric check_unordered_json_list__d7ef119cb2976be7a75aaacedec7ea6b that properly handles order-independent list comparison without the ignore_list_order flag bug. Removed ignore_list_order from expected dict."
+    ],
+    "new_functions_paths": [
+      "{tmp_func_dir}/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter logic is correct: active_tab_url_parse with parse_keys=['modelList'] and split_list=true correctly extracts the model list from Apple's comparison URL (e.g. ?modelList=iphone-16-pro-max,iphone-15-pro-max,iphone-14-pro-max) into {'modelList': ['iphone-16-pro-max', 'iphone-15-pro-max', 'iphone-14-pro-max']}.",
+        "Custom metric check_unordered_json_list correctly handles the expected parameter: get_rule returns config['rules'] = {'expected': {'modelList': [...]}}, and the metric accesses expected.get('expected', {}) to get the inner dict. No Section 5.1 anti-pattern present.",
+        "Order-independent list comparison is correctly implemented via sorted() on both lists, which is appropriate since dropdown selection order is non-deterministic.",
+        "Expected model slugs (iphone-16-pro-max, iphone-15-pro-max, iphone-14-pro-max) are semantically correct for the instruction. All 3 required models are verified.",
+        "Coverage is complete: the instruction requires comparing 3 specific Pro Max models, and the evaluator checks all 3 are present in the URL's modelList parameter."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: the goto_prefix parameter in the result config is not used by get_active_tab_url_parse getter — consider removing it to avoid confusion, though it does not affect correctness."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

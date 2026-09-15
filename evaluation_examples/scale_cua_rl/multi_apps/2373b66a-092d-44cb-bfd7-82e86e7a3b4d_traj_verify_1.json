@@ -1,0 +1,75 @@
+{
+  "id": "2373b66a-092d-44cb-bfd7-82e86e7a3b4d",
+  "new_id": "2373b66a-092d-44cb-bfd7-82e86e7a3b4d_traj_verify_1",
+  "snapshot": "multiapps",
+  "instruction": "Collect memory usage statistics using 'sar -r' every 1 second for 20 seconds and save the output to 'Memory_Report.txt' on Desktop.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update && echo {CLIENT_PASSWORD} | sudo -S apt-get install sysstat",
+        "shell": "true"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_sar_memory_report__a8cfa9828c8ad4ee330aec94e4adaf4c",
+    "result": {
+      "type": "vm_file_content__a8cfa9828c8ad4ee330aec94e4adaf4c",
+      "path": "/home/user/Desktop/Memory_Report.txt",
+      "dest": "Memory_Report.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "keywords": [
+          "kbmemfree",
+          "kbmemused",
+          "%memused",
+          "kbbuffers",
+          "kbcached"
+        ],
+        "min_timestamp_lines": 21
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened terminal, installed sysstat, ran 'sar 1 30' to collect CPU stats every 1 second for 30 seconds, and redirected output to System_Resources_Report.txt on Desktop. Task completed in 24 turns.",
+    "capability_extraction": "Can open terminal, install packages via apt, use sysstat tools (sar), redirect command output to files, navigate file paths",
+    "task_rationale": "Variation uses sar -r flag for memory statistics instead of default CPU stats. Tests agent's ability to use sar with different flags while following the same output-to-file pattern.",
+    "challenge_additions": "Requires knowledge of sar -r flag for memory monitoring instead of default CPU mode",
+    "explanation": "Task requires running 'sar -r 1 20' to collect memory stats and save to file. Evaluator checks file contains memory-specific headers (kbmemfree, kbmemused, %memused, kbbuffers, kbcached) and has at least 21 timestamped lines (20 data + 1 average).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393_traj_verify_1/getters/sysstat.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_2373b66a-092d-44cb-bfd7-82e86e7a3b4d_sid_1488393_traj_verify_1/metrics/sysstat.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "keywords_present": "0.5 - File contains sar memory headers (kbmemfree, kbmemused, %memused, kbbuffers, kbcached)",
+      "line_count": "0.5 - File has at least 21 timestamped data lines"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads /home/user/Desktop/Memory_Report.txt from VM and returns content dict with 'content' key",
+        "Metric correctly checks for sar -r memory-specific column headers (kbmemfree, kbmemused, %memused, kbbuffers, kbcached)",
+        "Timestamp line count of 21 (20 data lines + 1 average) is correct for 'sar -r 1 20' output",
+        "Expected parameter handling is correct: metric accesses expected.get('keywords') and expected.get('min_timestamp_lines') directly from the rules dict",
+        "Partial credit scoring (0.5 keywords + 0.5 line count) is reasonable for this two-aspect verification",
+        "Minor gap: does not verify the exact 1-second sampling interval, but this is practically infeasible and the line count implicitly validates sufficient data collection"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a check that the output contains 'sar -r' or 'Memory' in the header to distinguish from other sar modes (minor improvement)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

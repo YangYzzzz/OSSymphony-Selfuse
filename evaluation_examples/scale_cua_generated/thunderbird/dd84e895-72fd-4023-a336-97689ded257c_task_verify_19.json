@@ -1,0 +1,113 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_19",
+  "snapshot": "thunderbird",
+  "instruction": "Clear the star from each email in the Bills folder on your device",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(*) = 0 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 13);"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires removing stars from all emails in Bills folder (folderID=13). There are 2 emails (messageID 44, 45) in this folder. The evaluator uses run_sqlite3 to check that attribute 58 (star flag) has NO value of 1 for any message in the Bills folder. The SQL query verifies that no messages in folderID 13 have the star attribute set (count should be 0).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by querying the Thunderbird database: folderID 13 contains 2 emails (IDs 44, 45). Attribute 58 represents the 'star' flag in Thunderbird. The current state shows stars are already 0 (unstarred). The SQL query checks that count of starred messages equals 0, confirming no stars remain.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "SQL query logic is semantically correct: checks count(*) = 0 for starred messages (attributeID=58, value=1) in Bills folder (folderID=13)",
+        "Evaluator correctly verifies the complete instruction requirement: all emails in Bills folder should have no stars",
+        "Postconfig appropriately closes Thunderbird to ensure database consistency before reading",
+        "The SQL expression 'count(*) = 0' correctly returns 1 (true/pass) when no starred emails exist, and 0 (false/fail) otherwise",
+        "Metadata confirms correct mapping: folderID 13 = Bills folder, attributeID 58 = star flag"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness issue: run_sqlite3 metric (general.py:273) does not handle None input gracefully. If get_vm_file fails and returns None, sqlite3.connect(result) will crash. Consider adding None check: 'if result is None: return 0.' at the start of run_sqlite3",
+        "The static warning about type mismatch is a false positive - when multi=False (default), get_vm_file returns Optional[str], not a complex Union type, which matches run_sqlite3's expected input"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "dd84e895-72fd-4023-a336-97689ded257c_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

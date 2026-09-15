@@ -1,0 +1,106 @@
+{
+  "id": "fc6d8143-9452-4171-9459-7f515143419a",
+  "new_id": "task_verify_25",
+  "snapshot": "chrome",
+  "instruction": "Look up the status of flights going from Atlanta to Boston scheduled for tomorrow.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "tomorrow"
+        },
+        "expected": {
+          "start": "ATL",
+          "end": "BOS",
+          "time": "{DoW}, {Month} {Day0D}, {Year}"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation that changes the flight route from 'New York to Columbus OH' to 'Atlanta to Boston'. The task maintains the same structure as the original: agent navigates Delta.com to search for flight status updates for a specific route tomorrow. The evaluator uses existing functions (get_active_tab_html_parse, get_rule_relativeTime, check_direct_json_object) to verify the agent successfully searched for ATL→BOS flights with tomorrow's date. ATL is Delta's major hub making this a realistic route.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "very_high",
+    "changes": "Only modified: instruction (ATL→BOS route), expected airports (ATL, BOS). Kept same: config, evaluator structure, all getter/metric functions.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: start airport (ATL), end airport (BOS), and date (tomorrow)",
+        "Getter logic (get_active_tab_html_parse) correctly extracts airport codes and date from Delta.com flight status page using appropriate CSS class selectors",
+        "The class_multiObject_child extraction using safely_get_direct_text_nodes_playwright() correctly handles the HTML structure to extract ['ATL', 'BOS'] from direct text nodes",
+        "Expected value generation (get_rule_relativeTime) properly converts 'tomorrow' to absolute date with correct format {DoW}, {Month} {Day0D}, {Year}",
+        "Metric (check_direct_json_object) performs appropriate direct JSON comparison between extracted values and expected values",
+        "Data flow is semantically correct: HTML parsing → JSON extraction → comparison with expected values",
+        "The evaluator can access Chrome's active tab at runtime via Playwright and extract the needed state",
+        "Complete coverage: all three requirements (start airport, end airport, date) are verified"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "fc6d8143-9452-4171-9459-7f515143419a_aug_14_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

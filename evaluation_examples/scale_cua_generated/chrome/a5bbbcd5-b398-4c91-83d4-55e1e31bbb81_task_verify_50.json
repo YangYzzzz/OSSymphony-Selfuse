@@ -1,0 +1,93 @@
+{
+  "id": "a5bbbcd5-b398-4c91-83d4-55e1e31bbb81",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "Please enable the 'one instance when started from file' option in VLC Media Player. I want all my video files to open in the same VLC window instead of creating multiple instances.",
+  "source": "https://superuser.com/questions/776056/how-to-hide-bottom-toolbar-in-vlc",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 1
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the 'one instance when started from file' setting in VLC (opposite of variation 4). The evaluator uses the existing check_one_instance_when_started_from_file metric to verify that the setting is set to 1 (enabled, which is the default). Similar difficulty but with opposite goal from variation 4.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "The metric check_one_instance_when_started_from_file sets default value to '1' when the setting is not found in config file (vlc.py:509)",
+        "According to metadata, this setting is enabled by default in VLC, meaning the config file likely doesn't contain this line initially",
+        "The evaluator will pass (return 1) even if user does nothing, because: (1) default VLC likely has no explicit line for this setting, (2) metric defaults to '1' when not found, (3) expected value is '1'",
+        "Cannot distinguish between: user explicitly enabled the setting vs. user did nothing and VLC retained default behavior",
+        "The instruction asks to 'enable' the option, implying an action should be taken, but evaluator cannot verify any action was actually performed",
+        "Evaluator tests final state (setting=1) but not whether user changed anything, making it semantically incorrect for verifying task completion"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected value to '1' AND ensure config file explicitly contains the line 'one-instance-when-started-from-file=1' (not just relying on default)",
+        "Modify metric to fail (return 0) when setting is not found in config, requiring explicit configuration",
+        "Add preconfig to explicitly disable the setting first (set to 0), so evaluator can verify user changed it from 0 to 1",
+        "Change instruction to 'disable' this option (set to 0) since that would require actual user action from the default state"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

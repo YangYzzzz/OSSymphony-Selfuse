@@ -1,0 +1,147 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "From my movie watching history in the opened Excel file, I want to quickly identify my absolute favorite films. Please create a new sheet called 'top_10' containing the 10 highest-rated movies from my collection. Include all the same headers and rank them from highest to lowest rating.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_sorted__7018e3cb",
+    "result": {
+      "type": "xlsx_sheet_data__7018e3cb",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "top_10"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "exact_rows": 10,
+        "min_rows": 10,
+        "sort_column_idx": 2,
+        "descending": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires selecting top 10 highest-rated movies sorted by rating descending. Verified with Python: Top 10 are The Shawshank Redemption 9.3, The Godfather 9.2, 12th Fail 9.1, Schindler's List 9.0, LOTR Return of the King 9.0, Dune Part Two 9.0, The Godfather Part II 9.0, Pulp Fiction 8.9, LOTR Fellowship of the Ring 8.9, Fight Club 8.8. Expected sheet has exactly 10 rows sorted by rating column (index 2) descending.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_5/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_5/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "headers_match": 0.2,
+      "min_rows_present": 0.2,
+      "exact_row_count": 0.2,
+      "sorted_correctly": 0.4
+    },
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Metric function correctly handles expected parameter. When expected.type='rule', the framework passes the rules dict directly to the metric, and the function properly accesses it using expected.get('headers'), expected.get('min_rows'), etc.",
+        "Getter logic is correct: Reads the Excel file from VM, extracts the 'top_10' sheet, parses headers from first row and data from subsequent rows, returns proper structure with headers, rows, and row_count.",
+        "Metric logic correctly validates all instruction requirements: (1) Headers match with case-insensitive comparison, (2) Minimum 10 rows present, (3) Exactly 10 rows, (4) Data sorted by column index 2 (ratings) in descending order.",
+        "Coverage is complete: All instruction requirements are verified - sheet name, headers, row count (min and exact), and sorting order.",
+        "Partial credit scoring is properly implemented with correct weights: headers_match (0.2), min_rows_present (0.2), exact_row_count (0.2), sorted_correctly (0.4).",
+        "Postconfig includes file save operation (Ctrl+S) ensuring the Excel file state is accessible for verification.",
+        "Expected values are semantically correct: 10 rows, sorted by rating column (index 2) descending, with proper headers matching the original sheet.",
+        "Edge cases handled: Empty results return 0.0, numeric comparison with fallback to string comparison, column index bounds checking."
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3",
+  "new_id": "task_verify_14",
+  "snapshot": "chrome",
+  "instruction": "I want to set my Chrome homepage to https://www.wikipedia.org. Please configure the startup page or homepage button setting in Chrome settings so that this URL is set as my homepage.",
+  "source": "https://superuser.com/questions/1393683/how-to-change-the-username-in-google-chrome-profiles?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_homepage__9d2ba16da21ed7a3bc9ce454107b63a8"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "https://www.wikipedia.org"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting the Chrome homepage to 'https://www.wikipedia.org'. The evaluator uses a custom getter get_chrome_homepage__9d2ba16da21ed7a3bc9ce454107b63a8 to extract the homepage URL from Chrome's Preferences file (session.startup_urls or homepage field) and compares it against the expected URL using exact_match. The postconfig restarts Chrome to ensure preferences are saved.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3_task_verify_1/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly checks both homepage field and all startup_urls entries (chrome.py:42-53), addressing the instruction's flexibility of 'startup page OR homepage button setting'",
+        "Flexible substring matching (lines 45, 52) allows the getter to correctly identify the expected URL even with URL variations (e.g., trailing slashes, www prefix)",
+        "exact_match metric (general.py:41-48) appropriately compares the extracted URL against the expected value",
+        "Postconfig includes 2-second sleep before pkill (lines 34-38), which gives Chrome time to flush preferences to disk, then restarts Chrome to verify persistence",
+        "Expected value 'https://www.wikipedia.org' correctly matches the instruction requirement",
+        "Minor concern: The 2-second sleep may not always be sufficient for Chrome to persist preferences on slower systems, but this is a practical trade-off and should work in most cases"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing the initial sleep to 3-4 seconds for more robust preference persistence on slower systems",
+        "The getter could be more explicit in its return logic - currently returns first match found or falls back to startup_urls[0] or homepage, which might be confusing but functionally works"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

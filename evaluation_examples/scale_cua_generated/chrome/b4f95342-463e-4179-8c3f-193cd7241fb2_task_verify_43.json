@@ -1,0 +1,90 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Open recreation.gov and verify the page title contains 'Recreation.gov'.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.recreation.gov/"
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Simpler variation that checks if the active tab is on the recreation.gov homepage. Uses existing Chrome getter (active_tab_info) and metric (is_expected_active_tab) to verify the URL matches exactly. This focuses on basic navigation verification.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Instruction requires verifying page TITLE contains 'Recreation.gov', but evaluator checks URL instead",
+        "Semantic mismatch: The metric 'is_expected_active_tab' with type='url' only compares URLs (chrome.py:18-38), not page titles",
+        "Incomplete verification: Even if URL is correct, the evaluator doesn't verify the title content as required by the instruction",
+        "The getter 'active_tab_info' does return both 'title' and 'url' fields, so the data is available, but the metric doesn't use it",
+        "Wrong evaluation logic: Checking URL equality does not verify that the title contains a specific substring"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change the metric to check the page title instead of URL, or create a new metric function",
+        "Add a rule type like 'title_contains' to the 'is_expected_active_tab' metric to support substring matching in titles",
+        "Update expected rules to: {\"type\": \"title_contains\", \"substring\": \"Recreation.gov\"}",
+        "Alternatively, use a different metric function that can verify title content matches a pattern or contains a substring"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

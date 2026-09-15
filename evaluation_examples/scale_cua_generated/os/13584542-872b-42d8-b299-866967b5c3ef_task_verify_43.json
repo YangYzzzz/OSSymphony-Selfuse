@@ -1,0 +1,85 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_43",
+  "snapshot": "os",
+  "instruction": "The terminal bell sound is annoying and beeps every time I press backspace at the prompt. Disable the terminal bell permanently so it stays disabled even after reboot.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ audible-bell'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "false"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently disabling terminal bell. Evaluator opens new terminal and checks audible-bell setting using gsettings, expecting 'false'. Uses existing check_include_exclude metric with vm_terminal_output getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies permanent terminal bell configuration using gsettings",
+        "Postconfig appropriately opens new terminal to test persistence across sessions",
+        "Getter (vm_terminal_output) correctly captures the gsettings command output",
+        "Metric (check_include_exclude) properly checks for 'false' string in output",
+        "Expected value 'false' is semantically correct for disabled audible-bell setting",
+        "gsettings command correctly retrieves default profile and checks audible-bell property",
+        "Verification covers the requirement for permanent/reboot-persistent configuration",
+        "Logic flow is sound: extract terminal output → check if contains 'false' → return pass/fail"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

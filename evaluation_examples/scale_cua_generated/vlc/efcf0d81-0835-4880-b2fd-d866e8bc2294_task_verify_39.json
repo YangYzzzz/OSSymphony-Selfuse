@@ -1,0 +1,112 @@
+{
+  "id": "efcf0d81-0835-4880-b2fd-d866e8bc2294",
+  "new_id": "task_verify_39",
+  "snapshot": "base_setup",
+  "instruction": "Add a bookmark at the current video position",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/efcf0d81-0835-4880-b2fd-d866e8bc2294/Interstellar%20Movie%20-%20Official%20Trailer.mp4",
+            "path": "/home/user/Desktop/Interstellar Movie - Official Trailer.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+          "shell": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "key_press",
+        "parameters": {
+          "keys": "ctrl+b"
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_vlc_bookmark__1c6b323b",
+    "result": {
+      "type": "vlc_bookmark_accessibility__1c6b323b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_bookmark": true,
+        "expected_position": 120.5
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires adding a bookmark to the current video position (Playback > Custom Bookmarks > Manage) at approximately 120.5 seconds. Evaluator reopens VLC with the video, opens the bookmark manager dialog (Ctrl+B), and checks the accessibility tree for bookmark entries at the expected position. Custom getter extracts bookmark information from the accessibility tree, custom metric verifies a bookmark exists at the correct timestamp (~120.5s with tolerance). This approach correctly verifies VLC's custom bookmarks with position validation.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/efcf0d81-0835-4880-b2fd-d866e8bc2294_task_verify_8/getters/vlc.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/efcf0d81-0835-4880-b2fd-d866e8bc2294_task_verify_8/metrics/vlc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Correct verification approach: Uses accessibility tree to verify bookmark dialog content after opening with Ctrl+B, which is the appropriate method for verifying UI state.",
+        "Complete coverage: Evaluator checks both that bookmark exists AND that it's at the correct position (~120.5s), fulfilling the instruction 'Add a bookmark at the current video position'.",
+        "Sound time matching logic: Metric handles multiple time format patterns (MM:SS, MM:SS.ms, seconds with/without unit) with reasonable tolerance (±2s), making it robust to different representations.",
+        "Proper postconfig setup: Reopens VLC and opens bookmark manager dialog (Ctrl+B) to ensure bookmark state is accessible for verification.",
+        "Good edge case handling: Checks for missing dialog, empty bookmark entries, handles both expected and unexpected bookmark scenarios.",
+        "Minor feasibility concern: Success depends on whether VLC's accessibility tree actually exposes bookmark timestamps as parseable text. The regex pattern matching approach assumes timestamps appear as text strings in the tree (e.g., '2:00', '120.5s'), which may vary depending on VLC's accessibility implementation. This should be empirically validated."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding fallback verification: If accessibility tree doesn't reliably expose bookmark timestamps, consider parsing VLC's bookmark storage file directly (e.g., vlcrc or media library database) as a more robust approach.",
+        "Add debug logging: Include more detailed logging of the raw accessibility tree structure when bookmark dialog is open to help diagnose issues if time patterns aren't found.",
+        "Strengthen regex patterns: Current regex might miss edge cases (e.g., hours:minutes:seconds format for longer videos). Consider expanding patterns or using more structured accessibility tree parsing if available."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

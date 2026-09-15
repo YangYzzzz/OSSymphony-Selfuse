@@ -1,0 +1,107 @@
+{
+  "id": "510f64c8-9bcc-4be1-8d30-638705850618",
+  "new_id": "510f64c8-9bcc-4be1-8d30-638705850618_traj_verify_1",
+  "snapshot": "vscode",
+  "instruction": "Set the Python interpreter path to 'python3.10' in the VS Code workspace settings for ~/Desktop/project.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/vscodeEvalExtension.zip",
+            "path": "/home/user/Downloads/vscodeEvalExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "cd /home/user/Downloads && unzip -q vscodeEvalExtension.zip && code --install-extension vscodeEvalExtension/eval-0.0.1.vsix && rm -rf vscodeEvalExtension vscodeEvalExtension.zip && mkdir -p ~/Desktop/project/.vscode && history -c && echo > ~/.bash_history"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/main.py",
+            "path": "/home/user/Desktop/project/main.py"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/README.md",
+            "path": "/home/user/Desktop/project/README.md"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/510f64c8-9bcc-4be1-8d30-638705850618/settings.json",
+            "path": "/home/user/Desktop/project/.vscode/settings.json"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "python3 -c \"import json; d=json.load(open('/home/user/Desktop/project/.vscode/settings.json')); print(d.get('python.defaultInterpreterPath', d.get('python.pythonPath', '')))\""
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "python3.10"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_510f64c8-9bcc-4be1-8d30-638705850618_sid_1488437",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent typed 'code ~/Desktop/project' in terminal, pressed Enter. VS Code opened with project folder showing main.py, README.md, .vscode in 4 turns.",
+    "capability_extraction": "Can use terminal commands, launch VS Code from CLI with folder path, navigate directories",
+    "task_rationale": "Variation requires editing a project configuration file, testing the model's ability to modify VS Code workspace settings via terminal or UI",
+    "explanation": "Task requires setting the Python interpreter path to 'python3.10' in the workspace settings.json. Evaluator reads the file via python3 and checks both 'python.defaultInterpreterPath' (modern) and 'python.pythonPath' (deprecated) keys, accepting either. [Fixed: getter now checks both python.defaultInterpreterPath and python.pythonPath to avoid false negatives with modern VS Code]",
+    "fix_history": [
+      "Fix 1: Updated getter command to check both 'python.defaultInterpreterPath' (modern, since 2021) and 'python.pythonPath' (deprecated) keys, so agents using either VS Code settings UI or direct JSON editing will be evaluated correctly"
+    ],
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads settings.json and checks both 'python.defaultInterpreterPath' (modern) and 'python.pythonPath' (deprecated) keys with proper fallback order, accepting either valid approach to setting the Python interpreter path.",
+        "Metric check_include_exclude receives the rules dict correctly from get_rule and uses substring matching for 'python3.10', which is appropriate for verifying the interpreter path value.",
+        "Data flow is correct: vm_command_line getter extracts the setting value as a string, check_include_exclude checks if 'python3.10' is contained in that string.",
+        "Single-requirement instruction ('set Python interpreter path to python3.10') is fully covered by the evaluator.",
+        "Minor leniency: substring matching means a value like '/usr/bin/python3.10' would also pass, though the instruction specifies the literal value 'python3.10'. This is a minor issue since such paths are functionally equivalent."
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stricter validation, could use exact_match instead of check_include_exclude to ensure the value is exactly 'python3.10', but current approach is acceptable for practical purposes."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_48",
+  "snapshot": "os",
+  "instruction": "I need quick access to terminal menus. Configure the terminal to always show the menubar by default permanently, so it appears in all new terminals even after reboot.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Settings default-show-menubar'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "true"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently enabling terminal menubar. Evaluator opens new terminal and checks default-show-menubar setting using gsettings, expecting 'true'. Uses existing check_include_exclude metric with vm_terminal_output getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the permanent configuration by querying the gsettings key 'org.gnome.Terminal.Legacy.Settings default-show-menubar'",
+        "Postconfig appropriately opens a NEW terminal to verify the setting applies to new terminal instances",
+        "Expected value 'true' is semantically correct for the gsettings boolean setting",
+        "The check_include_exclude metric correctly verifies that 'true' appears in the terminal output",
+        "All instruction requirements are covered: permanent configuration (gsettings stores persistent settings), default for new terminals (verified by opening new terminal), and persistence across reboots (gsettings is system-wide)",
+        "Data flow is correct: postconfig executes gsettings command → vm_terminal_output getter captures output → check_include_exclude verifies 'true' is present"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

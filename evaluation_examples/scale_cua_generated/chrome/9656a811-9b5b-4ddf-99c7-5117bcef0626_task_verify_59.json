@@ -1,0 +1,115 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "I want to manually enter my information each time instead of using autofill. Can you turn off Chrome's autofill feature?",
+  "source": "https://support.google.com/chrome/answer/142893",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"autofill\":{\"profile_enabled\":true}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "autofill_enabled__980fd38b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to disable Chrome's autofill feature. The evaluator checks autofill.profile_enabled in Chrome Preferences. Initial state: true (autofill enabled). Expected state: false (disabled). Getter returns 'true' when disabled to match expected 'true'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_4/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks autofill.profile_enabled setting in Chrome Preferences",
+        "Postconfig properly restarts Chrome to ensure preferences are persisted and loaded",
+        "Getter extracts the correct state from the right file path (supports Windows, macOS, Linux)",
+        "Logic will work correctly at runtime - when autofill is disabled (profile_enabled=false), getter returns 'true' which matches expected 'true'",
+        "Complete coverage - single-step task fully verified"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Inverted return logic is semantically confusing: getter returns 'true' when autofill is disabled. Consider either: (1) Return actual state 'false' when disabled and set expected='false', or (2) Rename getter to 'get_autofill_disabled__980fd38b' to match inverted semantics",
+        "Error handling returns 'false' which is semantically unclear - consider logging more context about what the return value means"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

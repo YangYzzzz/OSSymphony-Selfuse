@@ -1,0 +1,82 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "da922383-bfa4-4cd3-bbad-6bebab3d7742_traj_verify_1",
+  "snapshot": "multiapps",
+  "instruction": "Switch to the 'LLM Powered Autonomous Agents' blog article tab in Chrome.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://lilianweng.github.io/posts/2023-06-23-agent/"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_da922383-bfa4-4cd3-bbad-6bebab3d7742_sid_1488276",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to download 2 blog articles as PDFs to /home/user/Documents/Blog. Successfully created the Blog directory, used Ctrl+P print dialog, navigated save dialogs, saved both PDFs, and switched between Chrome tabs. Failed because PDF filenames included Chrome's default suffix.",
+    "capability_extraction": "Can use terminal to create directories, navigate Chrome tabs by clicking tab headers, use Ctrl+P print dialog, interact with file save dialogs",
+    "failure_analysis": "Model saved PDFs with Chrome's default title format including ' _ Lil'Log' suffix. The evaluator script likely expected filenames matching just the article titles.",
+    "task_rationale": "Decomposed original task into a tab-switching sub-task. The model demonstrated ability to switch between Chrome tabs in the trajectory (clicked on first tab to save the second PDF).",
+    "explanation": "Task requires switching to the 'LLM Powered Autonomous Agents' tab. The initial state has the second tab ('Thinking about High-Quality Human Data') active. Evaluator checks the active URL matches the expected blog post URL using active_url_from_accessTree getter and is_expected_active_tab metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 1,
+    "scoring_breakdown": {
+      "active_tab": "1.0 - Active tab URL matches https://lilianweng.github.io/posts/2023-06-23-agent/"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active tab URL from the accessibility tree, which is exactly what's needed to verify tab switching.",
+        "Metric (is_expected_active_tab) correctly receives the rules dict directly (type='url', url=...) and compares URLs using compare_urls. Parameter handling follows the framework convention.",
+        "Expected URL (https://lilianweng.github.io/posts/2023-06-23-agent/) correctly matches the 'LLM Powered Autonomous Agents' blog post opened in config.",
+        "Complete coverage: the single instruction requirement (switch to the correct tab) is fully verified by checking the active tab URL.",
+        "Config properly sets up two tabs so the task is meaningful - agent must switch from the second tab to the first."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

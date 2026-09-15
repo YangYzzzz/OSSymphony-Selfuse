@@ -1,0 +1,115 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_11",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to turn on global search and indexing for faster email retrieval.",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mailnews.database.global.indexer.enabled": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling the global search and indexer feature in Thunderbird for faster email searches. This is done by setting the mailnews.database.global.indexer.enabled preference to true. The evaluator uses the existing check_thunderbird_prefs function to verify this boolean preference value in the prefs.js file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to enable Thunderbird global search and indexer",
+        "Checks the correct preference: mailnews.database.global.indexer.enabled = true",
+        "Proper postconfig: closes Thunderbird window to ensure prefs.js is flushed to disk before verification",
+        "Metric function check_thunderbird_prefs correctly handles rule parameter (directly accesses rule.get('expect', {}), not rule.get('rules', {}))",
+        "Complete semantic coverage: instruction requires enabling indexer, evaluator verifies the exact preference that controls this feature",
+        "Data flow is correct: VM file -> get_vm_file -> local path -> check_thunderbird_prefs -> parse and verify preference",
+        "Function handles None return from get_vm_file (line 40-42 of metric), so runtime will work correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: check_thunderbird_prefs type hint shows 'result: str' but should be 'result: Optional[str]' to match get_vm_file return type. However, this is cosmetic - the function already handles None correctly at runtime."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "10a730d5-d414-4b40-b479-684bed1ae522_aug_14_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "id": "8472fece-c7dd-4241-8d65-9b3cd1a0b568",
+  "new_id": "task_verify_32",
+  "snapshot": "libreoffice_writer",
+  "instruction": "I'm teaching kids about the letter 'e'. Can you italicize all words that contain the letter 'e' in the document to highlight them?",
+  "source": "https://stackoverflow.com/questions/37259827/libreoffice-writer-how-to-set-different-colors-to-each-letter",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/8472fece-c7dd-4241-8d65-9b3cd1a0b568/Dolch_Sight_Words_Primer.docx",
+            "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Dolch_Sight_Words_Primer.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_words_with_e_italic__d89e455c",
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx",
+      "dest": "Dolch_Sight_Words_Primer.docx"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires italicizing all words containing 'e'. Verified from word list: 21 words contain 'e' (eat, she, are, well, get, went, ate, be, have, please, there, white, he, pretty, they, under, yes, new, came, we, were). Evaluator checks formatting of each word.",
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8472fece-c7dd-4241-8d65-9b3cd1a0b568_task_verify_1/metrics/docs.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Semantic word/run parsing issue: The evaluator treats each 'run' as a single word (run.text.strip()), but a run in python-docx is a contiguous region with the same formatting, not necessarily a single word. A run could contain multiple words (e.g., 'hello world'), leading to incorrect verification.",
+        "If multiple words share the same run and only some contain 'e', the evaluator would incorrectly verify the entire run's italic status rather than checking each word individually.",
+        "The logic correctly checks both positive cases (words with 'e' must be italic) and negative cases (words without 'e' must NOT be italic), which is good.",
+        "Postconfig correctly saves the file (Ctrl+S) to ensure fresh state.",
+        "The evaluator would work correctly IF the document structure has one word per run (likely for a word list in table format), but the logic is semantically flawed for general cases."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Split each run's text into individual words using word boundaries (e.g., run.text.split()) before checking each word.",
+        "For each word, check if it contains 'e', then verify the run containing that word has the correct italic formatting.",
+        "Consider that in python-docx, formatting is applied at the run level, so words within the same run share the same formatting. The correct approach is: (1) split document into individual words while tracking which run each word belongs to, (2) for each word with 'e', verify its parent run is italic, (3) for words without 'e', verify they are either in non-italic runs OR separated into their own runs if surrounded by italic words.",
+        "Alternative robust approach: After user completes the task, each word containing 'e' should ideally be in its own italic run, and words without 'e' should be in non-italic runs. The evaluator should verify this run-level separation has been properly applied."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "trajectory": "trajectories/",
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

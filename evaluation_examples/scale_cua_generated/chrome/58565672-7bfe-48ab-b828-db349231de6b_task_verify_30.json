@@ -1,0 +1,163 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "Find and open the link from the most recent Bills email, then close the Apple tab.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "get_tabs_info",
+      "parameters": {}
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "evaluator": "infeasible",
+        "func": "compare_list_of_dict__all_dict_fields_and_length",
+        "expected": {
+          "type": "rule",
+          "rules": [
+            {
+              "type": "vm_command_line",
+              "command": [
+                "pgrep",
+                "-f",
+                "thunderbird"
+              ]
+            }
+          ]
+        },
+        "result": {
+          "type": "postconfig_query_config_result",
+          "query_idx": 0
+        }
+      }
+    ],
+    "func": "verify_tabs_with_state_change__58565672",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "initial_tabs": {
+          "type": "postconfig_query_config_result",
+          "query_idx": 0
+        },
+        "expected_present": [
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ],
+        "expected_absent": [
+          "https://www.apple.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires opening the Amazon link from Bills email and closing the Apple tab. The evaluator: (1) Captures initial tab state via postconfig (Apple + Scholar tabs), (2) Compares initial vs final state to verify Apple tab was actually removed (not just absent), (3) Verifies Amazon and Scholar tabs are present in final state, (4) Verifies Thunderbird process is running via postconfig check to confirm email client was used during execution.",
+    "verification_limitations": "While this evaluator verifies tab state change and Thunderbird usage, it cannot verify: (1) that the Amazon link was opened FROM the Bills email specifically vs direct navigation, (2) which email was accessed or if it was the 'most recent Bills email' - would require Thunderbird email state getter to read email list and selection state. Process verification is partial (confirms Thunderbird was running); outcome verification (tab state change) is comprehensive.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/58565672-7bfe-48ab-b828-db349231de6b_task_verify_6/metrics/chrome_tabs.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete requirement coverage: Instruction has multiple specific requirements but evaluator can only verify partial outcome. Cannot verify: (1) 'most recent Bills email' was accessed, (2) link was opened FROM email vs direct navigation, (3) the actual process of finding and opening email.",
+        "Tab state verification is CORRECT: Contrary to previous judgment, the metric function DOES correctly implement initial vs final state comparison (lines 70-78 in chrome_tabs.py). The framework resolves postconfig references before calling the metric, so initial_tabs will contain actual tab data. This logic correctly verifies Apple tab was removed, not just absent.",
+        "Cannot verify email interaction: No verification that Amazon link came from Bills email specifically. Agent could directly navigate to amazon.com without ever opening Thunderbird and still pass evaluation (as long as Thunderbird process is running in background).",
+        "Cannot verify 'most recent' email requirement: No verification of email timestamps, order, or which specific email was accessed. This critical instruction detail is completely unverified.",
+        "Thunderbird process check is weak: Only verifies Thunderbird process is running via pgrep, not that it was actively used. Process could be running in background without agent ever interacting with it.",
+        "Outcome-only verification: Evaluator verifies final outcome (correct tabs present/absent) but cannot verify the process or path taken to achieve it. For instructions specifying HOW to do something ('from Bills email'), process verification matters."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add Thunderbird email state getter to verify which email was selected/opened. Could use accessibility tree to inspect Thunderbird window state and verify Bills email was accessed.",
+        "Add email content verification to check that the Amazon URL from the email was actually used. Would require getter to read email body and extract links.",
+        "Add verification of email timestamps to confirm 'most recent' requirement. Would need Thunderbird email metadata getter.",
+        "Consider adding intermediate state checks: verify Thunderbird window was focused/active during execution window (via accessibility tree snapshots).",
+        "If full email process verification is infeasible, simplify instruction to remove specific requirements like 'most recent Bills email' and just require 'open Amazon link and close Apple tab'.",
+        "Add stronger Thunderbird interaction verification: check that Thunderbird window state changed (e.g., selected message changed) during task execution, not just that process exists."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

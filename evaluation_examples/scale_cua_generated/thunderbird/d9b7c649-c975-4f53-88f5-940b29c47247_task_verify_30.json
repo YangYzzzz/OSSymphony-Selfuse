@@ -1,0 +1,120 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "task_verify_30",
+  "snapshot": "thunderbird",
+  "instruction": "Analyze all emails in the daily folder on Thunderbird and create a LibreOffice Calc spreadsheet named \"email_summary.xlsx\" on the Desktop with summary statistics including total number of emails, number of unique senders, and total attachments across all emails.",
+  "source": "https://marketplace.uipath.com/listings/extract-the-first-1000-gmail-emails-from-the-current-month-in-a-new-google-sheets-report",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "email_summary.xlsx"
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's')"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_tb_email_summary__095c028a04cb1496af16d82dbb5f9c21",
+    "result": {
+      "type": "tb_email_summary__095c028a04cb1496af16d82dbb5f9c21",
+      "path": "/home/user/Desktop/email_summary.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "total_count": 9,
+        "unique_senders": 3,
+        "total_attachments": 0
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating summary statistics for all emails in daily folder. Verified by analyzing complete dataset: 9 total emails, 3 unique senders (HKU Bulk Email Delivery System, eNotices System, Media Team CPAO), 0 total attachments. Custom getter extracts summary cells from spreadsheet, custom metric validates all three statistics match exactly.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_18_task_verify_4/getters/thunderbird_xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_18_task_verify_4/metrics/thunderbird_xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Each statistic contributes equally: total_count (0.33), unique_senders (0.33), total_attachments (0.34). Full credit only if all values match exactly.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly checks 'attachment' keyword first (line 43) before 'total' keyword (line 53), ensuring proper label classification",
+        "Explicit disambiguation in line 53: uses 'total' in label and 'attachment' not in label to prevent misclassification of attachment-related labels",
+        "Metric correctly handles expected parameter: directly accesses expected['total_count'], expected['unique_senders'], expected['total_attachments'] without attempting to access 'rules' or 'type' keys",
+        "Complete coverage: evaluator checks all 3 instruction requirements (total emails, unique senders, total attachments) with appropriate 1/3 scoring per statistic",
+        "Postconfig properly saves the file (Ctrl+S) before extraction, ensuring fresh state for verification",
+        "Expected values are semantically correct: 9 emails, 3 unique senders, 0 attachments matches the metadata explanation",
+        "Data flow is correct: postconfig activates window and saves file → getter extracts and parses → metric compares exactly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

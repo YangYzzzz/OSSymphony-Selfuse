@@ -1,0 +1,118 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_47",
+  "snapshot": "thunderbird",
+  "instruction": "Set up a local Thunderbird filter to forward all incoming messages from the anonym-x2024@outlook.com account to admin-backup@fastmail.com. Configure this in Thunderbird only, don't touch the online account settings.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Forward",
+            "actionValue": "admin-backup@fastmail.com",
+            "condition": [
+              "ALL"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation with different forward target email (admin-backup@fastmail.com). Evaluator verifies filter is enabled, action is Forward, target is admin-backup@fastmail.com, and condition is ALL. Same complexity as original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic coverage gap: Instruction requires filtering messages FROM 'anonym-x2024@outlook.com' but evaluator only checks condition=['ALL'] without verifying the sender filter",
+        "The evaluator will incorrectly pass if the filter forwards ALL messages (from any sender) to admin-backup@fastmail.com, not just messages from anonym-x2024@outlook.com",
+        "Missing verification of FROM condition in the filter rules - expected should include something like 'AND (from,is,anonym-x2024@outlook.com)' in the condition array",
+        "The expected rules structure is incomplete - it specifies 'condition: [\"ALL\"]' which means 'match all conditions' but doesn't specify WHAT conditions to match (i.e., the sender email address)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update expected.rules.expect[0].condition to include the sender filter, e.g., ['AND (from,is,anonym-x2024@outlook.com)'] or similar pattern that matches the actual filter condition syntax",
+        "Verify the actual Thunderbird filter file format to determine the exact condition syntax for 'from' filters",
+        "Alternatively, if 'ALL' is intended to mean 'all messages in this account', add explicit verification that the filter is configured for the outlook.office365.com/anonym-x2024@outlook.com account context"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "ecb0df7a-4e8d-4a03-b162-053391d3afaf",
+  "new_id": "task_verify_72",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Count how many students have marks >= 50. Enter the header 'Pass Count' in cell E1 and enter the count in cell E2.",
+  "source": "https://www.youtube.com/shorts/tXOovKn0H68",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/ecb0df7a-4e8d-4a03-b162-053391d3afaf/Order_Id_Mark_Pass_Fail.xlsx",
+            "path": "/home/user/Order_Id_Mark_Pass_Fail.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Order_Id_Mark_Pass_Fail.xlsx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/ecb0df7a-4e8d-4a03-b162-053391d3afaf",
+  "related_apps": [
+    "libreoffice calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Order_Id_Mark_Pass_Fail.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_count_570931bc",
+    "result": {
+      "type": "xlsx_count__570931bc",
+      "path": "/home/user/Order_Id_Mark_Pass_Fail.xlsx",
+      "dest": "Order_Id_Mark_Pass_Fail.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet": 0,
+        "header_cell": "E1",
+        "header_value": "Pass Count",
+        "count_cell": "E2",
+        "expected_count": 11
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Verified with Python: 11 students have marks >= 50. Partial credit: 0.3 for header, 0.7 for correct count.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ecb0df7a-4e8d-4a03-b162-053391d3afaf_aug_11_task_verify_2/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ecb0df7a-4e8d-4a03-b162-053391d3afaf_aug_11_task_verify_2/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Metric function incorrectly handles expected parameter at calc.py:16. When expected.type='rule', the framework calls get_rule() which returns config['rules'] directly. The metric receives the rules dict as 'expected', NOT {'type': 'rule', 'rules': {...}}. Line 16 'rules = expected.get(\"rules\", expected)' is incorrect - it tries to access expected.get('rules') which doesn't exist.",
+        "The metric should directly access: expected.get('header_value') and expected.get('expected_count'), not expected.get('rules').get('header_value').",
+        "This is a fundamental logic error that will cause the evaluator to fail at runtime. When expected={'sheet': 0, 'header_cell': 'E1', 'header_value': 'Pass Count', 'count_cell': 'E2', 'expected_count': 11}, the line 'rules = expected.get(\"rules\", expected)' will set rules=expected (using the fallback), which happens to work by accident, but this is still incorrect pattern.",
+        "Getter logic is correct: Properly receives file_path from vm_file result, loads workbook, and extracts header from E1 and count from E2.",
+        "Coverage is complete: Evaluator checks both header in E1 and count in E2 as required by instruction.",
+        "Expected values are correct: header_value='Pass Count' and expected_count=11 match instruction requirements.",
+        "Partial credit logic is reasonable: 0.3 for header, 0.7 for count."
+      ],
+      "llm_judge_fix_suggestions": [
+        "In calc.py:16, remove the line 'rules = expected.get(\"rules\", expected)' and directly use 'expected' throughout the function.",
+        "Change line 21 from 'expected_header = rules.get(\"header_value\", \"\")' to 'expected_header = expected.get(\"header_value\", \"\")'.",
+        "Change line 26 from 'expected_count = rules.get(\"expected_count\")' to 'expected_count = expected.get(\"expected_count\")'.",
+        "The correct pattern for type='rule' metrics: When the evaluator config has expected.type='rule', the metric function receives the rules dictionary directly as the 'expected' parameter."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

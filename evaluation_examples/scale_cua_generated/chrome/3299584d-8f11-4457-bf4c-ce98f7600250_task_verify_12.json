@@ -1,0 +1,91 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_12",
+  "snapshot": "chrome",
+  "instruction": "Change the default homepage in Chrome from 'wikipedia.org' to another page, preferably blank.",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"homepage\":\"http://wikipedia.org/\"}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_chrome_homepage_changed__32a135b2f85c9e9cdbf4b5150b97474d",
+    "result": {
+      "type": "chrome_homepage_setting__32a135b2f85c9e9cdbf4b5150b97474d"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "original_url": "http://wikipedia.org/"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the user to change Chrome's homepage setting. The setup configures Chrome with 'wikipedia.org' as the homepage. The evaluator checks if the homepage has been changed to a different value (or cleared). Custom getter extracts the current homepage from Chrome preferences, and custom metric verifies it's different from the original unwanted URL.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_0/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts homepage from Chrome Preferences file at appropriate OS-specific paths",
+        "Metric correctly handles expected parameter for type='rule' by directly accessing expected.get('original_url')",
+        "Evaluator properly verifies the instruction requirement: homepage changed from 'http://wikipedia.org/' to something different",
+        "Data flow is semantically correct: getter extracts current homepage -> metric compares with original -> returns 1.0 if different",
+        "Expected value 'http://wikipedia.org/' correctly matches the setup configuration",
+        "Edge case handling is appropriate: getter returns 'none' for empty homepage, which metric correctly accepts as valid change",
+        "Complete coverage: instruction asks to change homepage, evaluator verifies homepage was changed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

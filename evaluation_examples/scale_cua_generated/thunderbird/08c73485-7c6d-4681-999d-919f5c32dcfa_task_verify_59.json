@@ -1,0 +1,117 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_59",
+  "snapshot": "thunderbird",
+  "instruction": "I want to reduce the connection timeout for my IMAP server to 15 seconds to avoid long waits. Could you help me change the server timeout setting in Thunderbird?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.server1.timeout": {
+            "method": "eq",
+            "ref": 15
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing IMAP server timeout from 29 seconds to 15 seconds. Verified in cache: mail.server.server1.timeout is currently 29, task requires changing it to 15.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Checked cache prefs.js - mail.server.server1.timeout is currently 29, task requires changing it to 15",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly fetches the Thunderbird preferences file (prefs.js) where IMAP timeout settings are stored",
+        "The check_thunderbird_prefs metric properly parses prefs.js using correct regex patterns and JSON parsing",
+        "Expected value (timeout=15) correctly matches the instruction requirement to change timeout to 15 seconds",
+        "Postconfig appropriately closes Thunderbird before reading prefs.js, ensuring preferences are written to disk",
+        "Evaluator provides complete coverage: instruction requires changing server timeout to 15s, and evaluator checks mail.server.server1.timeout == 15",
+        "Data flow is correct: getter extracts the right file, metric checks the right preference key, expected value matches task requirement",
+        "Edge cases handled: metric returns 0.0 if file retrieval fails",
+        "Metadata confirms current value is 29 and target is 15, which aligns with evaluator logic"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

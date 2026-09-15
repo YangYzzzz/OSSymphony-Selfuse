@@ -1,0 +1,91 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_8",
+  "snapshot": "thunderbird",
+  "instruction": "Create a list of email subject lines from your inbox and save them to a file named email_subjects.txt in your home directory. Make sure to include all subjects, including 'A Test E-mail' and '关于如何使用Outlook的帮助'.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_email_subjects_list__df60c313c1f3b2e712e9756c47386ddc",
+    "result": {
+      "type": "email_subjects_file__df60c313c1f3b2e712e9756c47386ddc",
+      "path": "/home/user/email_subjects.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect_subjects": [
+          "A Test E-mail",
+          "关于如何使用Outlook的帮助"
+        ],
+        "min_count": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting email subject lines and saving to a text file. Verified: INBOX contains emails with subjects 'A Test E-mail' and Chinese text about Outlook. Evaluator checks for presence of 'Test E-mail' and 'Outlook' patterns in the file. Similar complexity to original - data extraction and file creation.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_aug_19_task_verify_4/getters/email_subjects_file__df60c313c1f3b2e712e9756c47386ddc.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_aug_19_task_verify_4/metrics/email_subjects_list__df60c313c1f3b2e712e9756c47386ddc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic is correct: Reads file content from /home/user/email_subjects.txt using env.controller.get_file()",
+        "Metric logic is correct: Checks that all expected subjects are present using exact string matching (line 38), allows additional subjects beyond expected ones (line 43 comment, no exact count enforcement)",
+        "Coverage is adequate: Instruction says 'include all subjects, including...' which is semantically ambiguous but reasonably interpreted as 'at least these subjects must be present' - evaluator verifies this",
+        "Data flow is correct: Getter extracts file content → Metric verifies expected subjects are present → Returns 1.0 if found, 0.0 otherwise",
+        "Minor limitation: Instruction wording is ambiguous about whether ALL subjects must be extracted or just the mentioned ones. Evaluator interprets 'including' as minimum requirement, which is reasonable but doesn't verify completeness against actual inbox"
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stronger verification: Clarify instruction to explicitly state 'Extract all email subjects from inbox, ensuring at least these are included: ...' to match evaluator logic",
+        "Optional enhancement: If strict 'all subjects' verification is needed, add total inbox email count to expected rules and verify file line count matches inbox count"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

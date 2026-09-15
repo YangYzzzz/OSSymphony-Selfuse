@@ -1,0 +1,121 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "task_verify_18",
+  "snapshot": "thunderbird",
+  "instruction": "The quick filter bar at the top of the message list is taking up space I don't need. Can you help me hide it to get a cleaner interface?",
+  "source": "https://www.reddit.com/r/Thunderbird/comments/182dg5p/unified_inbox_howto/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/xulstore.json",
+      "dest": "xulstore.json"
+    },
+    "func": "check_json",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "chrome://messenger/content/messenger.xhtml",
+              "quickFilterBar",
+              "collapsed"
+            ],
+            "method": "eq",
+            "ref": "true"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires hiding the quick filter bar by setting collapsed='true'. The evaluator checks the xulstore.json file for quickFilterBar.collapsed='true'. This uses the existing check_json metric function with vm_file getter - no custom functions needed. Verified by examining the original xulstore.json which shows quickFilterBar.collapsed='true' as a valid setting.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that quickFilterBar.collapsed in xulstore.json shows 'true' as the current value in the profile data.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement by checking xulstore.json for quickFilterBar.collapsed='true'",
+        "Postconfig appropriately closes Thunderbird to ensure UI state is flushed to xulstore.json before verification",
+        "Data flow is logically sound: user action -> state change -> app close -> file save -> getter fetches -> metric validates",
+        "Complete coverage: single requirement (hide quick filter bar) is fully verified by the evaluator",
+        "Expected value 'true' (string) is semantically correct for JSON attribute values in xulstore.json",
+        "Robust error handling: check_json handles None results, missing files, missing keys, and JSON parse errors correctly",
+        "Minor type annotation mismatch (get_vm_file returns Union[str, None] but check_json expects str) does not affect runtime correctness since check_json handles None"
+      ],
+      "llm_judge_fix_suggestions": [
+        "The type annotation mismatch is already handled correctly at runtime but could be documented more clearly in type hints"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_11",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder called \"Support\" and implement a filter to auto-transfer emails containing \"help\" in the subject line from inbox to the Support folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Support",
+            "condition": [
+              "AND (subject,contains,help)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation changes folder name to 'Support' and filter keyword to 'help' (subject contains). Uses same evaluator structure as original with check_thunderbird_filter metric. Verified that filter format matches expected structure with enabled=yes, Move to folder action, and subject contains condition.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: The instruction has TWO requirements: (1) Create a local folder called 'Support' and (2) Implement a filter. The evaluator only verifies requirement #2 (the filter rules) but does NOT verify that the 'Support' folder actually exists in Local Folders.",
+        "The filter verification logic is correct: The check_thunderbird_filter metric correctly parses msgFilterRules.dat and verifies enabled=yes, action='Move to folder', actionValue='mailbox://nobody@Local%20Folders/Support', and condition='AND (subject,contains,help)'.",
+        "Missing folder existence check: Verifying the filter references 'Support' folder does not prove the folder exists. A user could create the filter without creating the folder, causing the filter to be syntactically correct but functionally broken.",
+        "Postconfig is appropriate: Closing the Message Filters window ensures the filter is saved and provides clean state for evaluation."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second verification step to check that the 'Support' folder exists in Thunderbird's Local Folders. This could be done by: (1) Reading the Thunderbird profile directory structure to verify the folder mailbox file exists, or (2) Using a getter to list local folders and checking 'Support' is present, or (3) Checking for the folder's prefs.js entry.",
+        "Consider using a multi-step evaluator with partial credit: 0.5 points for folder creation + 0.5 points for filter creation, so partial completion can be detected.",
+        "The filter verification logic itself is sound and does not need changes - only add the folder existence check to complete the coverage."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

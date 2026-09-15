@@ -1,0 +1,132 @@
+{
+  "id": "897e3b53-5d4d-444b-85cb-2cdc8a97d903",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Transform the LibreOffice form.docx file on the desktop into PDF format and place it in the 'forms' folder within my Google Drive storage.",
+  "source": "https://marketplace.uipath.com/listings/convert-word-file-to-pdf-and-store-in-onedrive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'form.pdf' or title = 'form.docx' or title = 'form.docx.pdf' or title = 'forms'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.zhihu.com/",
+          "https://www.coursera.org/",
+          "https://www.deepl.com",
+          "https://www.wikidata.org/wiki/Wikidata:Main_Page"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/897e3b53-5d4d-444b-85cb-2cdc8a97d903/form.docx",
+            "path": "/home/user/Desktop/form.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/form.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_pdf_in_folder__a29f27f0",
+    "result": {
+      "type": "gdrive_file_check__a29f27f0",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_query": "title = 'forms' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+      "file_query": "( title = 'form.pdf' or title = 'form.docx.pdf' ) and trashed = false"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_should_exist": true,
+        "in_folder": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Paraphrase using 'transform' and 'place'. Same evaluator logic checking PDF existence in target folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/897e3b53-5d4d-444b-85cb-2cdc8a97d903_task_verify_4/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/897e3b53-5d4d-444b-85cb-2cdc8a97d903_task_verify_4/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Full score (1.0) if PDF exists in forms folder, otherwise 0.0",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies both key requirements - PDF file existence and location in 'forms' folder",
+        "Correct logical flow: Getter searches for both folder and file, then verifies parent-child relationship using Google Drive API",
+        "Proper parameter handling: Metric function correctly accesses expected parameter directly (not expected['rules']) as required for type='rule'",
+        "File naming flexibility: Handles multiple possible file names (form.pdf, form.docx.pdf) to account for different conversion naming conventions",
+        "Correct expected values: Rules correctly specify file_should_exist=true and in_folder=true matching instruction requirements",
+        "Edge case handling: Getter handles multiple file matches by checking if ANY matching file is in the target folder (reasonable approach)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding postconfig to ensure Google Drive sync is complete before verification, though this is low-risk for cloud storage operations"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

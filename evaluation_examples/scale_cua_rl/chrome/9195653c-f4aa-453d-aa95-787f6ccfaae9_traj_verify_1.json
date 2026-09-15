@@ -1,0 +1,83 @@
+{
+  "id": "9195653c-f4aa-453d-aa95-787f6ccfaae9",
+  "new_id": "9195653c-f4aa-453d-aa95-787f6ccfaae9_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Disable the background cone display in VLC.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_bgcone",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_bgcone": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_9195653c-f4aa-453d-aa95-787f6ccfaae9_sid_1488418",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent opened VLC, navigated Tools > Preferences > Advanced (All) > Interface > Main interfaces > Qt, set 'Maximum Volume displayed' to 200, and saved. Task completed successfully.",
+    "capability_extraction": "Can open VLC menus, navigate Advanced Preferences tree, find Qt interface settings, modify numeric values, and save preferences.",
+    "task_rationale": "Same navigation pattern (Advanced Preferences > Qt interface) but targets a different setting (background cone toggle instead of volume). Tests the model's ability to find and modify a checkbox setting in the same preferences section.",
+    "explanation": "Task requires navigating to VLC Advanced Preferences > Qt interface and unchecking 'Display background cone or art'. Evaluator reads vlcrc config file and checks qt-bgcone equals 0 (disabled). Default is 1 (enabled).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads the vlcrc configuration file from the VM, which contains the qt-bgcone setting.",
+        "Metric (check_qt_bgcone) correctly parses vlcrc for 'qt-bgcone=' line and compares against expected value of 0 (disabled). Default value of 1 (enabled) is correctly handled.",
+        "Expected value handling is correct: get_rule returns {'expected_qt_bgcone': 0}, and the metric accesses rule['expected_qt_bgcone'] directly — no incorrect nested access patterns.",
+        "Postconfig correctly kills VLC (forcing config write to disk) then relaunches, ensuring vlcrc reflects the saved preference state.",
+        "Complete coverage: the single instruction requirement (disable background cone) is fully verified by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

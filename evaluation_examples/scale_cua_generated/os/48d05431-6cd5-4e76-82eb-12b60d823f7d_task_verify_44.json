@@ -1,0 +1,95 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_44",
+  "snapshot": "os",
+  "instruction": "After attempting \"jenv version\" in terminal, I got \"jenv: command not found\". Please help me solve this issue so jenv commands work right away.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_6",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'jenv init' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'jenv: command not found' by adding jenv initialization to ~/.bashrc. Evaluator checks if 'jenv init' is present in .bashrc, which indicates jenv has been properly configured. Similar pattern to original conda task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for 'jenv init' in .bashrc which is the standard jenv configuration pattern.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification: Only checks if string 'jenv init' exists in .bashrc, not whether jenv commands actually work",
+        "Wrong verification approach: Instruction says 'so jenv commands work right away' but evaluator doesn't test if 'jenv version' command succeeds",
+        "Loose pattern matching: grep pattern 'jenv init' is too permissive - could match comments like '# TODO: add jenv init' or incorrect syntax",
+        "Missing functional verification: Should test that 'jenv version' no longer returns 'command not found', rather than just checking config file content",
+        "Incomplete configuration check: Even if 'jenv init' is in .bashrc, jenv might not be installed or in PATH, so commands still won't work"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Better approach: Test actual functionality by running 'jenv version' and verifying it doesn't output 'command not found'",
+        "Alternative: Check for the complete proper init line using: grep -q 'eval \"$(jenv init -)\"' ~/.bashrc",
+        "Comprehensive test: Run 'source ~/.bashrc && jenv version' to verify both configuration and functionality",
+        "Multi-step verification: Check (1) jenv is installed, (2) proper init line in .bashrc with correct syntax, (3) jenv commands work"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

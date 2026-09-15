@@ -1,0 +1,92 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_80",
+  "snapshot": "os",
+  "instruction": "Can you add both Firefox and Text Editor to the favorite applications?",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "thunderbird.desktop",
+          "vim.desktop",
+          "google-chrome.desktop",
+          "firefox.desktop",
+          "org.gnome.gedit.desktop"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding Firefox and Text Editor (gedit) to favorite apps. Initial state has [thunderbird, vim, chrome], final state should have [thunderbird, vim, chrome, firefox, gedit]. Uses existing check_gnome_favorite_apps metric.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts favorite apps list using gsettings command via get_vm_command_line getter",
+        "Metric check_gnome_favorite_apps correctly compares the result against expected apps using set comparison (order-independent)",
+        "Expected value correctly includes the initial 3 apps plus the 2 new apps (firefox.desktop and org.gnome.gedit.desktop)",
+        "Evaluator covers the complete instruction requirement: both Firefox and Text Editor are in the expected list",
+        "Getter can successfully access the gsettings state after task completion"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider semantic ambiguity: The metric uses strict length checking (len(apps) != len(expected_apps)), which means if a user adds Firefox, Text Editor, AND other apps, it will fail. The instruction 'add both Firefox and Text Editor' could be interpreted as 'ensure these two are present' (permissive) vs 'add exactly these two' (strict). Current implementation uses strict interpretation.",
+        "For more robust verification, could use subset checking: verify that firefox.desktop and org.gnome.gedit.desktop are IN the final list, regardless of other apps. However, given the expected list has exactly 5 apps and the context suggests a specific final state, the strict interpretation appears intentional."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

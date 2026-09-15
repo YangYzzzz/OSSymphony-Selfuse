@@ -1,0 +1,108 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "Browse for Disney toys appropriate for children and arrange them by price from lowest to highest.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Disney",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Disney": "Disney",
+        "disney": "Disney",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "disney": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Disney toys on Kohls.com, filtering for kids category, and sorting by price from low to high. Evaluator verifies breadcrumbs contain 'Disney', 'Toys', 'Kids' and sort selector shows 'Price Low-High' (S=4 in URL). Uses existing Chrome evaluator framework.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator comprehensively verifies all instruction requirements: Disney filter, Toys category, Kids filter, and price sorting from low to high",
+        "Getter uses dual verification strategy: HTML element extraction (breadcrumbs with class 'pmpSearch_breadcrumb' and sort selector with class 'sbSelector') plus URL parameter checking ('S=4' for price sorting)",
+        "Correctly handles case-insensitive comparison by converting extracted values to lowercase before comparison (lines 1885, 2023 in chrome.py)",
+        "Checks for unexpected extra filters via 'is_other_exist' field to ensure only the required filters are applied",
+        "Metric 'check_direct_json_object' properly compares all expected keys (disney, toys, kids, price low-high, is_other_exist) with actual extracted values",
+        "Data flow is semantically correct: getter extracts state from active tab HTML and URL → metric compares against expected values → returns 1.0 if all match, 0.0 otherwise",
+        "No edge cases missed for this specific task - handles both HTML structure and URL parameters for robust verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

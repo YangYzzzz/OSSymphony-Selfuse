@@ -1,0 +1,89 @@
+{
+  "id": "0512bb38-d531-4acf-9e7e-0add90816068",
+  "new_id": "task_verify_49",
+  "snapshot": "vscode",
+  "instruction": "Use the Extensions view in VS Code to install the extension from the local file '/home/user/test.vsix'.",
+  "source": "https://download.microsoft.com/download/8/A/4/8A48E46A-C355-4E5C-8417-E6ACD8A207D4/VisualStudioCode-TipsAndTricks-Vol.1.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/0512bb38-d531-4acf-9e7e-0add90816068/test.vsix",
+            "path": "/home/user/test.vsix"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "is_extension_installed",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "code",
+        "--list-extensions",
+        "|",
+        "grep",
+        "undefined_publisher.test"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contain",
+        "expected": "undefined_publisher.test"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Specifying 'use the Extensions view' suggests GUI method instead of CLI. Same evaluation.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical runtime issue: Command uses pipe (|) but evaluator.result config does not specify 'shell': true parameter",
+        "The command is passed as a list ['code', '--list-extensions', '|', 'grep', 'undefined_publisher.test'] which will fail without shell mode",
+        "get_vm_command_line has default shell=False (general.py:12), so pipe operations will not work - '|' and 'grep' will be passed as literal arguments to 'code' command",
+        "The overall verification approach is correct (checking installed extensions via code --list-extensions)",
+        "The expected value 'undefined_publisher.test' is correct and matches the extension identifier format",
+        "The is_extension_installed metric logic is correct for contain/not_contain checking"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option 1: Add 'shell': true to evaluator.result config, e.g., {'type': 'vm_command_line', 'command': ['code', '--list-extensions', '|', 'grep', 'undefined_publisher.test'], 'shell': true}",
+        "Option 2 (preferred): Remove pipe and use simple command without grep - just run 'code --list-extensions' and let the is_extension_installed metric do the string matching, e.g., {'type': 'vm_command_line', 'command': ['code', '--list-extensions']}",
+        "Option 3: If using shell mode, convert command from list to single string: 'code --list-extensions | grep undefined_publisher.test'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "For maximum privacy, I'd like Chrome to automatically clear cookies and site data whenever I close the browser. Can you enable this setting?",
+  "source": "https://support.google.com/chrome/answer/2392709",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"profile\":{\"exit_type\":1,\"content_settings\":{\"exceptions\":{\"cookies\":{}}}}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "clear_browsing_data_on_exit__980fd38b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to enable Chrome's 'Clear cookies and site data when you quit Chrome' setting. The evaluator checks profile.exit_type and content_settings.exceptions.cookies for session-only settings in Chrome Preferences. Initial state: exit_type=1 (continue where left off), no session-only cookies. Expected state: either exit_type=4 or session-only cookie setting (setting==1) enabled. Note: This specifically checks cookies/site data clearing, not comprehensive browsing data (history, cache, downloads) clearing, as Chrome's feature from the source URL is limited to cookies and site data.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_2/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly checks Chrome's 'Clear cookies and site data when you quit Chrome' setting by examining both exit_type==4 and session-only cookie settings (setting==1 in content_settings.exceptions.cookies)",
+        "Instruction explicitly asks to 'clear cookies and site data' which matches Chrome's actual feature (from source URL https://support.google.com/chrome/answer/2392709), not comprehensive browsing data clearing",
+        "Coverage is complete: The getter checks both mechanisms Chrome uses for this setting (exit_type and session-only cookies)",
+        "Metric logic is correct: exact_match properly compares result 'true' with expected 'true'",
+        "Postconfig appropriately restarts Chrome to ensure preferences are read in saved state, not in-memory state",
+        "Expected value is semantically correct: 'true' represents the enabled state of the setting",
+        "Data flow is correct: Getter extracts Chrome preference state → returns 'true'/'false' → exact_match compares with expected 'true'"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

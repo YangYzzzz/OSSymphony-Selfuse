@@ -1,0 +1,112 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_76",
+  "snapshot": "multiapps",
+  "instruction": "Save the opened web pages in Chrome as PDF files to /home/user/Downloads/Articles, naming each file after its article title.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "pip install PyMuPDF",
+          "shell": "true"
+        }
+      }
+    ],
+    "func": "check_pdf_export__d582d1d2",
+    "result": {
+      "type": "pdf_exports__d582d1d2",
+      "directory": "/home/user/Downloads/Articles"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "required_keywords": [
+          [
+            "llm",
+            "powered",
+            "autonomous",
+            "agent"
+          ],
+          [
+            "human",
+            "data",
+            "quality"
+          ]
+        ],
+        "count": 2,
+        "min_filename_length": 15
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting 2 Chrome tabs to PDF files in /home/user/Downloads/Articles directory. The evaluator checks if 2 PDFs exist and their filenames contain specific keyword combinations from the article titles: one file must contain both 'agent' and 'autonomous', another must contain both 'data' and 'quality'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_0/getters/pdf_check__d582d1d2.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_aug_18_task_verify_0/metrics/pdf_check__d582d1d2.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator can semantically verify most aspects of the instruction but has minor semantic gap",
+        "Instruction requires 'naming each file after its article title' - evaluator uses keyword-based verification which is a reasonable approximation",
+        "Positive: Keyword combinations are highly specific - ['llm', 'powered', 'autonomous', 'agent'] and ['human', 'data', 'quality'] align well with actual article topics from URLs",
+        "Positive: Metric includes separator check (lines 56-59) to prevent trivial concatenations like 'agentautonomous.pdf'",
+        "Positive: min_filename_length=15 ensures filenames are meaningful, not just keywords",
+        "Positive: Correctly checks PDF count (2), directory location, and ensures each keyword set matches a different file (no double-counting)",
+        "Positive: Getter correctly extracts PDF filenames from target directory",
+        "Minor gap: A file like 'my_llm_powered_autonomous_agent_research.pdf' would pass but isn't strictly 'named after the article title' - however, this is acceptable pragmatic verification since exact title matching is difficult without fetching actual titles",
+        "Edge case handling: Getter uses 2>/dev/null to handle missing directory gracefully",
+        "Overall logic flow is correct: getter extracts state -> metric validates against keyword rules -> scoring is appropriate"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Could enhance by fetching actual article titles from Chrome tab metadata or URL scraping and using fuzzy string matching (e.g., difflib.SequenceMatcher) - but current approach is pragmatic",
+        "Could add stricter filename pattern validation (e.g., reject filenames with too many non-alphabetic characters that suggest non-title naming)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

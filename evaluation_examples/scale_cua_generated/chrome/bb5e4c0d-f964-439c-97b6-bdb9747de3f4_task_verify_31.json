@@ -1,0 +1,100 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_31",
+  "snapshot": "chrome",
+  "instruction": "Set Yahoo as the default search engine for my Chrome browser.",
+  "source": "https://support.google.com/chrome/answer/95426?sjid=16867045591165135686-AP",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Yahoo!",
+          "Yahoo",
+          "yahoo"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting Yahoo as the default search engine. Uses existing get_default_search_engine getter to retrieve current search engine setting, then match_in_list to check against acceptable Yahoo variations.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing Chrome getter functionality. Task maintains same complexity as original - navigate to Chrome settings and change default search engine.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome Preferences file at the right location and extracts the default search engine name from 'default_search_provider_data.template_url_data.short_name'",
+        "Metric 'match_in_list' correctly receives rules dict with 'expected' key and performs proper list membership check",
+        "Expected values semantically correct: includes multiple acceptable Yahoo variations (Yahoo!, Yahoo, yahoo) to handle different naming conventions",
+        "Complete instruction coverage: evaluator verifies that Yahoo is set as default search engine, which is exactly what the instruction requires",
+        "Postconfig properly restarts Chrome to ensure settings persistence is verified (not just in-memory state)",
+        "Data flow is correct: getter returns string -> metric checks if string is in expected list -> returns 1.0 on match",
+        "No edge case issues: handles error fallback (returns 'Google' on error), which will correctly fail evaluation if getter cannot read preferences"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

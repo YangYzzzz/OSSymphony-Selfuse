@@ -1,0 +1,91 @@
+{
+  "id": "36037439-2044-4b50-b9d1-875b5a332143",
+  "new_id": "36037439-2044-4b50-b9d1-875b5a332143_traj_verify_1",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Search for the paper shown in the open PDF on Google Scholar in Chrome.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/36037439-2044-4b50-b9d1-875b5a332143/shi17a.pdf",
+            "path": "/home/user/Desktop/shi17a.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/shi17a.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-40)"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "scholar\\.google\\.com",
+          "[Ww]orld.*[Bb]its"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_36037439-2044-4b50-b9d1-875b5a332143_sid_1488127",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent read the PDF, identified the corresponding author (Tianlin Shi), but spent 20+ turns struggling to switch from the Evince PDF viewer to Chrome. Eventually reached scholar.google.com loading page but ran out of turns (50 turns, 337s).",
+    "capability_extraction": "Can read PDF content, navigate PDF pages, identify author names and paper titles, type URLs in Chrome address bar, scroll within documents",
+    "failure_analysis": "Model could not efficiently switch from Evince PDF viewer to Chrome browser. Repeatedly clicked on taskbar icons, Activities button, and tried keyboard shortcuts (Alt+Tab, Super) without success. The core failure was app-switching, not comprehension or navigation.",
+    "task_rationale": "Intermediate decomposition: requires reading the paper title from the PDF ('World of Bits') and searching for it on Google Scholar. Tests both PDF comprehension (model demonstrated this) and Chrome navigation (where model struggled). Simpler than original because it only requires a search, not finding a specific author's profile page.",
+    "explanation": "Task requires reading the paper title from the open PDF and searching for it on Google Scholar. Evaluator checks that the active Chrome tab URL contains 'scholar.google.com' and a pattern matching 'World...Bits' (the paper title). Uses standard is_expected_url_pattern_match metric with regex patterns.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 10,
+    "variation_index": 1,
+    "scoring_breakdown": {
+      "navigation_and_search": "1.0 - Chrome URL contains scholar.google.com AND World.*Bits search query"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active Chrome tab URL, which is the right state to check for a Google Scholar search task.",
+        "Metric (is_expected_url_pattern_match) correctly accesses rules['expected'] to get the pattern list and checks ALL patterns match via re.search - logic is sound.",
+        "Pattern 'scholar\\.google\\.com' correctly verifies Google Scholar is the target site.",
+        "Pattern '[Ww]orld.*[Bb]its' correctly verifies the paper title 'World of Bits' appears in the search URL (works with URL-encoded forms like World+of+Bits or World%20of%20Bits since .* matches any characters).",
+        "Coverage is adequate: the single instruction requirement (search for the paper on Google Scholar) is verified by checking both the platform and the search content in the URL."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator assumes the agent searches by paper title. If the agent searches by author name only, the URL check for 'World.*Bits' would fail even though the task was arguably completed. Consider adding an alternative pattern for author-based searches as a fallback, though title-based search is the expected approach."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

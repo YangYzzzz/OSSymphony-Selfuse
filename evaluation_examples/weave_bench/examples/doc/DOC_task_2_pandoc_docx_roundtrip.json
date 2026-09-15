@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_2_pandoc_docx_roundtrip",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task. All artifacts go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: The customer has submitted a Word report at `/tmp_workspace/docx_project/report_draft.docx`. Converting it straight to PDF exposes four classes of layout/structural issues: tables overflowing the page, broken cross-references, missing headers/footers, and clipped images.\n\nGoal: Diagnose and fix the above issues, produce a final PDF with proper layout, and accompany it with a first-pass-vs-final visual regression comparison proving the issues have indeed been resolved. Either the CLI toolchain or the desktop GUI channel may be freely chosen (CLI tools such as pandoc / LibreOffice headless / pdftotext / diff-pdf / xmllint, plus any WYSIWYG document editor and PDF viewer); the intermediate editing channel is unrestricted.\n\n### Hard constraints on the main deliverable `final_output.pdf`\n- Final layout-fixed PDF, ≥ 2 pages, file > 1 KB\n- Companion `lo_convert.log`: conversion log from the repaired intermediate format to the final PDF\n- Companion `final_text.txt`: plain-text extraction of the final PDF (pdftotext or equivalent), > 50 bytes\n- Word-count deviation from first_pass |delta_words_pct| ≤ 15% (to avoid accidentally deleting content)\n- Companion `final_pass_metrics.json`: `{\"pages\": <int>, \"word_count\": <int>, \"delta_words_pct\": <float>, \"has_question_marks\": <bool>}`\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `docx_structure.json` | Must contain keys `paragraphs / headings / tables / images / cross_refs` (int) |\n| `docx_contents.txt` | File listing inside the DOCX package, > 50 bytes |\n| `first_pass.pdf` | Unrepaired first-pass PDF from direct conversion (visual regression baseline), ≥ 2 pages |\n| `pandoc_first_pass.log` | All warnings/errors captured during the first-pass conversion |\n| `first_text.txt` | Plain-text extraction of first_pass.pdf, > 50 bytes |\n| `first_pass_metrics.json` | Must contain keys `pages / word_count / has_question_marks` |\n| `odt_head.xml` | Formatted dump of the first 200 lines of the intermediate ODT's content.xml, > 100 bytes |\n| `text_diff.txt` | Line-by-line diff between first_text and final_text |\n| `visual_diff.pdf` | Visual regression diff PDF between first_pass.pdf and final_output.pdf, > 200 bytes |\n| `diffpdf_exit.txt` | Exit code of the visual diff comparison (0=same / 1=differ / 2=error) |\n| `diff_result.json` | Must contain keys `pages_differ / exit_code / first_pages / final_pages` |\n| `structural_audit.json` | Statistics over residual `??`, table labels and header-keyword hits in the final text; must contain keys `unresolved_refs / table_labels / header_keyword_hits` |\n| `conversion_report.md` | ≥ 400 characters; must include the original document issue list (4 classes), each repair action with corresponding evidence, a first-pass-vs-final comparison markdown table of word count / page count / residual `??`, the visual regression conclusion, and a key-evidence timeline |\n| `deliverables.json` | Must contain `final_output_pdf_sha256 / visual_diff_pdf_sha256 / first_pass_pdf_sha256` (each ≥ 32 hex chars) plus a `files` listing |\n\n### 12 process screenshots\n\nFixed filenames (PNG, > 5 KB, resolution ≥ 1920×1000, must be real screenshots of desktop application windows, with no duplicated content among them):\n\n| Filename | Content to show |\n|---|---|\n| `view_01_table_overflow.png` | A table in the first-pass PDF overflowing the right margin / having columns clipped |\n| `view_02_broken_xref.png` | A broken cross-reference in the first-pass PDF (`??` or `[ref]`) |\n| `view_03_missing_header.png` | Empty header area / missing header & footer in the first-pass PDF |\n| `view_04_lo_table_props.png` | Repair-editing process for overflowing table properties (column width / auto width / 100% relative width) |\n| `view_05_lo_header_edit.png` | Editing interface where header/footer is added and filled with the correct content |\n| `view_06_lo_xref_dialog.png` | Re-linking editing process for broken cross-references |\n| `view_07_lo_overview.png` | Overall layout overview of the repaired document |\n| `view_08_final_table_ok.png` | Table fully fits within the page in the final PDF |\n| `view_09_final_header_ok.png` | Header and footer display correctly in the final PDF |\n| `view_10_final_image_ok.png` | Image scaled within the text width in the final PDF |\n| `view_11_diff_pdf_first.png` | Difference annotations on the first page of visual_diff.pdf |\n| `view_12_diff_pdf_pageN.png` | Difference annotations on another page of visual_diff.pdf |\n\nEvaluation performs OCR and visual judgement: screenshots must preserve chrome elements of the desktop app used (title bar, menu bar, etc.); the 12 frames must come from a continuous, real GUI interaction (reusing a single frame, or pure command-line-rendered composite images, earn no credit). If the agent framework records an `actions.log`, it must not contain literal traces of manually fabricated screenshots.\n\nNeutral background: table overfull, cross-reference text rendered as `??`, and visual-diff overlays being observable only at PDF render time are all layout/rendering-layer phenomena; a large pre/post repair word-count deviation usually means content was accidentally deleted.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_2_pandoc_docx_roundtrip.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_2_pandoc_docx_roundtrip",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which pandoc     >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq pandoc texlive-xetex >/dev/null 2>&1) || true\nwhich pdftotext  >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils >/dev/null 2>&1 || true\nwhich xmllint    >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libxml2-utils >/dev/null 2>&1 || true\nwhich evince     >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq evince >/dev/null 2>&1 || true\nwhich diff-pdf   >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq diff-pdf >/dev/null 2>&1 || true\nwhich tesseract  >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tesseract-ocr >/dev/null 2>&1 || true\npip install -q pillow python-docx pytesseract numpy 2>/dev/null || true\nmkdir -p /tmp_workspace/docx_project /tmp_workspace/results || true\n[ -f /tmp_workspace/docx_project/report_draft.docx ] || python3 /tmp_workspace/generate_report_docx.py /tmp_workspace/docx_project/report_draft.docx 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_2_pandoc_docx_roundtrip/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_2_pandoc_docx_roundtrip /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_2_pandoc_docx_roundtrip/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_2_pandoc_docx_roundtrip/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_2_pandoc_docx_roundtrip/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_2_pandoc_docx_roundtrip/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_2_pandoc_docx_roundtrip/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_2_pandoc_docx_roundtrip.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_2_pandoc_docx_roundtrip",
+    "workspace_relative": "DOC/task_2_pandoc_docx_roundtrip",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

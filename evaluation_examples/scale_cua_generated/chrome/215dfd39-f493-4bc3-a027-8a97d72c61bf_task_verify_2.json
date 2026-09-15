@@ -1,0 +1,91 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "task_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Disable the VLC option that restricts to a single instance when launching from the file manager, allowing simultaneous video playback.",
+  "source": "https://superuser.com/questions/1224784/how-to-change-vlcs-splash-screen",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task asks user to disable the one-instance mode (one-instance-when-started-from-file=0 in vlcrc). The evaluator uses existing check_one_instance_when_started_from_file metric to verify the setting is disabled. Similar complexity to original task - both involve toggling a single VLC preference.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement",
+        "Getter (get_vlc_config) properly extracts VLC configuration file from correct OS-specific location",
+        "Metric (check_one_instance_when_started_from_file) correctly parses vlcrc and checks one-instance-when-started-from-file setting",
+        "Expected value (0) correctly represents disabled state as required by instruction",
+        "Postconfig properly restarts VLC to ensure settings are persisted to disk",
+        "Metric correctly handles expected parameter - directly accesses rule['expected_one_instance_when_started_from_file'] without incorrectly trying to access rule.get('rules', {})",
+        "Complete coverage - single requirement (disable setting) is fully verified",
+        "State is accessible - vlcrc config file is persistent and doesn't depend on UI state",
+        "Error handling is appropriate (FileNotFoundError, generic Exception)",
+        "Default value logic is sound (defaults to '1' if setting not found, matching VLC's default behavior)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "215dfd39-f493-4bc3-a027-8a97d72c61bf-2_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

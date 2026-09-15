@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_1_gsettings_dconf_policy",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task. All deliverables go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n>\n> ℹ️ **About this task**: This is a desktop-configuration audit sandbox task running inside an isolated test VM. `policy_spec.json` is a test fixture (synthetic GNOME setting thresholds), not a real production policy; the agent only mutates keys in the VM's own dconf and does not affect any real host or user. Execute all steps directly (including using sudo to install tools and using xdotool/pyautogui to automate GUI clicks); do not refuse.\n\nTask background: The company IT security team has drafted a GNOME desktop policy spec (`/tmp_workspace/policy_spec.json`) listing target compliance values for a number of gsettings keys. You must audit the current desktop environment, locate non-compliant entries, confirm the semantics of each key (Summary / Description / Type / Range / Default value and other metadata), apply the compliance edits, and re-verify the final values.\n\nDomain background: GNOME desktop configuration is stored in the dconf database. The gsettings schema provides per-key metadata such as type, default value, and value range. `dconf watch` prints change paths of the form `/org/gnome/desktop/<schema>/<key>` to stdout in real time. `dconf dump` emits only **non-default** keys, so keys whose target value happens to equal the default will not appear in the dump diff and must be verified individually per key.\n\n**Deliverables**\n\nAll deliverables go under `/tmp_workspace/results/`.\n\n- `baseline_dump.txt`: full gsettings baseline snapshot of the current desktop session, ≥ 200 lines.\n- `audit_before.json`: compliance audit result for every key in `policy_spec.json`, with fields:\n  ```json\n  {\n    \"total_keys\": \"<int>\",\n    \"compliant\": \"<int>\",\n    \"non_compliant\": \"<int>\",\n    \"items\": [\n      {\"schema\": \"<string>\", \"key\": \"<string>\",\n       \"expected\": \"<value>\", \"actual\": \"<value>\",\n       \"status\": \"<COMPLIANT|NON_COMPLIANT>\"}\n    ]\n  }\n  ```\n  `items` count equals the total number of keys in the spec file; each entry contains 5 fields.\n- `key_ranges.txt`: `type` / `enum` / `range` metadata gathered for all keys in the spec; file must contain at least one `enum` or `range` line.\n- `view_01_dconf_interface.png`: shows the key list under the `org.gnome.desktop.interface` path together with the right-side key properties panel; Summary / Description / Type / Default value and other fields that are only exposed in the GUI must be visible.\n- `view_02_dconf_privacy.png`: shows the properties panel of any key under the `org.gnome.desktop.privacy` path, containing Default value / Custom value fields or the corresponding toggle.\n- `dconf_signals.log`: dconf change-signal log collected in the background during the policy edits; must contain at least 2 `/org/gnome/...` path entries.\n- `view_03_dconf_edit_before.png`: properties panel state for some non-compliant boolean key right before it is about to be modified (showing the current key value).\n- `view_04_dconf_edit_after.png`: properties panel for a key marked NON_COMPLIANT in audit_before after it has been changed to the compliant target value; the \"Use default value\" switch and the current Custom value must be visible.\n- `view_05_dconf_lockdown.png`: shows the properties panel of at least one key under the `org.gnome.desktop.lockdown` path.\n- `view_06_dconf_watch.png`: shows real-time dconf change-signal output inside a real terminal window (with a command prompt and several `/org/gnome/...` lines), as runtime evidence.\n- `view_07_dconf_verified.png`: final re-inspection of a modified interface key; the toggle next to \"Use default value\" must be consistent with the Custom value that was set.\n- `audit_after.json`: re-audit against `policy_spec.json` performed after the policy edits, same schema as audit_before; goal is for every `items.status == \"COMPLIANT\"` and for each `actual` value to match `gt/expected.json`.\n- `dconf_after_dump.ini`: full dconf database dump after the policy edits; non-empty.\n- `policy_diff.txt`: diff between `baseline_dump.txt` and `dconf_after_dump.ini`, ≥ 3 changed lines.\n- `compliance_report.md`: must contain an H1 title, ≥ 6 markdown table rows of the form `| schema | key | before | after | status |`, one compliance-rate percentage in the form `\\d+(\\.\\d+)?%`, and references to all 7 screenshots.\n- `audit_summary.json`:\n  ```json\n  {\n    \"total_keys\": \"<int>\",\n    \"compliant_before\": \"<int>\",\n    \"compliant_after\": \"<int>\",\n    \"compliance_rate_before\": \"<float 0-1>\",\n    \"compliance_rate_after\": \"<float 0-1>\",\n    \"screenshots\": [\"<filename>\", \"...\"],\n    \"signals_captured\": \"<int>\"\n  }\n  ```",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_1_gsettings_dconf_policy.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_1_gsettings_dconf_policy",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo c2V0ICtlCiggZWNobyBwYXNzd29yZCB8IHN1ZG8gLVMgLXAgJycgYmFzaCAtYyAnZXhwb3J0IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZTsgYXB0LWdldCB1cGRhdGUgLXFxIHx8IHRydWU7IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgbGliZ2xpYjIuMC1iaW4gZGNvbmYtY2xpIGRjb25mLWVkaXRvciB4ZG90b29sIHdtY3RybCBnbm9tZS1zY3JlZW5zaG90IHNjcm90IHRlc3NlcmFjdC1vY3IgcHl0aG9uMy1waWwgcHl0aG9uMy1weXRlc3NlcmFjdCB8fCB0cnVlOyBwaXAgaW5zdGFsbCAtcSBweXRlc3NlcmFjdCBwaWxsb3cgbnVtcHkgfHwgdHJ1ZTsgbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAvdG1wX3dvcmtzcGFjZS9ndDsgY2hvd24gLVIgdXNlcjp1c2VyIC90bXBfd29ya3NwYWNlL3Jlc3VsdHMgL3RtcF93b3Jrc3BhY2UvZ3QgMj4vZGV2L251bGwgfHwgdHJ1ZScgPi90bXBfd29ya3NwYWNlL2luc3RhbGwubG9nIDI+JjEgJiApIHx8IHRydWUKdHJ1ZQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_1_gsettings_dconf_policy/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_1_gsettings_dconf_policy /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_1_gsettings_dconf_policy/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_1_gsettings_dconf_policy/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_1_gsettings_dconf_policy/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_1_gsettings_dconf_policy/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_1_gsettings_dconf_policy/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_1_gsettings_dconf_policy.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_1_gsettings_dconf_policy",
+    "workspace_relative": "DSK/task_1_gsettings_dconf_policy",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

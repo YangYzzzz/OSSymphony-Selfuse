@@ -1,0 +1,135 @@
+{
+  "id": "67890eb6-6ce5-4c00-9e3d-fb4972699b06",
+  "new_id": "task_verify_44",
+  "snapshot": "libreoffice_calc",
+  "instruction": "In the best_awards_acl.xlsx file on the desktop, freeze the header row (row 1) so it stays visible when scrolling through the data.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/67890eb6-6ce5-4c00-9e3d-fb4972699b06/best_awards_acl.xlsx",
+            "path": "/home/user/Desktop/best_awards_acl.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/best_awards_acl.xlsx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://aclanthology.org/"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "best_awards_acl.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_has_freeze_panes__8e837c3a",
+    "result": {
+      "type": "xlsx_has_freeze_panes__8e837c3a",
+      "file_path": "/home/user/Desktop/best_awards_acl.xlsx",
+      "sheet": 0
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_freeze": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires freezing the header row (row 1) so it remains visible when scrolling. The evaluator checks if freeze panes is set on the sheet.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_task_verify_8/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/67890eb6-6ce5-4c00-9e3d-fb4972699b06_task_verify_8/metrics/xlsx.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Getter logic is insufficient: it only checks if ANY freeze panes exists (ws.freeze_panes is not None), but does not verify WHICH rows are frozen",
+        "Instruction specifically requires freezing row 1 (header row), but the evaluator would pass if freeze panes is set at ANY position (e.g., A5 freezing rows 1-4, or B1 freezing only column A)",
+        "Critical semantic gap: getter at line 37-38 (getters/xlsx.py) returns True for ws.freeze_panes without parsing the freeze position to verify row 1 is actually frozen",
+        "The evaluator cannot distinguish between correct freeze (e.g., A2 freezes row 1) and incorrect freeze positions (e.g., B1 freezes only columns, A5 freezes rows 1-4)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify getter to parse ws.freeze_panes position (e.g., 'A2', 'B3') and verify that the row component is >= 2, indicating row 1 is frozen",
+        "Add validation to ensure freeze position specifically freezes row 1: check that freeze_panes exists and its row coordinate is exactly 2 (for freezing only row 1) or allow any row >= 2 if freezing multiple rows is acceptable",
+        "Example fix: Parse freeze_panes cell reference (e.g., 'A2' -> row=2), then verify row >= 2 to confirm row 1 is in the frozen region",
+        "Consider edge cases: freeze at 'B2' (freezes row 1 + column A) should pass, but 'A1' (no freeze) or 'B1' (only column A frozen) should fail"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

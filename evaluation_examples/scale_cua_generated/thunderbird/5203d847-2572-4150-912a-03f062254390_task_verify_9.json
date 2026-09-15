@@ -1,0 +1,119 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_9",
+  "snapshot": "thunderbird",
+  "instruction": "Set up a local folder called \"Receipts\" and configure a message filter to move emails with \"invoice\" in the subject to this folder automatically",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Receipts",
+            "condition": [
+              "AND (subject,contains,invoice)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation changes folder name to 'Receipts' and filter keyword to 'invoice' (subject contains). Uses same evaluator structure as original with check_thunderbird_filter metric. Verified that filter format matches expected structure with enabled=yes, Move to folder action, and subject contains condition.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.65,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires TWO steps: (1) Set up a local folder called 'Receipts' AND (2) Configure a message filter. The evaluator only verifies step 2 (filter configuration) but does not verify step 1 (folder existence).",
+        "The evaluator checks that the filter is configured to move emails to 'mailbox://nobody@Local%20Folders/Receipts', but this doesn't prove the Receipts folder actually exists in Thunderbird's local folders.",
+        "Filter verification logic is semantically correct: checks enabled=yes, action='Move to folder', actionValue points to Receipts folder, and condition='AND (subject,contains,invoice)'.",
+        "The check_thunderbird_filter metric correctly parses the msgFilterRules.dat file and matches all expected filter properties.",
+        "Postconfig appropriately closes the Message Filters window before reading the filter file."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second evaluator step to verify the 'Receipts' local folder exists in Thunderbird. This could check the folder structure in the Thunderbird profile directory or use a getter to list local folders.",
+        "Alternative: Modify the instruction to only require filter configuration (remove 'Set up a local folder' requirement) if folder existence cannot be verified.",
+        "Consider using partial credit scoring: 0.5 points for filter configuration + 0.5 points for folder existence."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

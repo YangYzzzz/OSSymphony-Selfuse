@@ -1,0 +1,110 @@
+{
+  "id": "ecb0df7a-4e8d-4a03-b162-053391d3afaf",
+  "new_id": "task_verify_83",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Calculate the average mark of students who scored >= 50 and enter it in cell C32 (rounded to 2 decimal places).",
+  "source": "https://www.youtube.com/shorts/tXOovKn0H68",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/ecb0df7a-4e8d-4a03-b162-053391d3afaf/Order_Id_Mark_Pass_Fail.xlsx",
+            "path": "/home/user/Order_Id_Mark_Pass_Fail.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Order_Id_Mark_Pass_Fail.xlsx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/ecb0df7a-4e8d-4a03-b162-053391d3afaf",
+  "related_apps": [
+    "libreoffice calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Order_Id_Mark_Pass_Fail.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_avg_b0f6f88d",
+    "result": {
+      "type": "xlsx_avg__b0f6f88d",
+      "func": "get_xlsx_avg__b0f6f88d",
+      "config": {
+        "path": "/home/user/Order_Id_Mark_Pass_Fail.xlsx",
+        "sheet": 0,
+        "cell": "C32"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet": 0,
+        "cell": "C32",
+        "expected_value": 69.18
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Verified with Python: average of marks >= 50 is (54+57+56+95+89+54+65+76+74+67+74)/11 = 69.18",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ecb0df7a-4e8d-4a03-b162-053391d3afaf_aug_11_task_verify_3/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ecb0df7a-4e8d-4a03-b162-053391d3afaf_aug_11_task_verify_3/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical framework usage error: evaluator.result.type='vm_file' means framework fetches the file and passes path to metric, but a custom getter 'get_xlsx_avg__b0f6f88d' is defined that tries to fetch the file itself using env.controller.get_file(). This causes a mismatch - the getter will never be called.",
+        "When result.type='vm_file', the framework bypasses custom getters and directly passes the file path to the metric function. The metric should read the file directly from the path parameter.",
+        "The getter function get_xlsx_avg__b0f6f88d (in getters/calc.py) is orphaned and will not execute at runtime because result.type='vm_file' takes precedence.",
+        "The metric function check_xlsx_avg_b0f6f88d receives a file path as 'result' parameter but expects a numeric value (tries to convert result to float), which will fail at runtime."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option A (Recommended): Change evaluator.result to use custom getter: {\"type\": \"func\", \"func\": \"get_xlsx_avg__b0f6f88d\", \"config\": {\"path\": \"/home/user/Order_Id_Mark_Pass_Fail.xlsx\", \"sheet\": 0, \"cell\": \"C32\"}}. Remove the vm_file result type.",
+        "Option B: Remove the getter function entirely and modify the metric to read the Excel file directly from the path: check_xlsx_avg_b0f6f88d(file_path, expected, **options) should use openpyxl to read cell value from file_path.",
+        "The expected value (69.18) and expected structure are semantically correct and match the instruction requirements."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

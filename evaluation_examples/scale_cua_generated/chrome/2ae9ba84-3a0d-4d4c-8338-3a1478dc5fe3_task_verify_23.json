@@ -1,0 +1,98 @@
+{
+  "id": "2ae9ba84-3a0d-4d4c-8338-3a1478dc5fe3",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "Please rename my Chrome profile to 'David'. I want the profile username to be David.",
+  "source": "https://superuser.com/questions/1393683/how-to-change-the-username-in-google-chrome-profiles?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "profile_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "David"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing Chrome profile name to 'David'. Uses existing get_profile_name getter and exact_match metric. Same complexity as original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_profile_name reads from Chrome Preferences file at the correct JSON path (profile.name)",
+        "Metric logic is correct: exact_match performs exact string comparison between extracted profile name and expected value 'David'",
+        "Expected value is semantically correct: 'David' matches the instruction requirement to rename profile to 'David'",
+        "Complete coverage: The evaluator checks the exact requirement stated in the instruction (profile name = 'David')",
+        "Postconfig is appropriate: Restarting Chrome ensures profile name changes are persisted to the Preferences file",
+        "State accessibility is reliable: Getter reads from file system (Preferences JSON file), not dependent on UI state that could be stale",
+        "Data flow is correct: User changes profile name → Chrome writes to Preferences file → Postconfig ensures persistence → Getter reads file → Metric compares with expected"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

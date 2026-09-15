@@ -1,0 +1,65 @@
+{
+  "id": "c288e301-e626-4b98-a1ab-159dcb162af5",
+  "new_id": "c288e301-e626-4b98-a1ab-159dcb162af5_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Set the system timezone to UTC on this Ubuntu machine.",
+  "config": [],
+  "evaluator": {
+    "func": "is_utc_0",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "timedatectl"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "UTC"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_c288e301-e626-4b98-a1ab-159dcb162af5_sid_1488045",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent opened terminal, checked Python versions (found 3.10.12), searched for Python4 in apt cache and filesystem, correctly concluded Python4 doesn't exist and declared task infeasible.",
+    "capability_extraction": "Can open terminal via Activities search, run shell commands (version checks, apt-cache, ls), analyze command output, correctly identify infeasible tasks.",
+    "task_rationale": "A feasible OS configuration task testing the agent's ability to change system settings via terminal. Uses the same terminal interaction pattern demonstrated in the trajectory but requires actual system modification instead of infeasibility detection.",
+    "explanation": "Task requires setting the system timezone to UTC using timedatectl or equivalent command. Evaluator uses the official is_utc_0 metric which checks timedatectl output for UTC timezone.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "timezone_set": "1.0 - System timezone is set to UTC"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly runs 'timedatectl' via vm_command_line to extract timezone state from the VM.",
+        "Metric is_utc_0 correctly parses the Time zone line (index 3) of timedatectl output and checks for +0000 offset, which is the correct offset for UTC.",
+        "The check is slightly loose: any UTC+0 timezone (e.g., Atlantic/Faroe with WET +0000) would also pass, not just Etc/UTC or UTC specifically. This means the evaluator could accept a non-UTC timezone that happens to have +0000 offset.",
+        "The expected.rules config provides {'expected': 'UTC'} but is_utc_0 only takes one parameter (timedatectl_output), so the expected rules are unused. The metric hardcodes the +0000 check rather than using the provided expected value.",
+        "Instruction coverage is complete: the single requirement (set timezone to UTC) is verified by checking the timezone offset."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a metric that checks for 'Time zone: UTC' or 'Time zone: Etc/UTC' in the timedatectl output for a stricter UTC-specific check, rather than accepting any +0000 offset timezone.",
+        "Since is_utc_0 only accepts one parameter, the expected.rules config is unnecessary and could be removed, or a two-parameter metric that uses the expected value could be used instead."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric signature may be invalid (<2 args): is_utc_0"
+        },
+        {
+          "level": "warn",
+          "msg": "metric is_utc_0 has no second parameter but expected.rules is provided"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

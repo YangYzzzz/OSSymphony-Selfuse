@@ -1,0 +1,98 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "b4f95342-463e-4179-8c3f-193cd7241fb2_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Go to the Diamond Campground on recreation.gov, then open Chrome's bookmarks manager in a new tab.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_tabs_navigation__84216ceb2a30068e766e68b7d025a88e",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "checks": [
+          {
+            "url_contains": "recreation.gov/camping/campgrounds/233869",
+            "weight": 0.5
+          },
+          {
+            "url_contains": "chrome://bookmarks",
+            "weight": 0.5
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_b4f95342-463e-4179-8c3f-193cd7241fb2_sid_1488101",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to recreation.gov, searched for 'Diamond', clicked on Diamond Campground in Uinta-Wasatch-Cache National Forest (URL: recreation.gov/camping/campgrounds/233869). Then spent remaining turns scrolling through availability calendar and clicking 'Next Available' button repeatedly without producing the expected HTML content.",
+    "capability_extraction": "Can navigate Chrome to recreation.gov, use the site search box, click on autocomplete results, navigate to campground detail pages, scroll and interact with page elements",
+    "failure_analysis": "Model got stuck in a loop clicking 'Next Available' and scrolling through the availability calendar for 50 turns. The evaluator expected specific HTML class content (camp-sortable-column-header) that the model never produced. The original task required interpreting and extracting specific calendar data, which was too complex.",
+    "task_rationale": "Combines the successful navigation sub-task with opening a new tab. Tests multi-tab management alongside website navigation. Partial credit (0.5 each) for navigating to campground and opening bookmarks manager.",
+    "explanation": "Task requires navigating to Diamond Campground on recreation.gov and opening Chrome bookmarks manager in a new tab. Custom metric checks open tabs for both URL substrings with partial credit (0.5 per match).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_b4f95342-463e-4179-8c3f-193cd7241fb2_sid_1488101_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "campground_tab": "0.5 - Tab with recreation.gov/camping/campgrounds/233869 is open",
+      "bookmarks_tab": "0.5 - Tab with chrome://bookmarks is open"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'open_tabs_info' correctly extracts all open Chrome tab URLs and titles, which is exactly the state needed to verify both instruction requirements.",
+        "Custom metric correctly handles the 'expected' parameter - accesses 'expected.get(\"checks\", [])' directly, which is correct since get_rule returns the rules dict.",
+        "URL substring check for Diamond Campground ('recreation.gov/camping/campgrounds/233869') is verified correct from trajectory data showing this is the actual campground URL.",
+        "URL substring check for Chrome bookmarks manager ('chrome://bookmarks') is the correct URL for the bookmarks manager tab.",
+        "Both instruction requirements (navigate to campground + open bookmarks manager) are fully covered with appropriate 0.5 weight each for partial credit.",
+        "Metric logic correctly iterates through all open tab URLs and checks for substring containment, handling both dict and string tab formats."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

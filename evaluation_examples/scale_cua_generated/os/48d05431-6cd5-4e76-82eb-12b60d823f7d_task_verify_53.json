@@ -1,0 +1,94 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_53",
+  "snapshot": "os",
+  "instruction": "I need to add the directory /usr/local/bin to my PATH environment variable permanently. Could you help me configure my shell so that this directory is included in PATH every time I open a terminal?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -E '(export[[:space:]]+)?PATH=\"?.*/usr/local/bin(:|\"|\\'|[[:space:]])' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding /usr/local/bin to PATH in .bashrc file. Evaluator checks if PATH export line with /usr/local/bin exists in .bashrc. Similar to the original - modifying shell configuration files for environment setup.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks for PATH modifications containing /usr/local/bin in ~/.bashrc",
+        "Grep pattern '(export[[:space:]]+)?PATH=\"?.*/usr/local/bin(:|\"|\\'|[[:space:]])' should match standard PATH modification patterns",
+        "Pattern matches both prepend (PATH=\"/usr/local/bin:$PATH\") and append (PATH=\"$PATH:/usr/local/bin\") formats",
+        "The optional 'export' prefix and proper delimiters (colon, quotes, whitespace) are correctly handled",
+        "Command logic '&& echo 1 || echo 0' correctly returns '1\\n' on success and '0\\n' on failure",
+        "Minor limitation: Only checks ~/.bashrc, might miss other valid shell config files like ~/.bash_profile or ~/.profile",
+        "Minor limitation: Pattern doesn't validate shell syntax correctness, only pattern presence"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider checking multiple shell config files to be more comprehensive: for f in ~/.bashrc ~/.bash_profile ~/.profile; do grep -E '...' $f && echo 1 && exit; done; echo 0",
+        "Optionally, verify the actual runtime PATH value after sourcing: bash -c 'source ~/.bashrc && echo $PATH' | grep -q '/usr/local/bin' && echo 1 || echo 0"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

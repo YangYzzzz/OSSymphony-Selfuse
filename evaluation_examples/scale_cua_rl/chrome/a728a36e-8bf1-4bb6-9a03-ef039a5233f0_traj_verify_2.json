@@ -1,0 +1,94 @@
+{
+  "id": "a728a36e-8bf1-4bb6-9a03-ef039a5233f0",
+  "new_id": "a728a36e-8bf1-4bb6-9a03-ef039a5233f0_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Find the DMV forms page on the Virginia DMV website.",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.dmv.virginia.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "^https://(www\\.)?dmv\\.virginia\\.gov.*forms"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_a728a36e-8bf1-4bb6-9a03-ef039a5233f0_sid_1488425",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated Virginia DMV website from homepage through LICENSES & IDS menu to Driver's License section and found the eligibility requirements page in 10 turns.",
+    "capability_extraction": "Can navigate hierarchical menus on government websites, click through multi-level navigation, identify and click relevant links, scroll to read page content",
+    "task_rationale": "Tests navigation to the FORMS section via the top navigation bar. This is a simpler task (single click from homepage) that verifies the model can identify and use the top-level navigation links.",
+    "explanation": "Task requires navigating to the forms page on Virginia DMV. The evaluator checks that the active URL contains 'forms' under the dmv.virginia.gov domain. The FORMS link is visible in the top navigation bar of the homepage.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active Chrome tab URL from the accessibility tree, which is the right state to verify navigation to a specific page.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict (with 'expected' key containing regex patterns) and checks all patterns against the URL. The parameter handling is correct for type='rule'.",
+        "Regex pattern '^https://(www\\.)?dmv\\.virginia\\.gov.*forms' correctly verifies the URL is on the Virginia DMV domain and contains 'forms', matching the instruction requirement.",
+        "Single-requirement instruction (navigate to forms page) is fully covered by the single URL pattern check.",
+        "Minor concern: goto_prefix is 'https://www.' but Chrome's address bar may sometimes display URLs with 'www.' already included, potentially resulting in 'https://www.www.' prefix. However, the regex uses (www\\.)? which is optional, so the worst case is a mismatch that would be a false negative, not a false positive. In practice, Chrome typically strips 'www.' from address bar display, so this is unlikely to be an issue."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using goto_prefix='https://' instead of 'https://www.' to avoid potential double-'www.' issues, and rely on the regex pattern's (www\\.)? to handle both cases."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

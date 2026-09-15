@@ -1,0 +1,71 @@
+{
+  "id": "12086550-11c0-466b-b367-1d9e75b3910e",
+  "new_id": "12086550-11c0-466b-b367-1d9e75b3910e_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's bookmark manager.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab_approximate",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "chrome://bookmarks"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_12086550-11c0-466b-b367-1d9e75b3910e_sid_1488056",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated to Chrome password manager via 3-dot menu > Passwords and autofill > Google Password Manager in 4 turns.",
+    "capability_extraction": "Can open Chrome 3-dot menu, navigate submenus, access internal chrome:// pages, interact with Chrome settings UI.",
+    "task_rationale": "Tests Chrome internal page navigation to bookmark manager, accessible via 3-dot menu > Bookmarks and lists, a different menu path from the original.",
+    "explanation": "Task requires navigating to chrome://bookmarks. Evaluator uses is_expected_active_tab_approximate to check active tab URL matches chrome://bookmarks.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active tab URL from Chrome's address bar via accessibility tree, which is the right state to verify bookmark manager is open.",
+        "goto_prefix is correctly set to empty string since chrome:// URLs already include their scheme; the default https:// prefix would produce an incorrect URL.",
+        "Metric (is_expected_active_tab_approximate) correctly handles string input from getter and compares against expected URL chrome://bookmarks after stripping query parameters.",
+        "Expected parameter handling is correct: metric receives rules dict directly as the 'rule' parameter and accesses rule['type'] and rule['url'] without wrapping.",
+        "Single-step instruction (open bookmark manager) is fully covered by single URL check — complete verification coverage."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The metric strips query parameters but not trailing slashes. Chrome may internally redirect chrome://bookmarks to chrome://bookmarks/, which could cause a false negative. Consider using is_expected_url_pattern_match with a regex pattern instead, or ensure the expected URL accounts for a possible trailing slash."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

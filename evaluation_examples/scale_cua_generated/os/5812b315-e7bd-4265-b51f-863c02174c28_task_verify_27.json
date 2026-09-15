@@ -1,0 +1,72 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_27",
+  "snapshot": "os",
+  "instruction": "Please create a user named \"tempuser\" and set the account to expire on 2025-12-31.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"tempuser\"; if ! id \"$USERNAME\" &>/dev/null; then echo 'Check failed: user does not exist'; exit 1; fi; EXPIRY=$(chage -l \"$USERNAME\" | grep 'Account expires' | awk -F': ' '{print $2}'); if [[ \"$EXPIRY\" == \"never\" ]]; then echo 'Check failed: account expiry not set'; exit 1; fi; if [[ \"$EXPIRY\" =~ \"Dec 31, 2025\"|\"2025-12-31\" ]]; then echo 'User tempuser exists with account expiry set to Dec 31 2025'; else echo \"Check failed: wrong expiry date: $EXPIRY\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "User tempuser exists with account expiry set to Dec 31 2025"
+        ],
+        "exclude": [
+          "Check failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating user 'tempuser' and setting account expiration to 2025-12-31. Evaluator verifies user exists using 'id' command, then uses 'chage -l' to verify account expiry is set (not 'never') and matches 'Dec 31, 2025' or '2025-12-31' format.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies user existence using 'id' command",
+        "Evaluator correctly verifies account expiry is set (not 'never') using 'chage -l'",
+        "Evaluator correctly verifies expiry date matches expected value with dual format matching ('Dec 31, 2025' or '2025-12-31')",
+        "All requirements in the instruction are semantically verified by the evaluator",
+        "Minor issue: Instruction says 'create a user' but evaluator only checks existence - wording should be 'verify user exists' for a verify task",
+        "Minor issue: Date format regex may have locale dependency, though dual format provides some robustness",
+        "Minor inconsistency: Success message says 'Dec 31 2025' (no comma) but regex checks 'Dec 31, 2025' (with comma)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Improve instruction wording to 'Verify that a user named \"tempuser\" exists with account expiry set to 2025-12-31' to better match verify task semantics",
+        "Consider using epoch timestamp comparison from 'chage -l' for locale-independent date verification",
+        "Fix success message to match regex pattern: 'Dec 31, 2025' with comma for consistency"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

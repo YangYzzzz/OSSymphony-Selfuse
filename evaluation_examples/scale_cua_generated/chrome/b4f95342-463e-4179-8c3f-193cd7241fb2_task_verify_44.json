@@ -1,0 +1,100 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_44",
+  "snapshot": "chrome",
+  "instruction": "Navigate to recreation.gov and find the 'Site' column header in the campground search results.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {},
+      "class_multiObject": {
+        "camp-sortable-column-header": {
+          "4": "camp-sortable-column-header"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "camp-sortable-column-header": "Site"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task variation targeting the fifth column header (index 4) which should be 'Site'. Follows the same pattern as the original task but examines a different table column. Uses existing Chrome HTML parsing capabilities (active_tab_html_parse and check_direct_json_object).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification: Evaluator only checks if text 'Site' exists in class 'camp-sortable-column-header' at index 4, but does NOT verify navigation to recreation.gov",
+        "Missing context validation: Does not verify that user actually performed a search or that campground search results are displayed",
+        "No URL verification: Config has 'goto_prefix' but it's not used in validation - evaluator could pass on any page with matching class name",
+        "Logical flaw: Task requires finding column header 'in the campground search results' but evaluator has no way to confirm search results context - could pass if homepage has same class element",
+        "Fragile selector: Hardcoded index 4 with no verification that this actually corresponds to 'Site' column in current search results"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add URL verification: Use get_active_url_from_accessTree to verify active tab URL contains 'recreation.gov' and indicates search results (e.g., URL contains search parameters)",
+        "Add context verification: Verify presence of search results indicators (e.g., check for search result container elements or multiple camp-sortable-column-header elements)",
+        "Use goto_prefix in expected rules: Add URL matching logic to check_direct_json_object or use separate URL verification step",
+        "Consider more robust selector: Instead of hardcoded index, verify 'Site' exists among all column headers rather than requiring specific position",
+        "Add multi-step verification: Split into (1) verify on recreation.gov search results page, (2) verify 'Site' column exists"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "task_verify_34",
+  "snapshot": "gimp",
+  "instruction": "I need you to add a new layer to this file and title it 'Oval'.",
+  "source": "https://www.quora.com/How-do-I-add-layers-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type:": "key-value",
+        "key": "layer-new-name",
+        "value": "\"Oval\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a new layer in GIMP and naming it 'Oval'. The evaluator checks the GIMP config file to verify the layer-new-name is set to 'Oval'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing check_config_status metric with layer name 'Oval'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.1,
+      "llm_judge_reasons": [
+        "Critical semantic verification failure: The evaluator checks the 'layer-new-name' config setting, which is the DEFAULT name template for FUTURE new layers, NOT whether a layer named 'Oval' actually exists in the current file",
+        "Wrong state being verified: The instruction requires adding a layer named 'Oval' to the document, but the evaluator checks GIMP preferences instead of the actual document layer stack",
+        "Incomplete coverage: Neither requirement is properly verified - (1) 'add a new layer' is not checked, (2) 'title it Oval' only checks if config default is 'Oval', not if a layer with that name exists",
+        "Logic flaw: check_config_status at gimp.py:517 reads the gimprc config file (GIMP preferences), not the .xcf file structure (actual layers)",
+        "The config setting 'layer-new-name' = 'Oval' means the next layer created will default to 'Oval', not that a layer named 'Oval' currently exists"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Create a getter that parses the .xcf file to extract the layer stack (e.g., using GIMP's Python-Fu API or parsing the XCF file format)",
+        "Create a metric that checks if a layer with name 'Oval' exists in the layer list",
+        "Remove the Ctrl+Q postconfig or ensure the file is saved before closing, so the layer persists",
+        "Alternative: Use GIMP's scripting interface to query the layer stack instead of checking config files"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_16_webrtc_simulcast_layer_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: the SFU of a live-streaming SaaS is getting customer complaints about \"video quality suddenly going blurry\". SRE has captured a 90-second RTP pcap from production along with the complete `chrome://webrtc-internals` dump JSON from the same time window. The two artifacts describe the same session: one publisher uses simulcast to send 3 spatial layers simultaneously (rid=`q`/`h`/`f`, corresponding to 180p / 360p / 720p), and the subscriber experiences a clear downlink bandwidth degradation during seconds 38–52, during which the 720p layer is completely paused. This degradation is extremely hard to read directly from the static dump JSON — each of the three layers' time series has 8000+ sample points and the various stats are not aligned on a common timeline. You need to overlay the three layers on the same timeline to visually read out the `bytesSent` plateau, the `qualityLimitationReason` color-coded segments, and the `availableOutgoingBitrate` minimum; the SSRC ↔ rid alignment must be cross-verified by two independent lines of evidence: dump parsing and pcap traffic analysis.\n\nOn-scene materials:\n- `/tmp_workspace/pcap/sfu_session.pcap`: 90-second RTP capture with 3 SSRCs (RFC 3550 RTP framing + draft-ietf-mmusic-sdp-simulcast pli/nack timing).\n- `/tmp_workspace/dump/webrtc_internals_dump.json`: complete `chrome://webrtc-internals` export, containing `RTCOutboundRtpVideoStream_*` (one per layer, with `ssrc`/`rid`/`bytesSent`/`framesEncoded`/`framesPerSecond`/`frameWidth`/`qualityLimitationReason` time series) and `RTCIceCandidatePair_*` (with `availableOutgoingBitrate` time series).\n- `/tmp_workspace/exec/viewer/webrtc-dump-importer/`: an offline static site of fippo/webrtc-dump-importer; the sibling `serve.sh` starts a `python3 -m http.server` on `127.0.0.1:8765` to serve it, and once the dump JSON is loaded it renders the three-layer stats graphs. The viewer directory also includes `playback.html`, a minimal page containing a `<video>` element that can serve as the playback source for a media forensics view.\n- Default simulcast rid naming (given by the `rid` field in the dump): `f` = 720p full (`max_width=1280`), `h` = 360p half (`max_width=640`), `q` = 180p quarter (`max_width=320`).\n- SSRCs in the pcap are 32-bit integers; the dump presents them in decimal while traffic analysis tools often present them in hex (`0x...`), so you must handle radix alignment yourself.\n\nTask goal: align the three SSRCs with their rids; locate the start/end seconds of the pause window for the `f` layer (720p) within seconds 38–52, identify the trigger reason, and find the BWE minimum during that interval; report the remaining effective video bitrate during the degradation window; produce a comprehensive report and PDF that operations can review. Place all deliverables under `/tmp_workspace/results/`.\n\n### Hard constraints on the primary deliverable `simulcast_report.json`\n- All top-level fields present: `session_duration_sec`, `layers`, `degrade_window`, `effective_video_bitrate_bps_during_degrade`, `verdict_one_line`.\n- `layers` has length exactly 3, each entry contains `rid` / `ssrc` / `avg_bitrate_bps`; the three `ssrc` values must equal the three ground-truth 32-bit integers.\n- `degrade_window` contains `f_paused_start_sec` / `f_paused_end_sec` (error vs. GT must be within a few seconds), a `reasons` array containing `\"bandwidth\"`, and `min_bwe_bps` (error vs. GT must be within ~10%).\n- `verdict_one_line`: a one-sentence Chinese conclusion, length ≥ 40 characters, which must mention 720p / the `f` layer, contain a bandwidth/bandwidth/BWE-class keyword, and include a concrete number (seconds or kbps).\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `jq_outbound_summary.json` | Outbound video stream summary array extracted from the dump, with **exactly 3 elements**; each element must contain at least `ssrc` and `rid` (recommended to also include `frameWidth_max` / `framesEncoded_total` / `qualityLimitationReason_last`). |\n| `tshark_ssrc_packets.txt` | A plain-text table of packet counts aggregated by SSRC from the pcap (one SSRC per line), with ≥3 non-empty lines and file size > 20 bytes; the three real SSRCs must appear in the text (decimal or hex are both accepted). |\n| `ssrc_to_rid.json` | schema `{\"f\": {\"ssrc\": <int>, \"packets\": <int>, \"max_width\": 1280}, \"h\": {..., \"max_width\": 640}, \"q\": {..., \"max_width\": 320}}`; all three `f`/`h`/`q` keys present, each `ssrc` equals GT, each `packets` > 0. |\n| `degrade_window.json` | schema `{\"f_paused_start_sec\": <float>, \"f_paused_end_sec\": <float>, \"expected_duration_sec\": <float>, \"reasons\": [...], \"min_bwe_bps\": <int>}`; field semantics match `simulcast_report.degrade_window`. |\n| `simulcast_report.pdf` | ≥ 2 pages; the first page's text must contain the three keywords `Simulcast`, `降级`, `取证` together forming the title; the first page must contain ≥ 5 independent bullets, **each ≥ 25 characters** of Chinese operational insight (e.g., bitrate distribution across the three layers, trigger cause of the degradation, remaining effective bitrate, magnitude of the subscriber's experience degradation, remediation suggestions, etc.). |\n| `_manifest.txt` | An `ls -la`-style listing of the final deliverables in this directory, file size > 100 bytes. |\n\n### 7 work-process screenshots (saved under `/tmp_workspace/results/`, each PNG ≥ 4 KB, must be a real rendered state)\n\n| Filename | Content requirement |\n| --- | --- |\n| `view_internals_outbound_three_layers.png` | In the dump's offline rendering view, three independent outbound `bytesSent` curves shown simultaneously on the same timeline, with rid information visible in the legend. |\n| `view_internals_hover_45s.png` | A tooltip in the same view, near second 45 of some layer's curve, showing the precise `framesPerSecond` and `frameWidth` at that moment. |\n| `view_internals_f_layer_drop.png` | In the same view, the pause plateau of the `f` layer's `bytesSent` (or `framesEncoded`) during the 38–52 s window is clearly visible, consistent with the start/end seconds in `degrade_window.json`. |\n| `view_internals_quality_limitation.png` | In the same view, the categorical time series of the `f` layer's `qualityLimitationReason`, with color-coded segments for the multiple values `bandwidth` / `cpu` / `none` visible. |\n| `view_wireshark_rtp_streams.png` | The RTP Streams sub-panel of the RTP traffic analysis view, with ≥ 3 SSRC rows and column headers containing port and Packets info. |\n| `view_wireshark_stream_analysis.png` | The Stream Analysis sub-panel of the same view for a single stream, showing jitter statistics fields such as Max Delta / Mean Jitter / Lost. |\n| `view_devtools_media_panel.png` | The browser's media forensics view (the viewer's bundled `playback.html` can serve as the playback source); the current player is selected on the left, and the Properties / Events / Messages sub-tabs are visible on the right. |\n\n> Grading runs OCR on the screenshots; each must contain the key UI text of its own panel to prove rendering really took place (do not synthesize from static text).\n\n### Anti-cheating\nYou are not allowed to directly `cat` the dump JSON text and stitch together the degradation window conclusion — the key time series has > 8000 points, and cross-stat time alignment must come from actual rendering or programmatic alignment.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_16_webrtc_simulcast_layer_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_16_webrtc_simulcast_layer_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/pcap /tmp_workspace/dump /opt/web16_gt && chmod 777 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/pcap /tmp_workspace/dump\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/web16_gt/expected.json 2>/dev/null || cp /tmp_workspace/gt/expected.json /opt/web16_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/web16_gt 2>/dev/null || true\n  chmod 700 /opt/web16_gt 2>/dev/null || true\n  chmod 600 /opt/web16_gt/expected.json 2>/dev/null || true\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich curl || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing curl ca-certificates sudo && break; sleep 5; done) || true\nwhich jq || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing jq pandoc poppler-utils && break; sleep 5; done) || true\nwhich tshark || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tshark wireshark-common && break; sleep 5; done) || true\nwhich python3 || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing python3 python3-pip python3-scapy && break; sleep 5; done) || true\nwhich tesseract || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tesseract-ocr fonts-noto-cjk && break; sleep 5; done) || true\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet scapy pillow pytesseract requests aiortc 2>/dev/null || pip3 install --quiet scapy pillow pytesseract requests aiortc || true\nchown -R user:user /tmp_workspace/pcap /tmp_workspace/dump 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_16_webrtc_simulcast_layer_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_16_webrtc_simulcast_layer_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_16_webrtc_simulcast_layer_audit/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_16_webrtc_simulcast_layer_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_16_webrtc_simulcast_layer_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_16_webrtc_simulcast_layer_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_16_webrtc_simulcast_layer_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_16_webrtc_simulcast_layer_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_16_webrtc_simulcast_layer_audit",
+    "workspace_relative": "WEB/task_16_webrtc_simulcast_layer_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "id": "8ba5ae7a-5ae5-4eab-9fcc-5dd4fe3abf89",
+  "new_id": "task_verify_62",
+  "snapshot": "base_setup",
+  "instruction": "Configure VLC to allow maximum volume of 150 percent in the interface settings",
+  "source": "https://docs.videolan.me/vlc-user/desktop/3.0/en/basic/recording/playing.html#choose-your-recordings-folder",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_qt_max_volume",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": "150"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting VLC's maximum volume to 150 percent. The evaluator uses the existing check_qt_max_volume function to verify if 'qt-max-volume' in vlcrc is set to '150'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct: getter extracts VLC config file, metric checks 'qt-max-volume' setting, expected value '150' matches instruction requirement",
+        "Coverage is complete: evaluator verifies the single requirement (max volume = 150%)",
+        "Significant practical issue: Task instruction mentions 'interface settings' implying UI interaction, but evaluator reads vlcrc file which may not be updated until settings are saved/applied",
+        "Missing postconfig to ensure VLC saves settings to disk before verification - changes made in UI may not be persisted to config file yet",
+        "Risk of false negatives: if agent completes task correctly in UI but VLC hasn't written to vlcrc, evaluator will read stale data and fail"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig to close VLC gracefully (ensuring settings are saved) or trigger explicit save action before verification",
+        "Alternative: Add postconfig command to force VLC to write config to disk (e.g., kill VLC process which triggers config save on most systems)",
+        "Consider adding a small delay in postconfig to allow file system to flush changes before getter reads the file"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

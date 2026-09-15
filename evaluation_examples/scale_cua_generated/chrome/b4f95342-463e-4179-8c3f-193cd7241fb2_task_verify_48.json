@@ -1,0 +1,100 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_48",
+  "snapshot": "chrome",
+  "instruction": "Navigate to recreation.gov and find the 'Next Available' dates column in the campground listings table.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {},
+      "class_multiObject": {
+        "camp-sortable-column-header": {
+          "2": "next_available_header"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "next_available_header": "Next Available"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Very similar to the original task, this variation targets the 'Next Available' column header (index 2) instead of the specific content. The original task looks for dates for Diamond while this just verifies the column header exists. Uses existing Chrome parsing functions (active_tab_html_parse and check_direct_json_object).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Incomplete navigation verification: Evaluator only checks if column header exists but does NOT verify user actually navigated to recreation.gov or performed search to reach campground listings",
+        "Missing URL verification: No check that active tab is on recreation.gov domain - could pass on any page with class 'camp-sortable-column-header'",
+        "Insufficient context validation: Does not verify user is viewing campground listings table - only checks for column header existence in HTML",
+        "Partial instruction coverage: Instruction requires 'Navigate to recreation.gov and find...' but evaluator only verifies the 'find' part, not the navigation",
+        "State accessibility issue: Evaluator assumes user reached correct page state but provides no verification of the navigation path or search actions"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add URL verification: Include check that active tab URL contains 'recreation.gov' and campground search parameters",
+        "Verify navigation path: Add getter to confirm user performed search or navigation actions (e.g., check URL query parameters for search terms)",
+        "Add context validation: Verify page contains campground listings table structure, not just the column header class name",
+        "Consider using postconfig: May need postconfig to ensure evaluator accesses correct page state after user completes navigation",
+        "Alternative: Use compound evaluator that checks both URL context AND column header presence to ensure complete task verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

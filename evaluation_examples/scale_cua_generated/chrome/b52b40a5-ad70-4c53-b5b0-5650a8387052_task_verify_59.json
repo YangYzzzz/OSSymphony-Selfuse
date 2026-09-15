@@ -1,0 +1,158 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "Extract the attachment 'Invoice-14472E82-0009.pdf' from the email in Thunderbird, rename it to 'twitter_invoice_2024.pdf', and save it in the Downloads folder.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_file_renamed__a7904c4a",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Downloads/twitter_invoice_2024.pdf",
+      "dest": "twitter_invoice_2024.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_extension": ".pdf",
+        "min_size_bytes": 10000,
+        "expected_size_bytes": 58198,
+        "expected_hash": "842011339fe345ba70ff8acfb1696225cb5a1fcb59dddcbfe6e1b83faff78558",
+        "expected_pdf_metadata": {
+          "creator": "Chromium",
+          "producer": "Skia/PDF m96"
+        },
+        "original_path": "/home/user/Downloads/Invoice-14472E82-0009.pdf"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting attachment 'Invoice-14472E82-0009.pdf' from Thunderbird email, renaming it to 'twitter_invoice_2024.pdf', and saving to Downloads. Evaluator verifies: (1) renamed file exists at correct path with .pdf extension, (2) file size matches expected attachment size (58198 bytes with 1% tolerance), (3) file content hash matches expected SHA256 hash (842011339fe345ba70ff8acfb1696225cb5a1fcb59dddcbfe6e1b83faff78558), (4) PDF metadata matches expected values (creator: Chromium, producer: Skia/PDF m96), (5) original attachment file does NOT exist in Downloads (STRICTLY enforcing rename operation - fails if original exists). Hash and metadata verification prevent false positives from arbitrary PDFs.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_4/metrics/check_file_renamed__a7904c4a.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified from Thunderbird profile: email contains Invoice-14472E82-0009.pdf (58198 bytes, SHA256: 842011339fe345ba70ff8acfb1696225cb5a1fcb59dddcbfe6e1b83faff78558). Custom metric verifies: (1) file saved with new name 'twitter_invoice_2024.pdf' matches expected size, (2) file content hash matches expected hash for strong content identity verification, (3) PDF metadata (creator: Chromium, producer: Skia/PDF m96) matches expected values, (4) original file does NOT exist (strictly enforces rename vs copy). Hash and metadata verification ensure only the actual Thunderbird attachment passes, preventing false positives from arbitrary PDFs.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "EXCELLENT - Complete content identity verification: SHA256 hash verification is implemented (check_file_renamed__a7904c4a.py:80-93) AND expected_hash value is provided in rules (842011339fe345ba70ff8acfb1696225cb5a1fcb59dddcbfe6e1b83faff78558). This ensures cryptographically strong verification that the file is the actual Thunderbird attachment.",
+        "EXCELLENT - PDF metadata verification: PDF metadata checking is implemented (check_file_renamed__a7904c4a.py:97-117) AND expected_pdf_metadata is provided in rules (creator: Chromium, producer: Skia/PDF m96). This provides additional identity verification layer.",
+        "EXCELLENT - Rename operation enforcement: Metric correctly verifies that original file does NOT exist at original_path (check_file_renamed__a7904c4a.py:122-128), strictly enforcing rename vs copy as required by instruction.",
+        "EXCELLENT - Complete instruction coverage: All three instruction requirements verified: (1) Extract from Thunderbird email - verified via hash/metadata matching the actual attachment, (2) Rename to new name - verified via original_path non-existence check, (3) Save to Downloads - verified via path check.",
+        "EXCELLENT - Robust file identity: Combined hash + metadata + size verification eliminates false positives. It is cryptographically infeasible for a different PDF to have the same SHA256 hash as the actual attachment.",
+        "No postconfig needed: File operations are persistent and can be verified post-execution without requiring UI state to remain open."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_file_renamed__a7904c4a first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_file_renamed__a7904c4a second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

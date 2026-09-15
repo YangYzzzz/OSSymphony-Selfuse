@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_17_rabbitmq_dlq_topology_mgmt",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: The order-system SRE has received an alert — the `orders.dlq` dead-letter queue depth is stuck at 0, yet the `orders` ingress publish rate is steady at ~20 msg/s, and the main consumer queue `orders.q` shows a deliver/ack rate clearly below publish, with the gap persistently ≥ 4 msg/s — roughly 30% of \"poison\" orders, after being nack'd, neither land in the DLQ nor get redelivered in place; they silently disappear inside the broker. The warmup has already pinned the scene:\n\n- RabbitMQ Server listens on `127.0.0.1:5672` (AMQP) and `127.0.0.1:15672` (management plugin HTTP API + Management control panel), credentials `guest:guest`, the business runs under the default vhost `/`, and `rabbitmq_management` is already enabled.\n- The producer / consumer background daemons are running (pid files `/tmp_workspace/state/rmq_producer.pid`, `rmq_consumer.pid`, stdout in the same directory as `*.out`); the producer continuously pushes ~20 msg/s into the topic exchange `orders`, of which about 30% have routing key `orders.poison` (which the consumer nacks 100%).\n- Three core queues in the topology: `orders.q` (main consumer, bound on `orders` / `orders.#`, declared with `x-dead-letter-exchange=orders.dlx`), `orders.dlq` (dead-letter, bound on `orders.dlx`), and `orders.audit` (side-channel audit, a distractor).\n- The real fault is buried in the routing key of the `orders.dlx → orders.dlq` binding: the `x-dead-letter-routing-key` declared on `orders.q` does not literally match the routing key of that binding — the topic exchange finds no match, and all nack'd messages fall into the black hole.\n\nTask goal: produce a \"diagnosis + fix + re-verification\" report ready to paste straight into the post-mortem channel; all artifacts go under `/tmp_workspace/results/`; the evidence must cross-validate two channels — broker-side text/JSON dumps and Management control-panel screenshots.\n\n### Hard constraints for the main deliverable `diagnosis.json`\n\n- All 10 schema fields must be present: `vhost` / `broken_binding_source` / `broken_binding_destination` / `broken_binding_routing_key` / `expected_routing_key` / `remediation` / `dlq_depth_before_fix` / `dlq_depth_after_fix` / `publish_rate_msgps` / `deliver_rate_msgps`.\n- `expected_routing_key` must equal `dead.unrouted` exactly.\n- `broken_binding_routing_key` must hit the literal `dead.routed` value (taken from the broker's real binding table).\n- `remediation` must contain both `dead.unrouted` and the word `bind` / `binding`.\n- `dlq_depth_before_fix ∈ [0, 5]`, `dlq_depth_after_fix ≥ 20`, `publish_rate_msgps ≥ 5`, `deliver_rate_msgps ≥ 0`; all four numbers must come from real samples — fabrication is not allowed.\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `01_rmq_status.txt` | Broker liveness snapshot; must contain the string `RabbitMQ` and identifier lines such as node name / version / enabled plugins |\n| `02_queues.txt` | Queue listing for vhost `/`; must contain all three lines `orders.q` / `orders.dlq` / `orders.audit`, with the `orders.dlq` row's messages count ≤ 5 |\n| `03_bindings.txt` | Full binding-table dump; must contain the row with source=`orders.dlx` and destination=`orders.dlq`, whose routing_key field falls under `dead.routed.*` (the literal mismatch is the root-cause evidence) |\n| `04_queue_args.txt` | Complete queue arguments for `orders.q`; must contain the field name `x-dead-letter-routing-key` with value `dead.unrouted` |\n| `05_rates_t0.json` + `05_rates_t1.json` | Two `orders.q` rate snapshots separated by ≥ 5 s, structurally aligned with the `message_stats` subtree of `/api/queues/<vhost>/<name>`, containing `publish_details.rate` and `deliver_get_details.rate` (or `deliver_details.rate`); at least one of them must show `publish - deliver_get` ≥ 4 msg/s |\n| `06_remediation.sh` | Mitigation script that re-binds `orders.dlx → orders.dlq` to a routing key that matches `dead.unrouted` (the literal `dead.unrouted` or the `#` wildcard); the text must also contain `dead.unrouted` together with at least one binding-action keyword among `declare binding` / `Add binding` / `queue_bind` / `x-dead-letter-routing-key`; the script must be re-entrant |\n| `07_bindings_after.txt` | Binding-table dump taken after running `06_remediation.sh`; must contain both `orders.dlx` and `orders.dlq`, with the routing_key field containing `dead.unrouted` |\n| `08_queues_after.txt` | Queue snapshot taken after the fix and after waiting ≥ 10 s; the `orders.dlq` row's messages count must be ≥ 20 |\n| `postmortem.md` | ≥ 600 characters; must contain all four section headings `## 时间线` / `## 根因` / `## 修复` / `## 跨通道证据链`; must hit ≥ 5 of the seven keywords `dead-letter` / `binding` / `routing key` / `broker` / `management` / `dlx` / `topic` |\n| `cross_channel.json` | `{\"switches\": int, \"trace\": [...]}`, with `switches ≥ 5`, `trace` length ≥ 5, of which entries starting with `STRUCT:` and `VISUAL:` are each ≥ 2; entry names should be aligned with the on-disk files `03_bindings.txt` / `04_queue_args.txt` / `07_bindings_after.txt` / `08_queues_after.txt` and `view_02` / `view_04` / `view_06` / `view_07` |\n\n### Seven workflow screenshots (fixed filenames, under `/tmp_workspace/results/`)\n\nReal screenshots of the **same** RabbitMQ Management control panel. Common spec: each ≥ 1024×700 real pixels, ≥ 30 KB, not a flat-color collage; grading runs OCR keyword checks and a VLM rubric, so the file contents must be self-consistent with what the filename describes.\n\n- `view_01_mgmt_overview.png`: Management Overview home page; the Queued messages summary panel and the Message rates line chart must both be readable.\n- `view_02_mgmt_rates_tooltip.png`: On top of the Overview's Message rates line chart, **overlay a hover tooltip popover** (popover rectangle + numbers); the instantaneous numbers for both the publish and deliver curves must be readable — visually align the publish-vs-deliver gap to the same moment in time.\n- `view_03_mgmt_queues.png`: Queues list page; the three rows `orders.q` / `orders.dlq` / `orders.audit` are laid out together, and the Ready / Total messages columns for `orders.dlq` clearly read near 0.\n- `view_04_dlq_bindings.png`: The Bindings sub-panel on the `orders.dlq` queue detail page; the \"From exchange\" column contains `orders.dlx`, and the **broken literal value** (shaped like `dead.routed.*`) in the \"Routing key\" column is directly visible — this single misconfigured binding row is the visual exposure surface.\n- `view_05_dlx_detail.png`: The `orders.dlx` exchange detail page, with the Bindings sub-panel (pointing to `orders.dlq`) and the Message rate sub-panel visible on the same screen.\n- `view_06_mgmt_overview_after.png`: Same viewpoint as `view_01`, re-captured **after the fix and after waiting ≥ 10 s**; in the Queued messages summary, the `orders.dlq` count is clearly non-zero (≥ 20).\n- `view_07_dlq_after.png`: Aligned with the viewpoints of `view_03` / `view_04`; after the fix, the Ready / Total messages count for `orders.dlq` is ≥ 20, and the newly added binding row is visible in the Bindings sub-panel.\n\n### Anti-cheating and runtime constraints\n\n- The producer / consumer must stay running until all artifacts are collected; you may not `kill` the processes whose pids are in `/tmp_workspace/state/rmq_producer.pid` and `rmq_consumer.pid`, otherwise during re-verification the publish rate and DLQ growth will both go to zero.\n- You may not copy any file under `/tmp_workspace/gt/` into `results/` (detected via hash comparison).\n- Text/JSON dumps must come from real broker queries (`rabbitmqctl` / `rabbitmqadmin` / management API); you may not just `echo` / `cat` the literal values given in the task to fabricate file contents.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_17_rabbitmq_dlq_topology_mgmt.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_17_rabbitmq_dlq_topology_mgmt",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\numask 0000\nmkdir -p /tmp_workspace/results /tmp_workspace/state /opt/ops17_gt\nchmod 0777 /tmp_workspace /tmp_workspace/results /tmp_workspace/state 2>/dev/null || true\nwhich rabbitmqctl >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich rabbitmqctl >/dev/null 2>&1 || timeout 600 apt-get -o Acquire::Retries=10 install -y -qq rabbitmq-server python3-pika curl procps psmisc tesseract-ocr || true\npython3 -c 'import PIL, pytesseract' >/dev/null 2>&1 || timeout 120 pip install --quiet --no-input pillow pytesseract 2>/dev/null || true\n# Framework mounts workspace/exec/* directly under /tmp_workspace/ (NOT /tmp_workspace/exec/).\nchmod +x /tmp_workspace/start_services.sh 2>/dev/null || true\nnohup bash /tmp_workspace/start_services.sh >/tmp_workspace/state/start_services.out 2>&1 &\ndisown || true\nfor i in $(seq 1 30); do curl -fsS --max-time 2 -u guest:guest http://127.0.0.1:15672/api/overview >/dev/null 2>&1 && break; sleep 2; done\n[ -x /usr/local/bin/rabbitmqadmin ] || (timeout 30 curl -fsS -o /usr/local/bin/rabbitmqadmin http://127.0.0.1:15672/cli/rabbitmqadmin 2>/dev/null && chmod +x /usr/local/bin/rabbitmqadmin) || true\n[ -x /usr/local/bin/rabbitmqadmin ] || (timeout 60 curl -fsSL -o /usr/local/bin/rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.12.0/deps/rabbitmq_management/bin/rabbitmqadmin 2>/dev/null && chmod +x /usr/local/bin/rabbitmqadmin) || true\nchmod -R a+rwX /tmp_workspace/state /tmp_workspace/results 2>/dev/null || true\n# Move expected.json (contains expected_dead_letter_routing_key /\n# fix_acceptable_remediations / postmortem keywords) to root-only /opt/ops17_gt.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/ops17_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/ops17_gt 2>/dev/null || true\n  chmod 700 /opt/ops17_gt 2>/dev/null || true\n  chmod 600 /opt/ops17_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\necho \"[warmup] OPS_task_17 services bootstrap kicked\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_17_rabbitmq_dlq_topology_mgmt/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_17_rabbitmq_dlq_topology_mgmt /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_17_rabbitmq_dlq_topology_mgmt/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_17_rabbitmq_dlq_topology_mgmt/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_17_rabbitmq_dlq_topology_mgmt/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_17_rabbitmq_dlq_topology_mgmt/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_17_rabbitmq_dlq_topology_mgmt/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_17_rabbitmq_dlq_topology_mgmt.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_17_rabbitmq_dlq_topology_mgmt",
+    "workspace_relative": "OPS/task_17_rabbitmq_dlq_topology_mgmt",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

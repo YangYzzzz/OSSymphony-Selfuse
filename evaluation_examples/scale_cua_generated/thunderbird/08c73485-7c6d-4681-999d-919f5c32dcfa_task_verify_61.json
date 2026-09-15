@@ -1,0 +1,117 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_61",
+  "snapshot": "thunderbird",
+  "instruction": "I want to increase the IMAP chunk size to 200000 bytes for faster message downloads. Could you help me configure Thunderbird to use a larger chunk size for IMAP transfers?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.imap.chunk_size": {
+            "method": "eq",
+            "ref": 200000
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires increasing IMAP chunk size from 106496 to 200000 bytes. Verified in cache: mail.imap.chunk_size is currently 106496, task requires changing it to 200000.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Checked cache prefs.js - mail.imap.chunk_size is currently 106496, task requires changing it to 200000",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the single requirement in the instruction: setting mail.imap.chunk_size to 200000 bytes",
+        "Getter (get_vm_file) extracts the correct Thunderbird preferences file (/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js)",
+        "Metric (check_thunderbird_prefs) correctly parses prefs.js and checks if mail.imap.chunk_size equals 200000 using appropriate comparison logic",
+        "Expected value (200000) is semantically correct based on the instruction and metadata verification",
+        "Postconfig appropriately closes Thunderbird before fetching prefs.js, ensuring settings are flushed to disk",
+        "Complete coverage: the evaluator checks all requirements specified in the instruction",
+        "Data flow is correct: getter extracts file path -> metric reads and parses file -> compares preference value to expected",
+        "Practical feasibility confirmed: file path exists, getter can access it, metric can parse Thunderbird preference format"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

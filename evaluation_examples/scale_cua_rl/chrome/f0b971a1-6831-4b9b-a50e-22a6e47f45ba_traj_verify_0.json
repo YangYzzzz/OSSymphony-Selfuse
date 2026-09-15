@@ -1,0 +1,85 @@
+{
+  "id": "f0b971a1-6831-4b9b-a50e-22a6e47f45ba",
+  "new_id": "f0b971a1-6831-4b9b-a50e-22a6e47f45ba_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Open the Super Bowl section on the NFL website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nfl.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "https://.*nfl\\.com/super-bowl"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f0b971a1-6831-4b9b-a50e-22a6e47f45ba_sid_1488076",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent started at nfl.com/international, navigated to the Super Bowl section (nfl.com/super-bowl), browsed Event Info, then tried Google search but hit SSL certificate error. Spent remaining turns stuck on error page. Never reached the historical scores page.",
+    "capability_extraction": "Can navigate nfl.com via top menu, click Super Bowl section, browse sub-pages (Event Info), interact with address bar, dismiss cookie banners",
+    "failure_analysis": "Model failed to find the historical scores section (/scores/2019/post4). It navigated to the current Super Bowl page instead, then attempted Google search which failed due to SSL certificate error in the VM environment.",
+    "task_rationale": "Simplified to navigating to the Super Bowl section, which the model demonstrated it could do successfully in the trajectory.",
+    "explanation": "Task requires navigating from nfl.com homepage to the Super Bowl section. Evaluator checks if the active URL matches nfl.com/super-bowl pattern.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the current active tab URL from the accessibility tree, which is the right state for verifying navigation.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict and accesses rules['expected'] for regex patterns — proper parameter handling for type='rule'.",
+        "Regex pattern 'https://.*nfl\\.com/super-bowl' correctly matches the expected Super Bowl section URL (e.g., https://www.nfl.com/super-bowl or subpages).",
+        "Single-step instruction (navigate to Super Bowl section) is fully covered by a single URL pattern check — complete verification coverage.",
+        "No postconfig needed since the URL remains accessible after navigation completes."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_37",
+  "snapshot": "chrome",
+  "instruction": "Access the Notes folder in Thunderbird, locate the \"Lecture Document\" email, extract images from the attached docx file, save them as sequentially numbered PNG files starting from 1 (1.png, 2.png, 3.png, etc. with no gaps in numbering), and upload at least 3 images to Google Drive in a folder named 'figures'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_contains_numbered_files__939aa00d",
+    "result": {
+      "type": "googledrive_sorted_filenames__939aa00d",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_query": "title = 'figures' and trashed = false and mimeType = 'application/vnd.google-apps.folder'"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 3,
+        "extension": ".png"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting images from a docx file with sequential numbered naming. Evaluator checks if folder contains at least 3 sequentially numbered PNG files starting from 1 (1.png, 2.png, 3.png, etc.) with no gaps in the sequence. The min_count=3 threshold ensures a minimum number of images are extracted and properly named, without requiring knowledge of the total image count in the source document.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_6/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_6/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 8,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that at least 3 sequentially numbered PNG files should exist starting from 1 with no gaps. The evaluator ensures strict sequential order - files like 1.png, 5.png, 9.png would fail verification. Files must be numbered consecutively from 1 (e.g., 1.png, 2.png, 3.png, etc.) to pass.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction's final requirement: 'upload at least 3 images to Google Drive in a folder named figures'.",
+        "Getter logic is correct: properly fetches filenames from Google Drive 'figures' folder using PyDrive API (googledrive.py:23-49).",
+        "Metric logic is correct: properly verifies sequential numbering starting from 1 with no gaps (googledrive.py:28-47). Files like [1.png, 5.png, 9.png] would correctly fail verification.",
+        "Metric correctly handles expected parameter for type='rule' - uses expected.get('min_count') and expected.get('extension') directly without accessing 'rules' key (googledrive.py:25-26).",
+        "The min_count=3 threshold correctly aligns with instruction requirement 'upload at least 3 images'.",
+        "Sequential numbering verification (lines 44-47) ensures files are numbered 1,2,3,...N without gaps, matching the instruction requirement 'with no gaps in numbering'.",
+        "The evaluator focuses on the final verifiable state (files in Google Drive) rather than intermediate steps (extraction from docx), which is appropriate for verification."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

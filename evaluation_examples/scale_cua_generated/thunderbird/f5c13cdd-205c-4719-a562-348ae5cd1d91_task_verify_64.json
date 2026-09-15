@@ -1,0 +1,133 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_64",
+  "snapshot": "thunderbird",
+  "instruction": "I've prepared a payment reminder email. From the tuition spreadsheet, add the emails of students who haven't paid to the recipient field. Make sure NOT to include any students who have already paid (Payment='Yes').",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_email_not_in_recipients__c9ce3f52",
+    "result": {
+      "type": "thunderbird_to_recipients__c9ce3f52"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "excluded_emails": [
+          "alice@someuniversity.edu",
+          "bob@someuniversity.edu",
+          "carol@someuniversity.edu"
+        ],
+        "included_emails": [
+          "david@someuniversity.edu",
+          "eve@someuniversity.edu",
+          "frank@someuniversity.edu"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires adding only unpaid students to recipients and verifying that paid students are NOT included. Verified with Python: alice, bob, carol have all paid (Payment='Yes'), while david, eve, frank have NOT paid (Payment='No'). The evaluator checks both: (1) paid students (alice, bob, carol) are NOT in recipients, and (2) unpaid students (david, eve, frank) ARE in recipients.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/f5c13cdd-205c-4719-a562-348ae5cd1d91_task_verify_7/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/f5c13cdd-205c-4719-a562-348ae5cd1d91_task_verify_7/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Complete coverage: The metric function check_email_not_in_recipients__c9ce3f52 (lines 29-36) correctly verifies BOTH requirements: (1) excluded emails (paid students: alice, bob, carol) are NOT in the To field, AND (2) included emails (unpaid students: david, eve, frank) ARE in the To field.",
+        "Correct logic flow: Getter extracts To field recipients as a list, metric performs dual verification (exclusions + inclusions), returns 1.0 only if both conditions are satisfied.",
+        "Semantically correct expected values: excluded_emails and included_emails correctly identify paid vs unpaid students from the tuition spreadsheet data.",
+        "Proper state extraction: Getter reads from Thunderbird compose window accessibility tree, which is available since the task launches Thunderbird in compose mode."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor naming issue: Function name 'check_email_not_in_recipients' is misleading - it suggests only checking exclusions, but the implementation correctly checks both exclusions and inclusions. Consider renaming to 'check_email_recipients_match_payment_status' for clarity."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,112 @@
+{
+  "id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3",
+  "new_id": "task_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Delete every trace of Wikipedia article visits from my browser history to protect my privacy.",
+  "source": "https://support.google.com/chrome/answer/95647?hl=en&ref_topic=7438325&sjid=16867045591165135686-AP#zippy=%2Cdelete-cookies-from-a-site",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.wikipedia.org",
+          "https://en.wikipedia.org/wiki/Machine_learning"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_history_deleted",
+    "result": {
+      "type": "history",
+      "dest": "History"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "keywords",
+        "keywords": [
+          "wikipedia.org"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task asks user to clear browsing history for Wikipedia. Uses existing getter 'get_history' and metric 'check_history_deleted' with keyword-based checking. The evaluator verifies that no URLs containing 'wikipedia.org' remain in the browser history after the task is completed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'get_history' correctly extracts browsing history from Chrome's SQLite database",
+        "Metric 'check_history_deleted' correctly verifies that Wikipedia URLs are absent from history by checking for keyword 'wikipedia.org'",
+        "Expected keyword 'wikipedia.org' correctly matches all Wikipedia URLs (both www.wikipedia.org and en.wikipedia.org/wiki/*)",
+        "Postconfig appropriately restarts Chrome to ensure History database is properly flushed before verification",
+        "Complete coverage: evaluator checks all requirements in the instruction (clearing Wikipedia browsing history)",
+        "Logic flow is sound: get history → check for 'wikipedia.org' keyword → return 1 if not found (deleted), 0 if found (not deleted)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

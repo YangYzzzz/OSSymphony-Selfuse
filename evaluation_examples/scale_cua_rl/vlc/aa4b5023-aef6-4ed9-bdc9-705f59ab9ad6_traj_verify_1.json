@@ -1,0 +1,91 @@
+{
+  "id": "aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6",
+  "new_id": "aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6_traj_verify_1",
+  "snapshot": "base_setup",
+  "instruction": "Extract a still frame from this video at the 10-second mark and save it as 'frame_10s.png' on the Desktop.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6/flipped_1984_Apple_Macintosh_Commercial.mp4",
+            "path": "/home/user/Desktop/flipped_1984_Apple_Macintosh_Commercial.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/flipped_1984_Apple_Macintosh_Commercial.mp4",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_image_file__9f8821d93c1286af4ab340177f286f49",
+    "result": {
+      "type": "image_file_exists__9f8821d93c1286af4ab340177f286f49",
+      "path": "/home/user/Desktop/frame_10s.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_file_size": 500
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6_sid_1488258",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully flipped an upside-down video using ffmpeg vflip filter and saved it with a new name. First tried VLC UI Effects dialog but couldn't find flip option, then switched to terminal and ffmpeg.",
+    "capability_extraction": "Can navigate VLC menus, open terminal with Ctrl+Alt+T, use ffmpeg for video transformations, handle ffmpeg prompts, verify file creation",
+    "task_rationale": "Tests a different ffmpeg capability (frame extraction) using the same video. Agent demonstrated ffmpeg proficiency and should be able to use ffmpeg -ss to extract a frame as PNG.",
+    "explanation": "Task requires extracting a single frame at the 10-second mark from the video and saving as PNG. Evaluator checks the output file exists at /home/user/Desktop/frame_10s.png and has a reasonable file size (>500 bytes).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6_sid_1488258_traj_verify_1/getters/vlc.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6_sid_1488258_traj_verify_1/metrics/vlc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "file_exists": "0.7 - PNG image file exists at expected path",
+      "valid_size": "0.3 - File has reasonable size (>500 bytes, indicating a valid image)"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter correctly checks file existence and size at /home/user/Desktop/frame_10s.png using bash stat command, with proper error handling for missing files and parse failures.",
+        "Metric correctly handles expected parameter for type='rule': expected IS the rules dict {'min_file_size': 500}, and expected.get('min_file_size', 100) accesses it correctly.",
+        "Scoring breakdown (0.7 file exists + 0.3 size check) is reasonable for this task.",
+        "Coverage gap: Evaluator does NOT verify the frame is from the 10-second mark of the video. Any PNG file at the correct path with size >500 bytes would pass, even if extracted from a different timestamp or not from the video at all.",
+        "Coverage gap: Evaluator does NOT verify the file is a valid PNG image (e.g., via magic bytes or image library). A non-image file >500 bytes at the right path would score 1.0."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a check using 'file' command or Python PIL to verify the output is a valid PNG image, not just any file with .png extension.",
+        "Consider extracting a reference frame at the 10-second mark during setup (using ffmpeg -ss 10 -vframes 1) and comparing image similarity (e.g., SSIM or perceptual hash) to verify temporal accuracy.",
+        "At minimum, add a check that the file has PNG magic bytes (\\x89PNG) to confirm it is actually an image file."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

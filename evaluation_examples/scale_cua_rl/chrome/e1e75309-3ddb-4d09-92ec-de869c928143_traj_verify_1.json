@@ -1,0 +1,95 @@
+{
+  "id": "e1e75309-3ddb-4d09-92ec-de869c928143",
+  "new_id": "e1e75309-3ddb-4d09-92ec-de869c928143_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Save this webpage as a PDF to the Desktop using landscape orientation and no margins.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_pdf_orientation__075106d955ead60b31af19408ecd54ac",
+    "result": {
+      "type": "pdf_page_info__075106d955ead60b31af19408ecd54ac",
+      "path": "/home/user/Desktop/LLM Powered Autonomous Agents _ Lil'Log.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "is_landscape": true,
+        "has_no_margins": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_e1e75309-3ddb-4d09-92ec-de869c928143_sid_1488311",
+    "trajectory_success_score": 0.9628033463160564,
+    "trajectory_summary": "Agent successfully saved the current webpage as PDF to Desktop with no margins. Used Ctrl+P to open print dialog, expanded More Settings, changed margins to None, navigated to Desktop in file save dialog, and saved with default filename. Then verified file existence via Files app.",
+    "capability_extraction": "Can use Ctrl+P for print dialog, navigate print settings (margins, layout), use file save dialog to choose destination folder, interact with Chrome browser, search and open desktop applications",
+    "task_rationale": "Tests the same print-to-PDF workflow but with an additional layout change (landscape). The model already demonstrated ability to change margins in print settings; changing layout is a similar interaction in the same dialog.",
+    "explanation": "Task requires saving the webpage as PDF with landscape orientation and no margins. Custom getter extracts PDF page dimensions and detects margins by analyzing text positions relative to page edges using PyPDF2 visitor_text callback. Custom metric checks: file exists (0.34), landscape orientation via width > height (0.33), and no margins via text position proximity to page edges within 30pt threshold (0.33). [Fixed: renamed inner visitor_text callback to get_text_position to satisfy getter naming convention]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_e1e75309-3ddb-4d09-92ec-de869c928143_sid_1488311_traj_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_e1e75309-3ddb-4d09-92ec-de869c928143_sid_1488311_traj_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "file_exists": "0.34 - PDF file exists on Desktop with default filename",
+      "landscape_orientation": "0.33 - PDF page width > height (landscape)",
+      "no_margins": "0.33 - PDF content text positioned within 30pt of page edges (no margins)"
+    },
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Added margin detection to getter via text position extraction comparing content bounding box to page edges with 30pt threshold",
+      "Fix 2: Updated metric to 3-way scoring: 0.34 file exists + 0.33 landscape + 0.33 no margins",
+      "Fix 3: Added has_no_margins to expected rules, updated scoring_breakdown and explanation",
+      "Fix 4: Renamed inner callback 'visitor_text' to 'get_text_position__075106d955ead60b31af19408ecd54ac' to satisfy get_ prefix rule for getter files"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete coverage: all 3 instruction requirements are verified — file exists on Desktop (0.34), landscape orientation via width > height (0.33), and no margins via text position analysis (0.33).",
+        "Getter logic is sound: uses PyPDF2 to read PDF dimensions and extracts text positions via visitor_text callback to detect margin presence. The 30pt threshold reasonably distinguishes Chrome's 'None' margins (~5pt) from 'Default' margins (~72pt).",
+        "Metric parameter handling is correct: expected.type='rule' means metric receives {'is_landscape': true, 'has_no_margins': true} directly, and metric correctly accesses expected.get('is_landscape') and expected.get('has_no_margins').",
+        "File path '/home/user/Desktop/LLM Powered Autonomous Agents _ Lil'Log.pdf' is a reasonable assumption for Chrome's default PDF filename from the given URL.",
+        "Minor limitation: margin detection only checks horizontal (left/right) margins via x-coordinates, not vertical (top/bottom) margins. For Chrome's 'None' margin setting this is likely sufficient since it removes all margins, but a more robust check would also verify y-axis positions.",
+        "Minor concern: if no text is extractable from the page (margin_check_available=False), margin verification silently gets 0 credit rather than failing. For this specific webpage (a blog post), text should always be present, so this is acceptable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider also checking vertical (top/bottom) margins by comparing min_y and max_y text positions against page height for more robust margin detection.",
+        "Consider awarding partial margin credit (e.g., 0.15) when margin_check_available is False rather than silently skipping, to avoid penalizing correct behavior when text extraction fails."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

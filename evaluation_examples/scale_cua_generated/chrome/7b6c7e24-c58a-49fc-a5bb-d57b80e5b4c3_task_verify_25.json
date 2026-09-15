@@ -1,0 +1,89 @@
+{
+  "id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3",
+  "new_id": "task_verify_25",
+  "snapshot": "chrome",
+  "instruction": "Switch to the Amazon homepage tab and make it the active tab in Chrome.",
+  "source": "https://support.google.com/chrome/answer/95647",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.amazon.com",
+          "https://www.amazon.com/s?k=huggingface+transformers+book"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info",
+      "dest": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.amazon.com/"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires switching to the Amazon homepage tab to make it active. Uses existing is_expected_active_tab metric to verify amazon.com homepage is the active tab.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification": "The is_expected_active_tab function checks if the active tab URL matches the expected URL. Returns 1.0 if amazon.com homepage is active, 0.0 otherwise.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "The getter 'active_tab_info' has a semantic flaw: it reloads the active tab URL instead of just reading the current tab state",
+        "The getter uses get_active_url_from_accessTree to find the active URL, then navigates to it using Playwright, which triggers a page reload",
+        "The code explicitly warns (chrome.py:806-809): 'This function will reload the target-url page. If the target url has cache or cookie, this function may reload to another page.'",
+        "For URL verification tasks, reloading the page is unnecessary and introduces risk of navigation side effects",
+        "The metric logic itself (is_expected_active_tab) is correct for URL comparison",
+        "Expected value 'https://www.amazon.com/' is semantically correct for the Amazon homepage"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change the result getter from 'active_tab_info' to 'active_url_from_accessTree' which only reads the URL from accessibility tree without navigation",
+        "Update the evaluator to use type: 'active_url' instead of 'active_tab_info', or create a new getter that extracts active tab URL without reloading",
+        "Alternatively, use the metric 'is_expected_url_pattern_match' which can work with just a URL string from get_active_url_from_accessTree",
+        "The current setup may still work if Amazon.com doesn't redirect on reload, but it's fragile and semantically incorrect for a 'check active tab' task"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

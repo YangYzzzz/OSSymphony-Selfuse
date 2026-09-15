@@ -1,0 +1,85 @@
+{
+  "id": "DES_task_10_darktable_raw_tonecurve_recover",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: A photographer has handed over 3 severely underexposed 16-bit linear TIFF \"pseudo RAWs\" that need exposure recovery before delivery. Environment and materials (already prepared):\n\n- `/tmp_workspace/raws/flat_a.tif`: roughly uniformly dark, histogram concentrated in the low range\n- `/tmp_workspace/raws/flat_b.tif`: has a gradient and a small highlight region, which must be protected from being pushed into clipping by subsequent operations\n- `/tmp_workspace/raws/flat_c.tif`: mixed texture, the hardest to recover\n- The workstation already has a full imaging post-processing toolchain installed (RAW darkroom editor, raster + layer-mask editor, histogram and metadata utilities), which you may freely choose from to produce the deliverables below\n\nTask goal: recover the 3 underexposed RAWs to normal middle-gray level (mean lifted by ≥ **0.20**), while **preserving highlights from clipping, not amplifying shadow noise, and lifting all 3 RGB channels in sync**; along the way, preserve quantifiable histogram evidence, multi-view evidence (frequency-domain / per-channel / noise floor / highlight rolloff), visual evidence of the curve edit, and evidence of protecting the highlight region of image b via an independent channel mask; exported pixels must be traceable back to the RAW darkroom processing chain (via embedded software metadata).\n\n**Trap warning**: `/tmp_workspace/raws/` also contains a 4th file `flat_d.tif` (a **correctly exposed** reference sample, mean ≈ 0.55) which must **never** be exposure-lifted — doing so would overexpose it. You must identify and isolate it in the deliverables (see deliverable 16).\n\nDeliverables to be produced under `/tmp_workspace/results/`:\n\n1. **Original histogram statistics** `raw_stats.csv`, columns: `filename,mean,p05,p50,p95,entropy,max_used_bit`, 3 rows (one row per original RAW)\n\n2. **Library browsing view** `view_dt_lighttable.png`: a visualization file (PNG, ≥ 5 KB) whose frame must simultaneously show the thumbnails of all 3 original RAWs, the side panel used for import/categorization, and the metadata/properties panel for the selected image, proving that the RAWs have been added to the darkroom application's library\n\n3. **Darkroom curve edit view** `view_dt_tonecurve.png`: a visualization file whose frame must show the darkroom editing interface for one of the RAWs, containing a visible tone curve (or tone equalizer) control, ≥ 3 user-placed non-endpoint control points, and the left/right module panels (histogram + module list), with middle gray lifted from ~0.25 to ~0.5\n\n4. **XMP sidecar list** `xmp_files.txt`: one absolute path per line, listing the `.xmp` files under `/tmp_workspace/raws/` that share names with the 3 original RAWs (3 lines total; these sidecars must actually exist in that directory)\n\n5. **Exported images** `dev_a.png` / `dev_b.png` / `dev_c.png`: 3 PNGs produced after applying the tone curve, corresponding to the original RAWs\n\n6. **Audit statistics** `dev_stats.csv`, same schema as raw_stats.csv, 3 rows (corresponding to dev_a/b/c.png); each dev's mean must be **≥ 0.20** higher than the corresponding raw (the trap sample flat_d is not counted here)\n\n7. **Histogram change report** `histogram_delta.json`:\n   ```json\n   {\n     \"flat_a\": {\"mean_before\": <float>, \"mean_after\": <float>, \"delta\": <float>},\n     \"flat_b\": {\"mean_before\": <float>, \"mean_after\": <float>, \"delta\": <float>},\n     \"flat_c\": {\"mean_before\": <float>, \"mean_after\": <float>, \"delta\": <float>}\n   }\n   ```\n   all 3 keys must be present and each `delta > 0.22`\n\n8. **Multi-layer mask project** `dev_b_masked.xcf`: a layer editing project file (≥ 1 KB) built on top of `dev_b.png`, structurally containing **≥ 3 layers** (suggested: background / lifted copy / highlight protection), of which at least one layer carries an independent layer mask channel, masking the ground-truth highlight area of image b (**brightness-threshold > 0.7 connected blob, to be detected by the agent itself**) with recognizable brush strokes for protection\n\n9. **Mask visualization** `view_gimp_layer_mask.png`: a visualization file whose frame must simultaneously show the Layers panel (with a mask thumbnail next to the selected layer), the tool/brush panel, and recognizable brush-stroke marks on the canvas\n\n10. **Metadata software field** `exif_check.txt`: each line `<filename>: <software_value>`, with all 3 dev_*.png read and written; the software value on each line must contain the string `darktable`, proving that the export went through the RAW darkroom processing chain\n\n11. **Summary report** `manifest.json`:\n    ```json\n    {\n      \"raws_inspected\": <int>,\n      \"tone_curve_points\": [[<float>,<float>], ...],\n      \"exposure_lifted_files\": [\"flat_a\",\"flat_b\",\"flat_c\"],\n      \"skipped_files\": [\"flat_d\"],\n      \"mask_protected_file\": \"flat_b\",\n      \"highlight_bbox\": [<x0>, <y0>, <x1>, <y1>],\n      \"agent_notes\": \"<summary of ≥ 120 chars: which one was hardest and why, how you tuned it; basis for the exposure judgment on flat_d; how you evaluated the noise floor; highlight rolloff strategy>\"\n    }\n    ```\n    `tone_curve_points` must contain at least **≥ 5 non-endpoint** control points (0 < x < 1); the curve must be **monotonically increasing** (after sorting by x, y must also be monotonically non-decreasing)\n\n12. **Per-channel statistics** `dev_channel_stats.csv`, columns: `filename,r_mean,g_mean,b_mean,r_lift,g_lift,b_lift`; 3 rows (corresponding to dev_a/b/c); each `*_lift` must be ≥ 0.10 (preventing color cast caused by lifting only one channel); computed relative to the corresponding channel in the original raw\n\n13. **Noise floor analysis** `noise_floor.json`:\n    ```json\n    {\n      \"flat_a\": {\"raw_dark_std\": <float>, \"dev_dark_std\": <float>, \"noise_amp\": <float>, \"snr_gain_db\": <float>},\n      \"flat_b\": {...},\n      \"flat_c\": {...}\n    }\n    ```\n    \"dark zone\" is computed as the std over the **darkest 10% of pixels** in each image; each `noise_amp = dev_dark_std/raw_dark_std` must be ≤ 4.5 (signal lift far greater than noise amplification)\n\n14. **Highlight rolloff table** `highlight_rolloff.csv`, columns: `filename,frac_above_0_90,frac_above_0_95,frac_above_0_99`; 3 rows (dev_a/b/c). **flat_b's frac_above_0_95 must be ≤ 0.012** (about 1.2%; proving the highlight protection mask is in effect — the 0.78 highlight patch in the original raw occupies ~1.5% of the frame, and without protection lifting would push it all above 0.95)\n\n15. **Mask coverage** `mask_iou.json`:\n    ```json\n    {\"mask_pixels\": <int>, \"highlight_pixels\": <int>, \"intersection\": <int>, \"iou\": <float>}\n    ```\n    `iou ≥ 0.55` required (intersection-over-union between the mask region and the ground-truth highlight region detected in raw via brightness threshold > 0.7); the agent **must** export `mask_b.png` (a binary image with the same dimensions as raw, white = mask region, black = non-mask region); the grader will recompute the true IoU itself using `mask_b.png` × ground-truth bbox; the self-reported `iou` field is only auxiliary (the grader will not trust self-reported values ≥ 0.55 unless an actual mask file is present as evidence)\n\n16. **Trap identification report** `trap_check.json`:\n    ```json\n    {\"trap_file\": \"flat_d.tif\", \"raw_mean\": <float>, \"decision\": \"skip|lift\",\n     \"rationale\": \"<explanation of ≥ 30 chars>\", \"dev_d_mean_shift\": <float>}\n    ```\n    `decision == \"skip\"` required and `dev_d_mean_shift ≤ 0.05` (i.e., if dev_d is generated, its mean must differ from raw_d's mean by no more than 0.05; the best case is to not generate dev_d at all)\n\nHard constraints:\n- dev mean lift ≥ 0.20, histogram_delta delta > 0.22 for each key, per-channel lift ≥ 0.10\n- `dev_b_masked.xcf` ≥ 3 layers and ≥ 1 layer with a mask channel\n- All three lines of `exif_check.txt` contain `darktable`\n- The three visualization files must authentically present their respective semantic content (must authentically present Darktable lighttable / darkroom with tone curve adjustment, and the GIMP multi-layer + Mask editing interface)\n- **trap_check must skip flat_d**: if flat_d is also erroneously lifted to mean > 0.7, the whole task is marked fail\n- noise amplification `noise_amp ≤ 4.5`, highlight frac_above_0_95(b) ≤ 0.012, mask IoU ≥ 0.55, tone_curve_points ≥ 5 and monotonic",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_10_darktable_raw_tonecurve_recover.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_10_darktable_raw_tonecurve_recover",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo \"${SUDO_PASSWORD:-password}\" | sudo -S -p '' bash -c '\nDEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null 2>&1 || true\nDEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\\n    imagemagick libimage-exiftool-perl \\\n    python3-pil python3-numpy poppler-utils tesseract-ocr \\\n    >/dev/null 2>&1 || true\npip install -q --break-system-packages rawpy 2>/dev/null || \\\n    pip install -q rawpy 2>/dev/null || true\n' || true\nmkdir -p /tmp_workspace/raws /tmp_workspace/results /opt/dav10_gt\n# Defense-in-depth: stale historical fixture file `expected_xmp_modules.txt` was a\n# direct answer leak (literally listed the expected darktable modules: toneequal,\n# colorbalance, exposure, tonecurve). The file has been removed from the workspace\n# tree, but this rm guarantees no surviving copy from older mirrors leaks in.\nrm -rf /tmp_workspace/fixtures /tmp_workspace/exec/fixtures 2>/dev/null || true\n# CRITICAL: hard-delete any stale /tmp_workspace/gt/ that older docker images\n# may still ship (notably a leaked `highlight_bbox.json` from a pre-`/opt/`\n# fixture revision). Plain `rmdir` later in this script silently fails when\n# the dir is non-empty, leaving the GT readable to the agent. Nuke it now.\nrm -rf /tmp_workspace/gt 2>/dev/null || true\npython3 - <<'PY'\nimport os, struct, numpy as np\nfrom PIL import Image\nos.makedirs(\"/tmp_workspace/raws\", exist_ok=True)\nos.makedirs(\"/opt/dav10_gt\", exist_ok=True)\nrng = np.random.default_rng(20260429)\ndef synth(name, kind):\n    h, w = 480, 640\n    base = rng.normal(loc=0.27, scale=0.04, size=(h,w))\n    if kind == \"b\":\n        rb = np.random.default_rng()\n        x0=int(rb.integers(120,520)); y0=int(rb.integers(60,320))\n        w0=int(rb.integers(80,140));  h0=int(rb.integers(60,110))\n        # gradient + small bright patch (highlight to be mask-protected)\n        gy = np.linspace(0.18, 0.42, h)[:,None] * np.ones((1,w))\n        base = 0.35*base + 0.65*gy\n        base[y0:y0+h0, x0:x0+w0] = 0.78\n        import json as _j\n        # Write the bbox to the root-only grader path. The agent must\n        # discover the highlight region by detecting brightness > 0.7\n        # in flat_b.tif — they cannot grep this file for the answer.\n        open(\"/opt/dav10_gt/highlight_bbox.json\",\"w\").write(\n            _j.dumps({\"bbox\":[x0,y0,x0+w0,y0+h0]}))\n    if kind == \"c\":\n        # textured stripes\n        stripes = (np.sin(np.linspace(0,30,w))*0.05)[None,:] * np.ones((h,1))\n        base = base + stripes\n    base = np.clip(base, 0.05, 0.95)\n    arr = (base * 65535).astype(np.uint16)\n    img = Image.fromarray(arr, mode=\"I;16\")\n    img.save(f\"/tmp_workspace/raws/{name}\", format=\"TIFF\", compression=None)\nsynth(\"flat_a.tif\", \"a\")\nsynth(\"flat_b.tif\", \"b\")\nsynth(\"flat_c.tif\", \"c\")\n# trap: flat_d is correctly exposed (mean ~0.55) — must NOT be lifted\ndef synth_trap(name):\n    h, w = 480, 640\n    base = rng.normal(loc=0.55, scale=0.05, size=(h,w))\n    base = np.clip(base, 0.20, 0.90)\n    arr = (base * 65535).astype(np.uint16)\n    Image.fromarray(arr, mode=\"I;16\").save(f\"/tmp_workspace/raws/{name}\", format=\"TIFF\", compression=None)\nsynth_trap(\"flat_d.tif\")\nprint(\"[warmup] generated 4 raws (flat_d is the trap):\", os.listdir(\"/tmp_workspace/raws\"))\nPY\n# Lock down the bbox + expected.json to root-only so the agent cannot\n# read either as a hint. Mirrors the DAV_11/12/16/17 + DSK_16 pattern.\n# Also salvage any legacy `expected.json` that may have been written under\n# the old `/tmp_workspace/gt/` path before nuking the dir for good. The\n# previous `rmdir` could only remove an EMPTY dir, which is exactly why\n# stale `highlight_bbox.json` survived in some docker images. Use `rm -rf`\n# unconditionally so non-empty leftovers are wiped too.\nif [ -d /tmp_workspace/gt ]; then\n  if [ -f /tmp_workspace/gt/expected.json ]; then\n    mv /tmp_workspace/gt/expected.json /opt/dav10_gt/expected.json 2>/dev/null || true\n  fi\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nchown -R root:root /opt/dav10_gt 2>/dev/null || true\nchmod 700 /opt/dav10_gt 2>/dev/null || true\nchmod 600 /opt/dav10_gt/*.json 2>/dev/null || true\n# idempotent base64 marker (keeps warmup re-runnable)\necho -n \"des10-warmup-ok\" | base64 > /tmp_workspace/.warmup_marker\nbase64 -d /tmp_workspace/.warmup_marker >/dev/null && echo \"[warmup] base64 idempotent ok\"\nls -la /tmp_workspace/raws/",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "des"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DES_task_10_darktable_raw_tonecurve_recover/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DES_task_10_darktable_raw_tonecurve_recover /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_10_darktable_raw_tonecurve_recover/reward.py",
+              "path": "/opt/eval/weave_bench/DES_task_10_darktable_raw_tonecurve_recover/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_10_darktable_raw_tonecurve_recover/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DES_task_10_darktable_raw_tonecurve_recover/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DES_task_10_darktable_raw_tonecurve_recover/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_10_darktable_raw_tonecurve_recover.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_10_darktable_raw_tonecurve_recover",
+    "workspace_relative": "DES/task_10_darktable_raw_tonecurve_recover",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

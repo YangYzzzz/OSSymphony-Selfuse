@@ -1,0 +1,154 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_60",
+  "snapshot": "chrome",
+  "instruction": "Save the 'microsoft-logo.png' image attachment from the Outlook welcome email to the Pictures folder.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_file_renamed__a7904c4a",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Pictures/microsoft-logo.png",
+      "dest": "microsoft-logo.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_extension": ".png",
+        "min_size_bytes": 500
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires saving an image attachment from Thunderbird email. Evaluator checks file exists in Pictures folder with PNG extension and minimum size. Reuses check_file_renamed metric from variation 4.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_task_verify_5/metrics/check_file_renamed__a7904c4a.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified from Thunderbird profile: Outlook welcome email contains microsoft-logo.png attachment.",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_file_renamed__a7904c4a first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_file_renamed__a7904c4a second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction to save microsoft-logo.png attachment to Pictures folder",
+        "Getter (get_vm_file) appropriately extracts file from VM filesystem at /home/user/Pictures/microsoft-logo.png",
+        "Metric (check_file_renamed__a7904c4a) correctly validates: file existence, PNG extension match, and minimum file size (500 bytes)",
+        "Expected values are semantically correct: .png extension matches instruction, 500 bytes ensures file is not empty",
+        "Data flow is correct: getter retrieves file -> metric validates existence, extension, and size",
+        "Edge cases handled: None result, file not found, wrong extension, file too small",
+        "Complete coverage: all requirements verified (correct location, correct filename, valid file)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding postconfig to ensure filesystem state is synchronized after Thunderbird operations, though this is likely not critical for file verification"
+      ]
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

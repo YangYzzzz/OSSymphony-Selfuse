@@ -1,0 +1,134 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_68",
+  "snapshot": "os",
+  "instruction": "List all full paths of files ending with \"_failed.ipynb\" in the test_environment directory tree and save the output to \"failed_files.txt\" in the test_environment directory, with one path per line, sorted alphabetically",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/eval.sh",
+            "path": "eval.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cat /home/user/test_environment/failed_files.txt 2>/dev/null | sort || echo ''",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "dir1/a_failed.ipynb",
+          "dir2/subdir1/c_failed.ipynb",
+          "dir3/e_failed.ipynb"
+        ],
+        "exclude": [
+          "b.ipynb",
+          "d.ipynb"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires listing all paths of files ending with '_failed.ipynb'. Based on setup.sh, there are 3 such files: dir1/a_failed.ipynb, dir2/subdir1/c_failed.ipynb, and dir3/e_failed.ipynb. The evaluator checks that all 3 paths are included and non-matching files are excluded. Uses existing check_include_exclude metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks that all three expected files ending with '_failed.ipynb' are present in the output",
+        "Evaluator correctly excludes non-matching files (b.ipynb, d.ipynb)",
+        "Getter reads the correct output file (/home/user/test_environment/failed_files.txt) with sorting applied",
+        "Metric function correctly handles the 'rule' type expected parameter (directly accesses rules.get('include'/'exclude'))",
+        "Minor ambiguity: Instruction says 'full paths' but expected values are relative paths - acceptable as relative paths from test_environment",
+        "Minor issue: Substring matching approach doesn't strictly verify line-by-line structure but will work correctly for well-formatted output"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider clarifying whether 'full paths' means absolute paths (/home/user/test_environment/dir1/a_failed.ipynb) or relative paths (dir1/a_failed.ipynb)",
+        "Consider using a more robust metric that splits by newlines and checks exact line matches rather than substring matching to avoid potential false positives"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_32",
+  "snapshot": "os",
+  "instruction": "Change the permission of all regular files under current directory tree to 777",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_file_permissions__f81b27ec",
+    "result": {
+      "type": "vm_command_line",
+      "command": "find testDir -type f -exec ls -l {} \\;",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "permission": "-rwxrwxrwx"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing all regular files to 777 permissions (-rwxrwxrwx). Evaluator checks that all files in testDir have the correct permission string.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_2/metrics/os.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical directory context mismatch: Setup navigates INTO testDir with 'cd testDir', but evaluator command uses 'find testDir' which will fail",
+        "After setup completes, working directory is testDir. Running 'find testDir' from inside testDir looks for testDir/testDir which doesn't exist",
+        "The evaluator will return no results or error, causing verification to fail even if permissions were correctly changed",
+        "Metric logic is correct: properly parses ls -l output and checks all files have -rwxrwxrwx permission",
+        "Permission string -rwxrwxrwx correctly represents octal 777",
+        "Command structure would work if directory context was correct"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change evaluator command from 'find testDir -type f -exec ls -l {} \\;' to 'find . -type f -exec ls -l {} \\;' to search current directory",
+        "OR remove 'cd testDir' from setup config so evaluation runs from parent directory",
+        "OR add absolute path handling by using 'cd ~ && find testDir -type f -exec ls -l {} \\;' in evaluator"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_13",
+  "snapshot": "thunderbird",
+  "instruction": "Create a message filter in Thunderbird that automatically moves all incoming emails from sender 'newsletter@example.com' to the 'Newsletter' folder. Apply the filter to the anonym-x2024@outlook.com account only. Make sure the filter is enabled.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "imap://anonym-x2024%40outlook.com@outlook.office365.com/Newsletter",
+            "condition": [
+              "AND (from,is,newsletter@example.com)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation asks the user to create a message filter that moves emails from a specific sender to a folder on a specific account. The evaluator uses the existing check_thunderbird_filter function to verify that a filter exists with: (1) enabled='yes', (2) action='Move to folder', (3) actionValue specifying the Newsletter folder with full IMAP URI, and (4) condition checking the 'from' field against 'newsletter@example.com'. The account association is verified by checking the msgFilterRules.dat file in the outlook.office365.com account directory - filters are stored per account, so verifying the correct file path ensures the filter is applied to the anonym-x2024@outlook.com account only.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "The original task uses check_thunderbird_filter to verify email forwarding. This variation uses the same function but checks for a 'Move to folder' action with actionValue pointing to Newsletter folder (imap://anonym-x2024%40outlook.com@outlook.office365.com/Newsletter) and a 'from' sender condition. Account verification is implicit: the result.path points to outlook.office365.com account directory, and Thunderbird stores filters per-account, so verifying this specific file ensures the filter is on the correct account.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification coverage: All 5 instruction requirements are correctly verified (100% coverage)",
+        "Enabled verification: expected.enabled='yes' correctly verifies filter is enabled",
+        "Sender verification: expected.condition=['AND (from,is,newsletter@example.com)'] correctly verifies the sender condition",
+        "Folder verification: expected.actionValue='imap://anonym-x2024%40outlook.com@outlook.office365.com/Newsletter' correctly verifies the destination folder is 'Newsletter'",
+        "Account verification: Double-verified through (1) result.path points to outlook.office365.com account-specific directory, and (2) actionValue contains account identifier 'anonym-x2024%40outlook.com', ensuring filter is only on the specified account",
+        "Action verification: expected.action='Move to folder' correctly verifies the move action",
+        "Metric logic correctness: check_thunderbird_filter (thunderbird.py:76-135) parses msgFilterRules.dat, extracts all filter fields (name, enabled, action, actionValue, condition), and uses _match_record to verify expected rules match - logic is sound",
+        "Runtime correctness: Metric handles None case (line 90-91), and postconfig appropriately closes Message Filters window before verification",
+        "Data flow correctness: get_vm_file retrieves account-specific filter file -> check_thunderbird_filter parses and matches against complete expected rules -> returns 1.0 if all fields match"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

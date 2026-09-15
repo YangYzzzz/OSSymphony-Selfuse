@@ -1,0 +1,102 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_48",
+  "snapshot": "chrome",
+  "instruction": "Can you block third-party cookies in Chrome to improve my privacy and prevent tracking across websites?",
+  "source": "https://support.google.com/chrome/answer/95647",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "third_party_cookies_blocked__75ed94d8e5e2ff083f81c247646b0b38"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires blocking third-party cookies in Chrome settings. The evaluator uses a custom getter get_third_party_cookies_blocked__75ed94d8e5e2ff083f81c247646b0b38 which checks the profile.cookie_controls_mode or profile.block_third_party_cookies fields in Chrome Preferences file. When third-party cookies are blocked, the getter returns 'true'. This is verified by reading the Chrome Preferences JSON structure where cookie_controls_mode >= 1 or block_third_party_cookies is true indicates third-party cookies are blocked. The exact_match metric compares the result against expected value 'true'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_4/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "variation_index": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to block third-party cookies",
+        "Getter extracts the correct state from Chrome Preferences file (profile.cookie_controls_mode or profile.block_third_party_cookies)",
+        "Logic is sound: cookie_controls_mode >= 1 correctly identifies blocked third-party cookies",
+        "Handles multiple Chrome versions with appropriate fallback logic",
+        "Postconfig properly restarts Chrome to ensure settings are persisted to the Preferences file",
+        "Platform-specific paths are correctly handled for Windows, macOS, and Linux",
+        "Data flow is correct: getter returns 'true'/'false' string, metric compares against expected 'true'",
+        "Complete coverage of the single instruction requirement",
+        "Exception handling ensures graceful degradation if Preferences file is inaccessible"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

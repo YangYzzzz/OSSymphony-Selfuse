@@ -1,0 +1,84 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_93",
+  "snapshot": "os",
+  "instruction": "Remove the last two applications from your favorites dock.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "thunderbird.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires removing the last two apps (Vim and Chrome) from the favorites list, keeping only Thunderbird. Uses existing check_gnome_favorite_apps metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts GNOME favorites list using 'gsettings get org.gnome.shell favorite-apps'",
+        "Metric 'check_gnome_favorite_apps' correctly parses the string output to list and compares both length and content",
+        "Expected value ['thunderbird.desktop'] is semantically correct - after removing last two apps (vim.desktop, google-chrome.desktop) from initial 3-app list, only thunderbird.desktop remains",
+        "Complete coverage: instruction requires removing last two apps, evaluator verifies final state contains only the correct remaining app",
+        "Metric correctly handles expected parameter: accesses rule['expected'] directly (expected.type='rule' means framework passes rules dict directly)",
+        "Data flow is correct: gsettings output string -> parsed to list -> compared with expected list",
+        "No postconfig needed: gsettings can read system settings directly without UI reopening"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

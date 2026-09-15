@@ -1,0 +1,105 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_37",
+  "snapshot": "thunderbird",
+  "instruction": "Remove all stars from emails in the Bills folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(*) = 0 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 13);"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires removing stars from all emails in Bills folder (folderID=13). The evaluator checks that no messages in folder 13 have star attribute (attributeID=58, value=1). Verified from database: folder 13 has 2 emails, attribute 58 represents 'star'. SQL returns 1 (true) if count is 0, meaning no starred emails.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "SQL query correctly identifies starred emails: checks attributeID=58 (star), value=1 (starred state), and folderID=13 (Bills folder)",
+        "Complete coverage: evaluator verifies ALL requirements - checks the specific folder and ensures NO emails have stars",
+        "Correct verification logic: SQL 'count(*) = 0' returns 1 when no starred emails exist (task completed), 0 otherwise (task failed)",
+        "Practical implementation: postconfig closes Thunderbird to prevent database lock, database file path is correct, SQL query is valid and will execute at runtime",
+        "Data flow is sound: vm_file getter fetches SQLite database -> run_sqlite3 executes query -> returns boolean result",
+        "Expected value semantics are correct: the SQL query itself performs the verification and returns the appropriate pass/fail signal"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

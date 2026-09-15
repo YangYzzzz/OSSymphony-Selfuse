@@ -1,0 +1,88 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Navigate to en.wikipedia.org and search for 'Spider-Man'.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "wikipedia\\.org",
+          "[Ss]pider.?[Mm]an"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_sid_1488135",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent encountered 'Access Denied' on kohls.com. Navigated to Amazon, searched 'Spider-Man toys for kids', and sorted by 'Price: Low to High'. Task scored 0 because evaluator required kohls.com-specific elements.",
+    "capability_extraction": "Can navigate Chrome address bar, search products on Amazon, use sort dropdowns, handle blocked sites by navigating elsewhere",
+    "failure_analysis": "Kohls.com returned Access Denied. Model adapted by going to Amazon, but evaluator checks kohls.com-specific HTML breadcrumbs and sort selector.",
+    "task_rationale": "Tests basic navigation and search on a different, reliably accessible website. Wikipedia is unlikely to block access. Keeps the Spider-Man theme from the original task.",
+    "explanation": "Uses is_expected_url_pattern_match to verify the URL contains wikipedia.org and Spider-Man, confirming successful navigation and search.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active Chrome tab URL, which is the right state to verify navigation and search.",
+        "Metric is_expected_url_pattern_match correctly receives the rules dict with expected patterns and checks all patterns against the URL via re.search.",
+        "Both instruction requirements (navigate to wikipedia.org, search for Spider-Man) are covered by the two regex patterns.",
+        "Minor issue: Instruction specifies 'en.wikipedia.org' but pattern 'wikipedia\\.org' would also match other language subdomains (fr, de, etc.). Pattern should be 'en\\.wikipedia\\.org' for precise verification.",
+        "Data flow is correct: getter returns URL string, metric iterates patterns and returns 1.0 only if all patterns match."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change first pattern from 'wikipedia\\\\.org' to 'en\\\\.wikipedia\\\\.org' to enforce the specific subdomain mentioned in the instruction."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Load the unpacked extension from /home/user/Desktop/ into Chrome and confirm at least one unpacked extension is installed.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_extension_count__0fb1bf36ddef8ab5a554de56ff7f0c3d",
+    "result": {
+      "type": "extension_count__0fb1bf36ddef8ab5a554de56ff7f0c3d"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 1
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires loading the unpacked extension and verifying at least one unpacked extension exists in Chrome. The getter counts all unpacked extensions by reading Chrome Preferences and checking for extensions with local file paths. The metric verifies the count is at least 1.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_aug_10_task_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_aug_10_task_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly identifies unpacked extensions by checking 'location' field (chrome.py:55-56). Extensions with location==4 (UNPACKED) or location==5 (UNPACKED_COMPONENT) are correctly counted as unpacked extensions.",
+        "Metric function correctly handles expected parameter when type='rule' - directly accesses expected.get('min_count', 1) without incorrect patterns like expected.get('rules').",
+        "Coverage is complete: evaluator checks the exact requirement from instruction - 'at least one unpacked extension is installed'.",
+        "Data flow is correct: getter extracts count (int) -> metric compares count >= min_count -> expected value (min_count=1) matches instruction requirement.",
+        "No postconfig needed: extension state persists in Chrome Preferences file, accessible without UI interaction.",
+        "Edge case handling: getter returns 0 on error, metric handles non-int gracefully by returning 0.0."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

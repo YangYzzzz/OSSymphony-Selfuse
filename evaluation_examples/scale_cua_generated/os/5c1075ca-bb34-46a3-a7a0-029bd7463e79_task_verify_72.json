@@ -1,0 +1,130 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_72",
+  "snapshot": "os",
+  "instruction": "Delete all files matching \"*failed.ipynb\" in the test_environment directory tree",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/eval.sh",
+            "path": "eval.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd /home/user/test_environment && find . -name '*failed.ipynb' 2>/dev/null || echo 'NONE'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "NONE"
+        ],
+        "exclude": [
+          "a_failed.ipynb",
+          "c_failed.ipynb",
+          "e_failed.ipynb"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires deleting all files matching '*failed.ipynb'. Based on setup.sh, there are 3 files to delete: dir1/a_failed.ipynb, dir2/subdir1/c_failed.ipynb, and dir3/e_failed.ipynb. After deletion, the find command should return empty result (we add 'NONE' as fallback). The evaluator checks that no failed.ipynb files remain. Uses existing check_include_exclude metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts file deletion state using find command with appropriate fallback (|| echo 'NONE')",
+        "Metric logic correctly verifies deletion: checks 'NONE' is present (no files found) and specific filenames are absent",
+        "Complete coverage: evaluator verifies the single requirement (delete all *failed.ipynb files)",
+        "Expected values are semantically correct: exclude list matches the 3 files created by setup.sh",
+        "Practical feasibility confirmed: find command works correctly, no postconfig needed for persistent file state",
+        "Edge cases handled: empty result returns 'NONE', partial deletion detected by exclude check, error suppression appropriate for test context"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

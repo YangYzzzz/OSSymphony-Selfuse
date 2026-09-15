@@ -1,0 +1,116 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "task_verify_41",
+  "snapshot": "thunderbird",
+  "instruction": "Count how many emails each sender contributed among the most recent five emails in Thunderbird's daily folder. Create a two-column report in LibreOffice Calc showing sender name and count, then save it as 'sender_stats.xlsx' on the Desktop.",
+  "source": "https://marketplace.uipath.com/listings/extract-the-first-1000-gmail-emails-from-the-current-month-in-a-new-google-sheets-report",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('alt', 'tab'); time.sleep(0.3); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_thunderbird_sender_count__44f17dcf",
+    "result": {
+      "type": "thunderbird_sender_count__44f17dcf",
+      "path": "/home/user/Desktop/sender_stats.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_counts": {
+          "HKU Bulk Email Delivery System": 3,
+          "eNotices System": 2
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires counting emails by sender among the 5 most recent. Verified with Python: HKU Bulk Email Delivery System sent 3 emails, eNotices System sent 2 emails. Evaluator uses dual verification: (1) parses Thunderbird's mailbox to verify source email data matches expected counts, (2) validates Excel report matches both expected counts and Thunderbird source data. This prevents users from manually creating Excel files without analyzing Thunderbird.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_1/getters/thunderbird__44f17dcf.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/d9b7c649-c975-4f53-88f5-940b29c47247_aug_6_task_verify_1/metrics/thunderbird__44f17dcf.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "STRENGTHS: Dual verification approach successfully prevents manual Excel file creation by validating both Thunderbird source data and Excel report consistency",
+        "Three-way validation logic is semantically correct: (1) Thunderbird data matches expected, (2) Excel matches expected, (3) Excel matches Thunderbird source",
+        "Getter correctly parses Thunderbird mbox mailbox format to extract the 5 most recent emails from 'From:' headers",
+        "Excel validation uses robust semantic header matching with keywords (sender/from/email and count/number/total)",
+        "Postconfig correctly saves Excel file with Alt+Tab + Ctrl+S before verification",
+        "MINOR ISSUE: Mailbox file discovery searches for FILES named 'daily'/'Daily'/'Inbox'/'inbox' rather than searching within a 'daily' FOLDER path - may miss mailbox if structured as subdirectory (e.g., Mail/Local Folders/daily/inbox)",
+        "MINOR ISSUE: Mbox boundary detection uses heuristics that could theoretically split messages incorrectly if email content contains lines starting with 'From ', though this is a common mbox parsing challenge",
+        "Parameter handling is CORRECT: metric uses 'expected.get(\"expected_counts\")' directly when expected.type='rule' (no incorrect 'expected.get(\"rules\")' pattern)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider enhancing mailbox discovery to search for 'daily' in the full directory PATH, not just filename: for root, dirs, files in os.walk() - check if 'daily' in root",
+        "Add fallback logic to search parent/child directories if exact 'daily' file not found (e.g., look for 'daily/*' or '*/daily' patterns)",
+        "Consider more robust mbox boundary detection using regex for RFC 4155 format: '^From \\S+ ' at line start",
+        "Add logging/debug info about which mailbox file was selected to help diagnose discovery issues"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true,
+      "fix_summary": "Applied dual verification approach: (1) Added Thunderbird mailbox parser to extract and count senders from 5 most recent emails in mbox format, (2) Strengthened Excel header validation with semantic keyword matching (sender/from/email and count/number/total), (3) Updated metric to verify three components: Thunderbird data matches expected, Excel matches expected, and Excel matches Thunderbird source (consistency check). This ensures users cannot pass by manually creating Excel files."
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "7f52cab9-535c-4835-ac8c-391ee64dc930",
+  "new_id": "7f52cab9-535c-4835-ac8c-391ee64dc930_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Search for 'drip coffee maker' on Amazon.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://shopping.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "amazon\\.com",
+          "drip.coffee.maker"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_7f52cab9-535c-4835-ac8c-391ee64dc930_sid_1488078",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to search for drip coffee makers on Google Shopping but encountered SSL cert error (NET::ERR_CERT_COMMON_NAME_INVALID). Navigated to Amazon instead, searched 'drip coffee maker', applied color/price/deals filters, scrolled results. Later tried Google Shopping URL but landed on Best Buy. Failed after 50 turns.",
+    "capability_extraction": "Can navigate Chrome address bar, type URLs, search products on Amazon, use search filters (color, price, deals), scroll through results, interact with web elements",
+    "failure_analysis": "Google Shopping inaccessible due to SSL certificate error. Model could not bypass the cert error and tried alternative shopping sites instead. Evaluator expected Google Shopping-specific URL and filter states.",
+    "task_rationale": "Extracted the core sub-task the model actually completed successfully: navigating to Amazon and searching for 'drip coffee maker'. The model demonstrated this exact capability in the trajectory (screenshots 10-35). This isolates the search ability from the unavailable Google Shopping requirement.",
+    "explanation": "Task requires searching for 'drip coffee maker' on Amazon. Evaluator uses URL pattern matching to verify: (1) the active tab is on amazon.com, and (2) the URL contains 'drip coffee maker' (with flexible character matching for URL encoding like + or %20). Uses official getter active_url_from_accessTree and metric is_expected_url_pattern_match. Both regex patterns must match.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "navigation_and_search": "1.0 - URL on amazon.com AND contains drip coffee maker query"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active tab URL as a string, which is the right state to verify navigation and search.",
+        "Metric is_expected_url_pattern_match correctly receives the rules dict and accesses rules['expected'] to get the pattern list. All patterns must match for score=1.0, which enforces both requirements.",
+        "Pattern 'amazon\\.com' correctly verifies the user navigated to Amazon.",
+        "Pattern 'drip.coffee.maker' correctly verifies the search query is present in the URL. The regex '.' wildcard appropriately handles URL-encoded separators (+, %20, -, etc.).",
+        "Complete coverage: both instruction requirements (navigate to Amazon + search for 'drip coffee maker') are verified by the two URL patterns.",
+        "Data flow is correct: getter returns string URL -> metric does regex search on all patterns -> returns 1.0 only if all match."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_5_sw_cache_poison_purge",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution agreement**: This is a legitimate desktop + terminal test task. All deliverables must land under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: `/tmp_workspace/cache_app/` is a tiny storefront (Express + static SPA + Service Worker). The backend `/api/products?v=1` and `/api/products?v=2` return **different** product lists (price, stock, presence of Tote); the backend emits correct `Cache-Control` + `ETag`. The reported user issue is: **after first visiting `?v=1`, no matter whether you visit `?v=2` or just `/`, the front-end table keeps showing the stale v1 data, even on hard reload, until the Service Worker is manually unregistered.**\n\nYou must complete the full \"Service Worker cache poisoning\" loop: forensic capture → fix → re-verification. The backend code is legitimate and HTTP headers are correct; the root cause lies entirely in the strategy and cache-key design of `public/sw.js`. Treat the backend as authoritative and do not modify it. All deliverables go to `/tmp_workspace/results/`.\n\nDomain context: a Service Worker is a proxy layer between the browser and the backend; entries in CacheStorage are stored by cache name + request key. The cache-key design and the strategy choice (network-first / stale-while-revalidate / cache-first) determine whether \"different semantic versions of the same URL\" can be distinguished, and whether clients still see stale payloads after a new release.\n\n【Deliverables】\n\nAll deliverables land in `/tmp_workspace/results/`. File names must follow the spec below exactly; do not nest in subdirectories.\n\n- `headers_v1.txt` / `headers_v2.txt` / `headers_v1_revalidate.txt`: the full response headers for the initial `?v=1` request, the initial `?v=2` request, and a `?v=1` revalidation with `If-None-Match`, respectively. Each must contain an `ETag` line.\n- `network_truth.md`: ≥150 characters. Based on the three header captures above, explain that v1 and v2 are two distinct payloads with different ETags, so any client that conflates them into a single cache entry is the source of the bug. Must explicitly cite the ETag values.\n- `view_01_sw_registered.png`: shows sw.js is registered and in the activated/running state, with Source/Scope/Status fields visible.\n- `view_02_cache_storage_v1.png`: shows the Cache Storage namespace for the current origin, expanded so the request/response detail of the `/api/products` entry is visible.\n- `view_03_network_from_sw.png`: shows the network request list after a refresh; the Size column of the `/api/products` row indicates the response came from the Service Worker, and Initiator points to sw.js.\n- `view_04_v2_polluted.png`: page state after changing the address to `?v=2` in the same tab (no force reload, no cache clear). The table still shows v1 data (no Tote or other v2-only products), the build badge still reads `v1`, and the Cache Storage entry list is visible on the same screen, proving the response is a stale payload.\n- `view_05_console_diff.png`: shows the enumeration output of CacheStorage entry URLs for the current origin. Must include the `/api/products` URL, and that URL must **not** carry a `?v=` query string — visual evidence of the cache-key design defect.\n- `sw_disk_index.txt`: ≥5 lines, listing the on-disk entry files (with sizes) for the Service Worker / CacheStorage of this origin under the current Chrome/Chromium profile.\n- `sw_storage_explained.md`: ≥80 characters, describing the on-disk directory layout of CacheStorage, why entry filenames are hashes rather than URLs, and why the current sw.js strategy bug results in only a single `/api/products` entry on disk.\n- `sw_audit.json`: a valid JSON array with ≥4 violations. Each entry has fields:\n  ```json\n  {\n    \"id\": \"<short_kebab_id>\",\n    \"category\": \"<one of: cache_versioning | cache_key_design | strategy_choice | activate_cleanup | revalidation>\",\n    \"code_anchor\": \"<file:line_range>\",\n    \"evidence\": \"<the exact code fragment causing the issue, quote ≤2 lines>\",\n    \"user_visible_symptom\": \"<description tied to the pollution symptom>\"\n  }\n  ```\n  Each entry must map to a phenomenon visible in view_04 / view_05 or to a real header difference in `headers_*`; do not fabricate.\n- `view_06_network_sw_intercept.png`: network request list after a refresh with the browser's own cache disabled. The Size column of the `/api/products` row still shows Service Worker interception, Status 200 but extremely short duration; the Service Worker registration status is visible on the same screen as cross-channel consistency evidence.\n- `cache_app_fixed/public/sw.js` (mirrored under `/tmp_workspace/cache_app_fixed/`): the fixed version patched against each violation in `sw_audit.json`. It must satisfy:\n  1. when the backend ships a new release (distinguished here via `?v=`), the next GET must surface the new payload — no manual SW unregister or cache clear required;\n  2. different semantic versions of the same resource must be cached independently and must not overwrite one another;\n  3. on sw.js upgrade, old CacheStorage namespaces must be cleaned up automatically — historical caches must not accumulate without bound;\n  4. offline availability of the shell static assets must not be broken (precache must still work).\n  The fixed `cache_app_fixed/` must run on port **4672**. The strategy choice (SWR / network-first / custom) and the cache-key convention are up to the implementer and must be explained in `incident_report.md`.\n- `view_07_v2_visible.png`: on port 4672, after first visiting `?v=1` then switching to `?v=2` (without clearing the cache), the table must show at least the `Tote` row and the build badge must read `v2`; Cache Storage must contain two `/api/products` entries (URLs containing `?v=1` and `?v=2` respectively).\n- `view_08_old_cache_purged.png`: in the Cache Storage namespace list on the left, the old `cache-app-store` (unversioned) is gone, leaving only the versioned new cache name.\n- `before_fix_v2.json` / `after_fix_v2.json`: the actual response bodies for `?v=2` from each of the two ports.\n- `fix_verification.json`:\n  ```json\n  {\n    \"before_fix_items_count\": \"<int>\",\n    \"after_fix_items_count\": \"<int>\",\n    \"before_fix_has_tote\": \"<bool>\",\n    \"after_fix_has_tote\": \"<bool>\",\n    \"old_cache_name_present_after_activate\": \"<bool>\",\n    \"new_cache_name\": \"<string>\"\n  }\n  ```\n  Field values must come from real measurements; do not hard-code. Expected: `after_fix_has_tote=true`, `old_cache_name_present_after_activate=false`.\n- `sw_fix.patch`: unified-format diff between `cache_app/public/sw.js` and `cache_app_fixed/public/sw.js`, non-empty.\n- `incident_report.md`: ≥250 characters. Must include reproduction steps, root cause (explicitly cite the 4 ids in `sw_audit.json`), rationale for the chosen fix strategy (compare SWR vs. network-first), why a plain hard reload cannot rescue the situation, and engineering recommendations to prevent recurrence in production (versioned cache names + CI checks).\n- `view_09_combined_evidence.png`: a single screenshot that simultaneously shows the fixed page's table with v2 data, the versioned cache name in Cache Storage, and a real command-line output on the side showing the v2 product count exceeds v1. This screenshot serves as cross-channel evidence.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_5_sw_cache_poison_purge.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_5_sw_cache_poison_purge",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo YXB0LWdldCB1cGRhdGUgLXFxICYmIERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIG5vZGVqcyBucG0ganEgc3FsaXRlMyB0ZXNzZXJhY3Qtb2NyID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCnBpcCBpbnN0YWxsIC1xIHB5dGVzc2VyYWN0IHBpbGxvdyBudW1weSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQpta2RpciAtcCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIC90bXBfd29ya3NwYWNlL2d0CmNkIC90bXBfd29ya3NwYWNlL2NhY2hlX2FwcCAmJiBucG0gaW5zdGFsbCAtLW5vLWF1ZGl0IC0tbm8tZnVuZCAtLXNpbGVudCAyPi9kZXYvbnVsbCB8fCB0cnVlCmNkIC90bXBfd29ya3NwYWNlL2NhY2hlX2FwcCAmJiAoUE9SVD00NjcxIG5vaHVwIG5vZGUgc2VydmVyLmpzID4gL3RtcF93b3Jrc3BhY2UvY2FjaGVfYXBwLmxvZyAyPiYxICYpICYmIHNsZWVwIDIKY3VybCAtc2YgaHR0cDovL2xvY2FsaG9zdDo0NjcxL2hlYWx0aHogPi9kZXYvbnVsbCAmJiBlY2hvICJjYWNoZV9hcHAgcmVhZHkgb24gOjQ2NzEiIHx8IGVjaG8gIldBUk5fY2FjaGVfYXBwX25vdF9yZWFkeSIK | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_5_sw_cache_poison_purge/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_5_sw_cache_poison_purge /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_5_sw_cache_poison_purge/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_5_sw_cache_poison_purge/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_5_sw_cache_poison_purge/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_5_sw_cache_poison_purge/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_5_sw_cache_poison_purge/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_5_sw_cache_poison_purge.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_5_sw_cache_poison_purge",
+    "workspace_relative": "WEB/task_5_sw_cache_poison_purge",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

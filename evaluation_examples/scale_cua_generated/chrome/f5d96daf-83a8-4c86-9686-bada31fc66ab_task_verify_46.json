@@ -1,0 +1,98 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 15 with iPhone 14 and iPhone 13",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-15",
+            "iphone-14",
+            "iphone-13"
+          ],
+          "ignore_list_order": true
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires comparing iPhone 15 with iPhone 14 and iPhone 13. The evaluator uses get_active_tab_url_parse to extract the modelList query parameter from the Apple compare URL and verifies it contains the three expected iPhone models. No custom functions needed as we reuse existing evaluator framework.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "fix_applied": {
+      "issue": "ignore_list_order flag was at rules level instead of inside expected dict, causing check_direct_json_object to not find it (expected_json.get('ignore_list_order') always returned False)",
+      "fix": "Moved ignore_list_order from rules level to inside rules.expected dict so check_direct_json_object can access it correctly via expected_json.get('ignore_list_order')",
+      "fix_location": "task JSON configuration (evaluator.expected.rules.expected)"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_active_tab_url_parse (chrome.py:2258-2288) can successfully extract the active tab URL from the accessibility tree and parse the 'modelList' query parameter with split_list=true option, returning a list of model identifiers",
+        "Metric comparison logic is correct: check_direct_json_object (general.py:382-481) correctly handles the expected.type='rule' case. When the framework calls get_rule, it returns config['rules'], and the metric correctly accesses expected_json = rules['expected'] at line 420",
+        "The ignore_list_order flag is correctly placed inside rules.expected (line 65), and check_direct_json_object correctly accesses it via expected_json.get('ignore_list_order', False) at line 428, enabling order-insensitive list comparison",
+        "Expected values are semantically correct: The three iPhone models ['iphone-15', 'iphone-14', 'iphone-13'] match exactly what the instruction requires",
+        "Complete coverage: The evaluator verifies all requirements - that the user navigated to a comparison page containing all three specified iPhone models",
+        "The fix_applied metadata (lines 76-80) confirms that the ignore_list_order placement issue was already corrected, and the current configuration is valid"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

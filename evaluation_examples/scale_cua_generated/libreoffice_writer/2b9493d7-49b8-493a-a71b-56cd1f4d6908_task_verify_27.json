@@ -1,0 +1,113 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_27",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Force quit all LibreOffice processes by running the killall command in the terminal.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep \"killall\"); if [ -z \"$output\" ]; then echo \"killall not used\"; else echo \"killall used\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "killall used"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "killall not used"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to use killall command specifically to terminate all LibreOffice processes. Evaluator verifies: 1) LibreOffice is no longer running, 2) killall command was used (checked via bash history). Tests knowledge of the killall utility for process termination.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both instruction requirements: (1) LibreOffice processes terminated via 'ps aux | grep \"[s]office\"' and (2) killall command usage via bash history check",
+        "Getter logic uses appropriate command: combines process check and history grep in single vm_command_line execution with clear output messages",
+        "Metric 'check_include_exclude' correctly handles expected parameter structure when type='rule' (receives rules dict directly, not wrapped)",
+        "Include/exclude rules are semantically correct: expects 'no libreoffice is running' AND 'killall used' while excluding opposite messages",
+        "Postconfig appropriately kills gnome-terminal-server to ensure bash history is flushed before verification",
+        "State accessibility verified: both process status and bash history are accessible after task completion",
+        "The '[s]office' grep pattern correctly avoids matching the grep process itself"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor consideration: Bash history verification assumes default bash configuration and history persistence, which is reasonable for OSWorld environment but could fail if user has non-standard history settings (e.g., HISTFILE disabled). This is acceptable given the controlled environment."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "2b9493d7-49b8-493a-a71b-56cd1f4d6908_aug_9_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "Go to the recreation.gov homepage and verify that the main search input field is present on the page.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "recreation\\.gov"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task variation that verifies the user has successfully navigated to the recreation.gov homepage. Uses existing Chrome getters (active_tab_info) and metrics (is_expected_url_pattern_match) to check if the URL contains 'recreation.gov'. This is a simpler variation focusing on URL navigation verification.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction has TWO requirements (1. navigate to recreation.gov homepage, 2. verify search input field is present), but evaluator only checks requirement #1",
+        "The metric 'is_expected_url_pattern_match' only validates URL pattern matching via regex 'recreation\\.gov' and completely ignores page content",
+        "The getter 'active_tab_info' actually retrieves page HTML content (url, title, content fields), which COULD be used to verify the search input field presence, but the metric doesn't use this content field",
+        "Instruction-evaluator semantic mismatch: The instruction explicitly asks to 'verify that the main search input field is present on the page', but no part of the evaluator checks for page elements or DOM structure"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option 1: Simplify the instruction to match what the evaluator actually checks - change to: 'Go to the recreation.gov homepage' (remove the search input field verification requirement)",
+        "Option 2: Update the evaluator to check BOTH requirements - use a metric that can parse page content to verify the presence of search input field (e.g., check for input element with id='hero-search-input' or similar selector in the HTML content)",
+        "Option 3: Use a different metric like 'check_page_element_exists' that can validate DOM elements by parsing the 'content' field returned by active_tab_info getter"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

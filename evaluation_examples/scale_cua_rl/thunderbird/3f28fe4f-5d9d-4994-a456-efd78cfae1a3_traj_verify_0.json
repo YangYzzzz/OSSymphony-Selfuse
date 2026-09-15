@@ -1,0 +1,110 @@
+{
+  "id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+  "new_id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Set the Organization field to \"ABC University\" for my email account in Thunderbird's account settings.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.organization": {
+            "method": "eq",
+            "ref": "ABC University"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_3f28fe4f-5d9d-4994-a456-efd78cfae1a3_sid_1488157",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully opened Thunderbird Account Settings, navigated to identity section, typed a 2-line plain text signature, and completed the task in 6 turns.",
+    "capability_extraction": "Can open Account Settings in Thunderbird, navigate identity settings panel, edit text fields (signature, organization, name), type multi-line text",
+    "task_rationale": "Tests a related identity field (Organization) in the same Account Settings panel the model successfully navigated",
+    "explanation": "Task requires setting the Organization field in Thunderbird account identity settings. Evaluator checks mail.identity.id1.organization in prefs.js equals 'ABC University'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches prefs.js from the Thunderbird profile directory, which stores all user preferences including identity fields.",
+        "Metric check_thunderbird_prefs correctly parses user_pref lines and checks mail.identity.id1.organization against 'ABC University' using eq method.",
+        "Expected value 'ABC University' exactly matches the instruction requirement.",
+        "Postconfig correctly closes Thunderbird before reading prefs.js, ensuring preferences are flushed to disk.",
+        "Single instruction requirement is fully covered by the single evaluator check — complete coverage.",
+        "Metric correctly handles null result (returns 0.0), addressing the static warning about type mismatch."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "id": "28cc3b7e-b194-4bc9-8353-d04c0f4d56d2",
+  "new_id": "task_verify_1",
+  "snapshot": "os",
+  "instruction": "Mute all audio output on my desktop system.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/sound-volume.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "pactl list sinks | grep 'Mute:' | head -n 1 | awk '{print $2}'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "yes\n"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires muting the system sound. Evaluator uses existing exact_match metric with vm_command_line getter to check PulseAudio mute status is 'yes\\n'. Removed 'pulseaudio --start' to avoid restarting PulseAudio during evaluation. Checks actual mute toggle state (not volume level) since mute and volume are separate in PulseAudio. No custom functions needed - reusing official evaluator components.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Correct verification approach: Command checks PulseAudio mute status using 'pactl list sinks | grep \"Mute:\"' which correctly verifies the mute toggle state, not volume level.",
+        "Proper data extraction: Uses awk to extract the mute status value (yes/no) and compares against expected 'yes\\n', which is the correct format for muted audio.",
+        "Semantic match with instruction: Instruction says 'mute the system sound completely' and evaluator verifies mute=yes, directly addressing the requirement.",
+        "Minor consideration: Checks only the first sink (head -n 1), which is appropriate for most desktop systems where the first sink is typically the default audio output."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could check all sinks instead of just the first one by removing 'head -n 1' and verifying all outputs are 'yes', though this may be overly strict for typical desktop use cases."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "28cc3b7e-b194-4bc9-8353-d04c0f4d56d2_aug_11_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

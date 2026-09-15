@@ -1,0 +1,105 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "Filter men's large-size long-sleeve shirts with at least 20% discount.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "long_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "L",
+          "Price_discount_range": "20_PERCENT_ off & more",
+          "long_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task variation: Men's long-sleeve shirts with large size and 20% discount filter. Uses existing url_path_parse getter and check_direct_json_object metric. Expected values match Macy's URL parameter format for men's clothing, shirts category, size L, 20% discount range, and long sleeve style.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/tmp_funcs/2888b4e6-5b47-4b57-8bf5-c73827890774_task_verify_7"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Getter function 'get_macys_product_url_parse' (chrome.py:2499-2558) does NOT extract 'long_sleeve' field but expected values require 'long_sleeve: true'",
+        "Getter only creates 'short_sleeve' field (chrome.py:2545) from URL path or Sleeve_length parameter - there is NO code to create 'long_sleeve' field anywhere in the function",
+        "Metric 'check_direct_json_object' (general.py:382-481) will compare expected.long_sleeve=true against result.long_sleeve, but result will not have this key, causing comparison to fail (line 436-438 returns 0.0 when expected != actual)",
+        "Instruction coverage failure: Cannot verify 'long-sleeve' requirement explicitly stated in instruction 'Filter men's large-size long-sleeve shirts'",
+        "Partial success only: mens_clothing, shirts, Men_regular_size_t=L, and Price_discount_range can be verified, but the critical 'long-sleeve' requirement cannot be checked"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix Option 1 (Modify Getter): Add 'long_sleeve' extraction logic in get_macys_product_url_parse after line 2545: 'result[\"long_sleeve\"] = True if \"long-sleeve\" in path or (\"Sleeve_length\" in key_value_json and key_value_json[\"Sleeve_length\"] in [\"long-sleeve\", \"Long Sleeve\"]) else None'",
+        "Fix Option 2 (Change Expected): Replace expected 'long_sleeve: true' with 'short_sleeve: false' since getter already extracts short_sleeve - this uses inverse logic to verify long sleeves",
+        "Fix Option 3 (Add Inference Logic): In getter, add logic after line 2545: 'if result.get(\"short_sleeve\") is None and result.get(\"shirts\") is True: result[\"long_sleeve\"] = True' (assumes binary choice: if not short then long)",
+        "Fix Option 4 (Simplify Task): Remove 'long-sleeve' from both instruction and expected values entirely - change instruction to 'Filter men's large-size shirts with at least 20% discount' and remove 'long_sleeve' key from expected dict"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "id": "68a25bd4-59c7-4f4d-975e-da0c8509c848",
+  "new_id": "task_verify_51",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Open the spreadsheet on Desktop. Find the earliest publication date among all papers and enter it in cell F3. Save the file.",
+  "source": "",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/68a25bd4-59c7-4f4d-975e-da0c8509c848/rsc-ebook-collection-2023.xlsx",
+            "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_date_match__f38b7ed1",
+    "result": {
+      "type": "xlsx_earliest_date__f38b7ed1",
+      "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx",
+      "sheet": 0,
+      "cell": "F3"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": "2017/6/12"
+      }
+    }
+  },
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires finding the earliest date from column C. Dates are: 2018/10/11, 2019/9/23, 2017/6/12 (earliest), 2018/4/20, 2018/2/15. Answer: 2017/6/12 (Attention Is All You Need paper).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/68a25bd4-59c7-4f4d-975e-da0c8509c848_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/68a25bd4-59c7-4f4d-975e-da0c8509c848_task_verify_3/getters/date_helper.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/68a25bd4-59c7-4f4d-975e-da0c8509c848_task_verify_3/metrics/date.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction requires 'finding the earliest date' but evaluator only checks if cell F3 contains '2017/6/12'",
+        "No verification of source data: Evaluator does not verify that user actually examined the publication dates in column C",
+        "Hardcoded answer vulnerability: User could simply type '2017/6/12' into cell F3 without searching the data, and the evaluator would pass",
+        "Unused verification function: get_xlsx_earliest_date__f38b7ed1 exists in date_helper.py but is not used to verify the source data",
+        "Date format brittleness: Metric uses strict string comparison, so equivalent dates in different formats (e.g., '2017-6-12' vs '2017/6/12') would fail"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second verification step to independently compute the earliest date from column C using get_xlsx_earliest_date__f38b7ed1",
+        "Compare both: (1) cell F3 value matches expected, AND (2) the earliest date from column C matches expected",
+        "Consider using date parsing in the metric to handle different date formats (e.g., datetime.strptime with multiple format attempts)",
+        "Alternative: Use a more flexible date comparison that normalizes different date formats before comparing"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "id": "0512bb38-d531-4acf-9e7e-0add90816068",
+  "new_id": "task_verify_44",
+  "snapshot": "vscode",
+  "instruction": "Add the extension package from '/home/user/test.vsix' to Visual Studio Code.",
+  "source": "https://download.microsoft.com/download/8/A/4/8A48E46A-C355-4E5C-8417-E6ACD8A207D4/VisualStudioCode-TipsAndTricks-Vol.1.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/0512bb38-d531-4acf-9e7e-0add90816068/test.vsix",
+            "path": "/home/user/test.vsix"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "is_extension_installed",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "code",
+        "--list-extensions",
+        "|",
+        "grep",
+        "undefined_publisher.test"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contain",
+        "expected": "undefined_publisher.test"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Different phrasing: 'Add the extension package' instead of 'install'. Same verification logic.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical command syntax error: The command array ['code', '--list-extensions', '|', 'grep', 'undefined_publisher.test'] will fail at runtime because pipe '|' and 'grep' are treated as literal arguments to 'code' command, not as shell operators",
+        "The getter get_vm_command_line requires 'shell': true in config to execute shell pipelines, but this parameter is missing from the evaluator config",
+        "Without proper shell execution, the command will not pipe output to grep, causing the verification to fail even if the extension is correctly installed",
+        "The semantic intent is correct (check if extension is in the installed list), but the implementation will not work due to incorrect command syntax"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option 1: Add 'shell': true to the result config and format command as a single string: {\"type\": \"vm_command_line\", \"command\": \"code --list-extensions | grep undefined_publisher.test\", \"shell\": true}",
+        "Option 2: Simplify to use only 'code --list-extensions' command without grep: {\"type\": \"vm_command_line\", \"command\": [\"code\", \"--list-extensions\"]} and rely on the 'contain' metric to check if 'undefined_publisher.test' is in the output",
+        "Recommended: Use Option 2 as it's simpler and doesn't require shell execution, reducing potential security and portability issues"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

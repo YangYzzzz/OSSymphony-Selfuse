@@ -1,0 +1,96 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "030eeff7-b492-4218-b312-701ec99ee0cc_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default search engine to Bing.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Bing"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_030eeff7-b492-4218-b312-701ec99ee0cc_sid_1488307",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully enabled Do Not Track in Chrome by navigating Settings > Privacy and Security > Third-party cookies, toggling the DNT option, and confirming the dialog. Completed in 7 turns.",
+    "capability_extraction": "Can open Chrome menu, navigate to Settings, find specific settings sections, toggle switches, and confirm dialog prompts.",
+    "task_rationale": "Tests Chrome settings navigation in a different section (Search engine). Requires finding and using a dropdown selector rather than a toggle, adding variety to the interaction pattern.",
+    "explanation": "Task requires navigating to Chrome Search engine settings and changing the default search engine to Bing. Evaluator uses official default_search_engine getter and exact_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "search_engine_change": "1.0 - Default search engine set to Bing"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'default_search_engine' correctly reads Chrome's Preferences JSON file and extracts the search engine short_name, which is the right state for verifying the instruction.",
+        "Metric 'exact_match' correctly compares the extracted search engine name against the expected value 'Bing' using strict equality, appropriate for this task.",
+        "Expected value 'Bing' matches Chrome's internal short_name for the Bing search engine.",
+        "Postconfig correctly kills and relaunches Chrome to ensure the Preferences file is written to disk and up-to-date before the getter reads it.",
+        "Instruction has a single requirement (change default search engine to Bing) and the evaluator fully covers it."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

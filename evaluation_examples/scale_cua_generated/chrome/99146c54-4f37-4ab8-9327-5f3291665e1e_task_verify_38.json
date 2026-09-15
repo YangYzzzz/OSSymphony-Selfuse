@@ -1,0 +1,101 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Please enable Enhanced Protection in Chrome's Safe Browsing settings to get extra protection against dangerous websites, downloads, and extensions.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_enhanced_safety_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling Enhanced Safe Browsing in Chrome security settings. Uses existing get_enable_enhanced_safety_browsing getter which reads Chrome Preferences and checks safebrowsing.enhanced field. Returns 'true' when enhanced protection is enabled.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing get_enable_enhanced_safety_browsing getter from chrome.py line 1296, which checks data.get('safebrowsing', {}).get('enhanced', {}) and returns 'true' when enabled.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome Preferences file and checks safebrowsing.enhanced field - correct state extraction for Enhanced Protection setting",
+        "Metric exact_match appropriately compares string 'true' vs 'true' for boolean verification",
+        "Postconfig correctly restarts Chrome to ensure Preferences file is flushed to disk with new settings",
+        "Expected value 'true' correctly matches what getter returns when enhanced protection is enabled",
+        "Evaluator will correctly verify the instruction requirement in typical runtime scenarios"
+      ],
+      "llm_judge_fix_suggestions": [
+        "chrome.py:1322 - Getter uses wrong default type: .get('enhanced', {}) should be .get('enhanced', False). Current code works by accident because empty dict {} is falsy, but fragile if key exists with non-boolean falsy values like 0, '', []",
+        "chrome.py:1326 - Error handler returns 'Google' instead of 'false' or None. On file read errors, this causes incorrect verification failure (exact_match 'Google' != 'true')",
+        "Consider adding validation that enhanced field is actually a boolean type to handle malformed Preferences files more robustly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

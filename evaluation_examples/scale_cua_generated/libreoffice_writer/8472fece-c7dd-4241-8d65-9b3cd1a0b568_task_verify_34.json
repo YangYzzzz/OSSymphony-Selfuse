@@ -1,0 +1,101 @@
+{
+  "id": "8472fece-c7dd-4241-8d65-9b3cd1a0b568",
+  "new_id": "task_verify_34",
+  "snapshot": "libreoffice_writer",
+  "instruction": "I need to mark words by their endings. Can you underline all words that end with the letters 't', 'w', or 'd'? This will help with phonics practice.",
+  "source": "https://stackoverflow.com/questions/37259827/libreoffice-writer-how-to-set-different-colors-to-each-letter",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/8472fece-c7dd-4241-8d65-9b3cd1a0b568/Dolch_Sight_Words_Primer.docx",
+            "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Dolch_Sight_Words_Primer.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_words_ending_ed_underline__e97799f0",
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Dolch_Sight_Words_Primer.docx",
+      "dest": "Dolch_Sight_Words_Primer.docx"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires underlining words ending with 't', 'w', or 'd'. Words ending with t: want, eat, at, out, that, get, went, must, but. Words ending with w: now, new. Words ending with d: good, did, and, under. Evaluator checks underline formatting.",
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8472fece-c7dd-4241-8d65-9b3cd1a0b568_task_verify_2/metrics/docs.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical semantic error: Metric operates at run-level granularity instead of word-level granularity. It checks run.text.strip() as a single unit, but runs can contain multiple words (e.g., 'want to eat'). This causes incorrect verification when multiple words share the same formatting run.",
+        "Incorrect positive verification: If a run contains 'want to eat', the function checks if the entire run text ends with 't'/'w'/'d' (it does - 't'), then expects the ENTIRE run to be underlined. But the instruction only requires underlining 'want' and 'eat', not 'to'.",
+        "Incorrect negative verification: The function fails if ANY word not ending with target letters is underlined. This is too strict - the instruction asks to underline specific words but doesn't explicitly forbid underlining others.",
+        "Missing word tokenization: The metric should split run text into individual words, check each word's ending independently, and verify formatting per word, not per run.",
+        "No partial credit: Returns binary 0.0/1.0 with no partial scoring for multi-word tasks. For a document with multiple target words (want, eat, at, out, that, get, went, must, but, now, new, good, did, and, under = 15 words), partial credit would be more appropriate."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Tokenize run text into individual words: Split run.text by whitespace to get individual words, then check each word's ending separately.",
+        "Track word-level formatting: For each word, determine if it should be underlined based on its ending, then verify the formatting. This may require analyzing character-level formatting or using python-docx's Font properties more carefully.",
+        "Implement partial credit scoring: Count correctly underlined target words and return score = (correct_count / total_target_words).",
+        "Remove overly strict negative check: Either remove the check that fails if non-target words are underlined, or make it a warning/partial deduction rather than complete failure.",
+        "Consider document structure: Be aware that .docx formatting can split words across runs or group multiple words in one run. The logic needs to handle both cases correctly."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "trajectory": "trajectories/",
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

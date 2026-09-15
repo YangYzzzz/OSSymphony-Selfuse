@@ -1,0 +1,111 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_97",
+  "snapshot": "thunderbird",
+  "instruction": "Set the minimum chunk size threshold to 200000 bytes for IMAP operations.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.imap.min_chunk_size_threshold": {
+            "method": "eq",
+            "ref": 200000
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing min chunk size threshold from 159744 to 200000 bytes. The evaluator checks if mail.imap.min_chunk_size_threshold is set to 200000. Original profile has min_chunk_size_threshold=159744, so this requires modification. Uses existing check_thunderbird_prefs metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vm_file fetches the correct Thunderbird prefs.js file from the VM",
+        "Metric logic is correct: check_thunderbird_prefs correctly parses prefs.js and checks if mail.imap.min_chunk_size_threshold equals 200000",
+        "Data flow is correct: prefs.js contains IMAP settings, metric extracts and compares the correct preference key",
+        "Expected value is correct: 200000 bytes matches the instruction requirement",
+        "Postconfig is appropriate: closes Thunderbird window before verification to ensure prefs.js is saved",
+        "Complete coverage: the single requirement in the instruction is fully verified",
+        "Edge case handling: metric returns 0.0 if result file is None"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

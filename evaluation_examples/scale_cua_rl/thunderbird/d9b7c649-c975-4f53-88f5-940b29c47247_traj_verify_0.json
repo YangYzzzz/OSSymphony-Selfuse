@@ -1,0 +1,95 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "d9b7c649-c975-4f53-88f5-940b29c47247_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Create a new mail folder named 'Archive' under Local Folders in Thunderbird.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_tb_folder_created__4a5755b15fd8848dbc70d01e3dbb4e89",
+    "result": {
+      "type": "tb_local_folder_list__4a5755b15fd8848dbc70d01e3dbb4e89"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "folder_name": "Archive"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_d9b7c649-c975-4f53-88f5-940b29c47247_sid_1488156",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to the daily folder in Thunderbird and read emails. Then switched to terminal to programmatically extract email data but got stuck trying to find the correct Thunderbird profile directory path. Spent 40+ turns in terminal with wrong paths. Never created the report.xlsx file.",
+    "capability_extraction": "Can navigate Thunderbird folder tree, select and read emails, open context menus, use terminal for shell commands (ls, find, python3)",
+    "failure_analysis": "Model failed because the multi-step task (read emails + extract data + create xlsx) was too complex. Got stuck finding correct Thunderbird profile path (tried 'tq9h5qjs' instead of 't5q2a5hp'). Never progressed to data extraction or file creation.",
+    "task_rationale": "Simplified to a single-step folder creation task. Model demonstrated ability to navigate Thunderbird's folder tree and interact with menus, so creating a new folder is within its demonstrated capability.",
+    "explanation": "Task requires creating a new 'Archive' folder under Local Folders. Evaluator checks if the folder file exists in the Thunderbird Local Folders mail directory by listing files and checking for 'Archive'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_d9b7c649-c975-4f53-88f5-940b29c47247_sid_1488156_traj_verify_0/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_d9b7c649-c975-4f53-88f5-940b29c47247_sid_1488156_traj_verify_0/metrics/thunderbird.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly discovers Thunderbird profile directory and lists files in Mail/Local Folders/ - when Thunderbird creates a folder, it creates an mbox file with that name, so 'Archive' would appear in the ls output.",
+        "Metric correctly handles expected parameter for type='rule' - accesses expected.get('folder_name') directly from the rules dict.",
+        "Metric checks both exact line match and substring match for 'Archive' in the listing, providing robust detection.",
+        "Complete instruction coverage: single requirement (create 'Archive' folder) is fully verified by the evaluator.",
+        "Minor concern: profile discovery uses *.default-release glob which is standard but could miss non-standard profile names. Given the config extracts a known profile tar, this should work."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a broader glob pattern (e.g., *.default*) for profile discovery to handle edge cases where the profile directory doesn't match *.default-release exactly."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

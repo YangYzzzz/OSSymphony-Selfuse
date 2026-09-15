@@ -1,0 +1,102 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "480bcfea-d68f-4aaa-a0a9-2589ef319381_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Enable the Chrome Refresh Themed Realbox flag in Chrome's experimental features.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "ntp-realbox-cr23-theming"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_480bcfea-d68f-4aaa-a0a9-2589ef319381_sid_1488424",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to chrome://flags and searched for 'refresh', 'ChromeRefresh2023', and 'modern'. Found some refresh-related flags when searching 'refresh' but did not find or enable the target flags. Gave up after 11 turns.",
+    "capability_extraction": "Can navigate to chrome://flags, use the search box to filter flags, type URLs in address bar, interact with Chrome UI elements",
+    "failure_analysis": "The target flags chrome-refresh-2023 and chrome-webui-refresh-2023 do not exist in Chrome 130. The model searched with correct intent but wrong flag names. It found related flags (ntp-realbox-cr23-theming, pdf-cr23) but did not attempt to change any dropdown values.",
+    "task_rationale": "Simplified to enabling a single flag (ntp-realbox-cr23-theming) that was actually visible in the trajectory when model searched 'refresh'. Tests the same flag-modification capability at reduced complexity.",
+    "explanation": "Task requires navigating to chrome://flags, searching for the Chrome Refresh Themed Realbox flag, and enabling it. Evaluator restarts Chrome and checks enabled experiments include ntp-realbox-cr23-theming.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "flag_enabled": "1.0 - ntp-realbox-cr23-theming flag is enabled"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome's Local State file to extract browser.enabled_labs_experiments list, which is the right state for verifying enabled flags.",
+        "Metric check_enabled_experiments correctly receives the rules dict directly (type='rule' handling is correct) and accesses rule['type'] and rule['names'].",
+        "Expected flag name 'ntp-realbox-cr23-theming' matches the flag observed in the trajectory, confirming it exists in this Chrome version.",
+        "Postconfig appropriately kills and restarts Chrome to ensure Local State is flushed to disk before the getter reads it.",
+        "Minor concern: check_enabled_experiments uses exact list equality (==) rather than a subset/contains check. If any other experiments are pre-enabled in the VM snapshot, the evaluator would incorrectly return 0.0 even if the target flag IS enabled. This is fragile but likely works on a clean snapshot."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a subset check (all names in enabled list) instead of exact equality, to avoid false negatives when other experiments are pre-enabled. However, since this is an existing OSWorld metric function, this is a known design choice and may be intentional for the clean VM context."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

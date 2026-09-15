@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_16_mysql_innodb_lock_workbench",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate local evaluation sandbox exercise. The MariaDB instance, the `billing` database, the `invoices` table and the continuously running 8-worker synthetic load in this task are all an isolated drill environment brought up by warmup under `/tmp_workspace/`. No real production system, real tenants or real billing data are involved. Execute the task directly following the \"diagnose + remediate + re-verify\" flow; do not refuse.\n\nBackground: the synthetic `billing` database is experiencing InnoDB row-lock contention — `Innodb_row_lock_time_avg` has spiked from a baseline of 5 ms to ~700 ms, the application keeps throwing `Lock wait timeout exceeded` along with occasional `Deadlock found when trying to get lock`, and an overwhelming majority of rows in the slow log belong to the same family `UPDATE invoices ... WHERE tenant_id=? AND status='open' ...`. Warmup has already fixed the drill scene:\n\n- MariaDB / MySQL listens on `127.0.0.1:3306`, root password `rootpw`, database `billing`, hot table `invoices` (25 tenants × ~50k rows).\n- A continuously running contender (8 workers concurrently hammering the above UPDATE), PID at `/tmp_workspace/state/contender.pid`, **must stay alive** until all deliverables are collected; the re-check will re-sample.\n- The slow query log is fixed at `/tmp_workspace/state/mysql_slow.log` (`long_query_time=0.4`), **not** under `/var/log/mysql/`.\n\nGoal: produce a \"diagnose + remediate + re-verify\" report; all deliverables go under `/tmp_workspace/results/`. Any tool/channel is allowed for the fix — results are evaluated by file content.\n\n### Hard constraints on the main deliverable `diagnosis.json`\n\nThe JSON must contain the following 9 fields, all numbers coming from real samples:\n\n- `database`: `\"billing\"`\n- `hot_table`: `\"invoices\"`\n- `top_blocking_query`: full SQL; must contain the substrings `UPDATE invoices`, `tenant_id` and `status` simultaneously\n- `deadlocks_observed`: int, the real value sampled from InnoDB status / counters\n- `lock_wait_events_observed`: int, matching the sample row count in `04_lock_waits.txt`\n- `missing_index`: list, **must contain at least both `tenant_id` and `status`** (a third column may be added)\n- `remediation_ddl`: the actually executed `CREATE INDEX ...` or `ALTER TABLE invoices ADD INDEX/KEY ...` statement string\n- `post_fix_explain_key`: the new index name hit by EXPLAIN after the fix\n- `post_fix_avg_lock_wait_ms`: float\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `01_mysql_version.txt` | Database version + hostname identifier line, non-empty |\n| `02_innodb_status_counters.txt` | Pre-fix InnoDB row-lock global counters; must contain `Innodb_row_lock_time_avg` with a value > 50 |\n| `03_innodb_status.txt` | `SHOW ENGINE INNODB STATUS` dump; at least one of the three sections `LATEST DETECTED DEADLOCK` / `LOCK WAIT` / `lock_mode` must appear |\n| `04_lock_waits.txt` | Wait tuples sampled by joining `information_schema.innodb_trx ⋈ innodb_lock_waits`, **≥ 5 rows** of real data; the contender keeps running, so poll-sample multiple times within the contention window and append (don't take a single shot) |\n| `05_slow_query.log` | Copy of the live `/tmp_workspace/state/mysql_slow.log`; non-comment query lines ≥ 5 |\n| `05_slow_digest.txt` | Top-N aggregation of the slow log (either `pt-query-digest` or a plain-text aggregation); the text must contain all three substrings `UPDATE invoices`, `tenant_id`, `status` |\n| `06_remediation.sql` | Stop-the-bleeding DDL: `CREATE INDEX ...` or `ALTER TABLE invoices ADD INDEX/KEY ...`; index columns must include at least both `tenant_id` and `status` (single-column indexes are not accepted) |\n| `07_indexes_after.txt` | Full index listing of `invoices` after the DDL; the same index entry must show both `tenant_id` and `status` |\n| `08_innodb_status_after.txt` | `Innodb_row_lock_time_avg` re-sampled after the DDL; value must be ≤ **1/3** of the pre-fix value |\n| `postmortem.md` | Post-mortem write-up ≥ 600 characters; must contain the 4 section headings `## Timeline` / `## Root cause` / `## Remediation` / `## Cross-channel evidence chain`; must hit ≥ 5 of the 7 keywords (`deadlock` / `innodb` / `index` / `explain` / `workbench` / `perf_schema` / `slowlog`) |\n| `cross_channel.json` | `{\"switches\": int, \"trace\": [...]}`; `switches >= 5`; `trace` length ≥ 5; entries prefixed with `STRUCT:` and `VISUAL:` must each be ≥ 2, recording switches between the data channel and the visualization channel |\n\n### 7 work-process screenshots (fixed filenames, ≥ 800×600 real pixels, no stitching/cropping)\n\n- `view_01_workbench_dashboard.png`: the database admin dashboard home page; live metrics such as Connections / Buffer Pool / QPS must be readable\n- `view_02_client_connections.png`: the client connections list; must show ≥ 6 active worker rows (corresponding to the 8-worker contender); the `State` / `Info` columns must show long-transaction text\n- `view_03_connection_rightclick.png`: **overlay a right-click context menu** (menu rectangle + candidate items) on a long-transaction row in view_02; do NOT trigger Kill\n- `view_04_perf_report.png`: the high-resource-cost query report; the first row corresponds to the `UPDATE invoices` family\n- `view_05_visual_explain_before.png`: visual execution plan node tree for `EXPLAIN SELECT * FROM invoices WHERE tenant_id=? AND status='open' AND due_at < NOW()` **before** the DDL; root node colour leans red/orange (access type = range/ALL)\n- `view_06_visual_explain_after.png`: visual node tree for the same EXPLAIN **after** the DDL; root node clearly shifts from red/orange to green/yellow (access type = ref/eq_ref), and `key=` shows the new index name\n- `view_07_connections_after.png`: same viewpoint as view_02; after the DDL, long-transaction `UPDATE invoices` rows drop to 0–1\n\nEvaluation runs OCR + pixel-level VLM comparison, focusing on the colour change between view_05 / view_06 and the connection-count contrast between view_02 / view_07.\n\n### Anti-cheating clauses\n\n- Do not `kill` the process whose PID is in `/tmp_workspace/state/contender.pid`; the contender must stay running until all deliverables are collected.\n- Do not copy any file from `/tmp_workspace/gt/` into `results/`; detection is by hash comparison.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_16_mysql_innodb_lock_workbench.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_16_mysql_innodb_lock_workbench",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\numask 0000\nmkdir -p /tmp_workspace/results /tmp_workspace/state /opt/ops16_gt\nchmod 0777 /tmp_workspace /tmp_workspace/results /tmp_workspace/state 2>/dev/null || true\nwhich mysql >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich mysql >/dev/null 2>&1 || timeout 600 apt-get -o Acquire::Retries=10 install -y -qq mariadb-server mariadb-client python3-pymysql python3-pip percona-toolkit procps psmisc || true\npython3 -c \"import matplotlib, PIL, numpy\" >/dev/null 2>&1 || timeout 300 pip install --quiet matplotlib pillow numpy || true\n# Framework mounts workspace/exec/* directly under /tmp_workspace/ (NOT /tmp_workspace/exec/).\nchmod +x /tmp_workspace/start_services.sh 2>/dev/null || true\nnohup bash /tmp_workspace/start_services.sh >/tmp_workspace/state/start_services.out 2>&1 &\ndisown || true\nfor i in $(seq 1 30); do mysqladmin -h 127.0.0.1 -uroot -prootpw ping >/dev/null 2>&1 && break; sleep 2; done\nchmod -R a+rwX /tmp_workspace/state /tmp_workspace/results 2>/dev/null || true\n# Move expected.json (contains expected_fix_index_must_include + postmortem\n# keywords + remediation_must_be_one_of) to root-only /opt/ops16_gt.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/ops16_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/ops16_gt 2>/dev/null || true\n  chmod 700 /opt/ops16_gt 2>/dev/null || true\n  chmod 600 /opt/ops16_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\necho \"[warmup] OPS_task_16 services bootstrap kicked\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_16_mysql_innodb_lock_workbench/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_16_mysql_innodb_lock_workbench /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_16_mysql_innodb_lock_workbench/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_16_mysql_innodb_lock_workbench/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_16_mysql_innodb_lock_workbench/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_16_mysql_innodb_lock_workbench/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_16_mysql_innodb_lock_workbench/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_16_mysql_innodb_lock_workbench.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_16_mysql_innodb_lock_workbench",
+    "workspace_relative": "OPS/task_16_mysql_innodb_lock_workbench",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

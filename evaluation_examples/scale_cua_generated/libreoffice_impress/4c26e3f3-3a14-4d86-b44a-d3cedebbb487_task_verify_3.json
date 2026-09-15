@@ -1,0 +1,84 @@
+{
+  "id": "4c26e3f3-3a14-4d86-b44a-d3cedebbb487",
+  "new_id": "task_verify_3",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Edit the image from slide two in GIMP to boost its contrast, then save the result as 'background_contrast.png' on the Desktop.",
+  "source": "https://www.quora.com/How-do-I-edit-a-photo-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4c26e3f3-3a14-4d86-b44a-d3cedebbb487/PPT-Template_widescreen.pptx",
+            "path": "/home/user/Desktop/PPT-Template_widescreen.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/PPT-Template_widescreen.pptx"
+      }
+    },
+    {
+      "type": "python",
+      "parameters": {
+        "code": "import uno\nfrom com.sun.star.beans import PropertyValue\nimport time\n\n# Connect to LibreOffice\nlocalContext = uno.getComponentContext()\nresolver = localContext.ServiceManager.createInstanceWithContext('com.sun.star.bridge.UnoUrlResolver', localContext)\nctx = resolver.resolve('uno:socket,host=localhost,port=2002;urp;StarOffice.ComponentContext')\nsmgr = ctx.ServiceManager\ndesktop = smgr.createInstanceWithContext('com.sun.star.frame.Desktop', ctx)\n\n# Get the active presentation\ndoc = desktop.getCurrentComponent()\nif doc is None:\n    raise Exception('No presentation is open')\n\n# Get slide 2 (index 1)\nslides = doc.getDrawPages()\nif slides.getCount() < 2:\n    raise Exception('Presentation does not have at least 2 slides')\n\nslide = slides.getByIndex(1)  # Slide 2 (0-indexed)\n\n# Find the image on slide 2\nimage_shape = None\nfor i in range(slide.getCount()):\n    shape = slide.getByIndex(i)\n    if shape.getShapeType() == 'com.sun.star.drawing.GraphicObjectShape':\n        image_shape = shape\n        break\n\nif image_shape is None:\n    raise Exception('No image found on slide 2')\n\n# Export the image\nfrom com.sun.star.beans import PropertyValue\nimport os\n\n# Get the graphic from the shape\ngraphic = image_shape.Graphic\n\n# Create GraphicProvider to export the image\ngraphic_provider = smgr.createInstance('com.sun.star.graphic.GraphicProvider')\n\n# Set up export properties\nprops = (\n    PropertyValue('URL', 0, 'file:///tmp/reference_slide2.png', 0),\n    PropertyValue('MimeType', 0, 'image/png', 0),\n)\n\n# Export the graphic\ngraphic_provider.storeGraphic(graphic, props)\n\nprint('Slide 2 image extracted to /tmp/reference_slide2.png')"
+      }
+    }
+  ],
+  "related_apps": [
+    "gimp",
+    "libreoffice_impress",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_contrast_increase__8275ad9408dba3ad72f8254dbdbe4243",
+    "result": {
+      "type": "ppt_slide_image__8275ad9408dba3ad72f8254dbdbe4243",
+      "path": "/home/user/Desktop/background_contrast.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "reference_path": "/tmp/reference_slide2.png"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting image from slide 2, increasing contrast in GIMP, and saving as background_contrast.png. Evaluator checks that contrast (standard deviation of pixel values) was increased while structure is preserved using SSIM comparison with threshold 0.65. The reference image is the original slide 2 image.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4c26e3f3-3a14-4d86-b44a-d3cedebbb487_task_verify_3/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/4c26e3f3-3a14-4d86-b44a-d3cedebbb487_task_verify_3/metrics/gimp.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both key requirements: contrast increase (using standard deviation of pixel values) and structure preservation (using SSIM with threshold 0.65)",
+        "Reference image is properly extracted in preconfig step (config line 26-30) to /tmp/reference_slide2.png using LibreOffice UNO API",
+        "Data flow is correct: preconfig extracts original slide 2 image → user enhances in GIMP → getter retrieves enhanced image from Desktop → metric compares contrast and structure",
+        "Metric logic is semantically sound: calculates contrast as std(pixels), checks increase, and verifies structural similarity to ensure the same image was enhanced",
+        "Expected value correctly points to /tmp/reference_slide2.png which is inside VM and populated by preconfig"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider renaming getter function to better reflect that it retrieves the enhanced output file rather than extracting from presentation (e.g., 'get_desktop_enhanced_image')",
+        "Minor: Could add explicit file existence validation in getter before attempting to read, though current try/except in metric handles missing files"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "4c26e3f3-3a14-4d86-b44a-d3cedebbb487_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

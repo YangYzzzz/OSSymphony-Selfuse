@@ -1,0 +1,87 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_25",
+  "snapshot": "os",
+  "instruction": "Move all files changed in the previous 15 days from '/tmp/test_files/data' to '/tmp/test_files/backup'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /tmp/test_files/data /tmp/test_files/backup && touch /tmp/test_files/data/recent1.txt /tmp/test_files/data/recent2.log /tmp/test_files/data/recent3.dat /tmp/test_files/data/old1.txt /tmp/test_files/data/old2.txt && find /tmp/test_files/data -name 'recent*' -exec touch -d '10 days ago' {} \\; && find /tmp/test_files/data -name 'old*' -exec touch -d '25 days ago' {} \\;",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'BASE_DIR=\"/tmp/test_files\"; CORRECT_FILES_COPIED=false; backup_count=$(find \"$BASE_DIR/backup\" -type f 2>/dev/null | wc -l); if [ \"$backup_count\" -eq 3 ]; then backup_files=$(ls \"$BASE_DIR/backup\" 2>/dev/null); if [[ $backup_files == *\"recent1.txt\"* && $backup_files == *\"recent2.log\"* && $backup_files == *\"recent3.dat\"* && $backup_files != *\"old\"* ]]; then CORRECT_FILES_COPIED=true; fi; fi; ORIGINAL_FILES_KEPT=false; data_count=$(find \"$BASE_DIR/data\" -type f 2>/dev/null | wc -l); if [ \"$data_count\" -eq 5 ]; then ORIGINAL_FILES_KEPT=true; fi; if $CORRECT_FILES_COPIED && $ORIGINAL_FILES_KEPT; then echo \"Success: The task was completed correctly.\"; else echo \"Failure: The task was not completed correctly.\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation that requires copying files modified within last 15 days to backup directory. Setup creates data directory with recent* files (modified 10 days ago) and old* files (modified 25 days ago). Evaluator verifies recent files are copied to /backup and all original files remain in /data directory (copy operation, not move).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification_details": "The evaluation checks: (1) exactly 3 files exist in /tmp/test_files/backup, (2) backup contains recent1.txt, recent2.log, and recent3.dat by name, (3) backup does NOT contain any 'old' files, (4) exactly 5 original files remain in /tmp/test_files/data. This ensures the agent correctly performed a copy operation (not move) and only copied files modified within the last 15 days.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies file identity: Checks that backup contains exactly recent1.txt, recent2.log, and recent3.dat by name (line 41: backup_files == *'recent1.txt'* && ... && *'recent3.dat'*)",
+        "Negative verification present: Checks that backup does NOT contain files with 'old' in the name (line 41: backup_files != *'old'*), ensuring old1.txt and old2.txt are excluded",
+        "Correct file count verification: Uses '== 3' for backup_count (not >=), ensuring exactly 3 files were copied",
+        "Copy vs move verification: Checks that all 5 original files remain in data directory (data_count == 5), confirming it was a copy operation not a move",
+        "Verification approach: Uses file naming pattern (recent* vs old*) that aligns with the setup's mtime characteristics (recent* modified 10 days ago, old* modified 25 days ago). While not directly checking mtime, this effectively verifies the temporal requirement given the controlled setup",
+        "Minor limitation: Relies on file naming convention rather than actual mtime verification. If setup changes file names but keeps mtime pattern, this evaluator would need adjustment. However, for this specific task setup, the approach is valid"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding explicit mtime verification for robustness: Instead of relying solely on file naming, could add a check that verifies files in backup have mtime within 15 days: find $BASE_DIR/backup -type f -mtime -15 | wc -l should equal 3",
+        "Optional enhancement: Add verification that old files are NOT in backup by explicit name check (old1.txt, old2.txt) rather than just pattern matching *'old'*"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "37887e8c-da15-4192-923c-08fa390a176d_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

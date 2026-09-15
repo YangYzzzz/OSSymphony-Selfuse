@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_16_kmahjongg_pair_solver",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: `/tmp_workspace/layouts/broken_dragon.layout` is a KMahjongg `.layout`\ntext layout. The layout uses a `[KMahjonggLayout]` header and multi-layer `E...=` grids,\nwith the characters `1/2/3/4` denoting the four corners of a single 2×2 tile footprint.\nPlayer feedback indicates that this dragon-shaped layout has structural problems including\norphaned corner codes, an odd tile count, and overlapping tiles on adjacent layers,\nwhich cause dealing or pair-matching to misbehave. The goal is to repair the layout\nstructure, generate a reproducible deal using the fixed game number `424242`, recognise\nthe visible tile faces, plan at least 12 legal pair removals, and document the result\nthrough progress images and KConfig state forensics.\n\nProduce the following files, preserving the field names and file names:\n\n- `/tmp_workspace/results/before/broken_dragon.layout`: an unmodified copy of the\n  original layout, used for diff record-keeping.\n- `/tmp_workspace/results/parse_before.json`: a JSON object containing `header`, `tiles`,\n  `tile_count`, and `anomalies`. `header` includes `Depth,Width,Height`; each `tiles`\n  entry contains `id,x,y,z`; `anomalies` contains `orphan_corners`, `tile_count_odd`,\n  and `stacked_collisions`, and before the repair all three anomaly categories should\n  carry evidence.\n- `/tmp_workspace/results/bugs.json`: a JSON object containing three entries:\n  `bug_orphan_corner` (with `detected,examples`),\n  `bug_odd_tile_count` (with `detected,tile_count`), and\n  `bug_stacked_collision` (with `detected,positions`). `examples` and `positions` must\n  each contain at least one element.\n- `/tmp_workspace/layouts/fixed_dragon.layout`: the repaired layout; it should retain\n  the `[KMahjonggLayout]` header and the `Depth/Width/Height` lines, and after parsing\n  `tile_count` should be a positive even number with both `orphan_corners` and\n  `stacked_collisions` empty.\n- `/tmp_workspace/results/view_kmahjongg_menu.png`: image evidence showing the\n  KMahjongg main window or its menus, with text such as `game`, `move`, `view`,\n  `settings`, `kmahjongg`, `new`, or `help` legible.\n- `/tmp_workspace/results/view_broken_deal.png`: image evidence showing the broken\n  layout failing to deal, an error prompt, or an anomalous deal state with the HUD visible.\n- `/tmp_workspace/results/view_fixed_deal.png`: image evidence showing the fixed layout\n  in a normal deal under game number `424242`, with text such as `tiles`, `time`,\n  `matches`, `layout`, `kmahjongg`, or `00:` legible.\n- `/tmp_workspace/results/tile_faces.json`: a JSON object containing `tiles`,\n  `clusters_total`, and `face_up_count`. Each `tiles` entry contains\n  `id,x,y,z,face_up,face_cluster,phash`; `clusters_total` should fall between 18 and 50,\n  `face_up_count` should be at least 60, and at least 60 entries should carry a\n  sufficiently long `phash` string.\n- `/tmp_workspace/results/plan.json`: a JSON object containing `pairs`, `pairs_planned`,\n  and `solver_nodes_visited`. Each `pairs` entry contains\n  `step,left_id,right_id,left_xy,right_xy`; `pairs_planned` should be at least 12, and\n  the two tiles in each pair should come from the same `face_cluster`.\n- `/tmp_workspace/results/view_progress_1.png`, `view_progress_2.png`, `view_progress_3.png`:\n  image evidence showing continuous progress after pairs are removed per the plan, with\n  the tile count decreasing step by step.\n- `/tmp_workspace/results/view_after_play.png`: image evidence showing the board state\n  after at least 12 pairs have been removed.\n- `/tmp_workspace/results/kconfig_state.json`: a JSON object containing\n  `kmahjonggrc_path`, `general`, `highscore_files`, `tiles_removed_observed`, and\n  `savegame_present`. `general` contains `Background,Tileset,Layout,GameNumber`, where\n  `Layout` includes `fixed_dragon` and `GameNumber` is `424242`.\n- `/tmp_workspace/results/parse_after.json`: a JSON object whose schema matches\n  `parse_before.json`; `tile_count` is even, `anomalies.orphan_corners == []`, and\n  `anomalies.stacked_collisions == []`.\n- `/tmp_workspace/results/diff.txt`: the textual diff between the original layout and\n  `fixed_dragon.layout`, with a line count between 6 and 200.\n- `/tmp_workspace/results/report.json`: a JSON object containing `bugs_found`,\n  `fixes_applied`, `tile_count_before`, `tile_count_after`, `face_clusters`,\n  `pairs_planned`, `pairs_played`, and `screenshots`; `screenshots` lists the file names\n  of the menu, broken/fixed deal, three progress images, and after-play image.\n- `/tmp_workspace/results/summary.md`: at least 8 lines of Markdown summarising the\n  layout parsing, image-based tile-face recognition, planned pair execution, and\n  KConfig forensics evidence sources.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_16_kmahjongg_pair_solver.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_16_kmahjongg_pair_solver",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec\nwhich tesseract || timeout 600 bash -c '(apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --no-install-recommends imagemagick tesseract-ocr python3-pil python3-pip)' || true\npip install -q pillow numpy pytesseract imagehash 2>/dev/null || pip3 install -q --break-system-packages pillow numpy pytesseract imagehash 2>/dev/null || true",
+        "timeout": 5400
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_16_kmahjongg_pair_solver/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_16_kmahjongg_pair_solver /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_16_kmahjongg_pair_solver/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_16_kmahjongg_pair_solver/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_16_kmahjongg_pair_solver/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_16_kmahjongg_pair_solver/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_16_kmahjongg_pair_solver/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_16_kmahjongg_pair_solver.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_16_kmahjongg_pair_solver",
+    "workspace_relative": "GAM/task_16_kmahjongg_pair_solver",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

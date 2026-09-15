@@ -1,0 +1,109 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Save the first open tab to the bookmarks bar so I can find it easily.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://blog.eleuther.ai/rotary-embeddings/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires bookmarking the first tab (Eleuther AI blog) to bookmarks bar. Uses existing is_expected_bookmarks metric to verify the URL is present.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts bookmark state using get_bookmarks() getter which reads Chrome's Bookmarks file",
+        "Metric is_expected_bookmarks with type 'bookmark_bar_websites_urls' correctly checks if the expected URL is present in the bookmarks bar using subset logic",
+        "Complete coverage: instruction requires bookmarking first tab URL to bookmarks bar, evaluator verifies exactly this requirement",
+        "Expected value is semantically correct: 'https://blog.eleuther.ai/rotary-embeddings/' matches the first tab URL from config",
+        "Postconfig is appropriate and necessary: kills and restarts Chrome to ensure bookmarks are persisted to disk before getter reads the Bookmarks file",
+        "Runtime feasibility confirmed: getter can read Bookmarks JSON file, metric can parse structure and check URL presence"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

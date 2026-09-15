@@ -1,0 +1,114 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_35",
+  "snapshot": "chrome",
+  "instruction": "Find me women's New Era hats over $25.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject_flexible": {
+        "filter | facet | refinement | selected | active | applied": [
+          "over $25",
+          "women",
+          "hats",
+          "new era",
+          "is_other_exist"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "over": "over $25",
+        "$25": "over $25",
+        "25": "over $25",
+        "women": "women",
+        "woman": "women",
+        "hats": "hats",
+        "hat": "hats",
+        "new": "new era",
+        "era": "new era"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "over $25": true,
+          "women": true,
+          "hats": true,
+          "new era": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering NBA store for women's New Era hats over $25. Evaluator uses flexible matching patterns to handle different filter UI implementations. Uses class_multiObject_flexible to search for filter elements with common filter-related class names (filter, facet, refinement, selected, active, applied). Uses url_include_expected_multichoice for robust URL parameter matching with multiple variations (e.g., 'over', '$25', '25' all map to 'over $25'). This handles variations in capitalization and text formatting.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing get_active_tab_html_parse and check_direct_json_object functions with flexible matching. Case-insensitive partial matching handles UI variations. Fallback selectors ensure robustness across different NBA store implementations.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "VERIFICATION LOGIC EXCELLENT: The evaluator uses get_active_tab_html_parse with category='class&url' to extract filter state from both DOM elements (class_multiObject_flexible) and URL parameters (url_include_expected_multichoice). This dual-pronged approach provides robust verification that can handle various NBA store UI implementations.",
+        "COVERAGE COMPLETE: The evaluator verifies ALL 4 filter requirements from the instruction: (1) 'over $25' price filter, (2) 'women' gender filter, (3) 'hats' category filter, (4) 'new era' brand filter. Additionally checks 'is_other_exist' to ensure no unexpected filters are applied.",
+        "FLEXIBLE MATCHING LOGIC CORRECT: The class_multiObject_flexible implementation (lines 1896-1973 in chrome.py:2050) performs case-insensitive partial matching with multiple selector patterns. This is semantically CORRECT for handling real-world e-commerce filter UIs that vary in implementation. Example: 'over $25' matches 'Over $25', '$25+', 'Price: Over $25', etc.",
+        "URL PARAMETER FALLBACK: The url_include_expected_multichoice provides multiple keyword variations for each filter (e.g., 'over'/'$25'/'25' all map to 'over $25' filter). This ensures verification succeeds even if DOM extraction fails or URL uses different parameter names. This is robust design.",
+        "DATA FLOW SEMANTICALLY SOUND: Getter extracts filter indicators from page → Returns JSON with boolean flags for each filter → Metric compares against expected JSON {'over $25': true, 'women': true, 'hats': true, 'new era': true, 'is_other_exist': false}. Logic is correct.",
+        "MINOR ROBUSTNESS CONCERN: The flexible matching searches for elements with class names containing 'filter', 'facet', 'refinement', 'selected', 'active', 'applied'. While this covers most common e-commerce filter patterns, extremely non-standard NBA store implementations might still fail. However, the URL fallback mitigates this risk significantly.",
+        "EDGE CASE HANDLING: The 'is_other_exist' check ensures no unexpected filters are applied, preventing false positives where additional unwanted filters might be active. This demonstrates good verification completeness."
+      ],
+      "llm_judge_fix_suggestions": [
+        "OPTIONAL ENHANCEMENT: Consider logging which specific DOM elements or URL parameters successfully matched, for debugging and monitoring purposes. This would help identify if the verification relied on DOM or URL fallback.",
+        "DOCUMENTATION: Add comments explaining the flexible matching strategy and why it's necessary for e-commerce filter verification, to help future maintainers understand the design rationale."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

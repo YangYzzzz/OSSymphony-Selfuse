@@ -1,0 +1,109 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_66",
+  "snapshot": "chrome",
+  "instruction": "Look up Frozen toys for girls and organize them from cheapest to most expensive.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Frozen",
+          "Toys",
+          "Girls"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Frozen": "Frozen",
+        "frozen": "Frozen",
+        "Toys": "Toys",
+        "Girls": "Girls",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "frozen": true,
+          "toys": true,
+          "girls": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Frozen toys for girls on kohls.com and sorting by price low-high. Similar complexity to original with popular Disney franchise. Evaluator uses check_direct_json_object.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks both filtering requirements (Frozen, Toys, Girls) and sorting requirement (Price Low-High)",
+        "Getter 'get_active_tab_html_parse' with category 'class&url' can extract breadcrumb elements (pmpSearch_breadcrumb), sort selector (sbSelector), and URL parameters",
+        "Metric 'check_direct_json_object' correctly compares extracted boolean values against expected values",
+        "Expected values structure is correct - when type='rule', the metric receives the rules dict directly with 'expected' key containing boolean flags",
+        "Multi-faceted verification uses both DOM element extraction (class names) and URL parameter checking for robustness"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding explicit verification of the actual product list order (first product price < last product price) for stronger sorting validation, though URL parameter check is likely sufficient",
+        "The 'is_other_exist' check ensures no unexpected filters are applied, which is good defensive verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_37",
+  "snapshot": "os",
+  "instruction": "Compress the '/tmp/test_files/old_files' folder into a tar archive saved in '/tmp/test_files' or '/tmp'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "local_path": "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/37887e8c-da15-4192-923c-08fa390a176d_aug_17_task_verify_1/eval_v1.sh",
+          "remote_path": "eval_v1.sh"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x eval_v1.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_v1.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a tar archive of the old_files directory. The evaluator searches for tar archives in expected locations and verifies they contain the old files. Similar to original compression task but uses tar archiving instead of file-by-file compression.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluation script checks for tar archives containing old_files in /tmp/test_files or /tmp directories",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses vm_command_line getter to execute verification script on VM",
+        "Metric function check_include_exclude properly handles expected.type='rule' and receives rules dict directly",
+        "Evaluation script searches in both specified locations (/tmp/test_files and /tmp) as per instruction",
+        "Archive existence check is robust: searches for various tar formats (*.tar*) and naming patterns",
+        "Archive content verification: script verifies archive contains old_files using tar -tf and grep",
+        "Complete coverage: checks both that archive exists AND contains correct content",
+        "Minor issue: grep pattern 'old_file' could match partial strings (e.g., 'sold_file'), though unlikely in practice",
+        "Minor issue: doesn't verify ALL files from old_files directory are included, only that pattern matches",
+        "Data flow is correct: script output -> check_include_exclude -> returns 1.0 if 'Success' message present"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using more specific grep pattern like 'grep -q \"old_files/old_file\"' or 'grep -E \"(^|/)old_file\"' to avoid partial matches",
+        "Could verify archive completeness by comparing file count: expected_count=$(ls /tmp/test_files/old_files | wc -l) vs actual_count=$(tar -tf archive | grep old_file | wc -l)",
+        "Consider adding check that archive is not empty: tar -tf returns at least one file"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "37887e8c-da15-4192-923c-08fa390a176d_aug_17_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

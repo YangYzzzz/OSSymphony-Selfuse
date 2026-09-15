@@ -1,0 +1,84 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_49",
+  "snapshot": "os",
+  "instruction": "When I resize the terminal window, long lines of text get cut off instead of wrapping. Enable text rewrapping on resize permanently so it works after reboot.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ rewrap-on-resize'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "true"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently enabling text rewrapping on terminal resize. Evaluator opens new terminal and checks rewrap-on-resize setting using gsettings, expecting 'true'. Uses existing check_include_exclude metric with vm_terminal_output getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies permanent terminal rewrap-on-resize setting using gsettings",
+        "Postconfig appropriately opens new terminal to simulate post-reboot state and queries persistent configuration",
+        "Getter (vm_terminal_output) correctly captures terminal command output for gsettings query",
+        "Metric (check_include_exclude) appropriately checks for 'true' in output",
+        "Expected value 'true' is semantically correct - matches gsettings boolean output format",
+        "Complete coverage: verifies persistent configuration that survives reboot",
+        "Logic flow is sound: new terminal -> query gsettings -> verify 'true' output"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

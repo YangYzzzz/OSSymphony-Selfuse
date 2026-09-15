@@ -1,0 +1,103 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_39",
+  "snapshot": "multiapps",
+  "instruction": "I need to document my internet bandwidth capabilities. Please perform a network speed test via speedtest.net, then extract and save only the Download and Upload speed values to ~/Documents/bandwidth.txt (create the directory if needed). Each value should be on its own line with the label and measurement separated by a space.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "check_bandwidth_format__26660ad1",
+    "result": {
+      "type": "vm_file_text__26660ad1",
+      "path": "/home/user/Documents/bandwidth.txt",
+      "dest": "bandwidth.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation focuses on bandwidth-only data (Download and Upload) without requiring Ping metrics. It changes the output location to ~/Documents/bandwidth.txt. The task maintains similar complexity to the original - running speedtest.net and extracting specific results to a text file, but with a reduced metric set. Uses custom check_bandwidth_format__26660ad1 metric to verify proper formatting of Download and Upload speed values with numeric measurements.",
+    "new_functions_paths": [
+      "tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_task_verify_1/metrics/check_bandwidth_format__26660ad1.py",
+      "tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_task_verify_1/getters/get_vm_file_text__26660ad1.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if file contains exactly 2 lines with proper format (Label Value Unit) for Download and Upload speeds, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all instruction requirements - file location (~/Documents/bandwidth.txt), presence of Download and Upload labels, proper formatting, and line count",
+        "Correct format validation: Metric function uses regex pattern '^(\\w+)\\s+([0-9]+\\.?[0-9]*)\\s+([\\w/]+)$' to validate 'Label Value Unit' format exactly as required by instruction",
+        "Robust semantic verification: Validates exactly 2 lines, checks labels match expected order ['Download', 'Upload'], and verifies numeric values are valid floats",
+        "Correct expected parameter handling: Metric function correctly accesses expected_state['expected'] to retrieve the labels list, properly handling the rules dictionary returned by get_rule()",
+        "Practical feasibility: Getter can reliably extract file content from VM, no state timing issues since file persists after task completion"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

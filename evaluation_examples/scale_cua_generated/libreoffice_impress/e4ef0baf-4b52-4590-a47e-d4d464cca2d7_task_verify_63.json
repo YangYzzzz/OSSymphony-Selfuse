@@ -1,0 +1,121 @@
+{
+  "id": "e4ef0baf-4b52-4590-a47e-d4d464cca2d7",
+  "new_id": "task_verify_63",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Set the picture width to 30cm on slide 2 and change all textbox fonts to 44pt on slide 6.",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/e4ef0baf-4b52-4590-a47e-d4d464cca2d7/42_2.pptx",
+            "path": "/home/user/Desktop/42_2.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/42_2.pptx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "42_2.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_pptx_pic_text__42019c64",
+    "result": {
+      "type": "pptx_pic_text_props__42019c64",
+      "file_path": "/home/user/Desktop/42_2.pptx",
+      "slide_picture": 1,
+      "slide_text": 5,
+      "picture_index": 6,
+      "picture_check": "width"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "picture_check": "width",
+        "picture_value_cm": 30.0,
+        "font_size_pt": 44.0
+      }
+    },
+    "options": {
+      "tolerance_cm": 0.2,
+      "tolerance_pt": 1.0
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires picture width 30cm on slide 2 (index 1, picture at shape index 6) and font size 44pt on slide 6 (index 5). Slide 2 has picture with current width 10.55cm, slide 6 has textboxes with current font sizes 32pt and 23pt.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/e4ef0baf-4b52-4590-a47e-d4d464cca2d7_task_verify_3/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/e4ef0baf-4b52-4590-a47e-d4d464cca2d7_task_verify_3/metrics/slides.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.5": "Picture dimension set correctly",
+      "1.0": "Both picture dimension and all text font sizes set correctly"
+    },
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical semantic issue: Instruction requires 'change all textbox fonts to 44pt' but getter checks ALL text elements on slide 6 (titles, subtitles, textboxes, etc.), not just textboxes",
+        "Getter extracts fonts from all shapes with text_frame (impress.py:55-60), which includes non-textbox shapes like titles",
+        "Metric requires ALL font sizes to match 44pt (slides.py:39), causing false negatives if slide 6 has non-textbox text with different font sizes",
+        "Example failure scenario: If slide 6 has a title with 32pt font and textboxes with 44pt font, evaluator will fail even though instruction is satisfied",
+        "The getter should filter for textbox shapes specifically, not all text-containing shapes"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify getter to filter for textbox shapes only: check shape.shape_type or shape name to distinguish textboxes from titles/subtitles",
+        "Alternative 1: Use shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX to identify textboxes",
+        "Alternative 2: If all text on slide 6 should be 44pt, update instruction to say 'change all text fonts' instead of 'textbox fonts'",
+        "Update metric logic to only check fonts from textboxes, not all text elements"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

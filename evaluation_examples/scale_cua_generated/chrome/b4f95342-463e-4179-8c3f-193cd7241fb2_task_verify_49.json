@@ -1,0 +1,102 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "Visit recreation.gov and verify multiple column headers are present in the campground table including 'Campsite Name' and 'Availability'.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {},
+      "class_multiObject": {
+        "camp-sortable-column-header": {
+          "0": "first_col",
+          "1": "second_col"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "first_col": "Campsite Name",
+          "second_col": "Availability"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "More complex variation that checks multiple column headers simultaneously. This requires the agent to verify both the first column ('Campsite Name') and second column ('Availability') are present. Uses the same existing Chrome parsing functions but with multiple checks in one evaluation.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Instruction-evaluator mismatch: Instruction says 'Visit recreation.gov and verify...' but evaluator only verifies current active tab state without ensuring user navigated to campground search results",
+        "Missing page navigation verification: Config opens recreation.gov homepage, but column headers 'Campsite Name' and 'Availability' only exist on campground search results pages, not the homepage",
+        "No postconfig to ensure correct page state: Evaluator assumes active tab contains campground table with class 'camp-sortable-column-header', but there's no mechanism to navigate to or verify user reached the search results page",
+        "State accessibility issue: Getter will likely fail at runtime because homepage doesn't contain elements with class 'camp-sortable-column-header' - this class only exists after searching for campgrounds",
+        "Incomplete task verification: The evaluator checks IF column headers match expected values, but doesn't verify the user actually completed the 'visit and search' action required to see those headers"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig steps to navigate to a campground search results page (e.g., search for a specific campground or location) so the table with column headers is visible",
+        "Update instruction to be more specific: 'Search for campgrounds on recreation.gov and verify the search results table contains column headers...' to match what the evaluator actually checks",
+        "Add a URL verification step in the evaluator to ensure the active tab URL contains search parameters or is on a search results page",
+        "Consider adding a backup getter that checks if elements exist before trying to extract text, returning empty/null if campground table not found",
+        "Add intermediate verification: check if search was performed (URL contains query params) before checking column headers"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

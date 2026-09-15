@@ -1,0 +1,89 @@
+{
+  "id": "69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "new_id": "task_verify_24",
+  "snapshot": "os",
+  "instruction": "I need to configure the Detectron2 library for object detection and segmentation tasks. Clone 'https://github.com/facebookresearch/detectron2' to /home/user and install it following their installation guide.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "related_apps": [
+    "os",
+    "chrome",
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_error",
+      "command": [
+        "python",
+        "-c",
+        "import detectron2; from detectron2 import model_zoo; print('Detectron2 ready')"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Detectron2 ready"
+        ],
+        "exclude": [
+          "Error:",
+          "ModuleNotFoundError",
+          "ImportError"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation testing Detectron2 library setup. Evaluator verifies that detectron2 and its model_zoo can be imported and checks for successful output. The check_include_exclude metric ensures 'Detectron2 ready' is present and no error strings appear.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "CRITICAL LOGIC ERROR: Getter reads stderr (error output) but expected string 'Detectron2 ready' is printed to stdout",
+        "get_vm_command_error returns response.json()['error'] which captures stderr, not stdout (general.py:35)",
+        "On success: print() outputs to stdout, so 'Detectron2 ready' will never appear in stderr - evaluator fails include check",
+        "On failure: stderr contains errors but no success message - evaluator also fails",
+        "Evaluator cannot pass in ANY scenario - it will always return 0.0",
+        "Incorrect getter-expected mismatch: Cannot verify stdout content by reading stderr"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change getter from 'get_vm_command_error' to 'get_vm_command_line' to capture stdout instead of stderr",
+        "get_vm_command_line (general.py:8-22) returns response.json()['output'] which is the correct stdout stream",
+        "Keep the same check_include_exclude metric and expected rules - they are correct for stdout validation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

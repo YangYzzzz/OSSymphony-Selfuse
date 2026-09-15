@@ -1,0 +1,111 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_39",
+  "snapshot": "chrome",
+  "instruction": "Search for a one-way flight from Amsterdam to Milan for four adults, departing on the 11th of next month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "11th next month"
+        },
+        "expected": {
+          "originIata": "AMS",
+          "destinationIata": "MXP",
+          "tpAdults": "4",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation: One way flight search from Amsterdam (AMS) to Milan (MXP) for 4 adults departing on 11th of next month. Uses same evaluator pattern as original - parses URL parameters to verify search criteria. Changed from 12th to 11th next month to use confirmed supported relative time value.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic can correctly verify all instruction requirements",
+        "Getter (get_active_tab_url_parse at chrome.py:2258-2288): Correctly extracts URL query parameters using urlparse and parse_qs. Extracts originIata, destinationIata, tpAdults, tpTeens, tpChildren, tpStartDate, isReturn from flight search URL. Replaces tpStartDate key with 'time' for consistency.",
+        "Expected value processing (get_rule_relativeTime at misc.py:93-338): '11th next month' IS fully supported. Dictionary entry exists at line 70, handler implementation at lines 146-151. Correctly calculates next month's 11th day and formats as {Year}-{Month0D}-{DayD}.",
+        "Metric (check_direct_json_object at general.py:382-481): Performs direct key-value comparison between parsed URL parameters and expected values. Logic is correct for equality checking.",
+        "Complete coverage verification: (1) One way flight - verified via isReturn='false', (2) Amsterdam to Milan - verified via originIata='AMS' and destinationIata='MXP', (3) Four adults - verified via tpAdults='4', tpTeens='0', tpChildren='0', (4) 11th of next month - verified via time field with proper date calculation.",
+        "Previous validation error resolved: Task was correctly fixed from '12th next month' (unsupported) to '11th next month' (supported). Current instruction and evaluator both use '11th' which has full support in misc.py.",
+        "Runtime feasibility: All functions exist, no parameter handling errors, date calculation logic is correct, all URL parameters can be extracted and verified. No logical edge cases that would cause failure.",
+        "Data flow is correct: Accessibility tree -> URL extraction -> URL parsing -> query parameter extraction -> comparison with calculated expected values. Each step extracts and compares the right data for the instruction requirements."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_notes": "FIXED: Changed relative time from '12th next month' to '11th next month' which is confirmed to be supported in misc.py. While inspection shows '12th next month' may now be supported (lines 71, 159-164 in misc.py), using '11th next month' ensures compatibility and addresses the LLM judge concerns. The instruction text was updated from 'the 12th day' to 'the 11th day', and the evaluator config was updated to use '11th next month' instead of '12th next month'."
+    },
+    "augmented_from": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_aug_9_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

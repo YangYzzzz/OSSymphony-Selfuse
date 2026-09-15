@@ -1,0 +1,116 @@
+{
+  "id": "b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "new_id": "task_verify_79",
+  "snapshot": "os",
+  "instruction": "I want Vim to automatically enable auto-indentation when I edit files. Please search the Internet for instructions on enabling auto-indent in Vim and set it as the default configuration for my local Vim.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/b337d106-053f-4d37-8da0-7f9c4043a66b",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b337d106-053f-4d37-8da0-7f9c4043a66b/eval.sh",
+              "path": "eval_autoindent__9d92a3a9.sh"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > eval_autoindent__9d92a3a9.sh << 'EOF'\n#!/bin/bash\nif grep -q \"set autoindent\" ~/.vimrc 2>/dev/null || grep -q \"set ai\" ~/.vimrc 2>/dev/null; then\n    echo \"Auto-Indent Is Enabled!\"\nelse\n    echo \"Auto-indent not configured\"\nfi\nEOF\nchmod +x eval_autoindent__9d92a3a9.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash eval_autoindent__9d92a3a9.sh",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Auto-Indent Is Enabled!"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires searching for how to enable auto-indent in Vim and adding 'set autoindent' (or abbreviated 'set ai') to ~/.vimrc. Evaluator checks if either command is present. Similar complexity to original (search tutorial, configure vim feature).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if autoindent is enabled in .vimrc, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies that ~/.vimrc contains autoindent configuration ('set autoindent' or 'set ai')",
+        "Complete coverage: verifies the end result of the instruction (autoindent enabled in vim config)",
+        "Getter logic is correct: executes bash script that greps for autoindent settings in .vimrc",
+        "Metric logic is correct: check_include_exclude verifies the success message appears in output",
+        "Expected value is semantically correct: 'Auto-Indent Is Enabled!' matches script output on success",
+        "Edge cases handled: script handles missing .vimrc file (2>/dev/null) and both 'set autoindent' and 'set ai' forms",
+        "Postconfig is appropriate: creates evaluation script needed to verify vim configuration",
+        "Data flow is sound: postconfig creates script -> getter executes script -> metric checks output -> validates against expected message"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_64",
+  "snapshot": "thunderbird",
+  "instruction": "I want to enable automatic synchronization of IMAP folders for offline use. Could you help me configure Thunderbird to automatically sync my mail folders for offline access?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.default.autosync_offline_stores": {
+            "method": "eq",
+            "ref": true
+          }
+        },
+        "unexpect": {}
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic offline synchronization. This setting (mail.server.default.autosync_offline_stores) is checked in the original task's unexpect rules (set to false), so the task here requires enabling it (set to true).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verified": "Based on original task - mail.server.default.autosync_offline_stores is referenced in unexpect rules as false, task here requires enabling it to true",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator checks the correct Thunderbird preference (mail.server.default.autosync_offline_stores) that controls automatic offline synchronization",
+        "Expected value (true) is semantically correct for enabling the feature as required by the instruction",
+        "Postconfig correctly closes Thunderbird window to ensure preferences are flushed to disk before verification",
+        "Getter (get_vm_file) correctly extracts the prefs.js file from the VM at the correct path",
+        "Metric (check_thunderbird_prefs) correctly parses the prefs.js file using regex and JSON parsing, then verifies the preference value",
+        "Data flow is semantically correct: close app → extract file → parse preferences → verify setting",
+        "Edge cases are handled (returns 0.0 if result file is None, handles escaped characters in regex)",
+        "Complete coverage: the single requirement in the instruction (enable auto-sync) is fully verified by the evaluator"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

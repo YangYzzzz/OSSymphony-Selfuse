@@ -1,0 +1,86 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Remove Thunderbird from the dock favorites.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "vim.desktop",
+          "google-chrome.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_sid_1488301",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully removed vim from dock favorites by right-clicking the Vim icon and selecting 'Remove from Favorites'. Completed in 3 turns.",
+    "capability_extraction": "Can interact with GNOME dock, right-click context menus, select 'Remove from Favorites' option",
+    "task_rationale": "Same removal pattern targeting a different app (Thunderbird) which sits at the top of the dock, testing positional generalization",
+    "explanation": "Task requires removing Thunderbird from dock favorites. Evaluator checks that favorites list contains only vim and chrome after removal. Reuses official check_gnome_favorite_apps metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "favorites_check": "1.0 - Favorites list matches expected after Thunderbird removal"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts dock favorites via gsettings get org.gnome.shell favorite-apps",
+        "Metric check_gnome_favorite_apps correctly parses the gsettings output string and compares with expected list using set equality and length check",
+        "Expected value ['vim.desktop', 'google-chrome.desktop'] is correct — matches the config setup minus thunderbird.desktop",
+        "Config properly sets up initial state with thunderbird, vim, and chrome in favorites before the task begins",
+        "Complete coverage: the single instruction requirement (remove Thunderbird) is fully verified by checking the resulting favorites list"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

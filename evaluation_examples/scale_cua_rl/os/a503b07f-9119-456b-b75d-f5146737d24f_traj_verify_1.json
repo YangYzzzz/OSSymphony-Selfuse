@@ -1,0 +1,68 @@
+{
+  "id": "a503b07f-9119-456b-b75d-f5146737d24f",
+  "new_id": "a503b07f-9119-456b-b75d-f5146737d24f_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Rename the image file OIP.jpg in your home directory to 'receipt.jpg'.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a503b07f-9119-456b-b75d-f5146737d24f/OIP.jpg",
+            "path": "/home/user/OIP.jpg"
+          }
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "ls",
+        "/home/user/"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "receipt.jpg"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_a503b07f-9119-456b-b75d-f5146737d24f_sid_1488109",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened file manager, found OIP.jpg, opened terminal, tried ImageMagick convert with wrong filename (QIP.jpg instead of OIP.jpg), installed imagemagick, still failed due to filename error and policy restrictions, eventually opened image in Image Viewer and tried Print to File but ran out of turns.",
+    "capability_extraction": "Can open file manager, open terminal, run shell commands (ls, cp, mv, apt install, find), install packages with sudo, open images in Image Viewer, interact with Print dialog, navigate folders in dialogs",
+    "failure_analysis": "Model misread filename as QIP.jpg instead of OIP.jpg, wasted many turns on wrong convert commands. ImageMagick also had policy restrictions. Eventually found correct filename but ran out of 50 turns before completing the print-to-file approach.",
+    "task_rationale": "Simplified to a basic file rename operation using mv command. The model demonstrated ability to use terminal commands. Renaming is a single-step task that tests the model's ability to correctly identify and reference the file OIP.jpg, which was a key failure point in the original trajectory.",
+    "explanation": "Task requires renaming /home/user/OIP.jpg to /home/user/receipt.jpg. Evaluator uses vm_command_line to list home directory and check_include_exclude to verify receipt.jpg is present.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter correctly uses 'ls /home/user/' to list directory contents, which will show whether receipt.jpg exists.",
+        "Metric check_include_exclude correctly receives the rules dict directly (type='rule') and performs substring matching on the ls output for 'receipt.jpg'.",
+        "Incomplete coverage: The exclude list is empty, so the evaluator does not verify that OIP.jpg has been removed. A 'rename' operation should ensure the original file no longer exists. A copy (cp) instead of rename (mv) would also pass this evaluator, producing a false positive.",
+        "The core requirement (receipt.jpg exists) is verified, but the full rename semantics (old file gone) are not checked."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'OIP.jpg' to the exclude list to verify the original file was removed: \"exclude\": [\"OIP.jpg\"]. This ensures the evaluator distinguishes a rename from a copy."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

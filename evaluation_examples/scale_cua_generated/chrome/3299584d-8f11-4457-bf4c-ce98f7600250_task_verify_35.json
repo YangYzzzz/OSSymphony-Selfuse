@@ -1,0 +1,91 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_35",
+  "snapshot": "chrome",
+  "instruction": "I want to block all cookies from third-party websites in Chrome. How do I enable this setting?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_third_party_cookies_blocked__15369290"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires blocking third-party cookies in Chrome. Similar complexity - navigate to Settings > Privacy and security > Cookies and other site data and select 'Block third-party cookies'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_6/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if third-party cookies blocked (profile.block_third_party_cookies=true), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly extracts the 'profile.block_third_party_cookies' setting from Chrome Preferences file",
+        "Complete coverage: instruction requires blocking third-party cookies, and evaluator checks exactly that setting",
+        "Correct comparison logic: exact_match is appropriate for boolean-like string comparison",
+        "Expected value 'true' is semantically correct for the task requirement",
+        "Getter handles multiple OS platforms (Windows, macOS, Linux) with correct file paths",
+        "Good error handling with try/catch and fallback to 'false' on error"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding postconfig to ensure Chrome has persisted settings to disk before evaluation (e.g., brief wait or Chrome restart), though Chrome typically writes preference changes immediately",
+        "Optional: Could add explicit verification that the Preferences file was modified recently to ensure the setting change was persisted"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

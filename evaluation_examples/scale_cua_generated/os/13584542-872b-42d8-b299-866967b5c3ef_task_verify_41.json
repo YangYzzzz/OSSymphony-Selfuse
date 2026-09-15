@@ -1,0 +1,85 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_41",
+  "snapshot": "os",
+  "instruction": "The terminal font is too small for my eyes. Set the default terminal font size to 14 permanently so it applies to all new terminal windows even after reboot.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ font'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "14"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently setting terminal font size to 14. Evaluator opens new terminal and checks font setting using gsettings. Uses existing check_include_exclude metric with vm_terminal_output getter. Verified that gsettings command correctly retrieves the font setting which includes size.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Insufficient verification logic: check_include_exclude only checks if '14' exists as substring anywhere in output, leading to false positives (e.g., 'Monospace 114' would incorrectly pass, error messages containing '14' would pass)",
+        "No validation that '14' is the actual font size: The metric doesn't verify that 14 is specifically the font size parameter in the font string format (e.g., 'Monospace 14'), just that '14' appears somewhere",
+        "Expected font output format is typically 'Font Name SIZE' (e.g., 'Monospace 14'), but substring matching '14' cannot distinguish between font size 14 vs. font size 114 or other occurrences of '14' in output"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change metric to use regex or more specific pattern matching to verify '14' is the font size (e.g., check for pattern like 'Font Name 14' or ensure 14 appears after a space and is followed by quote/end)",
+        "Alternative: Use exact_match or literal_match with full expected font string like 'Monospace 14' if font name is known",
+        "Alternative: Add regex to include list like '\\s14[\"\\']' to ensure 14 is at end of font string (font size position)",
+        "Consider adding validation that the output actually contains 'font' keyword to ensure gsettings command succeeded and returned font setting"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

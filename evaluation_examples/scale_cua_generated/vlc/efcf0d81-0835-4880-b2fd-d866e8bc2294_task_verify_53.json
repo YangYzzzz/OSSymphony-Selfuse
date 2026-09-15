@@ -1,0 +1,96 @@
+{
+  "id": "efcf0d81-0835-4880-b2fd-d866e8bc2294",
+  "new_id": "task_verify_53",
+  "snapshot": "base_setup",
+  "instruction": "Change the video aspect ratio to 16:9 using VLC's video settings menu.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/efcf0d81-0835-4880-b2fd-d866e8bc2294/Interstellar%20Movie%20-%20Official%20Trailer.mp4",
+            "path": "/home/user/Desktop/Interstellar Movie - Official Trailer.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "bash",
+          "-c",
+          "sleep 3; pkill vlc; sleep 1"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_vlc_aspect_ratio__8a47ea01",
+    "result": {
+      "type": "vlc_aspect_ratio__8a47ea01"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "aspect_ratio": "16:9"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing the aspect ratio in VLC (Video > Aspect Ratio > select a ratio like 16:9, 4:3, etc.). The evaluator checks VLC's configuration file for aspect ratio settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/efcf0d81-0835-4880-b2fd-d866e8bc2294_xhaug_1_task_verify_7/getters/vlc_aspect.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/efcf0d81-0835-4880-b2fd-d866e8bc2294_xhaug_1_task_verify_7/metrics/vlc_aspect.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Semantic verification logic is correct: Evaluator checks the right state (VLC aspect ratio setting) using the right method (reading VLC config file)",
+        "Metric parameter handling is correct: When expected.type='rule', the metric correctly accesses expected.get('aspect_ratio') directly since get_rule() returns the rules dict directly",
+        "Getter implementation is robust: Reads VLC config file at ~/.config/vlc/vlcrc, parses multiple possible aspect ratio keys (aspect-ratio, qt-video-aspect-ratio, custom-aspect-ratio), handles missing/invalid config gracefully by returning 'default'",
+        "Coverage is complete: Instruction requires setting aspect ratio to '16:9', evaluator verifies this exact value with strict string comparison",
+        "Data flow is correct: Getter extracts aspect ratio string -> Metric compares with expected '16:9' -> Returns 1.0 if match, 0.0 otherwise",
+        "MINOR CONCERN - State persistence timing: The postconfig includes 'sleep 3' before 'pkill vlc' which should allow VLC time to auto-save settings. VLC typically persists UI changes immediately or on short intervals. However, for maximum reliability, a graceful shutdown would be preferred over pkill",
+        "Postconfig already mitigates timing issues: The 3-second delay before killing VLC should be sufficient for VLC to persist the aspect ratio change to the config file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional improvement: Replace 'pkill vlc' with graceful shutdown (wmctrl -c or xdotool) for guaranteed settings persistence, though current 'sleep 3' mitigation is likely sufficient",
+        "Optional: Increase sleep duration to 5 seconds if timing issues occur in practice"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "9f935cce-0a9f-435f-8007-817732bfc0a5",
+  "new_id": "9f935cce-0a9f-435f-8007-817732bfc0a5_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Browse the list of Civil Forms on the U.S. Courts website (uscourts.gov).",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.justice.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "uscourts\\.gov.*civil-forms"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_9f935cce-0a9f-435f-8007-817732bfc0a5_sid_1488046",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to browse Civil Division forms on justice.gov but encountered Access Denied. Tried direct URL paths and Google search, all blocked. Eventually navigated to uscourts.gov, found Forms & Rules menu, clicked Forms, then Civil Forms sidebar link successfully.",
+    "capability_extraction": "Can type URLs in address bar, navigate Chrome dropdown menus, click sidebar navigation links, scroll pages, handle Access Denied by trying alternative websites",
+    "failure_analysis": "justice.gov blocked VM access entirely (Access Denied). Model could not reach the expected URL pattern on justice.gov. Successfully found an alternative path on uscourts.gov but that didn't match the expected URL.",
+    "task_rationale": "Directly matches what the model actually accomplished in the trajectory - navigating to uscourts.gov Civil Forms page. Tests full navigation chain: URL entry, menu clicks, sidebar selection.",
+    "explanation": "Task requires navigating to uscourts.gov Civil Forms page. Evaluator checks active tab URL matches uscourts.gov with civil-forms path using is_expected_url_pattern_match.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree correctly extracts the active Chrome tab URL, which is the right state to verify a navigation task.",
+        "Metric is_expected_url_pattern_match correctly performs regex matching on the URL against the expected pattern.",
+        "Expected pattern 'uscourts\\.gov.*civil-forms' semantically matches the instruction to browse Civil Forms on uscourts.gov.",
+        "Parameter handling is correct: get_rule returns the rules dict, and the metric accesses rules['expected'] directly.",
+        "Single-step navigation task is fully covered by URL verification - no missing requirements."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

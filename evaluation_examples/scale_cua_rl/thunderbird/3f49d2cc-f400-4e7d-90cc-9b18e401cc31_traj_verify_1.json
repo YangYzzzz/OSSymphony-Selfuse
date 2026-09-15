@@ -1,0 +1,111 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Set the organization name to 'Thunderbird Corp' in your email account's identity settings.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.organization": {
+            "method": "eq",
+            "ref": "Thunderbird Corp"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_3f49d2cc-f400-4e7d-90cc-9b18e401cc31_sid_1488285",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated hamburger menu to View > Folders and saw Unified Folders option. Incorrectly assumed it was grayed out and needed multiple accounts. Spent remaining turns trying to add a fake email account. Also navigated to Account Settings and saw identity fields (Name, Email, Organization).",
+    "capability_extraction": "Can navigate Thunderbird hamburger menu, open Account Settings, view and interact with identity form fields (name, email, organization), navigate tabs",
+    "failure_analysis": "Model misinterpreted UI state and pursued wrong approach. However, it successfully navigated to Account Settings and interacted with identity form fields, demonstrating capability to modify account properties.",
+    "task_rationale": "Leverages model's demonstrated ability to navigate Account Settings and interact with form fields. Setting the organization field is a simple form edit within proven capability.",
+    "explanation": "Task requires navigating to Account Settings, finding the Organization field in the identity section, and typing 'Thunderbird Corp'. Evaluator checks prefs.js for mail.identity.id1.organization matching the expected value.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 6,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches prefs.js from the Thunderbird profile directory, which stores identity settings",
+        "Postconfig closes Thunderbird to ensure prefs.js is flushed to disk before reading",
+        "Metric check_thunderbird_prefs correctly parses user_pref lines and checks mail.identity.id1.organization equals 'Thunderbird Corp'",
+        "Expected value and pref key are semantically correct for the instruction requirement",
+        "Single requirement fully covered by the evaluator",
+        "Data flow is correct: get_vm_file returns file path (str), metric opens and parses it, handles None case"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

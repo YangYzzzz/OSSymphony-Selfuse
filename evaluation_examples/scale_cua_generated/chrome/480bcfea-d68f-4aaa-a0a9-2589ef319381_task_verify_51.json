@@ -1,0 +1,104 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "I want to test the new tab search feature in Chrome. Can you enable the tab search experiment for me?",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "enable-tab-search"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the tab search experiment (enable-tab-search) in Chrome flags. Uses existing evaluator infrastructure. Same difficulty level as original - single experiment flag change.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Getter logic is correct: reads from Chrome Local State file and extracts enabled_labs_experiments list",
+        "Metric comparison logic has a semantic flaw: uses exact list equality instead of subset checking",
+        "The instruction asks to 'enable the tab search experiment' which should mean 'ensure enable-tab-search is in the enabled experiments list'",
+        "Current metric will FAIL if user has other experiments already enabled or enables additional experiments",
+        "Expected value 'enable-tab-search' is semantically correct and matches the actual Chrome experiment flag name",
+        "Postconfig is correctly configured: restarts Chrome to persist experiment changes to Local State file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change metric logic from exact list match to subset checking: 'set(rule['names']).issubset(set(enabled_experiments_names))'",
+        "This would verify that enable-tab-search is enabled without failing if other experiments are also enabled",
+        "Alternative: Update instruction and expected to be explicit about 'enable ONLY the tab search experiment' if exact match is intended"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

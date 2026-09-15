@@ -1,0 +1,147 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_35",
+  "snapshot": "chrome",
+  "instruction": "Extract all visual elements (charts, graphs, images) from the lecture notes docx file attached to the email in the Notes folder, convert them to PNG format with sequential numbering (1.png, 2.png, etc.), and upload to a 'figures' folder in Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_files_match_pattern__fb580d40",
+    "result": {
+      "type": "googledrive_files_with_prefix__fb580d40",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_query": "title = 'figures' and trashed = false and mimeType = 'application/vnd.google-apps.folder'",
+      "prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "pattern": "^\\d+\\.png$",
+        "min_count": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting images from docx and uploading with numeric naming to Google Drive. Evaluator checks if at least 3 files match the pattern N.png (where N is a number).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_3/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_3/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 8,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that original task has 3 numbered PNG files. This variation uses regex pattern matching to verify files follow numeric naming convention.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly searches for 'figures' folder in Google Drive and retrieves all file names",
+        "Metric correctly validates that filenames match numeric PNG pattern (^\\d+\\.png$) and checks minimum count of 3 files",
+        "Data flow is correct: getter returns list of filenames, metric receives it as 'expected' parameter (rules dict) and accesses 'pattern' and 'min_count' correctly",
+        "Evaluator successfully verifies the core requirement: PNG files with numeric naming in the figures folder",
+        "Pattern allows lenient matching (any numeric sequence like 123.png, not strict 1,2,3 sequence), but metadata indicates this is intentional for 'numeric naming convention' verification",
+        "Does not verify source (docx extraction from email) or file content (actual PNG format), only final Google Drive state - acceptable limitation for filesystem-based verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "If strict sequential numbering is required (1.png, 2.png, 3.png...), the metric could validate that files are numbered 1 through N without gaps",
+        "Consider adding file extension case-insensitivity to handle .PNG vs .png variations if needed"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

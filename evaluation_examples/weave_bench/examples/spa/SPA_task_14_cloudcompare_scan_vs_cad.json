@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_14_cloudcompare_scan_vs_cad",
+  "snapshot": "weave_bench",
+  "instruction": "### Background\n\nA CNC shop is performing First Article Inspection (FAI) on a batch of 6061 aluminum\nL-brackets. The QC inspector captured the physical part as a point cloud\n`bracket_scan.ply` (~120k points) with a structured-light scanner, and the CAD\nengineer provided the design reference `bracket_nominal.stl`. Denoise the scan,\nregister it against the CAD, run a deviation analysis, and mark **the location of\nevery out-of-tolerance region (> 0.5 mm), the maximum deviation value, and the\nlikely root cause**. Finally, produce a QC report that could be sent to the customer.\n\n### Inputs (located under `/tmp_workspace/` at task start)\n\n- `scan/bracket_scan.ply` — structured-light scan of the physical part\n- `scan/bracket_nominal.stl` — CAD reference mesh\n- `JOB_BRIEF.md`           — QC spec: max allowable deviation 0.5 mm; contains\n                                fixture position / machining order and other\n                                process clues usable for root-cause inference\n- `inspection_spec.json`    — machine-readable tolerances and pass/fail rules\n\n### Deliverables that must land in `/tmp_workspace/results/`\n\nNumerical and intermediate artifacts:\n- `pdal_info.txt` — metadata text for the raw point cloud, must include at least\n  point count (`num_points`/`count`) and bounding box (`bounds`/`minx` etc.).\n- `stats_raw.json` — must include `num_points`, `filter_ratio` (point count ratio\n  before vs after denoising, 3 decimals), `icp_rmse_mm` (ICP registration RMSE in mm).\n- `transform_icp.json` — the 4×4 transform as a 2D JSON array (point cloud → CAD frame).\n- `bracket_scan_aligned.ply` — the aligned point cloud after applying the transform.\n- `bracket_scan_c2m.ply` — a copy of the point cloud carrying the cloud-to-mesh\n  distance scalar field.\n- `deviation_stats.json` — must include the five fields `dev_mean`, `dev_std`,\n  `dev_max`, `dev_min`, `pct_over_0.5mm` (mm / ratio).\n- `over_tolerance_regions.json` — JSON array of length 1–5; each element contains\n  `centroid_xyz`, `max_dev_mm`, `point_count`, obtained by clustering every point\n  whose deviation exceeds 0.5 mm.\n\nVisual evidence screenshots (each must be a real screenshot of a cloud-to-mesh QC\ntool UI, showing the DB tree / properties panel / 3D viewport / histogram and\nother interface elements — do not synthesize images):\n- `view_cc_loaded.png` — initial view with the point cloud and CAD mesh both\n  loaded; UI elements and DB Tree visible.\n- `view_cc_c2m_colormap.png` — 3D view after computing the cloud-to-mesh deviation\n  and coloring it with a heatmap (red / green / blue gradient).\n- `view_cc_histogram.png` — histogram view of the deviation scalar field, with\n  the summary statistics (mean / std / max etc.) readable.\n- `view_cc_max_deviation.png` — 3D view zoomed onto the **point of maximum\n  deviation** (which falls in the localized defect region next to the M5 hole).\n- `view_cc_cross_section.png` — cross-section view across the YZ plane, showing\n  both the section outline and the deviation color distribution (revealing the\n  overall warping of the wing).\n- `view_cc_top_ortho.png` — orthographic projection looking down +Z.\n- `view_cc_front_ortho.png` — orthographic projection looking along +X.\n\nAt least one histogram screenshot must contain readable statistical text (the\nevaluator runs OCR on it).\n\nFinal deliverables:\n- `root_cause.md` — ≥ 150 words. Combine the process information from\n  `JOB_BRIEF.md` with the geometric location of the out-of-tolerance regions to\n  infer likely machining / thermal-deformation / fixturing causes, and give at\n  least 2 engineering improvement recommendations.\n- `report.md` — ≥ 300 words, must include:\n  - inspection overview (point count, ICP RMSE, filter ratio)\n  - deviation statistics table (mean / std / max / min / % over tolerance)\n  - out-of-tolerance region table (matching `over_tolerance_regions.json`)\n  - markdown embeds of all 6 visual screenshots (`![](view_cc_*.png)` syntax)\n  - root-cause summary\n  - **PASS/FAIL** FAI verdict (PASS when max < 0.5 mm and pct_over < 5%, otherwise FAIL)\n- `report.pdf` — converted from the markdown; at least 3 pages (screenshots\n  embedded in the PDF).\n\n### Red lines\n\n- Do not copy any file from `gt/` into `results/`; every numerical value must\n  come from your own processing pipeline.\n- It is recommended to fix the deviation colormap to the absolute range\n  [-0.5, 0.5] mm so the comparison against tolerance is intuitive, but the exact\n  presentation is up to you.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_14_cloudcompare_scan_vs_cad.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_14_cloudcompare_scan_vs_cad",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\nmkdir -p /tmp_workspace/results /tmp_workspace/state\nchmod -R 777 /tmp_workspace 2>/dev/null || true\nwhich pdal >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich pdal >/dev/null 2>&1 || timeout 300 apt-get -o Acquire::Retries=10 install -y -qq pdal 2>/dev/null || true\ntimeout 600 apt-get -o Acquire::Retries=10 install -y -qq cloudcompare tesseract-ocr poppler-utils 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore trimesh numpy scipy rtree 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore trimesh numpy scipy rtree 2>/dev/null \\\n  || pip3 install -q --break-system-packages --root-user-action=ignore trimesh numpy scipy 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore trimesh numpy scipy 2>/dev/null || true\npip3 install -q --break-system-packages --root-user-action=ignore pytesseract 2>/dev/null \\\n  || pip3 install -q --root-user-action=ignore pytesseract 2>/dev/null || true\necho \"[warmup] using trimesh + scipy.spatial.cKDTree for cloud-to-mesh analysis (no GUI)\" > /tmp_workspace/state/warmup_note.txt\nchmod -R 777 /tmp_workspace 2>/dev/null || true\necho \"[warmup] SPA_task_14 done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_14_cloudcompare_scan_vs_cad/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_14_cloudcompare_scan_vs_cad /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_14_cloudcompare_scan_vs_cad/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_14_cloudcompare_scan_vs_cad/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_14_cloudcompare_scan_vs_cad/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_14_cloudcompare_scan_vs_cad/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_14_cloudcompare_scan_vs_cad/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_14_cloudcompare_scan_vs_cad.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_14_cloudcompare_scan_vs_cad",
+    "workspace_relative": "SPA/task_14_cloudcompare_scan_vs_cad",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

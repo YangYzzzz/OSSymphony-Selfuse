@@ -1,0 +1,107 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_62",
+  "snapshot": "chrome",
+  "instruction": "Could you help me copy the data in Cell B42 in this Libreoffice Calc file and search it in the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=dorcas(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell B42 (First Name column, row 42) from the spreadsheet and search it in Chrome. Verified from Excel file: Row 42, Column B contains 'Dorcas'. Evaluator checks if active tab URL matches Google search for 'dorcas'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Core verification logic is correct: active_tab_info getter can extract URL, is_expected_search_query metric correctly uses regex pattern matching",
+        "Expected value is semantically correct: regex pattern matches Google search URL with 'dorcas' query parameter (case-insensitive)",
+        "Evaluator successfully verifies the END result: that a Google search for 'dorcas' was performed",
+        "ISSUE: Missing postconfig to ensure Chrome is active window and search results tab is focused at evaluation time",
+        "ISSUE: Brittle state dependency - if user navigates away from search tab after completing task, evaluation fails even though task was completed correctly",
+        "ISSUE: Overly restrictive - only accepts google.com searches, would fail if user's default search engine is different or they use another search engine",
+        "MINOR: Does not verify intermediate steps (LibreOffice opened, cell B42 accessed), only verifies final search result"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig to click on Chrome window and ensure search results tab is active before evaluation",
+        "Consider relaxing search engine requirement: accept any search engine URL containing 'dorcas' in query parameters",
+        "Consider verifying that the search term originated from cell B42 by checking clipboard history or LibreOffice was accessed"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

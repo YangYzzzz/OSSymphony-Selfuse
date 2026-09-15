@@ -1,0 +1,115 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to close message tabs when the final message in them is deleted or moved.",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.close_message_window.on_delete": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Thunderbird to automatically close message tabs when the last message is deleted or moved. This is done by setting the mail.close_message_window.on_delete preference to true. The evaluator uses the existing check_thunderbird_prefs function to verify this boolean preference value in the prefs.js file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: configuring Thunderbird to auto-close message tabs on delete/move",
+        "The preference 'mail.close_message_window.on_delete' semantically matches the instruction requirement",
+        "Expected value 'true' is semantically correct for enabling this behavior",
+        "Postconfig properly closes Thunderbird to ensure preferences are saved to prefs.js",
+        "Metric check_thunderbird_prefs correctly parses prefs.js and validates the preference value",
+        "Metric handles None result correctly (returns 0.0 if file cannot be retrieved)",
+        "Complete coverage: all instruction requirements are verified"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The static type warning about get_vm_file return type (Union[Optional[str], List[Optional[str]]]) vs metric parameter (str) is cosmetic - in single-file mode it returns Optional[str] and the metric handles None correctly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "10a730d5-d414-4b40-b479-684bed1ae522_aug_14_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

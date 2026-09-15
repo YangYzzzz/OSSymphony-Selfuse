@@ -1,0 +1,102 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "task_verify_17",
+  "snapshot": "gimp",
+  "instruction": "I need to add a new layer to the image. Can you name it 'Triangle'?",
+  "source": "https://www.quora.com/How-do-I-add-layers-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type:": "key-value",
+        "key": "layer-new-name",
+        "value": "\"Triangle\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a new layer in GIMP and naming it 'Triangle'. The evaluator checks the GIMP config file to verify the layer-new-name is set to 'Triangle'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing check_config_status metric with layer name 'Triangle'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical semantic mismatch: The evaluator checks the 'layer-new-name' config setting in GIMP's gimprc file, which is the DEFAULT NAME preference for future layers, not the actual name of a created layer",
+        "The instruction requires: (1) Create a new layer, and (2) Name it 'Triangle'",
+        "What the evaluator verifies: Only that the GIMP preference 'layer-new-name' is set to 'Triangle' in the config file",
+        "False positive scenario: User could change the GIMP preferences to set default layer name to 'Triangle' without actually creating any layer in the image - evaluator would pass incorrectly",
+        "False negative scenario: User could create a layer named 'Triangle' in the image, but if the preference setting wasn't changed, evaluator would fail incorrectly",
+        "The evaluator does not verify that a layer was actually added to the white_background.xcf file",
+        "Correct approach would be: Parse the XCF file or use GIMP scripting to verify a layer named 'Triangle' exists in the actual image layer stack"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Create a getter that uses GIMP's Python-Fu or Script-Fu to list all layers in the current image and extract their names",
+        "Create a metric that checks if 'Triangle' exists in the list of layer names from the actual XCF file",
+        "Alternatively, parse the XCF file structure directly to read layer names",
+        "The postconfig should save the file before closing GIMP to ensure changes are persisted",
+        "Consider using a GIMP script in postconfig to export layer information to a readable format (JSON/text file) for verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

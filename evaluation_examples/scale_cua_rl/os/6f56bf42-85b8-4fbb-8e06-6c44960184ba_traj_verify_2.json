@@ -1,0 +1,108 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Create a backup of file1 named file1.bak in the home directory, then move file1 into dir2.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/6f56bf42-85b8-4fbb-8e06-6c44960184ba/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_backup_move__1a7983e090de51b7f1a1b54e751935d9",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c '[ -f /home/user/file1.bak ] && echo \"BACKUP_EXISTS:YES\" || echo \"BACKUP_EXISTS:NO\"; if [ -f /home/user/file1.bak ] && [ -f /home/user/dir2/file1 ] && diff -q /home/user/file1.bak /home/user/dir2/file1 > /dev/null 2>&1; then echo \"BACKUP_CONTENT_MATCH:YES\"; else echo \"BACKUP_CONTENT_MATCH:NO\"; fi; [ -f /home/user/dir2/file1 ] && echo \"FILE1_IN_DIR2:YES\" || echo \"FILE1_IN_DIR2:NO\"; [ ! -e /home/user/file1 ] && echo \"FILE1_REMOVED:YES\" || echo \"FILE1_REMOVED:NO\"'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "backup_exists": true,
+        "backup_content_match": true,
+        "file1_in_dir2": true,
+        "file1_removed": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_6f56bf42-85b8-4fbb-8e06-6c44960184ba_sid_1488213",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully copied file1 to dir1, dir2, dir3 using cp commands with && chaining, then verified with ls -la. Completed in 9 turns.",
+    "capability_extraction": "Can use terminal, execute file operations (cp, ls, mv), chain commands with &&, verify results",
+    "task_rationale": "Tests backup-before-move pattern, a common sysadmin workflow. Uses same file setup but requires copy-then-move instead of just copy",
+    "explanation": "Task requires creating a backup copy (cp file1 file1.bak) then moving file1 to dir2 (mv file1 dir2/). Evaluator checks: (1) file1.bak exists in home, (2) backup content matches moved file, (3) file1 exists in dir2, (4) file1 no longer in home root. Partial credit: 0.25 per check.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_os_6f56bf42-85b8-4fbb-8e06-6c44960184ba_sid_1488213_traj_verify_2/metrics/check_backup_move__1a7983e090de51b7f1a1b54e751935d9.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "backup_exists": "0.25 - file1.bak exists in home directory",
+      "backup_content_match": "0.25 - backup content matches the moved file",
+      "file1_in_dir2": "0.25 - file1 exists in dir2",
+      "file1_removed": "0.25 - file1 no longer in home directory root"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "All instruction requirements are fully covered: backup creation (BACKUP_EXISTS), content integrity (BACKUP_CONTENT_MATCH), file moved to dir2 (FILE1_IN_DIR2), and original removed (FILE1_REMOVED)",
+        "Getter bash command correctly checks all 4 conditions with appropriate shell tests and diff for content verification",
+        "Metric function correctly parses output markers and awards 0.25 partial credit per condition, totaling 1.0 for full success",
+        "No postconfig needed - file system state persists and no UI dialogs are involved",
+        "Minor issue: metric function ignores the 'expected' parameter entirely - all checks are hardcoded. The expected rules dict is decorative. This works correctly for this task but is not a clean design pattern"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider having the metric function use the 'expected' parameter to drive which checks are performed, rather than hardcoding all checks. This would make the metric more reusable and the expected config meaningful"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

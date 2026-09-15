@@ -1,0 +1,102 @@
+{
+  "id": "6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2",
+  "new_id": "task_verify_42",
+  "snapshot": "libreoffice_writer",
+  "instruction": "This recruitment script needs to be anonymized. Please replace all instances of 'UCSF' (including \"UCSF's\") with '[INSTITUTION]' throughout the document.",
+  "source": "https://help.libreoffice.org/7.2/en-US/text/shared/02/02160000.html",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2/sample-recruitment-phone-script.odt",
+            "path": "/home/user/Desktop/sample-recruitment-phone-script.odt"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/sample-recruitment-phone-script.odt"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "sample-recruitment-phone-script.odt - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      }
+    ],
+    "func": "check_odt_word_replaced__7b317ae0",
+    "result": {
+      "type": "odt_word_count__7b317ae0",
+      "path": "/home/user/Desktop/sample-recruitment-phone-script.odt",
+      "word": "[INSTITUTION]"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 5
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires replacing all UCSF instances (5 occurrences of 'UCSF' + 1 of \"UCSF's\") with '[INSTITUTION]'. The evaluator counts occurrences of '[INSTITUTION]' and expects at least 5 instances (being conservative due to possessive form handling).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2_task_verify_5/getters/odt_word_count__7b317ae0.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6a33f9b9-0a56-4844-9c3f-96ec3ffb3ba2_task_verify_5/metrics/odt_word_replace__7b317ae0.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Regex pattern flaw - getter uses word boundary \\b with '[INSTITUTION]' which won't match correctly because brackets are non-word characters. Pattern '\\b[INSTITUTION]\\b' will fail to count occurrences accurately.",
+        "CRITICAL: Incomplete verification - evaluator only checks if '[INSTITUTION]' appears at least 5 times, but does NOT verify that 'UCSF' instances were actually removed. Could have false positives if both UCSF and [INSTITUTION] coexist.",
+        "Missing verification of original word removal - a complete evaluator should verify both: (1) '[INSTITUTION]' appears expected number of times AND (2) 'UCSF' appears 0 times.",
+        "Possessive form handling uncertainty - instruction explicitly mentions \"UCSF's\" but evaluator uses conservative count (5 instead of 6), suggesting uncertainty about whether '[INSTITUTION]'s' will be matched correctly by word boundary regex."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix regex pattern: Remove word boundaries or use a pattern that works with bracket characters. Use simple string counting or adjust regex to: re.findall(re.escape(target_word), full_text) instead of word boundary pattern.",
+        "Add dual verification: Create a getter that checks BOTH '[INSTITUTION]' count AND 'UCSF' count. Verify '[INSTITUTION]' >= 6 AND 'UCSF' == 0 for complete replacement verification.",
+        "Handle possessive forms explicitly: Account for both '[INSTITUTION]' and '[INSTITUTION]'s' in the count, expecting total of 6 occurrences (5 UCSF + 1 UCSF's).",
+        "Consider case-insensitive matching if needed, though current task specifies exact case 'UCSF'."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

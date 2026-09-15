@@ -1,0 +1,124 @@
+{
+  "id": "778efd0a-153f-4842-9214-f05fc176b877",
+  "new_id": "task_verify_25",
+  "snapshot": "vlc",
+  "instruction": "Add slide numbers to all slides in the presentation and ensure they appear in the bottom-right corner.",
+  "source": "https://researchguides.case.edu/c.php?g=1286426",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/Minimalist_Business_Slides.pptx",
+            "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/planet.mp4",
+            "path": "/home/user/Desktop/planet.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/planet.mp4",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress",
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Minimalist_Business_Slides.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_ppt_slide_numbers__801e16c7",
+    "result": {
+      "type": "ppt_slide_numbers__801e16c7",
+      "ppt_file_path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_slide_numbers": true,
+        "position": "bottom_right"
+      }
+    },
+    "options": {}
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding slide numbers to all slides. Evaluator checks if slides contain numeric text in bottom-right area (bottom 20%, right 50% of slide). Score is 1.0 if at least 80% of slides have numbers in correct position, 0.0 otherwise.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/778efd0a-153f-4842-9214-f05fc176b877_task_verify_5/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/778efd0a-153f-4842-9214-f05fc176b877_task_verify_5/metrics/slides.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "1.00": "At least 80% of slides have numeric text in bottom-right corner"
+    },
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Detection logic uses 'shape.text.strip().isdigit()' which only matches purely numeric text - will miss slide numbers with formatting like 'Slide 1', '1/10', or numbers with any non-digit characters",
+        "CRITICAL: Getter only checks text shapes, not LibreOffice Impress slide number fields (Insert → Header/Footer → Slide number) - may miss properly inserted slide numbers entirely",
+        "Incomplete verification: Evaluator may fail to detect correctly-inserted slide numbers due to overly restrictive text pattern matching",
+        "Position detection may miss edge cases where shape's top-left anchor is outside threshold but visual content is in bottom-right"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change detection logic from 'isdigit()' to regex pattern that accepts common slide number formats: r'\\d+' (contains at least one digit), or check for slide number field objects in python-pptx",
+        "Check for LibreOffice slide number fields in addition to text shapes - slide numbers inserted via Insert → Header/Footer use special field objects, not plain text",
+        "Consider checking shape center position or bounding box center instead of just top-left corner for more accurate position verification",
+        "Add explicit verification that python-pptx can detect LibreOffice slide number fields, or document that only manually-typed numbers will be detected"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "82279c77-8fc6-46f6-9622-3ba96f61b477_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default font size to Large.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_82279c77-8fc6-46f6-9622-3ba96f61b477_sid_1488099",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent attempted to find electric cars on cars.com but encountered ERR_HTTP2_PROTOCOL_ERROR. Spent all 50 turns trying to access cars.com via Chrome, Firefox, curl, and Python requests. Investigated proxy settings but could not bypass the connection issue.",
+    "capability_extraction": "Can open Chrome, type URLs in address bar, open terminal, run bash/curl/Python commands, open Firefox, navigate Chrome UI menus, investigate system settings",
+    "failure_analysis": "cars.com was inaccessible due to HTTP/2 protocol errors through the configured proxy. The model could not complete the original task because the target website was unreachable, not due to agent capability limitations.",
+    "task_rationale": "Decomposed original external-website task into a Chrome settings modification task that uses chrome:// internal pages, which are always accessible regardless of proxy/network issues. Tests the model's ability to navigate Chrome settings UI.",
+    "explanation": "Task requires navigating to Chrome settings and changing font size to Large (value 20). Evaluator uses official check_font_size metric with chrome_font_size getter to verify the setting was changed.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "font_size_change": "1.0 - Font size set to Large (20)"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (chrome_font_size) correctly reads Chrome Preferences JSON and extracts webkit.webprefs dict containing default_font_size",
+        "Metric (check_font_size) correctly accesses font_size['default_font_size'] and compares against rule['value'] (20)",
+        "Expected value 20 correctly corresponds to Chrome's 'Large' font size setting",
+        "Metric parameter handling is correct: with expected.type='rule', framework passes rules dict directly as rule parameter, and metric accesses rule['type'] and rule['value'] correctly",
+        "Single-step instruction with complete verification coverage"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

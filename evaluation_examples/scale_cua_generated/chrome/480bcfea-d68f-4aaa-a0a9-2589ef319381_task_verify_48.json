@@ -1,0 +1,107 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_48",
+  "snapshot": "chrome",
+  "instruction": "I want to speed up my downloads in Chrome. Can you enable the 'enable-parallel-downloading' experiment flag?",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "enable-parallel-downloading"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling parallel downloading experiment to speed up downloads. Uses existing evaluator functions.",
+    "new_functions_paths": [
+      "tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_task_verify_8"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing evaluator functions from chrome.py.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL LOGIC ERROR in metric check_enabled_experiments (chrome.py:533): Uses exact list equality comparison (==) instead of membership/subset check",
+        "The metric logic 'return 1. if enabled_experiments_names == rule['names'] else 0.' will FAIL if user has ANY other Chrome experiments enabled besides the target",
+        "Example failure scenario: If user already has ['some-other-flag'] enabled, after enabling 'enable-parallel-downloading' the list becomes ['enable-parallel-downloading', 'some-other-flag'], which != ['enable-parallel-downloading'], causing verification to fail",
+        "The instruction only requires ENABLING 'enable-parallel-downloading', not ensuring ONLY that flag is enabled (no other experiments). The metric is overly restrictive.",
+        "Semantic verification adequacy: The evaluator CANNOT correctly verify the instruction because it will produce false negatives when other experiments are present",
+        "This is a fundamental logic flaw, not just an edge case - it will fail in any realistic Chrome environment where users have customized their browser"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change metric from exact equality to membership check: 'return 1. if 'enable-parallel-downloading' in enabled_experiments_names else 0.'",
+        "Better solution (handles multiple target experiments): 'return 1. if set(rule['names']).issubset(set(enabled_experiments_names)) else 0.'",
+        "This checks if ALL required experiments from rule['names'] are present in enabled_experiments_names, without requiring they are the ONLY experiments enabled"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

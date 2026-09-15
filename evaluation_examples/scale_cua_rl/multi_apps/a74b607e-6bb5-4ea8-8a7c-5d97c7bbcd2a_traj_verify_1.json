@@ -1,0 +1,90 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_traj_verify_1",
+  "snapshot": "multiapps",
+  "instruction": "Install the helloExtension as an unpacked Chrome extension. The extension folder is located on the Desktop.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_sid_1488328",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to chrome://extensions, enabled Developer mode, clicked Load unpacked, but couldn't find helloExtension folder in file picker. Opened Terminal, unzipped extension to /tmp/chrome_extensions/, loaded extension from there instead of Desktop path.",
+    "capability_extraction": "Can navigate Chrome URLs, enable Developer mode, use Load unpacked button, open Terminal, run bash commands, navigate file dialogs, install Chrome extensions",
+    "failure_analysis": "Model loaded extension from /home/user/tmp/chrome_extensions/helloExtension instead of /home/user/Desktop/helloExtension. The instruction didn't explicitly mention the folder name or location.",
+    "task_rationale": "Same task as original but with clearer instruction specifying the folder name and location on Desktop, guiding the model to select the correct directory",
+    "explanation": "Task requires loading the helloExtension folder from Desktop as an unpacked Chrome extension. Evaluator checks Chrome preferences for the extension path using existing find_unpacked_extension_path getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter find_unpacked_extension_path correctly reads Chrome Preferences file and extracts all installed extension paths into a list, which is the right state to verify extension installation.",
+        "Metric is_in_list correctly checks if the expected path '/home/user/Desktop/helloExtension' is present in the list of extension paths returned by the getter.",
+        "Expected value '/home/user/Desktop/helloExtension' matches the instruction requirement (extension folder on Desktop) and the config setup (unzips helloExtension.zip to Desktop).",
+        "Parameter handling is correct: is_in_list receives the rules dict directly with rules['expected'] access pattern, compatible with expected.type='rule'.",
+        "Full instruction coverage: the single requirement (install unpacked extension from Desktop) is fully verified by checking if the path appears in Chrome's extension settings."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Chrome may store the extension path with a trailing slash or canonicalized form. Consider using a substring/fuzzy match if exact path matching proves brittle in practice.",
+        "Minor: The zip file URL contains 'Hello%20Extension.zip' (with space) but is downloaded as 'helloExtension.zip'. Verify that the extracted folder is indeed named 'helloExtension' and not 'Hello Extension' (with a space), as this would cause the expected path to mismatch."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

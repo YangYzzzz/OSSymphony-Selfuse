@@ -1,0 +1,88 @@
+{
+  "id": "7b7617bd-57cc-468e-9c91-40c4ec2bcb3d",
+  "new_id": "task_verify_30",
+  "snapshot": "gimp",
+  "instruction": "Set the default comment for GIMP images to 'Created with GIMP'.",
+  "source": "https://www.youtube.com/watch?v=G_PjQAy0iiU",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "key-value",
+        "key": "default-comment",
+        "value": "\"Created with GIMP\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to navigate to GIMP preferences and set the default comment for images to 'Created with GIMP'. The evaluator checks the gimprc config file for 'default-comment \"Created with GIMP\"'. Uses existing check_config_status metric and get_gimp_config_file getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if default-comment is set to 'Created with GIMP', 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.1,
+      "llm_judge_reasons": [
+        "Critical parsing logic error: check_config_status splits on whitespace which breaks multi-word quoted strings",
+        "Expected value contains spaces: '\"Created with GIMP\"' will be parsed incorrectly",
+        "The parsing logic (line split()) will produce: ['default-comment', '\"Created', 'with', 'GIMP\"']",
+        "items[-1] will be 'GIMP\"' instead of the full expected value '\"Created with GIMP\"'",
+        "Evaluator will always fail even when user correctly sets the config value",
+        "The gimprc format stores values as: (default-comment \"Created with GIMP\") which requires proper quoted string parsing"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix check_config_status to properly handle quoted strings with spaces (use regex or shlex.split() instead of str.split())",
+        "Alternative: Change expected value to use the actual tokens after parsing, or parse the line differently to preserve quoted strings",
+        "Consider using a proper S-expression parser for gimprc files which use Lisp-style syntax",
+        "Test the parsing logic with actual gimprc file format: (key \"multi word value\")"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

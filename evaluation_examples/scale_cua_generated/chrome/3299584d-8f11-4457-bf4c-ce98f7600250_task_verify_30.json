@@ -1,0 +1,91 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_30",
+  "snapshot": "chrome",
+  "instruction": "I want Chrome to block all pop-ups because they're really annoying. How do I enable the pop-up blocker?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_popups_blocked__6bbb0d83"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires blocking pop-ups in Chrome settings. Similar complexity - navigate to Settings > Privacy and security > Site settings > Pop-ups and redirects and block them.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_3/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if popups blocked (default_content_setting_values.popups=2), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement (pop-up blocker enabled)",
+        "Getter extracts the correct state: reads Chrome Preferences file and checks profile.default_content_setting_values.popups setting",
+        "Expected value is semantically correct: 'true' when popups setting equals 2 (blocked)",
+        "Metric comparison is appropriate: exact_match compares string result against expected 'true'",
+        "Complete instruction coverage: evaluator verifies exactly what the instruction requires",
+        "Data semantic compatibility: getter returns string 'true'/'false', metric expects string, perfect match",
+        "State accessibility: Preferences file is persistent on disk, no UI state dependency, no postconfig needed",
+        "Robust error handling: getter handles file read errors and missing keys gracefully",
+        "Cross-platform support: getter correctly handles OS-specific paths for Windows, macOS, and Linux"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "id": "08aced46-45a2-48d7-993b-ed3fb5b32302",
+  "new_id": "task_verify_45",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Make the second slide's title say \"Details\" and center it.",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/08aced46-45a2-48d7-993b-ed3fb5b32302/22_6.pptx",
+            "path": "/home/user/Desktop/22_6.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/22_6.pptx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "22_6.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_pptx_title_alignment__929cfd1d",
+    "result": {
+      "type": "pptx_title_alignment__929cfd1d",
+      "vm_path": "/home/user/Desktop/22_6.pptx",
+      "slide_index": 1
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "alignment": "CENTER",
+        "text": "Details"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task variation 5: Center alignment with title 'Details' on slide 2. Verified slide 2 (index 1) exists and currently has empty title. Evaluator checks both alignment (CENTER) and text (Details) with partial credit scoring.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/08aced46-45a2-48d7-993b-ed3fb5b32302_task_verify_5/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/08aced46-45a2-48d7-993b-ed3fb5b32302_task_verify_5/metrics/impress.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "scoring_breakdown": "0.5 for correct alignment (CENTER), 0.5 for correct text (Details)",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical getter logic flaw: Getter finds title by checking 'first non-empty text shape' (impress.py:44-47), but this will FAIL if the title is empty or if there are other text shapes on the slide",
+        "The getter does not properly identify the title placeholder using shape.is_placeholder or placeholder_format.type, so it may grab subtitle or body text instead of the actual title",
+        "Metadata states 'slide 2 (index 1) exists and currently has empty title', but getter logic requires shape.text.strip() to be truthy (line 44), which will skip empty titles entirely",
+        "After task completion, if slide has multiple text shapes, the getter may not consistently identify the title shape - it just grabs the first one with text",
+        "The title detection logic is semantically incorrect for PowerPoint/Impress slide structure - it should check placeholder types, not text content presence"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Rewrite getter to properly identify title placeholder: check shape.is_placeholder and shape.placeholder_format.type == PP_PLACEHOLDER.TITLE (or equivalent for python-pptx)",
+        "Remove the text.strip() requirement (line 44) so the getter can find titles even when empty",
+        "Use slide.shapes.title property if available in python-pptx, which directly accesses the title placeholder",
+        "If using generic shape iteration, check for placeholder type first, then fall back to position-based heuristics (top-most text shape)",
+        "Handle the case where title placeholder exists but is empty - should still return alignment and empty text, not None values"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

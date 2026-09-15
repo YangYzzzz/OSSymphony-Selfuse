@@ -1,0 +1,107 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "task_verify_6",
+  "snapshot": "chrome",
+  "instruction": "Look up Dallas to Philadelphia flights for the 10th of next month, filtering results to display only mile-eligible bookings.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time",
+        "mach-global-tabs-small__wrapper__tab--active": "category"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "10th next month"
+        },
+        "expected": {
+          "start": "DFW",
+          "end": "PHL",
+          "time": "{DoW}, {Month} {Day0D}, {Year}",
+          "category": "Miles"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation searching for flights from Dallas (DFW) to Philadelphia (PHL) on the 10th of next month, filtered for mile redemption. Uses the same evaluator structure as the original task - extracts flight search details from Delta.com HTML using get_active_tab_html_parse and validates them with check_direct_json_object. The get_rule_relativeTime getter converts '10th next month' to the absolute date format that Delta.com displays.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The evaluator checks: (1) departure city is DFW, (2) destination city is PHL, (3) date matches the 10th of next month in format 'DoW, Month Day, Year', (4) the 'Miles' tab is active indicating mile redemption filter is applied. All HTML class names match the original Delta.com structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses get_active_tab_html_parse to extract flight search data from Delta.com's active tab HTML",
+        "All 4 instruction requirements are verified: departure city (DFW), destination city (PHL), date (10th next month), and Miles filter",
+        "Relative time conversion is correctly implemented: get_rule_relativeTime converts '10th next month' to absolute date format matching Delta.com display (e.g., 'Wed, Jan 10, 2026')",
+        "Data extraction logic is semantically correct: class_multiObject_child extracts direct text nodes from separator element and correctly indexes them as 'start' (index 0) and 'end' (index 1)",
+        "Metric comparison logic (check_direct_json_object) performs exact string matching, which is appropriate for airport codes, dates, and filter names",
+        "HTML class selectors are specific and appropriate for Delta.com structure (mach-flight-context-info__wrapper--date, mach-global-tabs-small__wrapper__tab--active, etc.)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness concern: HTML class names are website-specific and may break if Delta.com updates their UI. Consider adding fallback selectors or monitoring for website changes, though this is an inherent limitation of web scraping verification."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_aug_1_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

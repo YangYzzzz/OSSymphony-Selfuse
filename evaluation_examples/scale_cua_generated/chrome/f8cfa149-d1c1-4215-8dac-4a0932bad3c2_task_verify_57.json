@@ -1,0 +1,106 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_57",
+  "snapshot": "chrome",
+  "instruction": "Could you help me copy the data in Cell B30 in this Libreoffice Calc file and search it in the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=carla(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell B30 (First Name column, row 30) from the spreadsheet and search it in Chrome. Verified from Excel file: Row 30, Column B contains 'Carla'. Evaluator checks if active tab URL matches Google search for 'carla'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Evaluator only verifies the search step (step 2) but does not verify the copying step (step 1)",
+        "Cannot verify data source: The evaluator cannot confirm that the search term came from cell B30 specifically - user could manually type 'carla' or copy from any other cell",
+        "Partial verification: Only checks end result (Google search URL) but not the full task flow (copy from B30 then search)",
+        "Expected value is semantically correct: Pattern correctly matches Google search for 'carla' (case-insensitive)",
+        "Getter and metric logic are individually correct: active_tab_info can extract URL, is_expected_search_query can match pattern"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for the clipboard content to confirm 'Carla' was copied (though this still wouldn't verify it came from B30)",
+        "Consider adding a getter to verify LibreOffice Calc cell B30 was selected/accessed before the search",
+        "Alternatively, simplify the instruction to only require searching for 'Carla' in Chrome (removing the copy requirement)",
+        "Add intermediate verification step to check clipboard state or cell selection before evaluating search"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

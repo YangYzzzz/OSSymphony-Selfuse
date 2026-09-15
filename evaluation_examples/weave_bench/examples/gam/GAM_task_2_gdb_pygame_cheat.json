@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_2_gdb_pygame_cheat",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal test task. All deliverables go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nTask: `/tmp_workspace/snake_game.py` is a pygame snake game. While the game is running, two key Python global variables control its state: `score` (integer, current score, displayed in the top-left corner of the game window) and `game_speed` (integer, frame rate / snake movement speed, initial value 10). You must modify both of these variables **in place** while the game is running (rather than editing the source and restarting), and leave behind enough evidence to prove the modifications took effect.\n\n[Deliverables]\n\nAll deliverables go under `/tmp_workspace/results/` and must include at least the following files, satisfying the corresponding content contracts:\n\n- `view_game_initial.png`: visual evidence of the game's initial state once running. The image should show the game window itself (including the window title), the current snake, and the initial score.\n- `gdb_session_score.txt`: session / operation log of modifying `score` to `9999`. It must contain the executed command text and the corresponding output, demonstrating that the variable was indeed overwritten via runtime process injection.\n- `view_score_changed.png`: visual evidence after `score` has been changed. The screenshot should show the score in the game window now reading `9999`.\n- `gdb_session_speed.txt`: session / operation log of modifying `game_speed` to `30`. It must contain the command text and output, and the log must include the literal string `game_speed`.\n- `view_speed_changed.png`: first visual evidence after `game_speed` has been changed. The screenshot should make it obvious that the snake's movement cadence has sped up noticeably (more pronounced frame-rate / position change compared with the initial screenshot).\n- `view_speed_changed_2.png`: a second screenshot taken roughly 0.3-0.5 seconds after `view_speed_changed.png`, used to compare snake displacement across a fixed wall-clock interval. The pixel difference between this image and `view_speed_changed.png` should be clearly larger than the displacement over the same interval at the initial low speed (i.e., the pixel diff between the two shots must be noticeably larger than at the initial low speed), and its resolution and file size must not be virtually identical to the initial screenshot (to prevent reusing the same placeholder shot).\n- `proc_maps.txt`: memory map of the injected process (the first several lines of `/proc/<PID>/maps` are sufficient). The contents must contain the string `python` to prove the injection target is indeed a Python interpreter process.\n- `cheat_report.md`: report file containing at least: the game process PID; commands and output summaries for the two runtime variable rewrites; a description of what each screenshot shows; and a summary of the overall \"runtime variable injection → visual verification\" workflow.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_2_gdb_pygame_cheat.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_2_gdb_pygame_cheat",
+        "env": "Ubuntu 22.04 desktop, GNOME, gdb, python3, pygame, python3-dbg (debug symbols)\nOPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which gdb >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gdb) || true\npip install -q pygame || true\nDEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-dbg 2>/dev/null || true\n# OCR + image deps used by the grader (score_ocr_9999 / speed_pixel_delta)\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true\n# allow ptrace; try sudo first, fall back to direct write\n(sudo sysctl -w kernel.yama.ptrace_scope=0 2>/dev/null) \\\n  || (echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope 2>/dev/null) \\\n  || (echo 0 | tee /proc/sys/kernel/yama/ptrace_scope 2>/dev/null) \\\n  || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_2_gdb_pygame_cheat/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_2_gdb_pygame_cheat /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_2_gdb_pygame_cheat/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_2_gdb_pygame_cheat/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_2_gdb_pygame_cheat/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_2_gdb_pygame_cheat/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_2_gdb_pygame_cheat/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_2_gdb_pygame_cheat.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_2_gdb_pygame_cheat",
+    "workspace_relative": "GAM/task_2_gdb_pygame_cheat",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_21",
+  "snapshot": "chrome",
+  "instruction": "Find the available one way flight from Manchester to Dublin for 4 adults on the 10th of next month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "10th next month"
+        },
+        "expected": {
+          "originIata": "MAN",
+          "destinationIata": "DUB",
+          "tpAdults": "4",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation 4: Search for one-way flight from Manchester (MAN) to Dublin (DUB) for 4 adults on 10th of next month. Uses existing evaluator functions to verify URL parameters. Similar complexity to original task with different route and passenger count.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: origin airport (MAN), destination airport (DUB), passenger count (4 adults, 0 teens, 0 children), travel date (10th of next month), and one-way flight (isReturn=false)",
+        "The getter get_active_tab_url_parse correctly extracts URL query parameters from the active tab's URL at chrome.py:2258-2288",
+        "The relativeTime value '10th next month' IS supported in relativeTime_to_IntDay mapping at misc.py:69 and has proper handler at misc.py:146-150",
+        "The metric check_direct_json_object correctly compares all extracted URL parameters against expected values at general.py:382-480",
+        "Complete coverage: All 7 URL parameters required by the Ryanair flight search are verified (originIata, destinationIata, tpAdults, tpTeens, tpChildren, tpStartDate/time, isReturn)",
+        "Time calculation logic is correct: get_rule_relativeTime calculates '10th next month' as next_year, next_month+1, day=10, which accurately represents the instruction requirement",
+        "Data flow is correct: Active tab URL → URL parsing → parameter extraction → relativeTime conversion → direct JSON comparison"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

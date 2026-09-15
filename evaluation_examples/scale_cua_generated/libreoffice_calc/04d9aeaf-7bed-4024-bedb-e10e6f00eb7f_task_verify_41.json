@@ -1,0 +1,117 @@
+{
+  "id": "04d9aeaf-7bed-4024-bedb-e10e6f00eb7f",
+  "new_id": "task_verify_41",
+  "snapshot": "libreoffice_calc",
+  "instruction": "In a new sheet, identify which year had the maximum Fixed Assets value and write both the year and the value in cells A2 and B2 respectively.",
+  "source": "SheetCopilot@168",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/04d9aeaf-7bed-4024-bedb-e10e6f00eb7f/SmallBalanceSheet.xlsx",
+            "path": "/home/user/SmallBalanceSheet.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/SmallBalanceSheet.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "SmallBalanceSheet.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_year_value__04b63ebe",
+    "result": {
+      "type": "xlsx_year_and_value__04b63ebe",
+      "path": "/home/user/SmallBalanceSheet.xlsx",
+      "sheet": 1,
+      "column": "B"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "year": 2014,
+        "value": 45500
+      }
+    },
+    "options": {
+      "tolerance": 1
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/04d9aeaf-7bed-4024-bedb-e10e6f00eb7f_task_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/04d9aeaf-7bed-4024-bedb-e10e6f00eb7f_task_verify_1/metrics/xlsx.py"
+    ],
+    "explanation": "Task requires finding the maximum Fixed Assets value in column C. Verified with Python: max value is 45500 in year 2014. Evaluator checks new sheet (Sheet2) for year in column A and value in column B.",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "scoring_breakdown": {
+      "0.5": "Correct year identified",
+      "1.0": "Correct year and value both written to new sheet"
+    },
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Getter logic is semantically incorrect - it scans all rows in column B to find maximum value, instead of directly reading cells A2 and B2 as the instruction requires",
+        "SEMANTIC MISMATCH: Instruction requires user to write year in A2 and value in B2, but getter searches for max value across column B (lines 42-49 in xlsx.py:8-56). This means if column B has any existing data or multiple values, the getter will read the wrong data",
+        "WRONG STATE EXTRACTION: Getter extracts 'year from row with max value in column B' instead of 'value written by user in cell A2'. These are semantically different verification targets",
+        "LOGIC CONFLICT: Getter re-calculates the maximum value instead of verifying what the user wrote. If user correctly writes 2014 and 45500 to A2/B2, but column B has other data, verification will fail",
+        "The getter should simply read ws['A2'].value and ws['B2'].value from Sheet2, not iterate through rows 2 to max_row looking for maximum"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Rewrite getter to directly read cells A2 and B2 from sheet index 1: return {'year': ws['A2'].value, 'value': ws['B2'].value}",
+        "Remove the max-finding loop (lines 42-49) since the user already identified and wrote the max value",
+        "Ensure the getter reads the NEW sheet (Sheet2, index 1) not the original data sheet",
+        "The expected values (year=2014, value=45500) are correct, but the getter extraction logic needs to be fixed to read the user's output cells, not recalculate the maximum"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

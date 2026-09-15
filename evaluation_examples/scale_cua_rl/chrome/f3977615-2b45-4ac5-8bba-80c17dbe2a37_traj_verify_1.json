@@ -1,0 +1,89 @@
+{
+  "id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37",
+  "new_id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Configure VLC to allow only a single running instance at a time.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_vlc_one_instance__e3afb507daace17955585b556bc80462",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance": "1"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_f3977615-2b45-4ac5-8bba-80c17dbe2a37_sid_1488229",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened VLC preferences and identified the 'Use only one instance when started from file manager' checkbox but repeatedly failed to toggle it. Spent ~8 turns clicking the same wrong coordinates, then switched to Advanced Preferences, browsed Qt interface settings, searched for 'single', opened file manager and terminal, created a test video, but never successfully changed the setting.",
+    "capability_extraction": "Can open VLC menus, navigate to Tools > Preferences, view Simple Preferences interface tab, switch to Advanced Preferences (All mode), navigate the Advanced Preferences tree, use terminal commands, open file browser dialogs",
+    "failure_analysis": "Model identified the correct setting but failed to click the checkbox at the right coordinates. Spent too many turns retrying the same click position instead of adjusting. Later attempts to use Advanced Preferences and terminal commands also failed to change the config.",
+    "task_rationale": "Simplified version of original task - enabling 'Allow only one instance' is a single checkbox in the same Playlist and Instances section the model navigated to. The checkbox is in a different position than the one that failed, potentially easier to click.",
+    "explanation": "Task requires enabling the 'Allow only one instance' checkbox in VLC Preferences. Evaluator kills VLC to force config save, then reads vlcrc to check one-instance=1. The metric excludes 'one-instance-when-started-from-file' matches to avoid false positives.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_vlc_f3977615-2b45-4ac5-8bba-80c17dbe2a37_sid_1488229_traj_verify_1/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter (vlc_config) correctly reads vlcrc from VM, which is the right source for VLC preference settings.",
+        "Postconfig kills VLC before reading config, ensuring settings are saved to disk — correct approach for VLC config verification.",
+        "Metric correctly filters for 'one-instance=' while excluding 'one-instance-when-started-from-file', preventing false positive matches on the related but different setting.",
+        "Parameter handling is correct: metric receives rules dict directly and accesses 'expected_one_instance' via rule.get() — proper pattern for type='rule'.",
+        "Expected value '1' is semantically correct for enabling the 'Allow only one instance' VLC setting.",
+        "Full instruction coverage: single requirement (enable one-instance) is completely verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The string match 'one-instance=' in line could match commented lines (e.g., '#one-instance=0'). Consider adding a check like 'line.strip().startswith(\"#\")' to skip commented lines. In practice this is unlikely to cause issues since VLC writes active settings after comments and the loop takes the last match."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

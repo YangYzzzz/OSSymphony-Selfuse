@@ -1,0 +1,86 @@
+{
+  "id": "930fdb3b-11a8-46fe-9bac-577332e2640e",
+  "new_id": "task_verify_76",
+  "snapshot": "vscode",
+  "instruction": "Please configure Ctrl+Shift+C to copy the selected text in the terminal.",
+  "source": "https://superuser.com/questions/1270103/how-to-switch-the-cursor-between-terminal-and-code-in-vscode",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_keybindings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "key": "ctrl+shift+c",
+          "command": "workbench.action.terminal.copySelection",
+          "when": "terminalFocus && terminalHasBeenCreated && terminalTextSelected"
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/keybindings.json",
+      "dest": "keybindings.json"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires binding Ctrl+Shift+C to copy selected text in terminal. Uses check_json_keybindings to verify the keybinding. Expected entry: {\"key\": \"ctrl+shift+c\", \"command\": \"workbench.action.terminal.copySelection\", \"when\": \"terminalFocus && terminalHasBeenCreated && terminalTextSelected\"}. Standard VSCode terminal clipboard command with context condition.",
+    "new_functions_paths": [
+      "tmp_funcs/930fdb3b-11a8-46fe-9bac-577332e2640e-2_task_verify_9/metrics/check_json_keybindings.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Function name collision - check_json_keybindings already exists in official metrics (src/envs/osworld_env/desktop_env/evaluators/metrics/vscode.py:9-46) with DIFFERENT and INCORRECT logic",
+        "Official version uses direct membership check 'if expected in data' (line 43) which will FAIL if VSCode adds extra properties to keybinding objects (common behavior)",
+        "New version in tmp_funcs uses correct field-by-field comparison (lines 50-62) that would work properly, but it's unclear which implementation will execute at runtime due to name collision",
+        "Runtime behavior is unpredictable - if official version loads first, verification will incorrectly fail even when keybinding is properly configured",
+        "Expected keybinding values are semantically correct: key='ctrl+shift+c', command='workbench.action.terminal.copySelection', when clause is appropriate",
+        "Getter (get_vm_file) correctly fetches /home/user/.config/Code/User/keybindings.json from VM",
+        "New implementation has robust error handling for JSON with comments and missing files",
+        "Parameter handling is correct in both versions: expected.get('expected', {}) properly extracts rules when type='rule'"
+      ],
+      "llm_judge_fix_suggestions": [
+        "MUST use a different function name (e.g., check_json_keybindings_field_match, check_vscode_keybinding_exists) to avoid collision with official function",
+        "Alternatively, if intending to replace official function, must update all tasks using the old check_json_keybindings to ensure compatibility",
+        "The field-by-field comparison logic in the new version is correct and should be preserved - it's the right approach for VSCode keybinding verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

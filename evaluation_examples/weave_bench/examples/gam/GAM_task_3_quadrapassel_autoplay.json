@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_3_quadrapassel_autoplay",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution note**: This is a **legitimate desktop/terminal test task** — `quadrapassel` is the open-source Tetris game shipped with Ubuntu/GNOME. All deliverables must be written to `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nYou need to implement autoplay for **quadrapassel** (GNOME Tetris). Without modifying\nthe game's internal data, survive at least **60 pieces** and clear at least **10 lines**.\nLogs, screenshots, and the summary must corroborate one another and reflect a real\n\"observe → decide → act → re-observe\" loop (screenshots must be genuinely captured\nfrom the game window — no placeholder images, no repeating the same image, no\ntext-only renderings).\n\n### Background\n\n- quadrapassel is the open-source Tetris that ships with the GNOME desktop; the\n  default board is 10 columns × 20 rows.\n- The seven Tetrominoes are denoted I/O/T/S/Z/J/L, each with its own color; the\n  background is dark.\n- The game exposes no external API, memory interface, or save-file protocol for\n  directly reading or writing the current board state.\n- Common heuristic features for evaluating piece placements: lines completed,\n  number of holes, column heights, bumpiness (see the Pierre Dellacherie /\n  El-Tetris approach).\n\n### Deliverables\n\nAll outputs go under `/tmp_workspace/results/` and must include at least the\nfollowing files, each satisfying its content contract:\n\n- `game_log.csv`: one row per piece, with all columns present:\n  `step,piece_type,rotation,target_col,lines_cleared,board_height,holes,action_keys,screenshot_file`.\n  - `piece_type` is restricted to the seven values I/O/T/S/Z/J/L, and at least 5 distinct types must appear;\n  - `action_keys` should record the actual key sequence applied to that piece (rotation / left-right movement / hard drop, etc.);\n  - row count ≥ 60, and the sum of the `lines_cleared` column ≥ 10.\n- `board_step_*.png`: visual evidence of the board state during play, at least 8 images;\n  each file ≥ 5 KB, width ≥ 200 px, must show visible colored blocks on the board\n  (not pure black/gray), and the images must not be byte-identical to each other (md5 must vary).\n- `final_board.png`: visual evidence of the final board at game over / exit, with a\n  reasonable resolution (width 200–800 px). This screenshot should depict the final board.\n- `summary.md`: total pieces, total lines cleared, final score, longest combo, and\n  a description of the evaluation strategy used.\n\n### Constraints\n\n- Direct reading/writing of quadrapassel's save files or memory to obtain the board\n  state is not allowed.\n- No third-party Tetris AI libraries (e.g. `tetris_ai`, `pytris`, etc.) may be\n  imported; the heuristic evaluator must be implemented by you.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_3_quadrapassel_autoplay.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_3_quadrapassel_autoplay",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which quadrapassel >/dev/null 2>&1 || sudo apt-get install -y -qq quadrapassel || apt-get install -y -qq quadrapassel || true\nwhich xdotool >/dev/null 2>&1 || sudo apt-get install -y -qq xdotool || apt-get install -y -qq xdotool || true\nwhich wmctrl >/dev/null 2>&1 || sudo apt-get install -y -qq wmctrl || apt-get install -y -qq wmctrl || true\nwhich scrot >/dev/null 2>&1 || sudo apt-get install -y -qq scrot || apt-get install -y -qq scrot || true\npip install -q pillow numpy || true\nmkdir -p /tmp_workspace/results || true\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_3_quadrapassel_autoplay/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_3_quadrapassel_autoplay /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_3_quadrapassel_autoplay/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_3_quadrapassel_autoplay/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_3_quadrapassel_autoplay/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_3_quadrapassel_autoplay/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_3_quadrapassel_autoplay/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_3_quadrapassel_autoplay.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_3_quadrapassel_autoplay",
+    "workspace_relative": "GAM/task_3_quadrapassel_autoplay",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

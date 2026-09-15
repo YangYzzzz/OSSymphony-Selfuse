@@ -1,0 +1,141 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "Set up a message filter in Thunderbird that automatically moves incoming emails containing 'Paper Recommendation' in the subject to a folder named 'Auto Research'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_filter__f57034f8",
+    "result": {
+      "type": "thunderbird_filters__f57034f8",
+      "filter_file_path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "name": "Auto Research",
+        "enabled": "yes",
+        "action": "Move to folder",
+        "actionValue_contains": "Auto Research",
+        "condition_contains": "Paper Recommendation"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a Thunderbird message filter for auto-organizing emails. Evaluator uses custom check_thunderbird_filter__f57034f8 metric to verify filter exists with name 'Auto Research', is enabled, has action 'Move to folder', moves to folder containing 'Auto Research', and filters emails with 'Paper Recommendation' in subject. Custom getter extracts filter configuration file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_3/getters/thunderbird_filters__f57034f8.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_3/metrics/thunderbird_filters__f57034f8.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Expected rules verify all instruction requirements - filter name ('Auto Research'), enabled status ('yes'), action type ('Move to folder'), target folder (actionValue_contains: 'Auto Research'), and subject condition (condition_contains: 'Paper Recommendation')",
+        "Correct semantic logic: Metric uses exact match for critical fields (name, enabled, action) and appropriate partial match for actionValue and condition to handle Thunderbird's internal format",
+        "Proper condition parsing: Metric correctly extracts individual conditions from Thunderbird's condition string format (line 66-70) and checks if any condition contains 'Paper Recommendation' (line 113)",
+        "Correct data flow: Getter retrieves filter file from VM, metric parses the msgFilterRules.dat file format, and validates all filter properties against expected rules",
+        "Appropriate matching strategy: actionValue_contains handles variable folder paths (e.g., 'imap://user@server/Auto Research'), condition_contains handles Thunderbird's condition format (e.g., 'AND (subject,contains,\"Paper Recommendation\")')"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

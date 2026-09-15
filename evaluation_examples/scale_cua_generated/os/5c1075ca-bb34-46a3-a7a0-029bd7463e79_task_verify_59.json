@@ -1,0 +1,136 @@
+{
+  "id": "5c1075ca-bb34-46a3-a7a0-029bd7463e79",
+  "new_id": "task_verify_59",
+  "snapshot": "os",
+  "instruction": "Create compressed archive \"failed_notebooks.tar.gz\" in the test_environment directory containing all files matching \"*failed.ipynb\" from the directory tree",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5c1075ca-bb34-46a3-a7a0-029bd7463e79/eval.sh",
+            "path": "eval.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x eval.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd test_environment'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "file_count_by_pattern__5c107_5",
+      "pattern": "*failed.ipynb",
+      "directory": "/tmp/extract_test_5c107_5"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "3"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "mkdir -p /tmp/extract_test_5c107_5 && cd /tmp/extract_test_5c107_5 && tar -xzf /home/user/test_environment/failed_notebooks.tar.gz 2>/dev/null || true",
+          "shell": true
+        }
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a tar.gz archive containing all '*failed.ipynb' files. Based on setup.sh, there are 3 such files. The evaluator extracts the archive to a temp directory and counts the files inside - should be 3. Uses custom getter to count extracted files and existing exact_match metric.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/5c1075ca-bb34-46a3-a7a0-029bd7463e79_task_verify_5/getters/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the archive creation task through a 3-step process: extract archive → count files → compare to expected value",
+        "Complete coverage: Checks archive existence (extraction would fail if missing), archive location (postconfig uses full path /home/user/test_environment/failed_notebooks.tar.gz), and archive contents (counts matching files)",
+        "Getter logic is correct: Uses find command to count files matching '*failed.ipynb' pattern in the extraction directory",
+        "Expected value is correct: '3' matches the actual number of *failed.ipynb files based on setup.sh analysis",
+        "Postconfig handles errors gracefully with '2>/dev/null || true' to prevent false failures",
+        "Unique temp directory (/tmp/extract_test_5c107_5) prevents conflicts between test runs"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The comparison is numeric (file count) but uses string comparison via exact_match. While this works correctly (both result and expected are strings), a more semantic approach would be to use a numeric comparison metric or convert to int in the getter. This is not a functional issue, just a style consideration."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

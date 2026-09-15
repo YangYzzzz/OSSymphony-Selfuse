@@ -1,0 +1,145 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_1",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Download all PDF attachments from the 'Paper Recommendation' email in Thunderbird, then create a new folder named 'Research_Papers' in Google Drive and upload all three PDFs to that folder.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'Research_Papers' and mimeType = 'application/vnd.google-apps.folder' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_folder__55cd0f01",
+    "result": {
+      "type": "gdrive_folder_contents__55cd0f01",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "Research_Papers"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_count": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires downloading all PDFs from Thunderbird and creating a folder in Google Drive to upload them. Evaluator checks if Research_Papers folder exists in Google Drive root and contains three PDF files.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_1_task_verify_2/getters/googledrive__55cd0f01.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_1_task_verify_2/metrics/googledrive__55cd0f01.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly searches for 'Research_Papers' folder in Google Drive root with proper query syntax",
+        "Getter correctly filters for PDF files only using mimeType = 'application/pdf'",
+        "Metric correctly handles expected parameter when type='rule' - directly accesses expected.get('file_count') without incorrect nested access",
+        "Metric properly checks folder existence as prerequisite before verifying file count",
+        "Evaluator verifies end-state requirements: folder creation (via folder_exists check) and 3 PDFs uploaded (via file_count check)",
+        "Partial credit logic is reasonable - proportional scoring based on number of files uploaded",
+        "Data flow is correct: getter extracts folder state and PDF count, metric compares against expected value of 3",
+        "Error handling present in getter for exceptions during Google Drive API access",
+        "No UI/dialog state dependencies - verification can run without postconfig"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Evaluator does not verify intermediate step (downloading from Thunderbird to local filesystem), but this is acceptable since end-state verification (3 PDFs in Google Drive) is sufficient to confirm task completion",
+        "Enhancement opportunity: Could add verification that files are actually PDFs by checking their names/extensions, though current mimeType filter in getter already ensures this"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

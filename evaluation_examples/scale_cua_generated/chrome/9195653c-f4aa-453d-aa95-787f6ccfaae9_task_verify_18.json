@@ -1,0 +1,88 @@
+{
+  "id": "9195653c-f4aa-453d-aa95-787f6ccfaae9",
+  "new_id": "task_verify_18",
+  "snapshot": "chrome",
+  "instruction": "When I open multiple video files, VLC opens a new instance each time which clutters my workspace. Can you configure VLC to use only one instance when started from a file?",
+  "source": "https://superuser.com/questions/1513285/how-can-i-increase-the-maximum-volume-output-by-vlc?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling multiple instance mode in VLC (one-instance-when-started-from-file=0). Evaluator uses existing check_one_instance_when_started_from_file metric and get_vlc_config getter to read VLC configuration file and verify one-instance-when-started-from-file setting is set to 0. Default value is 1 (allows multiple instances), so the agent must navigate to Tools > Preferences > Interface and disable 'Allow only one instance when started from file manager'. This is similar in complexity to the original task (changing a single VLC configuration setting).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vlc_config) correctly retrieves VLC configuration file from OS-specific paths (Linux: ~/.config/vlc/vlcrc, Darwin: ~/Library/Preferences/org.videolan.vlc/vlcrc, Windows: ~\\AppData\\Roaming\\vlc\\vlcrc)",
+        "Metric (check_one_instance_when_started_from_file) correctly reads the config file and searches for 'one-instance-when-started-from-file=' setting",
+        "Expected value is semantically correct: expected_one_instance_when_started_from_file=0 means 'disable multiple instances' which aligns with instruction requirement to 'use only one instance when started from a file'",
+        "Metric handles default value correctly: if setting not found in config, defaults to '1' (multiple instances allowed), which is the correct VLC default behavior",
+        "Postconfig appropriately kills and relaunches VLC to ensure configuration is saved and can be read for verification",
+        "Complete coverage: instruction has one clear requirement (configure single instance mode) which is fully verified by checking the exact VLC setting",
+        "Metric parameter handling is correct: receives 'expected' directly as rules dictionary and accesses rule['expected_one_instance_when_started_from_file'] correctly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

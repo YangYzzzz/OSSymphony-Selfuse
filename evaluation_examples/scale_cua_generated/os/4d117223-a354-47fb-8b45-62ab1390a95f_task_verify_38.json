@@ -1,0 +1,110 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_38",
+  "snapshot": "os",
+  "instruction": "Change the owner of all regular files under current directory tree to user 'user'",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_file_ownership__18d171e6",
+    "result": {
+      "type": "vm_command_line",
+      "command": "find testDir -type f -exec ls -l {} \\;",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "owner": "user"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing the owner of all regular files to 'user'. Evaluator checks that all files in testDir are owned by 'user' by parsing ls -l output.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/4d117223-a354-47fb-8b45-62ab1390a95f_task_verify_5/metrics/os.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical path logic error: The setup config navigates INTO testDir with 'cd testDir', making it the current working directory. The evaluator then runs 'find testDir -type f' which will look for a subdirectory named 'testDir' within the current directory (which is already testDir). This will likely fail or return no results.",
+        "The command should be 'find . -type f -exec ls -l {} \\;' to search the current directory (which is testDir after setup), not 'find testDir -type f'.",
+        "The metric logic itself is correct - it properly parses ls -l output and checks ownership of all files.",
+        "Coverage is complete - checks all regular files as required by the instruction.",
+        "Expected value 'user' is semantically correct for the task."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change the evaluator command from 'find testDir -type f -exec ls -l {} \\;' to 'find . -type f -exec ls -l {} \\;' to search the current directory recursively.",
+        "Alternatively, if the working directory is not guaranteed to be testDir, use an absolute path or ensure the command is executed from the parent directory of testDir."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

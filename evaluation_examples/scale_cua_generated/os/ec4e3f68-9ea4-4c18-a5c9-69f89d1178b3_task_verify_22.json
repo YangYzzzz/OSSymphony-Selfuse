@@ -1,0 +1,92 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_22",
+  "snapshot": "os",
+  "instruction": "Move Google Chrome to the top position in the favorites bar.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorites_order__a572fc31d81435d0b739124764e326d3",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_order": [
+          "google-chrome.desktop",
+          "thunderbird.desktop",
+          "vim.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires reordering GNOME favorites to place Google Chrome at the top. The evaluator checks that 'google-chrome.desktop' appears in the first position of the favorites list, regardless of the order of other apps. This validates the user successfully moved Chrome to the top position.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub1_verify_per5_1222/run_20251221_230336/tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_12_task_verify_2/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Security fix verified: Metric correctly uses ast.literal_eval() instead of eval() (basic_os.py:19), preventing code injection vulnerabilities from untrusted gsettings output.",
+        "Verification logic is correct: The metric appropriately checks only if Chrome is at position 0 (line 30), matching the instruction requirement 'Chrome appears at the top' without enforcing unnecessary ordering constraints on other apps.",
+        "Edge case handling is robust: The metric handles empty lists, malformed input, and SyntaxError exceptions (lines 18-26), ensuring reliable verification even with unexpected gsettings output.",
+        "Complete instruction coverage: The evaluator verifies the single requirement from the instruction - that Google Chrome is at the top of the favorites bar.",
+        "Getter extracts correct state: get_vm_command_line executes the appropriate gsettings command to retrieve GNOME favorites, providing the exact data needed for verification.",
+        "Parameter handling is correct: The metric correctly receives and uses the rule dict directly (appropriate for type='rule'), though it hardcodes 'google-chrome.desktop' rather than using rule['expected_order'][0].",
+        "Data flow is sound: gsettings output → string parsing → first position check → binary success/failure result."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Consider using rule['expected_order'][0] instead of hardcoded 'google-chrome.desktop' on line 30 to make the metric more reusable and consistent with the rule configuration (e.g., 'if apps[0] == rule[\"expected_order\"][0]: return 1.0'). This is a design consistency issue, not a functional bug."
+      ]
+    },
+    "augmented_from": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_12_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Browse LEGO sets for kids and sort by highest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "LEGO",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price High-Low"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "LEGO": "LEGO",
+        "lego": "LEGO",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=5": "Price High-Low"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "lego": true,
+          "toys": true,
+          "kids": true,
+          "price high-low": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires browsing LEGO products in Kids/Toys category and sorting by price high-low (S=5). Similar 3-step navigation pattern as original. Evaluator checks URL parameters and HTML elements for correct filtering and sorting. No custom functions needed - uses existing active_tab_html_parse getter and check_direct_json_object metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: LEGO category, Kids/Toys filtering, and sorting by highest price",
+        "Dual verification approach (HTML class elements + URL parameters) provides robust checking with good redundancy",
+        "The getter logic properly extracts breadcrumb navigation elements (pmpSearch_breadcrumb) to verify category path",
+        "URL parameter checking (S=5 for Price High-Low, LEGO/Toys/Kids keywords) correctly validates the sorting and filtering state",
+        "Expected values are semantically correct: all required filters should be true, no unexpected elements should exist",
+        "Case-insensitive matching handles variations in website display (LEGO vs lego)",
+        "The metric correctly compares boolean values for each requirement",
+        "Complete coverage: checks LEGO (2 ways), Toys (2 ways), Kids (2 ways), Price High-Low (2 ways), and unexpected elements"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor concern: HTML class names (pmpSearch_breadcrumb, sbSelector) are site-specific and could break if Kohls.com redesigns their website structure",
+        "Consider adding postconfig to ensure the page has fully loaded before verification, as dynamic content might load asynchronously",
+        "The evaluator assumes specific class names exist on Kohls.com - if the website structure changes, this will fail (but this is acceptable for the current task)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

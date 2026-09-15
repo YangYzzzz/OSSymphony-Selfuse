@@ -1,0 +1,125 @@
+{
+  "id": "04578141-1d42-4146-b9cf-6fab4ce5fd74",
+  "new_id": "task_verify_40",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Make the text in the three textboxes on slide 1 bold, in top-to-bottom order.",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/04578141-1d42-4146-b9cf-6fab4ce5fd74/45_2.pptx",
+            "path": "/home/user/Desktop/45_2.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 5
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/45_2.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "45_2.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_pptx_text_bold__83b81e66",
+    "result": {
+      "type": "pptx_text_bold_status__83b81e66",
+      "pptx_path": "/home/user/Desktop/45_2.pptx",
+      "slide_index": 0,
+      "shape_indices": [
+        0,
+        1,
+        4
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "bold_pattern": [
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires making all three textboxes on slide 1 bold. Slide 1 has shapes at indices 0, 1, and 4 with text 'PR   JECT PR   POSAL', 'NEW PR   DUCT', and 'LAUNCH' respectively. Evaluator checks bold status of all three shapes.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/04578141-1d42-4146-b9cf-6fab4ce5fd74_task_verify_0/getters/pptx__83b81e66.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/04578141-1d42-4146-b9cf-6fab4ce5fd74_task_verify_0/metrics/pptx__83b81e66.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical logic flaw in getter function: checks if ANY run is bold instead of if ALL runs are bold",
+        "Instruction requires 'Make the text in the three textboxes bold' which means ALL text must be bold, not just some text",
+        "Current logic will produce false positives: if user makes only first word bold in a textbox, getter returns True even though task is incomplete",
+        "Example: textbox with 5 runs where only 1 run is bold -> getter returns True -> evaluator passes incorrectly",
+        "Getter logic at line 40-43 in pptx__83b81e66.py breaks on first bold run found, should verify ALL runs are bold"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change getter logic to verify ALL runs are bold, not just check if any run is bold",
+        "Replace the early-break logic with: check all runs, return True only if all runs have font.bold == True",
+        "Suggested fix: Instead of 'if run.font.bold: is_bold = True; break', use 'all_bold = all(run.font.bold for run in paragraph.runs for paragraph in shape.text_frame.paragraphs)'",
+        "Handle edge case: if shape has no runs, decide if that should return True or False",
+        "Consider: what if run.font.bold is None vs False - should treat None as False for verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

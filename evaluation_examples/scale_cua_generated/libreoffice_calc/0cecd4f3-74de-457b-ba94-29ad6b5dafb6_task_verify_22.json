@@ -1,0 +1,113 @@
+{
+  "id": "0cecd4f3-74de-457b-ba94-29ad6b5dafb6",
+  "new_id": "task_verify_22",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Rename Sheet1 to \"Data_v1\", Sheet2 to \"Data_v2\", and Sheet3 to \"Data_v3\".",
+  "source": "https://www.libreofficehelp.com/add-insert-delete-copy-move-rename-a-worksheet-in-libreoffice-calc/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/0cecd4f3-74de-457b-ba94-29ad6b5dafb6/LARS_Science_Assessment_Resource_List_7-30-21.xlsx",
+            "path": "/home/user/copy_sheet_insert.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/copy_sheet_insert.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "copy_sheet_insert.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_pattern__34fcb36a",
+    "result": {
+      "type": "xlsx_sheet_names__34fcb36a",
+      "path": "/home/user/copy_sheet_insert.xlsx",
+      "dest": "copy_sheet_insert.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "pattern": "Data_v",
+        "expected_names": [
+          "Data_v1",
+          "Data_v2",
+          "Data_v3"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires renaming all 3 sheets following a naming pattern. Evaluator checks that all sheets match the expected names with the pattern.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/0cecd4f3-74de-457b-ba94-29ad6b5dafb6_task_verify_2/getters/xlsx__34fcb36a.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/0cecd4f3-74de-457b-ba94-29ad6b5dafb6_task_verify_2/metrics/xlsx__34fcb36a.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.1,
+      "llm_judge_reasons": [
+        "Critical data flow error: The evaluator.result specifies 'vm_file' which calls get_vm_file() and returns a file path (string), but the metric function check_xlsx_sheet_pattern__34fcb36a expects result to be a list of sheet names",
+        "The custom getter get_xlsx_sheet_names__34fcb36a is never invoked in the evaluator configuration - there is no mechanism to extract sheet names from the downloaded file",
+        "The metric will always return 0.0 because it checks 'if not isinstance(result, list): return 0.0', but result will be a file path string",
+        "Missing the middle data extraction step: should download file -> extract sheet names with getter -> compare with metric. Currently only does: download file -> pass path to metric (which expects list)",
+        "The evaluator cannot semantically verify the instruction because it never actually reads the sheet names from the Excel file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Option 1: Change evaluator.result to use a getter configuration that calls get_xlsx_sheet_names__34fcb36a on the downloaded file path, then pass the list result to the metric",
+        "Option 2: Modify the metric function to accept a file path as the first argument, load the Excel file internally using openpyxl, extract sheet names, then perform the comparison",
+        "Option 3: Use a composite getter pattern where get_vm_file result is piped to get_xlsx_sheet_names__34fcb36a before being passed to the metric",
+        "The postconfig is correct (saves file with Ctrl+S), but the core data flow from file->sheet names->verification is broken"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

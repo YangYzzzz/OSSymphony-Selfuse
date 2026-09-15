@@ -1,0 +1,100 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "task_verify_32",
+  "snapshot": "gimp",
+  "instruction": "Help me create a layer called 'Hexagon' in the current image.",
+  "source": "https://www.quora.com/How-do-I-add-layers-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type:": "key-value",
+        "key": "layer-new-name",
+        "value": "\"Hexagon\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a new layer in GIMP and naming it 'Hexagon'. The evaluator checks the GIMP config file to verify the layer-new-name is set to 'Hexagon'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing check_config_status metric with layer name 'Hexagon'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical semantic mismatch: Instruction requires creating a layer named 'Hexagon' in the current image, but evaluator checks GIMP config file's 'layer-new-name' preference setting",
+        "The config file (gimprc) stores the default name template for NEW layers, not the actual layers that exist in the image",
+        "Evaluator will return 1 if user changes the preference to 'Hexagon' without actually creating any layer",
+        "Evaluator will return 0 if user creates a layer named 'Hexagon' but the default preference remains unchanged",
+        "Incorrect state verification: Should check the .xcf file's layer list or use GIMP scripting to query layers, not read global preferences",
+        "The evaluator cannot distinguish between 'layer was created and named Hexagon' vs 'preference was set to Hexagon'"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Parse the .xcf file to extract the layer list and verify a layer named 'Hexagon' exists",
+        "Use GIMP's Python-Fu or Script-Fu to query the image's layers before closing GIMP",
+        "Add a postconfig step to save the image and then parse the saved .xcf file to check for the layer",
+        "Create a new getter that uses GIMP's scripting interface to export layer information to a temporary file, then verify that file"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

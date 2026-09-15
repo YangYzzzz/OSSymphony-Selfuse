@@ -1,0 +1,151 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_12",
+  "snapshot": "chrome",
+  "instruction": "Extract every image from the Word document attached to the 'Lecture Document' email in Notes, convert them to PNG format, and upload them as sequentially numbered files (1.png, 2.png, ...) to a new 'figures' folder in Google Drive's root directory.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_file_count__63477992bbc88c6a7091e80f7c0a8a72",
+    "result": {
+      "type": "gdrive_png_count__63477992bbc88c6a7091e80f7c0a8a72",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "figures",
+      "file_extension": ".png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 3,
+        "file_names": [
+          "1.png",
+          "2.png",
+          "3.png"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting 3 images from docx file in Thunderbird email and uploading to Google Drive figures/ folder with sequential naming (1.png, 2.png, 3.png). Evaluator verifies that exactly 3 PNG files exist in the figures/ folder with the correct names. The getter returns the list of file names, and the metric checks both the count and that the files are named '1.png', '2.png', '3.png' as required by the instruction.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_0/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_0/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary score: 1.0 if exactly 3 PNG files named '1.png', '2.png', '3.png' exist in figures/ folder, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator checks both file count (3) and exact file names (['1.png', '2.png', '3.png'])",
+        "Getter correctly extracts PNG file names from the 'figures' folder in Google Drive root",
+        "Metric correctly handles expected parameter: directly accesses expected.get('count') and expected.get('file_names') from the rules dictionary",
+        "Metric has robust verification logic: checks count first, then verifies exact name match against expected_file_names=['1.png', '2.png', '3.png']",
+        "Expected values are semantically correct: instruction requires sequential numbering (1.png, 2.png, etc.) and expected configuration specifies exactly these names",
+        "Data flow is correct: Getter returns List[str] of file names, Metric expects List[str] and Dict for expected, types are compatible",
+        "The evaluator will return 1.0 only if exactly 3 files exist with names '1.png', '2.png', '3.png', which fully satisfies the instruction requirements"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

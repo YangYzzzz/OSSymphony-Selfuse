@@ -1,0 +1,135 @@
+{
+  "id": "6ed0a554-cbee-4b44-84ea-fd6c042f4fe1",
+  "new_id": "task_verify_38",
+  "snapshot": "vscode",
+  "instruction": "Add folder \"/home/user/backup\" and folder \"/home/user/archive\" to the workspace.",
+  "source": "https://www.youtube.com/watch?v=B-s71n0dHUk",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/project"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/backup"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/archive"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/6ed0a554-cbee-4b44-84ea-fd6c042f4fe1/project.code-workspace",
+            "path": "/home/user/project.code-workspace"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/project.code-workspace"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "folders": [
+            {
+              "path": "project"
+            },
+            {
+              "path": "backup"
+            },
+            {
+              "path": "archive"
+            }
+          ]
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/project.code-workspace",
+      "dest": "project.code-workspace"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding backup and archive folders to workspace. Similar pattern to original task with different folder names.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: check_json_settings checks workspace JSON for project, backup, and archive folders.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Path format mismatch: Expected uses relative paths ('backup', 'archive', 'project') but VSCode workspace files typically use absolute paths ('/home/user/backup', '/home/user/archive', '/home/user/project'). The check_json_settings function uses exact equality comparison (line vscode.py:74), requiring exact string match.",
+        "Order dependency: The evaluator performs direct equality check on the folders list, making verification order-dependent. If folders are added in different order (e.g., archive then backup), evaluation would fail despite correct completion.",
+        "Overly strict comparison: check_json_settings compares entire folder list structure with exact equality. Real VSCode workspaces may have additional properties in folder objects (like 'name') or different formatting, which would cause false negatives.",
+        "Semantic verification gap: Instruction says 'Add folder X and folder Y', implying adding to existing workspace. Evaluator checks for presence of 3 folders total (including pre-existing 'project'), not specifically that backup and archive were added. This doesn't truly verify the 'add' action."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected paths from relative to absolute: {'path': '/home/user/backup'}, {'path': '/home/user/archive'}, {'path': '/home/user/project'}",
+        "Use a contains-based comparison instead of exact equality: check if each expected folder path is present in the actual folders list, regardless of order",
+        "Modify check_json_settings or use a custom metric that checks folder presence rather than exact list equality",
+        "Consider normalizing paths (resolve relative to absolute) before comparison to handle both formats"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

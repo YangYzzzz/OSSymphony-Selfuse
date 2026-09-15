@@ -1,0 +1,90 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_61",
+  "snapshot": "os",
+  "instruction": "Reorder your favorites so that Vim appears first, followed by Chrome, then Thunderbird.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps_order__5993e3c1",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_order": [
+          "vim.desktop",
+          "google-chrome.desktop",
+          "thunderbird.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires reordering favorite apps to a specific sequence. Uses custom metric that checks order, not just set membership. Expected order: vim, chrome, thunderbird.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_6_task_verify_1/metrics/basic_os.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can properly verify the instruction: getter extracts favorite apps order via gsettings command, metric compares exact order, expected values match instruction requirements (Vim first, Chrome second, Thunderbird third)",
+        "Complete coverage: evaluator checks all three apps in the exact required order",
+        "Metric function has good implementation quality: uses ast.literal_eval() for safe parsing (not eval()), includes error handling for malformed output and type validation, validates that expected apps are present before checking order",
+        "Comparison logic is appropriate: uses exact list equality to verify order matches exactly as instructed",
+        "State extraction is appropriate: gsettings command directly reads GNOME shell favorite-apps setting, no UI state dependency (the static warning about UI dependency is a false positive)",
+        "Will work correctly at runtime: metric tries expected.get('expected_order') first which will succeed when framework passes rules dict directly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Metric function line 28 shows conceptual misunderstanding: fallback pattern 'expected.get(\"rules\", {}).get(\"expected_order\", [])' is incorrect. When expected.type='rule', framework passes rules dict directly (not {rules: {...}}). Should only use: expected.get('expected_order', [])",
+        "Remove the incorrect fallback pattern to avoid confusion. Current code works because first attempt succeeds, but the fallback logic is wrong"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

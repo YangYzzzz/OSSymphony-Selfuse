@@ -1,0 +1,127 @@
+{
+  "id": "6ed0a554-cbee-4b44-84ea-fd6c042f4fe1",
+  "new_id": "6ed0a554-cbee-4b44-84ea-fd6c042f4fe1_traj_verify_1",
+  "snapshot": "vscode",
+  "instruction": "Add the folder \"/home/user/data2\" to the current workspace.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/project"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/data1"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/data2"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/6ed0a554-cbee-4b44-84ea-fd6c042f4fe1/project.code-workspace",
+            "path": "/home/user/project.code-workspace"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/project.code-workspace"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/project.code-workspace",
+      "dest": "project.code-workspace"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "folders": [
+            {
+              "path": "project"
+            },
+            {
+              "path": "data2"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vs_code_6ed0a554-cbee-4b44-84ea-fd6c042f4fe1_sid_1488098",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent opened VS Code workspace with 'project' folder. Successfully added 'data1' to workspace via UI. Failed to add 'data2' — tried terminal editing (nano, cat heredoc) but the workspace file was not correctly updated or VS Code did not reload.",
+    "capability_extraction": "Can interact with VS Code UI, add a folder to workspace via 'Add Folder to Workspace', use terminal, edit JSON files",
+    "failure_analysis": "Model successfully added data1 but could not add data2 via VS Code UI. The model knows the 'Add Folder to Workspace' workflow but struggled when repeating it for a second folder. Single-folder addition should be within capability.",
+    "task_rationale": "Tests single-folder addition with data2 instead of data1. Since the model demonstrated the workflow for data1, it should be able to apply the same approach to data2.",
+    "explanation": "Task requires adding one folder (data2) to VS Code workspace. Evaluator uses check_json_settings to verify the workspace file contains both 'project' (original) and 'data2' folders.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter get_vm_file correctly fetches /home/user/project.code-workspace from the VM, providing the workspace JSON file path to the metric.",
+        "Metric check_json_settings correctly accesses expected['expected'] to get the folders specification, which works correctly with type=rule parameter passing (rules dict passed directly as expected).",
+        "Expected value correctly specifies both the original 'project' folder and the new 'data2' folder, fully covering the instruction requirement.",
+        "Minor concern: check_json_settings uses exact deep equality (data[key] != value) on the folders list. If VS Code stores additional properties in folder entries (e.g., 'name') or uses absolute paths instead of relative paths, the check would fail. Standard VS Code behavior uses relative paths with only 'path' property for simple folder additions, so this should work in the typical case."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a subset/containment check instead of exact equality for the folders list, to be robust against VS Code adding extra properties to folder entries or reordering them.",
+        "Consider accepting both relative ('data2') and absolute ('/home/user/data2') path formats for the folder path."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

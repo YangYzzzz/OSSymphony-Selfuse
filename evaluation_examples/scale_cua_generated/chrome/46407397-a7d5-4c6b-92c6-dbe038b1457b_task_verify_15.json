@@ -1,0 +1,164 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_15",
+  "snapshot": "chrome",
+  "instruction": "List all subjects from emails in Thunderbird's Notes folder in a file named 'email_subjects.txt', with one subject per line, and save the file to the 'email_data' folder on Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'email_data' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_text_content__a48d3d2ba069ee77685e4821041681b9",
+    "result": {
+      "type": "gdrive_text_file__a48d3d2ba069ee77685e4821041681b9",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "query_list": [
+        [
+          "title = 'email_data' and trashed = false and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+          "title = 'email_subjects.txt' and trashed = false"
+        ]
+      ],
+      "dest": [
+        "email_subjects.txt"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "contains": [
+          "Lecture Document",
+          "Document Attached"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires extracting all email subjects from the Notes folder in Thunderbird (exactly 2 emails: 'Lecture Document' and 'Document Attached') and creating a text file uploaded to Google Drive. The evaluator performs exact matching verification: checks that the file contains exactly these 2 subjects as complete lines (not substrings), with exactly 2 non-empty lines total, ensuring completeness and correctness.",
+    "expected_email_count": 2,
+    "expected_email_subjects": [
+      "Lecture Document",
+      "Document Attached"
+    ],
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_0/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_0/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies ALL requirements: The metric uses exact line count check (len(result_lines) != len(contains_list)) ensuring exactly 2 subjects are present, matching the metadata's confirmation that the Notes folder contains exactly 2 emails.",
+        "Exact line matching implemented correctly: The metric uses 'expected_str in result_lines' which checks if the expected string IS in the list of lines (exact match), not substring matching. This is correct list membership testing in Python.",
+        "Completeness verification present: The count check ensures no extra or missing subjects - file must have exactly 2 non-empty lines, both matching the expected subjects. This prevents partial or over-complete results.",
+        "Getter logic is sound: Retrieves text file from Google Drive using correct query structure (folder 'email_data' in root, file 'email_subjects.txt' inside), decodes UTF-8 content properly.",
+        "Expected values are semantically correct: Metadata confirms the 2 expected subjects ('Lecture Document' and 'Document Attached') are the actual and complete set of emails in the Notes folder.",
+        "Parameter handling is correct: Metric uses 'expected.get(\"contains\", [])' which correctly accesses the rules dict when expected.type='rule' (framework passes config['rules'] directly). Static warning about type mismatch is a false positive."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Could add explicit order-checking if email subjects must appear in a specific order (currently allows any order).",
+        "Minor improvement: Could add case-sensitivity option if email subjects might have case variations (currently requires exact case match)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_text_content__a48d3d2ba069ee77685e4821041681b9 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "id": "c6bf789c-ba3a-4209-971d-b63abf0ab733",
+  "new_id": "task_verify_50",
+  "snapshot": "vscode",
+  "instruction": "Please help me modify VS Code setting to hide all \".vscode\" folders in the explorer view.",
+  "source": "https://download.microsoft.com/download/8/A/4/8A48E46A-C355-4E5C-8417-E6ACD8A207D4/VisualStudioCode-TipsAndTricks-Vol.1.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/c6bf789c-ba3a-4209-971d-b63abf0ab733/hw_python_oop-master-20240320T121244Z-001.zip",
+            "path": "/home/user/Downloads/hw_python_oop-master.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "cd /home/user/Downloads && unzip -q hw_python_oop-master.zip"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Downloads/hw_python_oop-master"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "files.exclude": {
+            "**/.vscode": true
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/settings.json",
+      "dest": "settings.json"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires hiding .vscode folders in VS Code explorer view. Very similar pattern to original task but targets VS Code's own configuration directories. Uses existing check_json_settings metric to verify the files.exclude setting.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Getter logic is correct: fetches settings.json from the correct VS Code user settings location (/home/user/.config/Code/User/settings.json)",
+        "Expected value is semantically correct: 'files.exclude' with '**/.vscode': true is the correct VS Code setting to hide .vscode folders",
+        "Instruction coverage is complete: evaluator checks the exact requirement specified in the instruction",
+        "CRITICAL ISSUE: check_json_settings uses exact equality comparison for nested objects. If files.exclude already contains other patterns (e.g., '**/.git': true), the check will fail even if '**/.vscode': true is correctly added. The metric compares the entire files.exclude object for equality rather than checking if the required pattern exists within it",
+        "The task is additive (add a new exclusion pattern) but the evaluator logic treats it as replacement (exact match). This will cause false negatives in real scenarios where users have existing exclusion patterns"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify the expected value to use a subset-checking approach: verify that the required key '**/.vscode': true exists within files.exclude, rather than requiring exact equality of the entire files.exclude object",
+        "Alternative: Create a custom metric function that checks if specific patterns exist within nested settings objects, allowing for additive verification rather than exact matching",
+        "Consider the context: if this is a clean VM with no prior settings, exact matching may work, but document this assumption in the metadata"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

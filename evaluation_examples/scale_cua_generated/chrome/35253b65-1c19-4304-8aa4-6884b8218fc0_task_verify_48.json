@@ -1,0 +1,105 @@
+{
+  "id": "35253b65-1c19-4304-8aa4-6884b8218fc0",
+  "new_id": "task_verify_48",
+  "snapshot": "chrome",
+  "instruction": "Add a shortcut to my desktop for this online calculator page using Chrome's shortcut functionality.",
+  "source": "https://www.laptopmag.com/articles/how-to-create-desktop-shortcuts-for-web-pages-using-chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.calculator.net/"
+        ]
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "bash",
+          "-c",
+          "sleep 2"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_shortcut_on_desktop",
+    "result": {
+      "type": "shortcuts_on_desktop"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "exec_pattern",
+        "required_components": [
+          "/opt/google/chrome/google-chrome",
+          "--profile-directory=Default",
+          "--app-id="
+        ],
+        "required_url": "calculator.net"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks user to create a desktop shortcut for calculator.net using Chrome's built-in shortcut feature. The evaluator checks for a .desktop file with the correct Exec line containing the app-id for the calculator website.",
+    "new_functions_paths": [
+      "tmp_funcs/35253b65-1c19-4304-8aa4-6884b8218fc0_task_verify_5/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Created custom is_shortcut_on_desktop metric with pattern matching support for Chrome's dynamic app-ids. Uses exec_pattern type to check for required components without hardcoded app-id.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly handles Chrome's dynamic app-id generation by using pattern matching (exec_pattern type) instead of hardcoded values - this is a smart design choice",
+        "The custom metric function (tmp_funcs/.../chrome.py:30-58) checks ALL required components: Chrome binary path (/opt/google/chrome/google-chrome), profile directory flag (--profile-directory=Default), app-id flag (--app-id=), AND target URL (calculator.net)",
+        "Getter 'get_shortcuts_on_desktop' (chrome.py:1084-1116) correctly extracts all .desktop files from desktop directory and returns their contents as dict {path: content}",
+        "Metric logic (lines 43-56 in custom function) correctly verifies: (1) all required_components are present in Exec line, (2) required_url pattern matches if specified - returns 1.0 on match, 0.0 otherwise",
+        "Data flow is semantically correct: getter extracts .desktop file contents -> metric parses Exec lines -> checks for Chrome-specific components + calculator.net URL",
+        "Framework parameter handling is CORRECT: expected.type='rule' means get_rule returns config['rules'] directly, and metric correctly uses rule.get('required_components') and rule.get('required_url') without accessing rule['rules'] (which would be wrong)",
+        "Complete instruction coverage: (1) desktop shortcut created - verified by .desktop file presence, (2) for calculator page - verified by calculator.net in URL, (3) using Chrome's functionality - verified by Chrome-specific Exec components",
+        "Edge cases handled well: no shortcuts returns 0.0, multiple shortcuts checked iteratively, dynamic app-id values supported via pattern matching",
+        "Postconfig has 'sleep 2' which is reasonable for desktop filesystem sync - sufficient for most systems"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor enhancement: Could increase postconfig to 'sleep 3' or add explicit filesystem sync command (e.g., 'sync') for very slow filesystems, but current 'sleep 2' is adequate for standard systems"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -182,7 +182,7 @@ def run_env_tasks(task_queue, run_args: argparse.Namespace, shared_scores: list)
 
             snapshot_name = IMAGE_ID_MAP[region].get(screen_size, IMAGE_ID_MAP[region][(1920, 1080)])
 
-        if args.benchmark == "osworld":
+        if args.benchmark in {"osworld", "weave_bench"}:
             env = OSWorldDesktopEnv(
                 path_to_vm=run_args.path_to_vm,
                 action_space=run_args.action_space,

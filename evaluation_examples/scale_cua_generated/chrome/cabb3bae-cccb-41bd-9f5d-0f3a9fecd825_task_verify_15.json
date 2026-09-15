@@ -1,0 +1,113 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_15",
+  "snapshot": "chrome",
+  "instruction": "Look up Disney princess toys for kids and order them starting with the least expensive.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Disney princess",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Disney princess": "Disney princess",
+        "disney+princess": "Disney princess",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "disney princess": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation searches for Disney princess toys instead of Spider-Man toys, maintaining the same pattern: search for a toy category for kids and sort by price ascending. Uses existing evaluator functions to verify breadcrumbs and URL parameters on Kohl's website.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies ALL instruction requirements: search query (Disney princess, toys, kids) checked via breadcrumbs and URL parameters, sorting (cheapest to most expensive) verified via selector text 'Price Low-High' and URL parameter 'S=4'",
+        "Multi-layered verification approach: checks both HTML elements (breadcrumbs class 'pmpSearch_breadcrumb', selector class 'sbSelector') AND URL parameters for robustness",
+        "Properly handles case-insensitive matching: getter converts keys to lowercase, expected values are lowercase, metric comparison will work correctly",
+        "Checks for unexpected extra elements via 'is_other_exist' field to ensure only expected search/filter criteria are applied",
+        "Getter logic (get_active_tab_html_parse with category 'class&url') can correctly extract the needed state from Kohl's website HTML structure",
+        "Metric logic (check_direct_json_object) performs correct key-by-key comparison between extracted result and expected values"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to ensure page has fully loaded and settled after search/sort actions, as web navigation may take time or involve redirects",
+        "Evaluator is tightly coupled to Kohl's website HTML structure (specific class names 'pmpSearch_breadcrumb', 'sbSelector', URL parameter 'S=4'). If Kohl's changes their website structure, the evaluator would need updates. This is acceptable for domain-specific tasks but worth noting.",
+        "Could add timeout/retry logic in getter if page elements are not immediately available after navigation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_xhaug_2_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

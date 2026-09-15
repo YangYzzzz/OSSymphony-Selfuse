@@ -1,0 +1,96 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "Please set DuckDuckGo as my default search engine in the browser.",
+  "source": "https://support.google.com/chrome/answer/95426",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "DuckDuckGo"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Chrome to use DuckDuckGo as the default search engine. Uses existing getter get_default_search_engine and metric match_in_list to verify the configuration. The task is similar in complexity to the original Bing configuration task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter get_default_search_engine correctly extracts the default search engine name from Chrome Preferences file (default_search_provider_data.template_url_data.short_name)",
+        "Metric match_in_list correctly checks if the result matches the expected value by testing result in expected list",
+        "Expected value \"DuckDuckGo\" is semantically correct - this is the exact short_name that Chrome stores for DuckDuckGo search engine",
+        "Postconfig appropriately restarts Chrome to ensure preferences are persisted to disk before verification",
+        "Complete coverage - instruction requires setting DuckDuckGo as default search engine, and evaluator verifies exactly that requirement",
+        "Data flow is correct: user changes setting → postconfig persists → getter reads Preferences → metric compares → verification succeeds"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

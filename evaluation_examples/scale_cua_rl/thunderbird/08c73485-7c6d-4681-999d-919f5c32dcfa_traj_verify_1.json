@@ -1,0 +1,115 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "08c73485-7c6d-4681-999d-919f5c32dcfa_traj_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Create a message filter named 'ReadReceipts' in Thunderbird that automatically marks messages as read when the subject contains 'receipt'.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "thunderbird_filter_file__9b422e9b7b3e9e70da3aceccdee5065b",
+      "profile_dir": "/home/user/.thunderbird/t5q2a5hp.default-release/"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "name": "ReadReceipts",
+            "action": "Mark read",
+            "enabled": "yes",
+            "condition": [
+              "OR (subject,contains,receipt)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_08c73485-7c6d-4681-999d-919f5c32dcfa_sid_1488172",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened Thunderbird, navigated to Message Filters, created a new filter rule with 'Move Message to Deleted' action but failed to change the required Thunderbird preferences (applyIncomingFilters, use_status_for_biff) in prefs.js. The agent confused creating a filter with enabling automatic filter application to subfolders.",
+    "capability_extraction": "Can open Thunderbird, navigate to Message Filters dialog, create new filter rules, interact with filter condition/action dropdowns, select target folders from folder tree, toggle checkboxes, save filters",
+    "failure_analysis": "Model failed because it did not understand that the task required changing internal Thunderbird preferences via Config Editor (about:config). Instead, it created a manual filter rule, which does not achieve the goal of automatic subfolder filtering.",
+    "task_rationale": "Tests filter creation with a different action type (Mark read instead of Move). The model demonstrated it can interact with filter dialogs, so this variation tests changing the action dropdown to a non-default option.",
+    "explanation": "Task requires creating a named message filter 'ReadReceipts' with condition 'subject contains receipt' and 'Mark read' action. Evaluator closes Thunderbird, then uses a custom getter to find and download msgFilterRules.dat. The existing check_thunderbird_filter metric verifies the filter has correct name, action, enabled status, and condition. [Fixed: added condition check to verify 'subject contains receipt' requirement]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_08c73485-7c6d-4681-999d-919f5c32dcfa_sid_1488172_traj_verify_1/getters/thunderbird_filter.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Added condition check ['OR (subject,contains,receipt)'] to expected rules to verify the filter condition matches 'subject contains receipt' as required by the instruction"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete verification coverage: The evaluator checks all four instruction requirements - filter name ('ReadReceipts'), action ('Mark read'), enabled status ('yes'), and condition ('OR (subject,contains,receipt)').",
+        "Getter logic is correct: Custom getter properly locates and downloads msgFilterRules.dat from the Thunderbird profile directory using find command, then downloads via get_file.",
+        "Metric logic is correct: check_thunderbird_filter parses the filter file line by line extracting name, enabled, type, action, actionValue, and condition fields. Uses _match_record for exact equality comparison against expected rules.",
+        "Condition matching is correct: The _condition_pattern regex correctly parses 'OR (subject,contains,receipt)' from the condition line in msgFilterRules.dat. The findall result produces a list that matches the expected ['OR (subject,contains,receipt)'].",
+        "Expected parameter handling is correct: type='rule' means the metric receives the rules dict directly, and check_thunderbird_filter accesses 'expect' key correctly.",
+        "Postconfig is appropriate: Closes Thunderbird window to ensure the filter file is flushed to disk before reading.",
+        "Minor concern: The condition comparison uses exact list equality via _match_record. If Thunderbird stores the condition with slightly different formatting or quoting, the match could fail. However, for the simple unquoted value 'receipt', this is unlikely to be an issue."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

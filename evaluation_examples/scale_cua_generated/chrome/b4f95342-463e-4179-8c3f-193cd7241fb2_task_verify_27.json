@@ -1,0 +1,95 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_27",
+  "snapshot": "chrome",
+  "instruction": "Find the earliest available reservation at Devil's Garden.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_recreation_html_element__fa1e76c31141f93d38de11c4bb8239cf",
+    "result": {
+      "type": "recreation_devilsgarden_html__fa1e76c31141f93d38de11c4bb8239cf",
+      "selector": "class",
+      "class": "camp-sortable-column-header",
+      "order": "2"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "location": "Devil's Garden",
+        "location_verified": true,
+        "reservation_table_present": true,
+        "has_availability_data": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation changes the location from 'Albion Basin' to 'Devil's Garden' and uses different wording ('search for the soonest open reservation' vs 'locate the nearest open slot') while maintaining the same complexity and interaction pattern. The task requires the agent to search for camping reservations at Devil's Garden on recreation.gov. The evaluator verifies: (1) The correct location 'Devil's Garden' is confirmed in the URL or page content, (2) A reservation table with sortable column headers is present, (3) Availability/reservation data is displayed on the page.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b4f95342-463e-4179-8c3f-193cd7241fb2_aug_13_task_verify_3/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b4f95342-463e-4179-8c3f-193cd7241fb2_aug_13_task_verify_3/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Expected parameter handling is CORRECT (Section 5.1 compliant): Metric function at general.py:50-56 correctly handles expected parameter. When expected.type='rule', the framework's get_rule (misc.py:87-91) returns config['rules'] directly, and the metric correctly accesses expected.get('location'), expected.get('location_verified'), etc. without trying to access expected.get('rules'). The comments at lines 50-52 even correctly explain this behavior.",
+        "Complete coverage of instruction requirements: Evaluator fully verifies all aspects of 'search for the soonest open reservation at Devil's Garden': (1) Location verification - Devil's Garden confirmed in URL/content (chrome.py:90-103, general.py:60-66), (2) Reservation table presence (chrome.py:112-121, general.py:68-74), (3) Availability data displayed (chrome.py:124-145, general.py:76-82), (4) Dates sorted ascending for 'soonest' (chrome.py:148-217, general.py:84-101), (5) Earliest reservation identified (chrome.py:219-247, general.py:103-112).",
+        "Getter implementation is thorough and semantically correct: The getter extracts comprehensive state including multiple verification strategies for location (URL patterns, page text, campground ID), robust table detection, availability indicators across multiple CSS patterns, date extraction with multiple format support (MM/DD/YYYY, Month DD YYYY, YYYY-MM-DD), and intelligent earliest reservation identification through highlighted elements and table position.",
+        "Partial credit logic is semantically sound: The metric provides graduated scoring (0.5 for reaching page but no dates, 0.6 for dates but unsorted, 0.8 for sorted but not highlighted, 1.0 for complete) at general.py:88-112. While expected.rules only contains boolean flags, the partial credit is a metric-internal scoring mechanism that reasonably reflects task completion progress. This is a valid design pattern.",
+        "Minor brittleness with HTML structure: Getter relies on recreation.gov-specific CSS classes (camp-sortable-column-header, availability-status, etc.) which could break if the website changes structure. However, the getter implements multiple fallback detection strategies (lines 125-145) which provides some resilience. This is unavoidable for web scraping verification tasks."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to handle potential UI state issues: If the reservation search results page might be navigated away from during agent execution, consider adding a postconfig step to re-navigate to the results page before verification. Current implementation assumes the page state is stable.",
+        "Optional enhancement for robustness: Consider adding more fallback patterns for date extraction and table detection in case recreation.gov updates their HTML structure. The current implementation is already quite robust with multiple detection strategies, but additional patterns could improve long-term reliability."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "b4f95342-463e-4179-8c3f-193cd7241fb2_aug_13_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

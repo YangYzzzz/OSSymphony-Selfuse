@@ -1,0 +1,96 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Configure Chrome to automatically clear all cookies and site data when I close the browser.",
+  "source": "https://support.google.com/chrome/answer/95647",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "cookies_clear_on_exit__207f7b6597ba675431e17149c4a63a1e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling the 'Clear cookies and site data when you close all windows' setting in Chrome. This is a similar Chrome privacy setting to the original Safe Browsing task. Custom getter get_cookies_clear_on_exit__207f7b6597ba675431e17149c4a63a1e reads Chrome's Preferences file and checks the content_settings.clear_on_exit_list or related cookie clearing settings. Verified the Preferences file structure follows the same pattern as other Chrome settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_aug_1_task_verify_1/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter logic correctly checks Chrome's SESSION_ONLY cookie policy (value 4) which represents 'Clear cookies on exit'",
+        "Checks both possible storage locations: profile.default_content_setting_values.cookies and profile.content_settings.exceptions.cookies",
+        "Logic correctly returns 'true' when SESSION_ONLY is found, 'false' otherwise, matching the expected verification behavior",
+        "Postconfig appropriately kills and restarts Chrome with 5 second sleep to ensure settings are persisted to disk before verification",
+        "Metric comparison using exact_match correctly compares result 'true' vs expected 'true'",
+        "Complete coverage: evaluator checks the single requirement (cookie clearing on exit enabled)",
+        "Minor consideration: The getter checks nested cookie exceptions which may not be necessary for the global setting, but this extra check does not cause false positives"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

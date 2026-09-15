@@ -1,0 +1,115 @@
+{
+  "id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "Clear all site data for Amazon from Chrome so they can't track my activity anymore.",
+  "source": "https://support.google.com/chrome/answer/95647?hl=en&ref_topic=7438325&sjid=16867045591165135686-AP#zippy=%2Cdelete-cookies-from-a-site",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.amazon.com",
+          "https://www.amazon.com/s?k=huggingface+transformers+book"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_cookie_deleted",
+    "result": {
+      "type": "cookie_data",
+      "dest": "Cookies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "domains",
+        "domains": [
+          ".amazon.com"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires clearing Amazon site data (primarily cookies). Uses existing is_cookie_deleted metric to verify .amazon.com cookies are removed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "The is_cookie_deleted function checks if any cookie domain matches .amazon.com. Returns 1.0 if no Amazon cookies found, 0.0 otherwise.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Postconfig correctly restarts Chrome to allow reading the updated Cookies database",
+        "Getter (get_cookie_data) successfully extracts all cookies from Chrome's SQLite database",
+        "Metric (is_cookie_deleted) correctly checks for absence of .amazon.com domain cookies with proper inverted logic",
+        "Domain .amazon.com correctly matches all Amazon subdomains",
+        "Incomplete coverage: instruction says 'all site data' but evaluator only checks cookies (not cache, local storage, IndexedDB, etc.)",
+        "However, cookies are the primary tracking mechanism mentioned in the instruction ('can't track my activity')"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification for other site data types (cache, local storage, IndexedDB) if full 'site data' coverage is required",
+        "Alternatively, update instruction to be more specific: 'Clear all cookies for Amazon' instead of 'all site data'",
+        "Current approach is acceptable if cookies are considered sufficient for anti-tracking purposes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

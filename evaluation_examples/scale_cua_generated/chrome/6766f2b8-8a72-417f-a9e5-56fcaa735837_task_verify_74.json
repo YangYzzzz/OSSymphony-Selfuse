@@ -1,0 +1,97 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_74",
+  "snapshot": "chrome",
+  "instruction": "Set up the helloExtension from Desktop as a developer extension in Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 2: Instruction uses 'set up' and 'developer extension' terminology. Evaluator checks for extension path /home/user/Desktop/helloExtension. Agent needs to access Chrome extensions management, enable developer mode, and load the unpacked extension.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: find_unpacked_extension_path reads Chrome Preferences file and extracts all unpacked extension paths from extensions.settings[id].path",
+        "Metric logic is correct: is_in_list checks if expected path '/home/user/Desktop/helloExtension' is present in the returned list of extension paths",
+        "Expected value is semantically correct: the path matches the location where helloExtension folder is extracted in task config",
+        "Data flow is valid: getter returns list of paths -> metric checks if expected path is in list -> returns 1.0 if found, 0.0 otherwise",
+        "Verification is semantically sound: if the extension path appears in Chrome Preferences extensions.settings, it means the unpacked extension was successfully loaded (which requires developer mode to be enabled)",
+        "Postconfig includes 2-second sleep to allow Chrome to save Preferences file to disk, which is appropriate for file-based verification",
+        "Complete coverage: the evaluator verifies the core requirement that helloExtension was loaded as a developer extension in Chrome"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

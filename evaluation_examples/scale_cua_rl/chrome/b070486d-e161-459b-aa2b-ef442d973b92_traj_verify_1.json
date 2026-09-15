@@ -1,0 +1,87 @@
+{
+  "id": "b070486d-e161-459b-aa2b-ef442d973b92",
+  "new_id": "b070486d-e161-459b-aa2b-ef442d973b92_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's bookmarks manager.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.drugs.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "^chrome://bookmarks"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_b070486d-e161-459b-aa2b-ef442d973b92_sid_1488160",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to show Tamiflu side effects on drugs.com but encountered Access Denied. Tried medscape.com (Cloudflare 1005), Google search (timed out), then successfully navigated to Wikipedia Oseltamivir article and found the Side effects section.",
+    "capability_extraction": "Can use Chrome address bar to type URLs, navigate to Wikipedia, click TOC links, scroll through pages, handle access denied errors by trying alternative sites",
+    "failure_analysis": "drugs.com blocked with Access Denied, medscape.com blocked by Cloudflare, Google timed out. Model ended on Wikipedia instead of required drugs.com URL.",
+    "task_rationale": "Tests Chrome internal page navigation via address bar, which the model demonstrated proficiency with throughout the trajectory",
+    "explanation": "Task requires opening Chrome's bookmarks manager. Evaluator checks active tab URL matches chrome://bookmarks pattern using is_expected_url_pattern_match. [Fixed: changed goto_prefix from 'https://www.' to '' since chrome:// internal URLs already include their full scheme]",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree with goto_prefix='' correctly extracts the raw address bar text from the accessibility tree. For chrome:// internal URLs, the address bar displays the full scheme (e.g., 'chrome://bookmarks'), so an empty prefix is correct.",
+        "Metric is_expected_url_pattern_match receives rules={'expected': ['^chrome://bookmarks']} and iterates over patterns using re.search, which correctly matches URLs starting with 'chrome://bookmarks'.",
+        "The instruction is a single-step task (open bookmarks manager) and the evaluator fully covers it by verifying the active tab URL matches the chrome://bookmarks pattern.",
+        "Previous goto_prefix issue ('https://www.' → '') has been fixed. The data flow is now correct: getter returns 'chrome://bookmarks...' → metric matches against '^chrome://bookmarks' → returns 1.0 on success."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "fix_history": [
+      "Fix 1: Changed goto_prefix from 'https://www.' to '' (empty string) in evaluator result config, since chrome:// internal URLs already include their full scheme in the address bar text and prepending 'https://www.' would corrupt the URL."
+    ]
+  }
+}

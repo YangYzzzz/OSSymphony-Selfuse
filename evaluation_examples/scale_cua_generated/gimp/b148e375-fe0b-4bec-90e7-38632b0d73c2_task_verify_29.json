@@ -1,0 +1,101 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "task_verify_29",
+  "snapshot": "gimp",
+  "instruction": "Could you add a layer to this image and give it the name 'Polygon'?",
+  "source": "https://www.quora.com/How-do-I-add-layers-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type:": "key-value",
+        "key": "layer-new-name",
+        "value": "\"Polygon\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a new layer in GIMP and naming it 'Polygon'. The evaluator checks the GIMP config file to verify the layer-new-name is set to 'Polygon'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing check_config_status metric with layer name 'Polygon'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator checks wrong state - it verifies the 'layer-new-name' preference in gimprc config file, which is just a default name template setting, NOT the actual layer that was created in the image",
+        "CRITICAL: Does not verify that a layer was actually added to the image - only checks if a preference was set",
+        "CRITICAL: Does not verify the layer exists in the image file (white_background.xcf) - the config preference can be set without any layer being created",
+        "MAJOR: Incomplete coverage - instruction requires (1) add a layer AND (2) name it 'Polygon', but evaluator only checks a preference setting, not actual layer existence",
+        "MAJOR: State timing issue - postconfig closes GIMP (Ctrl+Q) without saving the file first, so any created layer may be lost and not persisted to the .xcf file",
+        "MAJOR: Wrong verification approach - should parse the XCF file structure or use GIMP scripting to query actual layers, not check a user preference setting"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace the verification approach: Instead of checking gimprc config, parse the actual .xcf file at /home/user/Desktop/white_background.xcf to extract layer information",
+        "Add postconfig to save the file before closing: Add Ctrl+S command before Ctrl+Q to ensure the layer is persisted",
+        "Create a new getter function to extract layer names from the XCF file (e.g., get_gimp_layers_from_xcf) that parses the file structure or uses GIMP scripting",
+        "Create a new metric function to check if a specific layer name exists in the layer list (e.g., check_layer_exists)",
+        "Alternative approach: Use GIMP's Python-Fu scripting to query the image's layer structure before closing GIMP"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

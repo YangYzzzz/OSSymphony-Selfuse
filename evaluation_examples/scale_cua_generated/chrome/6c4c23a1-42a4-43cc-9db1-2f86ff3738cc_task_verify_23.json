@@ -1,0 +1,108 @@
+{
+  "id": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "Search for flights from Atlanta to Las Vegas leaving on the 5th of next month, and filter results to show only flights available for mile redemption.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.delta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {
+        "mach-flight-context-info__wrapper--date": "time",
+        "mach-global-tabs-small__wrapper__tab--active": "category"
+      },
+      "class_multiObject_child": {
+        "mach-flight-context-info__wrapper__info--separator": {
+          "0": "start",
+          "1": "end"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "5th next month"
+        },
+        "expected": {
+          "start": "ATL",
+          "end": "LAS",
+          "time": "{DoW}, {Month} {Day0D}, {Year}",
+          "category": "Miles"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation searching for flights from Atlanta (ATL) to Las Vegas (LAS) on the 5th of next month, filtered for mile redemption. Uses the same evaluator structure as the original task - extracts flight search details from Delta.com HTML using get_active_tab_html_parse and validates them with check_direct_json_object. The get_rule_relativeTime getter converts '5th next month' to the absolute date format that Delta.com displays.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The evaluator checks: (1) departure city is ATL, (2) destination city is LAS, (3) date matches the 5th of next month in format 'DoW, Month Day, Year', (4) the 'Miles' tab is active indicating mile redemption filter is applied. All HTML class names match the original Delta.com structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts flight search state from Delta.com active tab using appropriate CSS class selectors",
+        "Complete coverage: all instruction requirements are verified (departure city ATL, destination LAS, date on 5th of next month, mile redemption filter active)",
+        "Date conversion logic in get_rule_relativeTime correctly converts '5th next month' to absolute date with proper timezone handling",
+        "Metric check_direct_json_object performs appropriate exact matching for all 4 expected keys (start, end, time, category)",
+        "Expected values are semantically correct: ATL/LAS match instruction cities, date format matches Delta.com display, 'Miles' verifies mile redemption filter",
+        "Data flow is correct: getter extracts HTML → relative time converted to absolute → metric compares result with expected"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding postconfig to ensure Delta.com results page remains active if user navigates away, though this is not critical for typical execution flow",
+        "Minor: HTML class names are Delta.com-specific and could break if website updates, but this is inherent to web scraping verification and not a logic error"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "6c4c23a1-42a4-43cc-9db1-2f86ff3738cc_aug_1_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

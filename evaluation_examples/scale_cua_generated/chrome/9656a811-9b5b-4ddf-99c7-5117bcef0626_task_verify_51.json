@@ -1,0 +1,114 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "I want to ensure all my connections are secure by using HTTPS-Only mode. Can you enable this security feature in Chrome?",
+  "source": "https://support.google.com/chrome/answer/95617",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"https_first_mode_enabled\":false}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "https_only_mode__980fd38b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to enable HTTPS-Only mode (also known as HTTPS-First mode) in Chrome. The evaluator checks https_first_mode_enabled field in Chrome Preferences. Initial state: false. Expected state: true.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_9/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts the https_first_mode_enabled preference from Chrome Preferences file",
+        "Metric logic correctly performs exact string comparison between result and expected value",
+        "Expected value is semantically correct (\"true\" for enabled HTTPS-Only mode)",
+        "Postconfig appropriately restarts Chrome to ensure preferences are written to disk and can be read",
+        "Complete coverage: evaluator checks the exact setting required by the instruction (HTTPS-Only mode = https_first_mode_enabled)",
+        "Proper exception handling in getter for missing files, invalid JSON, and unsupported OS types",
+        "Data flow is correct: getter returns \"true\"/\"false\" → metric compares with expected \"true\" → returns 1.0 on match"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

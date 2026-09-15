@@ -1,0 +1,119 @@
+{
+  "id": "5203d847-2572-4150-912a-03f062254390",
+  "new_id": "task_verify_8",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder named \"Newsletters\" and set up a filter rule to automatically transfer inbox emails containing \"subscribe\" in the subject line to this new folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Newsletters",
+            "condition": [
+              "AND (subject,contains,subscribe)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation changes folder name to 'Newsletters' and filter keyword to 'subscribe' (subject contains). Uses same evaluator structure as original with check_thunderbird_filter metric. Verified that filter format matches expected structure with enabled=yes, Move to folder action, and subject contains condition.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: The instruction has two distinct requirements: (1) Create a local folder named 'Newsletters' and (2) Set up a filter rule. The evaluator only verifies requirement #2 (filter rule existence) but does NOT verify that the 'Newsletters' folder was actually created.",
+        "The filter's actionValue references 'mailbox://nobody@Local%20Folders/Newsletters' but this doesn't prove the folder exists. A user could create a filter pointing to a non-existent folder and the evaluator would incorrectly pass.",
+        "The filter may not work correctly if the destination folder doesn't exist, and Thunderbird's behavior with non-existent folders is undefined in this verification context.",
+        "The evaluator correctly verifies: (1) Filter is enabled, (2) Action is 'Move to folder', (3) Destination is Newsletters folder, (4) Condition checks subject contains 'subscribe'. The getter and metric logic are semantically correct for what they check.",
+        "Postconfig appropriately closes Message Filters window and waits for state to settle before verification."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second verification step to check that the 'Newsletters' folder actually exists in Thunderbird's Local Folders structure.",
+        "Options for folder verification: (1) Add getter/metric to read Thunderbird's folder structure configuration files (e.g., folderTree.json or panacea.dat), (2) Use accessibility tree to verify the folder appears in the folder pane UI, or (3) Check for the folder's mailbox file in the Local Folders directory.",
+        "Consider using a multi-step evaluator that checks both folder existence AND filter rule configuration, with partial credit scoring (0.5 for each requirement)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_49",
+  "snapshot": "thunderbird",
+  "instruction": "I need you to uninstall the account \"maria.garcia@protonmail.com\" from Thunderbird",
+  "source": "https://www.wikihow.com/Remove-an-Email-Account-from-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "unexpect": [
+          {
+            "url": "imap://127.0.0.1",
+            "user": "maria.garcia@protonmail.com"
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation: Remove ProtonMail account (typically uses bridge with localhost). Same evaluator pattern with unexpect to verify removal.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly uses 'unexpect' rule to verify account removal - if account is found in CSV, task fails; if not found, task passes",
+        "Complete coverage: The evaluator checks for the exact account specified in the instruction (maria.garcia@protonmail.com with imap://127.0.0.1)",
+        "Getter is feasible: firefox_decrypt.py is a well-known tool that can extract Thunderbird account information from profile directory and output to CSV format",
+        "Metric logic is correct: check_csv with 'unexpect' rule properly implements the logic - iterates through CSV records and ensures the specified account pattern does not match any record",
+        "Expected values are semantically correct: The ProtonMail account uses localhost IMAP (127.0.0.1) which is accurate for ProtonMail Bridge setup as noted in metadata",
+        "State accessibility is good: Thunderbird profile data persists on disk after task completion, so the getter can reliably access account information",
+        "Data flow is correct: postconfig extracts accounts to CSV → check_csv reads CSV → unexpect rule verifies account absence"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

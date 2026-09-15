@@ -1,0 +1,88 @@
+{
+  "id": "b070486d-e161-459b-aa2b-ef442d973b92",
+  "new_id": "b070486d-e161-459b-aa2b-ef442d973b92_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the Wikipedia article about Aspirin.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.drugs.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "^https://(en\\.)?wikipedia\\.org/wiki/Aspirin"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_b070486d-e161-459b-aa2b-ef442d973b92_sid_1488160",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to show Tamiflu side effects on drugs.com but encountered Access Denied. Tried medscape.com (Cloudflare 1005), Google search (timed out), then successfully navigated to Wikipedia Oseltamivir article and found the Side effects section.",
+    "capability_extraction": "Can use Chrome address bar to type URLs, navigate to Wikipedia, click TOC links, scroll through pages, handle access denied errors by trying alternative sites",
+    "failure_analysis": "drugs.com blocked with Access Denied, medscape.com blocked by Cloudflare, Google timed out. Model ended on Wikipedia instead of required drugs.com URL.",
+    "task_rationale": "Tests Wikipedia navigation with a different medical topic (Aspirin), same pattern as what the model successfully did with Oseltamivir in the trajectory",
+    "explanation": "Task requires navigating to the Wikipedia article about Aspirin. Evaluator checks active tab URL matches the Wikipedia Aspirin article pattern using is_expected_url_pattern_match. [Fixed: changed goto_prefix from 'https://www.' to 'https://' so getter constructs valid URL 'https://en.wikipedia.org/wiki/Aspirin' matching the expected regex]",
+    "fix_history": [
+      "Fix 1: Changed goto_prefix from 'https://www.' to 'https://' — Wikipedia uses 'en.wikipedia.org' without 'www', so the old prefix would construct 'https://www.en.wikipedia.org/...' which never matches the regex '^https://(en\\.)?wikipedia\\.org/wiki/Aspirin'"
+    ],
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter active_url_from_accessTree with goto_prefix 'https://' correctly reads the Chrome address bar text and prepends the protocol. When navigated to Wikipedia Aspirin, the address bar shows 'en.wikipedia.org/wiki/Aspirin', producing 'https://en.wikipedia.org/wiki/Aspirin'.",
+        "Metric is_expected_url_pattern_match receives rules={'expected': ['^https://(en\\.)?wikipedia\\.org/wiki/Aspirin']} via the rule framework. It correctly iterates over patterns and uses re.search to match the constructed URL against the regex.",
+        "The regex '^https://(en\\.)?wikipedia\\.org/wiki/Aspirin' correctly matches both 'https://en.wikipedia.org/wiki/Aspirin' and 'https://wikipedia.org/wiki/Aspirin', covering the expected Wikipedia URL formats.",
+        "The instruction has a single requirement (navigate to Wikipedia Aspirin article) and the evaluator fully covers it by checking the active tab URL."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixed": true
+    }
+  }
+}

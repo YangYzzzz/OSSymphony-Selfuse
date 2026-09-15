@@ -1,0 +1,110 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "9656a811-9b5b-4ddf-99c7-5117bcef0626_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Set Chrome's default font size to Large in the appearance settings.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"safebrowsing\":{\"enabled\":false,\"enhanced\":false}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_9656a811-9b5b-4ddf-99c7-5117bcef0626_sid_1488367",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated Chrome menu -> Settings -> Privacy and Security -> Security. Found Safe Browsing section with Standard protection appearing selected. Model concluded it was already enabled and stopped without making changes. Evaluator returned 0 because safebrowsing was disabled in Preferences.",
+    "capability_extraction": "Can open Chrome three-dot menu, navigate to Settings, click Privacy and Security sidebar, navigate to Security subsection, read and understand settings options",
+    "failure_analysis": "Model misread UI state - saw Standard protection radio button as selected but safe browsing was actually disabled via Preferences config. Did not click to toggle/enable the setting.",
+    "task_rationale": "Tests a different Chrome settings change (font size via Appearance) using the same navigation capability the model demonstrated. Requires interacting with a dropdown control rather than a radio button, testing a different interaction pattern.",
+    "explanation": "Task requires changing Chrome's default font size to Large (20px) in Appearance settings. Evaluator restarts Chrome and checks chrome_font_size preference using check_font_size metric, expecting value 20.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'chrome_font_size' correctly reads Chrome Preferences file at 'webkit.webprefs.default_font_size', which is the correct JSON path for Chrome's default font size setting.",
+        "Metric 'check_font_size' correctly extracts 'default_font_size' from the getter result dict and compares it against the expected value using equality check.",
+        "Expected value 20 correctly corresponds to Chrome's 'Large' font size option in the Appearance settings.",
+        "Postconfig correctly kills Chrome and restarts it to ensure the Preferences file is flushed to disk before the getter reads it.",
+        "The expected parameter handling is correct: get_rule returns {'type': 'value', 'value': 20}, and check_font_size accesses rule['type'] and rule['value'] directly.",
+        "Single-step instruction (set font size to Large) is fully covered by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

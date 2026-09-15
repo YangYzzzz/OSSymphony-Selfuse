@@ -1,0 +1,85 @@
+{
+  "id": "8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f",
+  "new_id": "task_verify_56",
+  "snapshot": "base_setup",
+  "instruction": "Change the video aspect ratio in VLC to 16:9 format.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f/Optimus%20-%20Gen%202.mp4",
+            "path": "/home/user/Desktop/Gen 2.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=15 '/home/user/Desktop/Gen 2.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_vlc_aspect_ratio__d1470170",
+    "result": {
+      "type": "vlc_aspect_ratio__d1470170"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": "16:9"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing VLC aspect ratio to 16:9. Agent can use Video > Aspect Ratio menu. Custom getter reads aspect ratio information from VLC HTTP status.xml, metric performs string comparison.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_3/getters/vlc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_3/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "VLC aspect ratio options include default, 16:9, 4:3, 16:10, etc. Getter extracts aspect ratio from status.xml video metadata.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Getter reads video file metadata, not VLC UI setting - The getter queries 'Display aspect ratio' from status.xml video metadata (vlc.py:31-35), which extracts the video file's inherent aspect ratio, NOT the VLC UI aspect ratio setting that users change via Video > Aspect Ratio menu",
+        "Semantic mismatch: Instruction requires verifying UI setting change, but getter reads video stream properties - When users change aspect ratio via VLC menu, they apply a display override that doesn't modify the video file's metadata. The getter will likely always return the video's original aspect ratio regardless of UI settings",
+        "State accessibility issue: VLC's HTTP status.xml may not expose user-selected aspect ratio override settings - The status.xml typically contains video stream metadata and playback state, but not UI override settings like forced aspect ratio",
+        "Incomplete verification: Evaluator cannot detect whether the instruction was completed - Even if the user successfully changes VLC's aspect ratio setting to 16:9, the getter will continue reading the video file's inherent aspect ratio, making verification impossible"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Alternative approach 1: Use VLC command-line query or dbus interface to read the actual aspect ratio setting (not video metadata)",
+        "Alternative approach 2: Use accessibility tree or UI inspection to verify the aspect ratio menu selection state",
+        "Alternative approach 3: Parse VLC's config file or preferences where aspect ratio overrides might be stored",
+        "Verify that the chosen approach reads the UI setting, not the video file's inherent properties - test with a video that has a different native aspect ratio than 16:9 to ensure the getter detects the UI setting change"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_68",
+  "snapshot": "multiapps",
+  "instruction": "Use Chrome's Load unpacked feature to add the extension from the helloExtension directory on the Desktop.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_installed_extension_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "Hello Extensions"
+      }
+    }
+  },
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "pkill -f 'google-chrome|chromium' || true",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 3
+      }
+    }
+  ],
+  "metadata": {
+    "explanation": "Instruction explicitly mentions 'Load unpacked' feature. Verifies by checking extension name in installed extensions. The actual extension name from manifest.json is 'Hello Extensions' (plural), verified by cross-referencing with other tasks using the same extension.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "new_functions_paths": [],
+    "extension_name_verified": "Corrected to 'Hello Extensions' (plural) based on verification from other task files (a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_7.json, a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_12_task_verify_1.json, etc.) which all use 'Hello Extensions' as the extension name. The directory name 'helloExtension' does not determine the extension's display name - that comes from manifest.json.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is semantically correct: find_installed_extension_name reads Chrome Preferences file at ~/.config/google-chrome/Default/Preferences and extracts all extension names from extensions.settings[id].manifest.name, which is the canonical source for ALL installed extensions (both unpacked and from Chrome Web Store)",
+        "Metric logic is correct: is_in_list performs simple membership test (expected in result), correctly verifying if 'Hello Extensions' appears in the list of installed extension names",
+        "Expected value 'Hello Extensions' (plural) is semantically correct and has been verified through cross-referencing with multiple other task files using the same helloExtension.zip extension",
+        "Coverage is complete: instruction requires 'Load unpacked' extension, evaluator verifies extension appears in installed extensions list - this correctly verifies the task was completed regardless of the exact method used",
+        "Postconfig correctly restarts Chrome (pkill + relaunch + 3s sleep) to ensure Chrome Preferences file is persisted to disk before verification, making state accessible to getter",
+        "Data flow is semantically correct: getter extracts list of extension names -> metric checks if 'Hello Extensions' is in list -> returns 1.0 if found, 0.0 otherwise",
+        "State accessibility is correct: getter reads from persisted Preferences file (not UI state), so no UI needs to be reopened - the static warning about UI/state-dependent task is not applicable here",
+        "Edge cases handled correctly: if Preferences file doesn't exist or is malformed, getter returns empty list [], metric correctly returns 0.0 (extension not found)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": "FIXED: Changed expected value from 'Hello Extension' (singular) to 'Hello Extensions' (plural) based on cross-referencing with other task files using the same helloExtension.zip. Multiple other tasks (a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_11_task_verify_7, a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_aug_12_task_verify_1, 6766f2b8-8a72-417f-a9e5-56fcaa735837_aug_10_task_verify_1) consistently use 'Hello Extensions' as the extension name from manifest.json. This fixes the critical validation issue."
+    }
+  }
+}

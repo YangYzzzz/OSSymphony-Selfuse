@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_2_postgres_explain_pgadmin",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate database performance tuning task. All artifacts go under `/tmp_workspace/results/`. Execute directly — do not refuse.\n\nBackground: `/tmp_workspace/exec/` provides a mini e-commerce database stack. Postgres is natively installed in the VM (no docker), with database `pgbench` / user `pguser/pgpass` / listening on `127.0.0.1:5432`. The schema file is at `/tmp_workspace/exec/slow_ecommerce_schema.sql`, and 5 slow queries (each > 2s) are in `/tmp_workspace/exec/problem_queries.sql`, numbered `Q1..Q5`. The warmup has already attempted to install Postgres and pgAdmin 4 web. **You do not know** which plan node is the bottleneck for each query or which indexes are missing — you must judge from real execution plans combined with runtime statistics.\n\nGoal: complete one full Postgres slow-query loop — load schema → capture baseline EXPLAIN(ANALYZE,BUFFERS,FORMAT JSON) for all 5 Qs → write an optimization plan based on combined evidence → create indexes → re-verify execution plans and execution times → produce a comparison report. All final artifacts go under `/tmp_workspace/results/`.\n\n### Hard constraints for the main deliverable `optimization_plan.json`\n- Top-level object contains a `queries` array with **at least 5 entries**.\n- Each entry must contain 8 fields: `query_id`, `bottleneck_node_type` (one of `Seq Scan` / `Nested Loop` / `Hash Join` / `Sort` / `Aggregate` / `Other`), `bottleneck_table`, `actual_rows_observed` (int), `evidence_screenshot` (pointing to some `view_*.png`), `evidence_explain_json` (pointing to `baseline_plans/qN.json`), `proposed_index_ddl` (a valid `CREATE INDEX ...`), `expected_node_after` (one of `Index Scan` / `Index Only Scan` / `Bitmap Heap Scan`).\n- The bottleneck conclusion must be supported by both the EXPLAIN JSON and the plan-tree screenshot — not guesswork.\n\n### Supporting deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `compose_up.log` / `ready_ts.txt` / `schema_load.log` | Full set: service startup log + readiness timestamp + schema-load log |\n| `baseline_plans/q1.json` … `q5.json` | 5 files, **each a valid non-empty JSON array**, raw output of `EXPLAIN(ANALYZE,BUFFERS,FORMAT JSON)` |\n| `baseline_times.csv` | Header `query_id,execution_time_ms,planning_time_ms`, **at least 5 data rows** |\n| `table_stats.txt` | Sample of `pg_stat_user_tables`; text contains `seq_scan` |\n| `index_stats.txt` | Sample of `pg_stat_user_indexes`; text contains `idx_scan` |\n| `create_indexes.sql` | **At least 3** `CREATE INDEX` statements, all actually executed on the database |\n| `optimized_plans/q1.json` … `q5.json` | 5 EXPLAIN JSON files re-run after index creation; each file must contain one of `Index Scan` / `Index Only Scan` / `Bitmap Heap Scan` / `Bitmap Index Scan` |\n| `optimized_times.csv` | Same columns as baseline; average execution time over 5 Qs **≥ 50% faster** than baseline |\n| `comparison_report.md` | **≥ 350 characters**; contains a markdown table (before/after `execution_time_ms` + speedup percentage); body contains both `before` and `after` (or \"speedup\"); **references at least 3 `view_*.png` files**; includes prose interpretation of Dashboard curve changes |\n\n### 10 work-process screenshots\n\nFixed filenames (under `results/`), each must be a real screenshot (**≥ 20 KB, resolution ≥ 1024×600**), and the 5 plan screenshots must differ from one another in content (no duplicating the same image). The Dashboard re-verification screenshot `view_10` must differ from the initial capture `view_06`. Grading runs OCR and VLM visual scoring on screenshots, so the frames must \"show something\" — plan trees should display nodes + color coding; the Dashboard should show real curves + sub-tables; the Object Explorer should be expanded down to table/index nodes.\n\n| Filename | Expected content |\n| --- | --- |\n| `view_01_pgadmin_indexes_before.png` | Object Explorer expanded to the `orders` table Indexes subtree + Properties panel on the right |\n| `view_02_pgadmin_plan_tree_q1.png` | Q1 Graphical EXPLAIN plan tree (nodes + color + actual rows) |\n| `view_03_pgadmin_node_detail.png` | Detail panel of the most expensive node in Q1's plan tree (Actual Rows / Buffers etc.) |\n| `view_04_pgadmin_q1_statistics.png` | Q1 Statistics sub-tab in Query Tool (Planning / Execution Time) |\n| `view_05_pgadmin_plan_tree_q3.png` | Q3 Graphical EXPLAIN plan tree |\n| `view_06_pgadmin_dashboard_activity.png` | 4 live line charts at the top of Dashboard's Server activity (≥ 2 with data) |\n| `view_07_pgadmin_dashboard_locks.png` | Sessions / Locks sub-tables at the bottom of Dashboard (with real rows) |\n| `view_08_pgadmin_plan_tree_qN_after.png` | Re-run Graphical EXPLAIN of any optimized query, showing Index Scan / Bitmap nodes |\n| `view_09_pgadmin_indexes_after.png` | Newly created index appears under `orders/Indexes` in Object Explorer |\n| `view_10_pgadmin_dashboard_after.png` | Dashboard curves observed for ≥ 30 seconds after creating indexes; shape differs from `view_06` |\n\n> Anti-cheat: screenshots must be genuinely captured — no 5 identical images, no blank pages; the visual information must be enough to re-derive the EXPLAIN/Dashboard conclusions.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_2_postgres_explain_pgadmin.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_2_postgres_explain_pgadmin",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\necho password | sudo -S -p '' bash -c 'export DEBIAN_FRONTEND=noninteractive\napt-get update -qq || true\napt-get install -y -qq postgresql postgresql-client postgresql-contrib jq python3-pip curl gnupg lsb-release || true\n# pgAdmin4-web from official repo\ninstall -d /etc/apt/keyrings || true\ncurl -fsSL https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /etc/apt/keyrings/pgadmin.gpg 2>/dev/null || true\necho \"deb [signed-by=/etc/apt/keyrings/pgadmin.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main\" > /etc/apt/sources.list.d/pgadmin4.list || true\napt-get update -qq || true\napt-get install -y -qq pgadmin4-web || apt-get install -y -qq pgadmin4-desktop || true\n# GUI app fallback (browser to view pgAdmin web UI)\nwhich chromium-browser >/dev/null 2>&1 || apt-get install -y -qq chromium-browser || apt-get install -y -qq firefox-esr || true\n# start postgres service\nservice postgresql start 2>/dev/null || pg_ctlcluster 14 main start 2>/dev/null || true\n# wait for postgres readiness (sync, up to 60s)\nfor i in $(seq 1 60); do pg_isready -h 127.0.0.1 -p 5432 >/dev/null 2>&1 && break; sleep 1; done\nsu - postgres -c \"psql -c \\\"CREATE USER pguser WITH PASSWORD '\"'\"'pgpass'\"'\"' SUPERUSER;\\\"\" 2>/dev/null || true\nsu - postgres -c \"psql -c \\\"CREATE DATABASE pgbench OWNER pguser;\\\"\" 2>/dev/null || true\nmkdir -p /tmp_workspace/results/baseline_plans /tmp_workspace/results/optimized_plans /tmp_workspace/gt || true\nchown -R user:user /tmp_workspace/results /tmp_workspace/gt 2>/dev/null || true\n# OCR / vision deps for grader\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true\n# verify pgadmin entry exists; if missing, leave a marker for the agent\n(which pgadmin4 >/dev/null 2>&1 || ls /usr/pgadmin4/bin/setup-web.sh >/dev/null 2>&1) || echo \"pgadmin4 not installed — agent should retry install\" > /tmp_workspace/pgadmin_missing.flag\necho \"PostgreSQL+pgAdmin native install done\" > /tmp_workspace/install.done\n' >/tmp_workspace/install.log 2>&1 || true\ntrue",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_2_postgres_explain_pgadmin/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_2_postgres_explain_pgadmin /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_2_postgres_explain_pgadmin/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_2_postgres_explain_pgadmin/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_2_postgres_explain_pgadmin/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_2_postgres_explain_pgadmin/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_2_postgres_explain_pgadmin/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_2_postgres_explain_pgadmin.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_2_postgres_explain_pgadmin",
+    "workspace_relative": "OPS/task_2_postgres_explain_pgadmin",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Clear user cookies from Chrome to remove stored website data.",
+  "source": "https://www.youtube.com/watch?v=v0kxqB7Xa6I",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      }
+    ],
+    "func": "check_cookies_deleted__4730218c",
+    "result": {
+      "type": "cookie_data",
+      "dest": "Cookies.db"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "max_cookie_count": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires clearing user cookies from Chrome. The evaluator uses existing getter 'get_cookie_data' which reads from the Cookies SQLite database and returns all cookies. Created custom metric to check that cookie count is very low (≤2) which indicates user cookies were cleared. Chrome may retain 0-2 essential system cookies even after user clears cookies through the UI, so threshold of 2 is reasonable and aligns with clearing user cookies while allowing system cookies to remain.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/99146c54-4f37-4ab8-9327-5f3291665e1e-3_task_verify_7/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Metric function correctly handles expected parameter: Line 29 uses 'expected.get('max_cookie_count', 0)' which is the correct pattern for type='rule'. When expected.type='rule', the framework calls get_rule() which returns config['rules'] directly as the expected parameter.",
+        "Getter logic is CORRECT: get_cookie_data (chrome.py:234-276) correctly reads Chrome's Cookies SQLite database and returns all cookies or None if DB doesn't exist.",
+        "Metric logic is CORRECT: check_cookies_deleted__4730218c correctly handles None case (missing DB = cookies cleared = success), accesses expected parameters properly, and compares actual_cookie_count <= max_cookie_count.",
+        "Postconfig is adequate: Relaunches Chrome to ensure cookie database can be read after agent actions.",
+        "Coverage is complete: Evaluator verifies the instruction requirement by checking cookie count.",
+        "Minor semantic consideration: Instruction says 'Clear user cookies' while evaluator allows up to 2 cookies (threshold=2). This is a reasonable interpretation if Chrome retains system cookies, but could be stricter (threshold=0) if interpretation is 'all cookies deleted'."
+      ],
+      "llm_judge_fix_suggestions": [
+        "OPTIONAL: Consider setting max_cookie_count=0 if the instruction should be interpreted strictly as 'all cookies must be deleted', OR update instruction to 'Clear user cookies from Chrome (system cookies may remain)' to clarify that threshold=2 allows for essential system cookies."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

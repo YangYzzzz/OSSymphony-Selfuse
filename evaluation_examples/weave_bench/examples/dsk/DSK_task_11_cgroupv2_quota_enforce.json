@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_11_cgroupv2_quota_enforce",
+  "snapshot": "weave_bench",
+  "instruction": "Background: an ML engineer is running a Python training script on a shared dev machine. The script repeatedly \"disappears\" after 1–2 minutes, but no OOM information shows up in the user-level logs — the script was launched inside a **user-level transient unit**, so the kernel OOM messages are routed outside the user journal. Please locate the root cause and produce a reproducible quota tuning plan.\n\nEnvironment (warmup is already in place):\n- Linux, cgroup v2 unified hierarchy mounted at `/sys/fs/cgroup`.\n- Training script `/tmp_workspace/exec/train.py` accepts `--target-mib N`, defaulting to 640 MiB; it writes a real page every 16 MiB so that RSS truly grows.\n- CPU self-check script `/tmp_workspace/exec/spin.sh` (awk infinite loop, used for CPU quota verification).\n- Passwordless sudo is available; the training process must be managed via a systemd user/system unit.\n- Unit naming is a hard constraint: `slice = lab.slice`, `unit = trainjob.service` (no other naming will be accepted).\n\nGoal: under `lab.slice / trainjob.service`, run two experiments — one where \"the quota is too tight and triggers OOM\" and one where \"tuning lets it complete normally\" — then attribute the failure using cgroup v2 `memory.events` together with the kernel log, and write down a structured conclusion.\n\nDeliverables to produce under `/tmp_workspace/results/`:\n\n1. **cgroup v2 status snapshot** — `cgroup_inspect.txt`:\n   - Must prove that cgroup2 is mounted at `/sys/fs/cgroup` (a line containing `cgroup2 on /sys/fs/cgroup`);\n   - Must list the current root controller set (must include at least one of `memory` / `cpu` / `io`);\n   - Include a fragment of the current `init.scope` state (so the reviewer can cross-check).\n\n2. **First experiment (tight quota)**: under `lab.slice`, start `trainjob.service` with `MemoryMax=256M`, `MemorySwapMax=0`, `CPUQuota=50%`, target 384 MiB (which will inevitably trigger OOM).\n   - `systemctl_show_first.txt`: an attribute snapshot of `trainjob.service`; **must** contain the `Slice=lab.slice` and `MemoryMax=` fields (recommended: sample once right after start, then again a few seconds later, and concatenate them to show MainPID/Result changes).\n   - `memory_events_first.txt`: the contents of `/sys/fs/cgroup/lab.slice/trainjob.service/memory.events`; must contain the `oom`/`oom_kill` counter lines, and **`oom_kill ≥ 1` for the first run** is a hard requirement.\n   - `journalctl_oom.txt`: OOM-related lines from the kernel ring-buffer during the same period (keywords must cover at least 2 of `oom`/`killed`/`Memory cgroup`), and the file must be larger than 50 bytes.\n\n3. **Visual evidence** (must be captured from the real working environment, not synthesised images):\n   - `view_cgtop.png`: a live cgroup usage view; the text **must** show both `lab.slice` and the `trainjob` string, and at least one of the `Tasks` / `%CPU` / `Memory` column headers must be visible.\n   - `view_system_monitor.png`: a process view filtered to `train`/`python` processes; the process name / RSS / CPU% columns must be visible.\n   - `view_journal_oom.png`: a visual rendering of the kernel OOM log during the same period; the text must show at least one of `oom`/`killed`/`Memory`/`cgroup`.\n\n4. **Tuned run (relaxed quota)**: raise `lab.slice`'s `MemoryMax` to ≥ 512 MiB and `CPUQuota` to 80%, then re-run the same target (384 MiB) under the same `lab.slice/trainjob.service`; the process must exit with code 0.\n   - `systemctl_show_tuned.txt`: an attribute snapshot of `trainjob.service` after the re-run (also containing `Slice=lab.slice` and `MemoryMax=`).\n   - `memory_events_tuned.txt`: a fresh sample of `memory.events` after the re-run; required that the **`oom_kill` counter equals the first run** (no new OOM).\n   - `tuned_run.stdout`: stdout of the re-run (so the reviewer can check wall-time / exit status).\n\n5. **Structured conclusion JSON** — `results/quota_report.json`, with strict schema:\n   ```json\n   {\n     \"slice\":              \"lab.slice\",\n     \"unit\":               \"trainjob.service\",\n     \"first_run\": {\n       \"memory_max\":        \"256M\",\n       \"cpu_quota\":         \"50%\",\n       \"oom_killed\":        true,\n       \"memory_events_oom\": <int from memory.events 'oom' line>,\n       \"memory_events_oom_kill\": <int from memory.events 'oom_kill' line>,\n       \"exit_code_or_signal\":   <int>\n     },\n     \"tuned_run\": {\n       \"memory_max\":        \"512M\",\n       \"cpu_quota\":         \"80%\",\n       \"oom_killed\":        false,\n       \"memory_events_oom_kill_delta\": 0,\n       \"wall_seconds\":      <number>,\n       \"exit_code\":         0\n     },\n     \"evidence\": {\n       \"cli\": [\"cgroup_inspect.txt\",\"memory_events_first.txt\",\"memory_events_tuned.txt\",\n               \"journalctl_oom.txt\",\"systemctl_show_first.txt\",\"systemctl_show_tuned.txt\"],\n       \"gui\": [\"view_cgtop.png\",\"view_system_monitor.png\",\"view_journal_oom.png\"]\n     }\n   }\n   ```\n\n6. **Narrative report** — `results/report.md` (≥ 400 characters):\n   - Explain why the OOM signal shows up in the kernel ring-buffer but not in the user-level log;\n   - Describe the semantic difference between cgroup v2 `memory.events.oom_kill` and cgroup v1 `memory.failcnt`;\n   - Give the final chosen `MemoryMax` / `CPUQuota` values and the rationale (why this set is just enough);\n   - Cover at least 4 of the following keywords: `cgroup` / `memory` / `oom` / `quota` / `slice` / `unit`.\n\nHard constraints:\n- The training process **must** be launched from the `lab.slice/trainjob.service` unit, and the produced paths must exist under `/sys/fs/cgroup/lab.slice/trainjob.service/`; placing the process in a different scope/slice to \"bypass\" OOM is not allowed.\n- The first run must actually trigger OOM (`oom_killed=true` and `memory_events_oom_kill ≥ 1`); after tuning, the delta of `oom_kill` counts must be 0 to earn the corresponding credit.\n- Do not modify the memory-pressure logic of the training script.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_11_cgroupv2_quota_enforce.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_11_cgroupv2_quota_enforce",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec /opt/dsk11_gt\nchmod 1777 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec 2>/dev/null || true\nchmod 700 /opt/dsk11_gt 2>/dev/null || true\ncat > /opt/dsk11_gt/expected.json <<'JSON'\n{\n  \"expected_slice\":          \"lab.slice\",\n  \"expected_unit\":           \"trainjob.service\",\n  \"first_run_must_oom\":      true,\n  \"memory_max_first\":        \"256M\",\n  \"memory_max_tuned_min_mb\": 384,\n  \"cpu_quota_first\":         \"50%\",\n  \"cpu_quota_tuned_min_pct\": 75,\n  \"tuned_run_must_succeed\":  true,\n  \"expected_target_mib\":     384,\n  \"expected_keys_in_report\": [\"lab.slice\",\"trainjob\",\"MemoryMax\",\"CPUQuota\",\"OOM\",\"memory.events\",\"tuned\"]\n}\nJSON\nchmod 600 /opt/dsk11_gt/expected.json 2>/dev/null || true\nchown -R root:root /opt/dsk11_gt 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nwhich systemd-cgtop || (apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq systemd cgroup-tools python3 python3-pip tesseract-ocr util-linux)\npip install -q --break-system-packages pytesseract Pillow 2>/dev/null || pip install -q pytesseract Pillow 2>/dev/null || true\nfor f in train.py spin.sh; do [ -f /tmp_workspace/setup/${f} ] && cp -f /tmp_workspace/setup/${f} /tmp_workspace/exec/${f} || true; done\nchmod +x /tmp_workspace/exec/train.py /tmp_workspace/exec/spin.sh 2>/dev/null || true\nmount | grep -q \"cgroup2 on /sys/fs/cgroup\" || echo \"WARN_cgroup_v2_not_unified\"\nsystemctl reset-failed trainjob.service 2>/dev/null || true\nsystemctl stop trainjob.service 2>/dev/null || true\nsystemctl stop lab.slice 2>/dev/null || true\nsh -c 'echo \"+memory +cpu +io\" > /sys/fs/cgroup/cgroup.subtree_control' 2>/dev/null || true\nmount | grep cgroup2 || echo WARN_no_cgroup2\ncat /sys/fs/cgroup/cgroup.controllers 2>/dev/null || echo WARN_no_controllers_file\nls -l /tmp_workspace/exec/train.py /tmp_workspace/exec/spin.sh 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_11_cgroupv2_quota_enforce/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_11_cgroupv2_quota_enforce /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_11_cgroupv2_quota_enforce/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_11_cgroupv2_quota_enforce/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_11_cgroupv2_quota_enforce/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_11_cgroupv2_quota_enforce/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_11_cgroupv2_quota_enforce/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_11_cgroupv2_quota_enforce.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_11_cgroupv2_quota_enforce",
+    "workspace_relative": "DSK/task_11_cgroupv2_quota_enforce",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

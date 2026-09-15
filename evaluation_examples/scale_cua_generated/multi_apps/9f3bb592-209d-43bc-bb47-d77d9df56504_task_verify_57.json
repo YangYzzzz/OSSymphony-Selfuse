@@ -1,0 +1,100 @@
+{
+  "id": "9f3bb592-209d-43bc-bb47-d77d9df56504",
+  "new_id": "task_verify_57",
+  "snapshot": "multiapps",
+  "instruction": "This video has embedded subtitles that I want to save separately. Please extract the subtitles from the video and export them as \"captions.srt\" in the home directory.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/9f3bb592-209d-43bc-bb47-d77d9df56504/video.mp4",
+            "path": "/home/user/video.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/video.mp4"
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "video.mp4 - VLC media player"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "vlc",
+    "ubuntu_media_player"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S pip install pysrt",
+          "shell": "true"
+        }
+      }
+    ],
+    "func": "check_srt_file_and_video__ed96ceb6",
+    "result": {
+      "type": "srt_and_video_status__ed96ceb6",
+      "srt_path": "/home/user/captions.srt",
+      "srt_dest": "captions.srt",
+      "video_path": "/home/user/video.mp4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "check_both": true
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires extracting subtitles from video.mp4 and saving as captions.srt. Evaluator checks: (1) SRT file exists and contains valid subtitle entries (0.6), (2) video no longer has embedded subtitles after extraction (0.4). Verified gold file has 50 subtitle entries.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/9f3bb592-209d-43bc-bb47-d77d9df56504_task_verify_2/getters/subtitle.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/9f3bb592-209d-43bc-bb47-d77d9df56504_task_verify_2/metrics/subtitle.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "srt_valid": 0.6,
+      "video_no_subs": 0.4
+    },
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator checks requirement NOT in instruction - instruction says 'extract and export subtitles' but evaluator penalizes if video still has embedded subtitles (0.4 points deducted). The word 'extract' in this context means 'copy/export to separate file', not 'remove from video'",
+        "Incorrect semantic interpretation: Standard subtitle extraction tools (VLC, ffmpeg, etc.) typically COPY subtitles to external file without removing them from video. Evaluator assumes extraction must remove subtitles from source video",
+        "Scoring breakdown semantically wrong: 60% for SRT validity (actual requirement) + 40% for subtitle removal (NOT a requirement) = incorrect verification",
+        "Logic issue in getter: ffmpeg output parsing assumes subtitle stream is always 'Stream #0:2', but stream index can vary (could be #0:1, #0:3, etc.). Should use more robust pattern matching",
+        "User completing task correctly (extracting subtitles to captions.srt while video retains embedded subs) would only receive 60% score, which is semantically incorrect"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove the 'video no longer has embedded subtitles' check entirely - this is NOT a requirement in the instruction",
+        "Change scoring to 100% for SRT file validity: (1) File exists at /home/user/captions.srt (0.3), (2) File is valid SRT format with >0 entries (0.4), (3) Content matches video subtitles semantically (0.3)",
+        "Fix ffmpeg parsing logic: Use regex pattern to detect ANY subtitle stream (e.g., 'Stream #\\d+:\\d+.*Subtitle') instead of hardcoded 'Stream #0:2'",
+        "Clarify instruction if subtitle removal IS intended: Change to 'extract subtitles from the video, export as captions.srt, and remove embedded subtitles from the video file'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

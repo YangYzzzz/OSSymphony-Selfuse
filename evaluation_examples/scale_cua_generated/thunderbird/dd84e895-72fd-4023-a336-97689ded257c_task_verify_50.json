@@ -1,0 +1,112 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_50",
+  "snapshot": "thunderbird",
+  "instruction": "Star every email in the local Drafts folder",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select sum(1) > 0 from messageAttributes where attributeID = 58 and value = 1 and messageID in (select id from messages where folderID = 7);"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "task_variation_id": 1,
+    "original_task_id": "dd84e895-72fd-4023-a336-97689ded257c",
+    "explanation": "Task requires adding star to all emails in Drafts folder (folderID=7). The evaluator checks if attributeID=58 (star attribute) is set to value=1 for messages in Drafts. Verified from database: Drafts has 7 emails.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "CRITICAL: Incomplete verification - instruction requires starring 'every email' but SQL only checks if at least one email is starred (sum(1) > 0)",
+        "CRITICAL: Wrong comparison logic - metadata states Drafts has 7 emails, but evaluator only verifies that count > 0, not that all 7 emails are starred",
+        "The SQL query does not verify completeness of the task - it will pass even if only 1 out of 7 emails is starred",
+        "Correct logic should compare count of starred messages against total count of messages in Drafts folder"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change SQL to verify all emails are starred: 'SELECT (SELECT COUNT(*) FROM messageAttributes WHERE attributeID = 58 AND value = 1 AND messageID IN (SELECT id FROM messages WHERE folderID = 7)) = (SELECT COUNT(*) FROM messages WHERE folderID = 7);'",
+        "Alternative: Use two separate queries to get counts and compare: starred_count == total_count in Drafts",
+        "The expected result should verify equality, not just > 0"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

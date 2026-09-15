@@ -1,0 +1,146 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Open the docx file from the \"Lecture Document\" email in Thunderbird's Notes folder, save all charts and images as PNG format, then upload them to a Google Drive folder called 'figures'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_png_files_exact_count__f9d97b19",
+    "result": {
+      "type": "googledrive_png_files__f9d97b19",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_query": "title = 'figures' and trashed = false and mimeType = 'application/vnd.google-apps.folder'"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting images from docx email attachment and uploading as PNG to Google Drive. Evaluator checks if exactly 3 PNG files exist in the figures folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_2/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_2/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that original docx contains 3 images. This variation checks for exact count of PNG files in Google Drive folder.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly extracts PNG files from the 'figures' folder in Google Drive using proper query and filtering",
+        "Metric correctly handles expected parameter as rules dictionary (direct access to 'count' key)",
+        "Expected count of 3 matches verified count from source docx as stated in metadata",
+        "Both functions include proper error handling for edge cases (folder not found, exceptions, None results)",
+        "Data flow is semantically correct: getter returns list of filenames, metric counts and compares",
+        "Evaluator verifies final state (PNG files in Google Drive) which is sufficient for this task type",
+        "Minor limitation: only verifies final outcome count, not intermediate steps or file content/source verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification of file content or metadata to ensure files came from the correct source (optional enhancement)",
+        "Could add postconfig to refresh Google Drive state before evaluation, though current approach should work for post-execution evaluation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

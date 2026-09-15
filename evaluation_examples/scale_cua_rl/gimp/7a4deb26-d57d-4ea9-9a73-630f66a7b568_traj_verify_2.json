@@ -1,0 +1,130 @@
+{
+  "id": "7a4deb26-d57d-4ea9-9a73-630f66a7b568",
+  "new_id": "7a4deb26-d57d-4ea9-9a73-630f66a7b568_traj_verify_2",
+  "snapshot": "gimp",
+  "instruction": "Sharpen my photo to make it look crisper.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/7a4deb26-d57d-4ea9-9a73-630f66a7b568/woman_sitting_by_the_tree.png",
+            "path": "/home/user/Desktop/woman_sitting_by_the_tree.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/woman_sitting_by_the_tree.png"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"shift\", \"ctrl\", \"e\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.write(\"edited_sharper\");time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_sharper__dd81583a369d4d4452910cdac2a642dc",
+    "result": {
+      "type": "gimp_sharpness_data__dd81583a369d4d4452910cdac2a642dc",
+      "edited_path": "/home/user/Desktop/edited_sharper.png",
+      "original_path": "/home/user/Desktop/woman_sitting_by_the_tree.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_similarity": 0.5
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_7a4deb26-d57d-4ea9-9a73-630f66a7b568_sid_1488070",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully decreased brightness by opening Colors > Brightness-Contrast dialog, setting brightness to -24, confirming with OK, then exporting via File > Export As. Completed in 15 turns.",
+    "capability_extraction": "Can navigate GIMP menus (Colors, File), use Brightness-Contrast dialog with sliders, export images via Export As, handle file overwrite dialogs",
+    "task_rationale": "Tests a different image adjustment operation (Filters > Enhance > Sharpen) using the same photo. Requires navigating a different menu path but same core skills of menu navigation, dialog interaction, and exporting.",
+    "explanation": "Task asks to sharpen the image. Custom getter fetches both edited and original images from the VM, computes Laplacian variance (sharpness measure) and structural similarity. Custom metric verifies the edited image has higher sharpness than original while maintaining structural similarity >= 0.5. Postconfig exports the edited image as edited_sharper.png for evaluation. [Fixed: replaced cloud_file expected type with rule type using custom getter/metric to avoid cloud_file in expected; converted from array to single-object evaluator format]",
+    "new_functions_paths": [
+      "tmp_funcs/task_gimp_7a4deb26-d57d-4ea9-9a73-630f66a7b568_sid_1488070_traj_verify_2/getters/gimp.py",
+      "tmp_funcs/task_gimp_7a4deb26-d57d-4ea9-9a73-630f66a7b568_sid_1488070_traj_verify_2/metrics/gimp.py"
+    ],
+    "difficulty": "medium",
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Converted evaluator from single-object format to official array format (func, result, expected as arrays) to properly use built-in check_sharper metric with cloud_file expected type",
+      "Fix 2: Replaced cloud_file expected type with rule type. Created custom getter (get_gimp_sharpness_data__dd81583a) that fetches both edited and original images from VM and computes Laplacian variance sharpness + structural similarity. Created custom metric (check_sharper__dd81583a) that verifies edited sharpness > original sharpness with min structural similarity threshold. Converted evaluator back to single-object format for custom functions."
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly uses Laplacian variance to measure image sharpness - a well-established method for quantifying sharpness",
+        "Metric correctly checks edited_sharpness > original_sharpness AND structural_similarity >= min_similarity, ensuring the image is sharper while preserving content",
+        "Expected parameter handling is correct: with expected.type='rule', get_rule returns {'min_similarity': 0.5}, and metric accesses it via expected.get('min_similarity', 0.5)",
+        "Postconfig correctly exports the edited image using GIMP's Export As (Shift+Ctrl+E) with appropriate Enter presses for filename confirmation and PNG export options",
+        "Coverage is complete: the instruction requires sharpening, and the evaluator verifies increased sharpness plus content preservation",
+        "Edge cases handled well: dimension mismatch for SSIM, missing files, failed image decoding, missing dependencies"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: postconfig types 'edited_sharper' without .png extension. GIMP typically appends the extension based on format, but if it doesn't, the getter would fail to find edited_sharper.png. Consider typing 'edited_sharper.png' explicitly for robustness.",
+        "Minor: the pyautogui.hotkey call uses a list format pyautogui.hotkey(['shift', 'ctrl', 'e']) - pyautogui.hotkey expects separate arguments like pyautogui.hotkey('shift', 'ctrl', 'e'). Using a list may cause unexpected behavior."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

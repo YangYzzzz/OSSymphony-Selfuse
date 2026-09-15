@@ -1,0 +1,91 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_58",
+  "snapshot": "chrome",
+  "instruction": "Search for the discussion forums and access the conversation that shows the highest reply count.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://discussions.flightaware.com/t/the-banter-thread/4412"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires locating discussion forums and opening the conversation with the highest reply count. Evaluator confirms correct navigation to target URL.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies navigation to the expected discussion thread URL using is_expected_active_tab metric",
+        "URL comparison logic in is_expected_active_tab (chrome.py:18-38) is correct and uses compare_urls for proper matching",
+        "Getter get_active_tab_info extracts active tab URL from accessibility tree, which should work correctly",
+        "Warning: get_active_tab_info (chrome.py:803-890) reloads the page after getting URL from accessibility tree, which could cause verification to fail if the page redirects or behaves differently on reload",
+        "Evaluator only verifies final URL state, not the 'highest reply count' aspect - assumes the expected URL is correct without runtime validation",
+        "No postconfig present to handle potential browser state issues or page reload problems"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using type 'active_url' with get_active_url_from_accessTree instead of 'active_tab_info' to avoid unnecessary page reload",
+        "Add postconfig to refresh browser state if needed before evaluation",
+        "Alternative: Use get_active_url_from_accessTree directly which doesn't reload the page and would be more reliable for this navigation verification task"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

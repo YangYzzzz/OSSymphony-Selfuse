@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_1_floor_plan",
+  "snapshot": "weave_bench",
+  "instruction": "`/tmp_workspace/floor.svg` is a blank floor plan of an 80 m² two-bedroom unit (dimensions already labeled). The client's hand-drawn sketch is at `/tmp_workspace/sketch.jpg`, describing the relative positions and orientations of 22 pieces of furniture. `/tmp_workspace/reference_room.jpg` is an interior reference photo (visual reference for tone / style / tidiness); you may compare mood against it but it is not required.\n\n### Task\n\nLay out the 22 pieces of furniture on the floor plan following the sketch, and produce a deliverable annotated SVG / PNG / acceptance report.\n\nLayout: **4 rooms** (living / bedroom1 / bedroom2 / kitchen) + **4 doors**, with **22 pieces of furniture** in total.\n\nFurniture layout rules:\n- Each piece of furniture is represented as a vector rectangle/shape, colored by category: bed/sofa = blue, table/chair = green, kitchen appliance = orange, storage = gray.\n- Each piece of furniture must have a **semantic named ID** (e.g. `bed_master`, `sofa_living`), with ≥ 22 in total; auto-generated IDs like `rect1234` or `path5678` are **not allowed**.\n- Add a `<text>` next to each piece of furniture with its Chinese name + dimensions (including `mm`).\n- At least **5** passage-width annotations (with `mm` text + dimension lines), and each passage must be ≥ 600 mm wide.\n- At least **3** pieces of furniture must apply an Inkscape LPE (Live Path Effects; the SVG must contain an `inkscape:path-effect` attribute).\n- 4 pieces of furniture are evenly aligned along the east wall, with x-center-coordinate variance ≤ 5 mm across those 4.\n- Each piece of furniture lies fully inside the polygon of its assigned room, and its minimum distance to any door / wall is ≥ 60 px.\n- At least **8** orientation-constrained pieces of furniture face the correct direction (e.g. sofa facing the TV wall, bed headboard against a long wall).\n\n### Deliverables (write to `/tmp_workspace/results/`)\n\n- `floor_annotated.svg` — contains a `furniture` layer (`inkscape:groupmode=\"layer\"` + `inkscape:label=\"furniture\"`) along with all the furniture / text labels / dimension annotations described above.\n- `floor_annotated.png` — PNG export of the above SVG, **≥ 2000×1500**.\n- `placement_check.md` — ≥ 22 lines; each line lists, for one furniture item: ID + assigned room + target position + actual center coordinate + whether it satisfies the rules.\n- `view_01_layers_panel.png` — Layers panel screenshot showing ≥ 2 layers (base + furniture).\n- `view_02_lpe_dialog.png` — Path Effects dialog with at least 1 effect in the list.\n- `view_03_align_dialog.png` — Align and Distribute dialog.\n- `view_04_measure_tool.png` — Measure tool activated with readable measurement results.\n- `view_xml_editor.png` — XML editor showing a furniture node from the furniture layer along with its `inkscape:label` attribute.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_1_floor_plan.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_1_floor_plan",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which inkscape >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq inkscape) || true\nwhich gimp >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gimp || true\nwhich xdotool >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq xdotool || true\nwhich wmctrl >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wmctrl || true\nfc-list | grep -qi 'Noto Sans CJK' || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq fonts-noto-cjk || true\nfc-cache -f >/dev/null 2>&1 || true\npip install -q pillow || true\n# OCR / image deps used by grader / judge helpers (universal across Eyeson cases)\nDEBIAN_FRONTEND=noninteractive apt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract numpy || true\nchown -R user:user /tmp_workspace 2>/dev/null || true\nmkdir -p /tmp_workspace/results 2>/dev/null || true\nrm -f /home/user/.openclaw/agents/main/sessions/*.lock 2>/dev/null || true\nopenclaw config unset agents.defaults.imageModel >/dev/null 2>&1 || true\nopenclaw config set agents.defaults.sandbox.imageModel.primary \"\" >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_1_floor_plan/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_1_floor_plan /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_1_floor_plan/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_1_floor_plan/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_1_floor_plan/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_1_floor_plan/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_1_floor_plan/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_1_floor_plan.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_1_floor_plan",
+    "workspace_relative": "SPA/task_1_floor_plan",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

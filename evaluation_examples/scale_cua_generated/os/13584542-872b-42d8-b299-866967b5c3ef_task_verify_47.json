@@ -1,0 +1,84 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_47",
+  "snapshot": "os",
+  "instruction": "Some applications use bold text for emphasis but my terminal doesn't display it. Enable bold text in the terminal permanently so it works after system restart.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ allow-bold'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "true"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently enabling bold text in terminal. Evaluator opens new terminal and checks allow-bold setting using gsettings, expecting 'true'. Uses existing check_include_exclude metric with vm_terminal_output getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly targets GNOME Terminal's 'allow-bold' setting using gsettings",
+        "Uses gsettings which persists configuration permanently across reboots, meeting the 'permanent' requirement",
+        "Postconfig opens a new terminal instance to verify the setting works in fresh terminal sessions",
+        "The gsettings command correctly gets the default profile and queries its allow-bold setting",
+        "check_include_exclude metric appropriately checks for 'true' in terminal output",
+        "Expected value 'true' is semantically correct for enabled bold text state",
+        "Complete coverage: verifies both that bold is enabled and that setting is permanent (implicit via gsettings)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "id": "2888b4e6-5b47-4b57-8bf5-c73827890774",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Display all men's medium-size short-sleeve shirts with a discount of 50% or more.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.macys.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "url_path_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "mens_clothing",
+        "shirts",
+        "Men_regular_size_t",
+        "Price_discount_range",
+        "short_sleeve"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "mens_clothing": true,
+          "shirts": true,
+          "Men_regular_size_t": "M",
+          "Price_discount_range": "50_PERCENT_ off & more",
+          "short_sleeve": true
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Variation 4: Changed size from L to M, keeps short-sleeve and 50% discount. Maintains same complexity and interaction pattern as original task.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical logic error in Price_discount_range verification (chrome.py:2551): The getter checks that '50_PERCENT_ off & more' is present AND '30_PERCENT_ off & more' is NOT present AND '20_PERCENT_ off & more' is NOT present. This is semantically incorrect.",
+        "On e-commerce sites like Macy's, when filtering for '50% or more' discount, the URL often contains multiple discount ranges (e.g., ['50_PERCENT_ off & more', '30_PERCENT_ off & more', '20_PERCENT_ off & more']) because 50% discount includes items with 30% and 20% discounts.",
+        "The current logic will FAIL (return 'not_50_PERCENT_ off & more') if the URL contains any other discount percentage filters along with 50%, causing false negatives when the task is actually completed correctly.",
+        "The correct logic should check if '50_PERCENT_ off & more' is present in the list, regardless of other discount filters, or verify that 50% is the MINIMUM discount filter selected.",
+        "All other aspects of the evaluator are correct: mens_clothing, shirts, Men_regular_size_t, and short_sleeve verification logic is sound."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix the Price_discount_range logic in get_macys_product_url_parse (chrome.py:2551): Change from requiring exclusive '50_PERCENT_ off & more' to checking if '50_PERCENT_ off & more' is the highest/only filter, or simply check if '50_PERCENT_ off & more' exists in the list without excluding other filters.",
+        "Alternative fix: Check if the discount range list contains ONLY '50_PERCENT_ off & more', or check if it's the most restrictive filter (i.e., the first/primary filter in the list).",
+        "Consider the actual Macy's URL structure: Test how the website encodes multiple discount filters and adjust the logic accordingly. The current logic assumes mutual exclusivity which may not match the actual website behavior."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "id": "9f3f70fc-5afc-4958-a7b7-3bb4fcb01805",
+  "new_id": "task_verify_28",
+  "snapshot": "chrome",
+  "instruction": "Find me women's Fanatics t-shirts with a maximum price of $30.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.nba.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "category": "class&url",
+      "class_multiObject": {
+        "filter-selector-link": [
+          "under $30",
+          "women",
+          "t-shirts",
+          "fanatics"
+        ]
+      },
+      "url_include_expected": [
+        "under $30",
+        "women",
+        "t-shirts",
+        "fanatics"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "under $30": true,
+          "women": true,
+          "t-shirts": true,
+          "fanatics": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering NBA store for women's Fanatics t-shirts under $30. Evaluator checks URL parameters and filter elements contain the correct filter values (under $30, women, t-shirts, fanatics).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reuses existing get_active_tab_html_parse and check_direct_json_object functions. Similar complexity to original task with 4 filter criteria.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator can semantically verify that the filter task was completed by checking both UI elements and URL parameters",
+        "The getter correctly extracts filter state from the active tab HTML using class 'filter-selector-link' and URL parameters",
+        "The metric correctly compares all 4 required filters (under $30, women, t-shirts, fanatics) and checks that no unexpected filters exist (is_other_exist=false)",
+        "Coverage is complete - all requirements from the instruction are verified: women's (gender), Fanatics (brand), t-shirts (type), under $30 (price)",
+        "The evaluator uses case-insensitive matching which is appropriate for filter text",
+        "Minor semantic weakness: The 'class&url' category logic accepts URL presence as sufficient even if class elements are not found. For filter verification, it would be more robust to require BOTH class elements AND URL parameters to be present. However, in practice, properly applied filters should appear in both locations, so this is a minor issue.",
+        "The evaluator handles the 'is_other_exist' flag correctly to ensure only the expected 4 filters are active",
+        "Expected values are semantically correct - they match what should result from applying the specified filters on an e-commerce site"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider enhancing the getter logic to require filter presence in BOTH class elements AND URL for higher confidence, rather than accepting either/or",
+        "The current implementation may pass if filters appear only in URL but not in UI elements, which could miss cases where filters were typed into URL but not actually applied through the UI"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

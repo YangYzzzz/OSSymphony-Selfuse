@@ -1,0 +1,148 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_56",
+  "snapshot": "chrome",
+  "instruction": "Upload emails from the Bills folder in Thunderbird to a Google Drive folder titled 'emails', saving them as individual .eml files with subject-based names.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_file_upload__68f5fe6b",
+    "result": {
+      "type": "googledrive_folder_details__68f5fe6b",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_path": [
+        "emails"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_count": 2,
+        "all_eml": true
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Checks the 'emails' folder contains exactly 2 files and all are .eml format. Verified by inspecting Bills mbox file with 2 messages.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_4/getters/googledrive_68f5fe6b.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_task_verify_4/metrics/googledrive_68f5fe6b.py"
+    ],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires 'subject-based names' for .eml files, but evaluator only checks file count and .eml extension",
+        "Missing filename validation: The getter extracts filenames but the metric does not verify they follow subject-based naming convention",
+        "Expected value lacks filename patterns: Expected rules only specify file_count and all_eml flag, missing expected filenames or patterns based on email subjects",
+        "Only 2 out of 3 requirements verified: folder location (implicit), .eml format (checked), but subject-based naming (not checked)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add expected filenames or filename patterns to expected.rules based on actual email subjects from Bills folder",
+        "Enhance metric to validate that filenames correspond to email subjects (e.g., check if filenames contain subject keywords or match subject-based naming pattern)",
+        "Alternatively, if exact subject-based naming cannot be verified, update instruction to remove 'subject-based names' requirement to match what evaluator can verify",
+        "Consider adding a new getter to extract email subjects from Thunderbird Bills folder to compare against uploaded filenames"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

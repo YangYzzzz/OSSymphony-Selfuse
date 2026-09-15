@@ -1,0 +1,110 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_62",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to automatically include a blind carbon copy (BCC) when sending emails.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.doBcc": {
+            "method": "eq",
+            "ref": true
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling BCC for identity id1. The evaluator verifies that mail.identity.id1.doBcc is set to true in prefs.js. This preference was initially set to false in the cache file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification is correct: The evaluator checks the correct Thunderbird preference (mail.identity.id1.doBcc) to verify BCC auto-inclusion",
+        "Complete coverage: The instruction asks to enable BCC, and the evaluator verifies the exact preference that controls this feature",
+        "Correct data flow: Getter fetches prefs.js from VM -> Metric parses the file and extracts preferences -> Comparison checks if mail.identity.id1.doBcc equals true",
+        "Postconfig is appropriate: Closing Thunderbird before reading prefs.js ensures the preferences are saved to disk",
+        "Expected value is correct: mail.identity.id1.doBcc=true is the correct preference value for enabling BCC in Thunderbird",
+        "Metric function correctly handles rule parameter: check_thunderbird_prefs receives the rules dictionary directly (not wrapped) and properly accesses rule.get('expect', {})"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_17_fontconfig_glyph_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Background: the design team has deployed a new font pack \"Aurora Typography Pack\" (6 `.ttf` files in total) under `~/.local/share/fonts/aurora_pack/`. Designers complain that printed proofs \"look wrong\" — some characters render as empty boxes (tofu), some glyph shapes have been swapped, and fonts that claim to be Bold / Italic actually render as Regular upright — yet ops sees nothing abnormal when listing them via fontconfig.\n\nGoal: perform an end-to-end visual font audit — locate every broken font file, describe what kind of defect it carries, produce a fontconfig blacklist configuration, and write an audit PDF with visual evidence. All deliverables go to `/tmp_workspace/results/`.\n\nCandidate fonts (warmup has already installed them and refreshed the fontconfig cache):\n\n```\nAuroraSans-Regular.ttf   AuroraSans-Bold.ttf\nNimbusOffice-Regular.ttf NimbusOffice-Bold.ttf\nEmberMono-Regular.ttf    EmberMono-Italic.ttf\n```\n\n⚙️ **Execution conventions**: you are free to use any combination of the fontconfig CLI (fc-list / fc-match / fc-cache) + Python (fontTools / Pillow / matplotlib / reportlab, etc.) + any font-preview GUI. `spoofed_glyph` and `spoofed_italic` can only be confirmed by looking at the actual rendering, so preview screenshots must be captured from a real GUI — do not fake them with Pillow self-rendering. Do not read `/opt/dsk17_gt/` (root-only).\n\n### Hard constraints on the main deliverable `font_audit.json`\n\n- Top level must contain the two keys `broken` (array) and `control` (array)\n- Each entry in `broken` looks like `{\"file\": \"...\", \"kind\": \"...\", \"evidence\": \"<≥20 chars>\"}`\n- The set of files (by basename) in `broken` must exactly match the ground truth\n- `kind` must be one of `{missing_glyphs, spoofed_glyph, fake_bold, spoofed_italic}`, and the kind for each file must match ground truth (reasonable synonyms are accepted leniently)\n\n### Supporting deliverables (in `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `fc_list_raw.txt` | The font listing of the aurora_pack directory from the fontconfig viewpoint; the file should contain ≥ 6 `.ttf` paths |\n| `font_metadata.tsv` | **Strictly TAB-separated**; 6 data rows; columns must include `file / family / subfamily / weight_class / num_glyphs / cmap_has_digits / name_says_italic / italic_angle`. `weight_class` is an integer (OS/2 usWeightClass); `cmap_has_digits` is `True` / `False` (whether the cmap covers all 10 of U+0030..U+0039); `italic_angle` is numeric (post.italicAngle, 0 means upright) |\n| `view_glyph_grid.png` | A Pillow / matplotlib self-rendered comparison grid, size ≥ 1200 × 500; two rows (`\"0123456789\"` and `\"good design morning\"`) × 6 fonts = 12 sub-images, with `.notdef` boxes and glyph swaps clearly visible to the eye |\n| `glyph_grid_ocr.txt` | OCR output of `view_glyph_grid.png` plus a ≥ 80-character human summary noting which fonts' digit row fails OCR and which glyph was substituted; the summary should naturally include font names and defect terminology |\n| `70-aurora-blacklist.conf` | fontconfig blacklist configuration: use `<rejectfont>` blocks to mask all broken fonts by family + corresponding subfamily, with at least 4 `<rejectfont>` blocks covering the two broken families; also deploy the same content to `~/.config/fontconfig/conf.d/70-aurora-blacklist.conf` and refresh the fontconfig cache so it takes effect |\n| `fc_match_after.txt` | fontconfig match query output for family name `NimbusOffice` after the cache refresh; the file **must not** contain `NimbusOffice-Regular.ttf` or `NimbusOffice-Bold.ttf` anymore |\n| `font_audit_report.pdf` | ≥ 3 pages; page 1 body ≥ 350 characters, containing ≥ 5 findings (each ≥ 30 characters) covering every defect kind; subsequent pages embed `view_glyph_grid.png` + at least one `view_*.ttf.png` |\n\n### 7 work-process screenshots\n\nFixed file names (placed in `/tmp_workspace/results/`); each must be a real font-preview rendering (GUI screenshot, not a Pillow composite). The frame should contain a standard preview string (e.g. a font specimen like `Aa Bb Cc / ABC / abc / 0123 / quick brown fox`), with a clear resolution and a readable font-name label:\n\n- `view_AuroraSans-Regular.ttf.png`\n- `view_AuroraSans-Bold.ttf.png`\n- `view_NimbusOffice-Regular.ttf.png`\n- `view_NimbusOffice-Bold.ttf.png`\n- `view_EmberMono-Regular.ttf.png`\n- `view_EmberMono-Italic.ttf.png`\n- `view_gnome_fonts_app.png`: a frame from a file manager or font browser where all 6 fonts are simultaneously selected and the properties panel / summary info is shown\n\nGrading runs OCR and visual interpretation on the screenshots; pure black screens / pure text composites will not pass.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_17_fontconfig_glyph_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_17_fontconfig_glyph_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/dsk17_gt /home/user/.local/share/fonts/aurora_pack\nchmod 1777 /tmp_workspace/results /tmp_workspace/state 2>/dev/null || true\nchown -R user:user /home/user/.local /home/user/.local/share /home/user/.local/share/fonts /home/user/.local/share/fonts/aurora_pack 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nexport DISPLAY=${DISPLAY:-:0}\nwhich fc-cache || (apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq fonts-dejavu-core fontconfig python3-pip python3-pil python3-fonttools tesseract-ocr poppler-utils imagemagick) || true\npip install -q --break-system-packages --ignore-installed blinker fonttools pillow pytesseract reportlab 2>/dev/null || pip install -q --ignore-installed blinker fonttools pillow pytesseract reportlab 2>/dev/null || true\n# Move seed_fonts.py out of agent-visible /tmp_workspace (its 25-line docstring\n# enumerates exactly which 4 fonts are tampered and which 3 defect kinds — i.e.\n# the puzzle's full answer key). Pattern mirrors DAV_10.\nmkdir -p /opt/dsk17_priv\nchmod 700 /opt/dsk17_priv\nfor cand in /tmp_workspace/seed_fonts.py /tmp_workspace/exec/seed_fonts.py /tmp_workspace/setup/seed_fonts.py; do\n  if [ -f \"$cand\" ]; then mv \"$cand\" /opt/dsk17_priv/seed_fonts.py; break; fi\ndone\nchown -R root:root /opt/dsk17_priv 2>/dev/null || true\nDSK17_OUT=/home/user/.local/share/fonts/aurora_pack DSK17_GT_DIR=/opt/dsk17_gt python3 /opt/dsk17_priv/seed_fonts.py >/tmp_workspace/state/dsk17_seed.log 2>&1 || true\nrm -f /opt/dsk17_priv/seed_fonts.py 2>/dev/null || true\nchown -R user:user /home/user/.local/share/fonts/aurora_pack 2>/dev/null || true\nsudo -u user fc-cache -f /home/user/.local/share/fonts/aurora_pack >/dev/null 2>&1 || fc-cache -f /home/user/.local/share/fonts/aurora_pack >/dev/null 2>&1 || true\nchmod 0600 /opt/dsk17_gt/manifest.json 2>/dev/null || true\nchown -R root:root /opt/dsk17_gt 2>/dev/null || true\ncp /tmp_workspace/setup/README_for_agent.txt /tmp_workspace/README_for_agent.txt 2>/dev/null || true\nrm -f /tmp_workspace/setup/seed_fonts.py /tmp_workspace/exec/seed_fonts.py /tmp_workspace/seed_fonts.py 2>/dev/null || true\nfc-list /home/user/.local/share/fonts/aurora_pack 2>/dev/null | wc -l | xargs -I{} echo \"FONT_COUNT_{}\"\nls -1 /opt/dsk17_gt/manifest.json 2>/dev/null && echo OK_GT_READY || echo WARN_gt_missing",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_17_fontconfig_glyph_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_17_fontconfig_glyph_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_17_fontconfig_glyph_audit/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_17_fontconfig_glyph_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_17_fontconfig_glyph_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_17_fontconfig_glyph_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_17_fontconfig_glyph_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_17_fontconfig_glyph_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_17_fontconfig_glyph_audit",
+    "workspace_relative": "DSK/task_17_fontconfig_glyph_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

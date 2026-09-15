@@ -1,0 +1,76 @@
+{
+  "id": "4e60007a-f5be-4bfc-9723-c39affa0a6d3",
+  "new_id": "task_verify_29",
+  "snapshot": "vscode",
+  "instruction": "Please help me install the Remote - SSH extension in VS Code.",
+  "source": "https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/4e60007a-f5be-4bfc-9723-c39affa0a6d3_task_verify_9",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "is_extension_installed",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "code",
+        "--list-extensions",
+        "|",
+        "grep",
+        "ms-vscode-remote.remote-ssh"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contain",
+        "expected": "ms-vscode-remote.remote-ssh"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing the Remote - SSH extension (ms-vscode-remote.remote-ssh) in VS Code. Evaluator verifies installation by checking if 'code --list-extensions' output contains the extension ID. Uses existing is_extension_installed metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical shell piping issue: Command array contains pipe '|' operator but shell=false (default), causing pipe to be treated as literal argument instead of shell operator",
+        "The command 'code --list-extensions | grep ms-vscode-remote.remote-ssh' is specified as an array ['code', '--list-extensions', '|', 'grep', 'ms-vscode-remote.remote-ssh'] which will NOT execute the pipe correctly without shell=true",
+        "Getter function get_vm_command_line (general.py:8-22) uses shell=config.get('shell', False) which defaults to False, causing the pipe operator to fail",
+        "The evaluator logic is semantically correct (checking extension installation via code --list-extensions is the right approach), but the implementation has a critical execution flaw"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'shell': true to the result config to enable shell pipe interpretation",
+        "Alternative: Change command to a single string 'code --list-extensions | grep ms-vscode-remote.remote-ssh' with shell=true, or use 'code --list-extensions' without grep and rely on the contain metric to search the full output",
+        "Recommended fix: Change result config to: {\"type\": \"vm_command_line\", \"command\": \"code --list-extensions\", \"shell\": false} and let the is_extension_installed metric with type='contain' handle the filtering"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

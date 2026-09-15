@@ -1,0 +1,112 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_96",
+  "snapshot": "thunderbird",
+  "instruction": "Update the IMAP chunk size to 150000 bytes for faster message downloads.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.imap.chunk_size": {
+            "method": "eq",
+            "ref": 150000
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing IMAP chunk size from 106496 to 150000 bytes. The evaluator checks if mail.imap.chunk_size is set to 150000. Original profile has chunk_size=106496, so this requires modification. Uses existing check_thunderbird_prefs metric.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator completely covers the instruction requirement: checks that mail.imap.chunk_size equals 150000",
+        "Correct getter logic: get_vm_file extracts the Thunderbird prefs.js file from the correct VM path",
+        "Correct metric logic: check_thunderbird_prefs correctly parses prefs.js and compares values using _match_pref",
+        "Correct metric parameter handling: function parameter 'rule' receives the rules dictionary directly (not wrapped in {'type': 'rule', 'rules': {...}})",
+        "Appropriate postconfig: closes Thunderbird and sleeps to ensure prefs.js is written to disk before reading",
+        "Correct expected value: 150000 bytes is semantically correct for IMAP chunk size setting",
+        "Proper edge case handling: returns 0.0 if file is None, handles JSON parsing correctly",
+        "Data flow is correct: VM file → parse preferences → match exact value"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

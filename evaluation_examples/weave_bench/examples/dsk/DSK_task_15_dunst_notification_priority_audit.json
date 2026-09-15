@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_15_dunst_notification_priority_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Background: the on-call engineer complains that high-priority alerts are \"invisible\" — meanwhile normal-info messages pile up across the screen and refuse to dismiss. Ops edited `~/.config/dunst/dunstrc`, reloaded dunst, fired off a round of test notifications, then walked away after a single glance. In the environment, `dunst` is already running and `~/.config/dunst/dunstrc` has been deliberately misconfigured (one of `[urgency_*]` / `[global]` / a filter section is wrong). The driver script `python3 /tmp_workspace/dunst/send_burst.py --tag <tag>` emits 12 notifications on a fixed schedule within ~8 seconds (4 low / 5 normal / 3 critical, spread across 4 distinct app_names) and writes a manifest of `(id, app_name, urgency, summary)`. `python3 /tmp_workspace/dunst/action_helper.py --emit/--collect` can post a notification with an `Open` button and collect the resulting D-Bus `ActionInvoked` signal.\n\nGoal: fully locate the dunstrc misconfiguration that is \"suppressing\" criticals, deliver a fix, and leave a dual-channel evidence chain of \"current state → diagnosis → fix → re-verification\" under `/tmp_workspace/results/` (CLI/dunstctl/dbus + GUI rendered stack + button interaction).\n\n### Hard constraints on the main deliverable `dunstrc.fixed`\n- Preserve the full section structure: `[global]` / `[urgency_low]` / `[urgency_normal]` / `[urgency_critical]`.\n- `[urgency_critical]`'s `timeout` must be a positive integer ≥2 (must not be 1).\n- `[urgency_critical]`'s `background` must fall in a reddish/dark-red range (e.g. `#900000` / `#a00...` / `#b00...` / `#f00...`).\n- The `[urgency_critical]` section must not contain `ignore = true/yes/1`.\n- `[urgency_low]`'s `timeout` must not be 0 (to prevent low notifications persisting forever and covering critical ones).\n- No standalone `[ignore_*]` filter section may remain (the prefix `[ignore_` must not appear anywhere in the file).\n- After fixing, `dunstrc.fixed` must be installed back to `~/.config/dunst/dunstrc` and dunst must be reloaded.\n\n### Hard constraints on the main deliverable `diagnosis.json`\n- `broken_section`: must match the section that actually contains the fault (value range: `urgency_low | urgency_normal | urgency_critical | global | name_filter | other`).\n- `broken_keys`: list all key names that are actually broken (array, must at least cover the keys directly causing criticals to be invisible).\n- `symptom`: a one-sentence description that simultaneously names both failure modes — silent suppression and too-short timeout.\n- `expected_after`: `{\"low\": <int>, \"normal\": <int>, \"critical\": <int>}` with all three keys present, giving the number of notifications actually visible on screen when the same burst is re-sent after the fix.\n\n### Supporting deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `dunstrc_before.conf` | Verbatim backup of `~/.config/dunst/dunstrc` before the fix |\n| `dunst_status_before.txt` | Runtime status summary of dunst before the fix |\n| `dbus_monitor.log` | Continuous capture of `org.freedesktop.Notifications` traffic on the session bus during both bursts; at least 12 lines of `member=Notify`, containing real `sender=:` and `serial=` fields |\n| `burst_before_manifest.json` | List written by `send_burst.py --tag before`, ≥12 entries, each containing `(id, app_name, urgency, summary)` |\n| `burst_after_manifest.json` | List written by `send_burst.py --tag after` after installing `dunstrc.fixed` and reloading, ≥12 entries |\n| `dunst_history_before.json` | dunstctl history before the fix (raw JSON of `dunstctl history`), non-empty |\n| `dunst_history_after.json` | dunstctl history captured again after the fix, must parse as JSON; the count of entries with `urgency` equal to critical must be ≥ the GT threshold (≥2) |\n| `action_invoked.json` | JSON collected by `action_helper.py --collect` after `action_helper.py --emit` posts a notification with an `Open` button and the button is actually triggered (any method that produces a D-Bus `ActionInvoked` signal); must contain `notification_id` and a non-empty `action_key` |\n| `summary.md` | ≥200 characters; covers one decisive configuration line from `[urgency_critical]` and one from the filter section, a before/after table of actually-visible counts, and explains why the notification background color can only be verified from image evidence (dunst history JSON does not carry rendered color); both the words `before` and `after` must appear |\n\n### Cross-channel consistency\nThe notification `id`s in `burst_before_manifest.json` must align with the `id`s in `dunst_history_before.json` (at least 6 shared ids), proving that the D-Bus traffic, the burst manifest, and the dunst history all point to the same real set of notifications.\n\n### 2 process screenshots\n- `view_dunst_stack_before.png`: a full-screen PNG taken during the first burst, showing the real dunst-rendered notification stack with text legible (the grader will run OCR).\n- `view_dunst_stack_after.png`: a full-screen PNG taken during the second burst after the fix and reload, must show at least one critical notification with a reddish/dark-red background, text legible (the grader will run OCR).\n- Common spec: full-screen resolution matching the desktop; must not be blank/all-black/pure terminal text screenshots; the notification stack must be a real rendered layer — notifications rejected by filters never enter history nor get rendered.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_15_dunst_notification_priority_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_15_dunst_notification_priority_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/dsk15_gt /home/user/.config/d\"unst\"\nchmod 1777 /tmp_workspace/results /tmp_workspace/state 2>/dev/null || true\nchown -R user:user /home/user/.config/d\"unst\" 2>/dev/null || true\nexport DEBIAN_FRONTEND=noninteractive\nexport DISPLAY=${DISPLAY:-:0}\nexport DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}\nwhich python3 || timeout 240 sh -c 'apt-get update -o Acquire::Retries=10 -qq && DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries=10 -y -qq libnotify-bin libdbus-1-3 dbus tesseract-ocr python3-pip python3-pil python3-dbus python3-gi gnome-screenshot' || echo WARN_apt_failed\npip install -q --break-system-packages --ignore-installed blinker pytesseract dbus-python 2>/dev/null || pip install -q --ignore-installed blinker pytesseract dbus-python 2>/dev/null || true\npython3 - <<'PYEOF'\nimport pathlib, os, pwd\ntarget = pathlib.Path(\"/home/user/.config\") / (\"d\" + \"unst\") / (\"d\" + \"unstrc\")\ntarget.parent.mkdir(parents=True, exist_ok=True)\nif not target.exists() or target.stat().st_size < 200:\n    rc = '''[global]\nfont = Monospace 10\nallow_markup = yes\nplain_text = no\nmarkup = full\nfollow = none\ngeometry = \"300x5-30+20\"\nindicate_hidden = yes\nshrink = no\ntransparency = 0\nnotification_height = 0\nseparator_height = 2\npadding = 8\nhorizontal_padding = 8\nframe_width = 3\nsort = yes\nidle_threshold = 120\nline_height = 0\nshow_age_threshold = 60\nword_wrap = yes\nellipsize = middle\nignore_newline = no\nstack_duplicates = true\nhide_duplicate_count = false\nshow_indicators = yes\nicon_position = left\nmax_icon_size = 32\n\n[urgency_low]\nbackground = \"#222222\"\nforeground = \"#888888\"\ntimeout = 10\n\n[urgency_normal]\nbackground = \"#285577\"\nforeground = \"#ffffff\"\ntimeout = 10\n\n[urgency_critical]\nbackground = \"#900000\"\nforeground = \"#ffffff\"\nframe_color = \"#ff0000\"\ntimeout = 1\nignore = true\n\n[ignore_critical]\nappname = *\nurgency = critical\nscript = /bin/true\nformat = \"\"\n'''\n    target.write_text(rc)\ntry:\n    rec = pwd.getpwnam(\"user\")\n    for p in [target, target.parent, target.parent.parent]:\n        try: os.chown(str(p), rec.pw_uid, rec.pw_gid)\n        except Exception: pass\nexcept KeyError:\n    pass\nPYEOF\ncat > /opt/dsk15_gt/manifest.json <<'JSON'\n{\n  \"broken_section\": \"urgency_critical\",\n  \"broken_keys\": [\"timeout\", \"ignore\"],\n  \"symptom\": \"urgency_critical timeout 设成 1 秒并被 ignore_critical 段静默\",\n  \"expected_visible_after\": {\"low\": 0, \"normal\": 5, \"critical\": 3},\n  \"min_critical_after\": 2\n}\nJSON\nchmod 600 /opt/dsk15_gt/manifest.json\nchown -R root:root /opt/dsk15_gt 2>/dev/null || true\nservice dbus start 2>/dev/null || systemctl start dbus 2>/dev/null || true\necho \"[warmup-dsk15] done\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_15_dunst_notification_priority_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_15_dunst_notification_priority_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_15_dunst_notification_priority_audit/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_15_dunst_notification_priority_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_15_dunst_notification_priority_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_15_dunst_notification_priority_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_15_dunst_notification_priority_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_15_dunst_notification_priority_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_15_dunst_notification_priority_audit",
+    "workspace_relative": "DSK/task_15_dunst_notification_priority_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

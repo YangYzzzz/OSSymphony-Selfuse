@@ -1,0 +1,105 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_68",
+  "snapshot": "chrome",
+  "instruction": "Navigate to cell C6 in the open spreadsheet, copy the last name value, and perform a Google search for it in Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=magwood(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell C6 value 'Magwood' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'magwood' (case-insensitive). Verified by reading complete Excel file: C6 contains 'Magwood' at row 5, column 2 (0-indexed). No postconfig needed as Chrome tab remains accessible after search.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the final task outcome: active Chrome tab URL matches Google search for 'magwood'",
+        "Getter active_tab_info (chrome.py:803-890) correctly extracts URL from active Chrome tab using accessibility tree first, then Playwright to get full tab info with 'url', 'title', 'content' keys",
+        "Metric is_expected_search_query (chrome.py:247-256) correctly receives active_tab_info dict and rules dict, extracts pattern from rules['expect']['pattern'], searches pattern in active_tab_info['url'], returns 1.0 for match, 0.0 for no match",
+        "Expected regex pattern '(?i)https?://(?:www\\.)?google\\.com/search\\?q=magwood(?:&|$|#).*' is semantically correct: case-insensitive, flexible with http/https, optional www, matches query parameter q=magwood",
+        "Expected value 'Magwood' is verified correct from metadata explanation (cell C6 at row 5, column 2 contains 'Magwood')",
+        "Metric correctly accesses rules['expect']['pattern'] - no parameter handling errors (rules IS the expected parameter when expected.type='rule')",
+        "Data flow is correct: getter extracts dict with 'url' key -> metric searches pattern in active_tab_info['url'] -> returns 1.0 for match, 0.0 for no match",
+        "Limitation: evaluator cannot verify intermediate steps (navigating to cell C6, copying value from spreadsheet), only verifies final search result",
+        "This limitation is acceptable for GUI automation tasks where intermediate UI states are ephemeral and difficult to verify programmatically",
+        "Verifying final outcome (correct search query in browser) is a valid proxy for task completion in this context",
+        "No postconfig needed: Chrome tab remains open after search, active tab state is directly accessible via active_tab_info getter",
+        "Re-verified 2025-12-20: All semantic and logical checks pass, judgment confirmed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

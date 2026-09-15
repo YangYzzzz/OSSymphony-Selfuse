@@ -1,0 +1,87 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_60",
+  "snapshot": "os",
+  "instruction": "Remove all applications except Chrome from your favorites dock.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "google-chrome.desktop"
+        ]
+      }
+    },
+    "postconfig": []
+  },
+  "metadata": {
+    "explanation": "Task requires removing Thunderbird and Vim from favorites, keeping only Chrome. Verified using existing check_gnome_favorite_apps metric. Expected result contains only Chrome.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correct: get_vm_command_line extracts favorite-apps via gsettings command, returns string output",
+        "Metric logic correct: check_gnome_favorite_apps parses string to list, checks both length and set equality",
+        "Parameter handling correct: metric uses rule['expected'] directly (correct pattern for type='rule')",
+        "Complete coverage: instruction has 1 requirement (only Chrome remains), evaluator verifies exactly this",
+        "Expected value semantically correct: ['google-chrome.desktop'] matches 'only Chrome' requirement",
+        "Data flow correct: config sets 3 apps -> user removes 2 -> gsettings reads final state -> metric compares",
+        "State accessibility: gsettings reads GNOME configuration directly, no UI/dialog dependency",
+        "Static warning is false positive: verification uses config-based gsettings, not UI state, no postconfig needed",
+        "Edge cases handled: length check prevents partial matches, set comparison prevents wrong apps"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

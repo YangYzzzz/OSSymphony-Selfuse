@@ -1,0 +1,80 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_13",
+  "snapshot": "os",
+  "instruction": "Remove all files in the \"/tmp/test_files\" directory tree that were last modified 60 days ago",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /tmp/test_files/old_files /tmp/test_files/recent_files && touch /tmp/test_files/old_files/old_file1.txt /tmp/test_files/old_files/old_file2.txt /tmp/test_files/old_files/old_file3.log /tmp/test_files/recent_files/recent_file1.txt /tmp/test_files/recent_files/recent_file2.txt && find /tmp/test_files/old_files -type f -exec touch -d '60 days ago' {} \\; && find /tmp/test_files/recent_files -type f -exec touch -d 'now' {} \\;",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'BASE_DIR=\"/tmp/test_files\"; OLD_FILES_DELETED=true; old_file_count=$(find \"$BASE_DIR\" -type f -mtime 60 2>/dev/null | wc -l); if [ \"$old_file_count\" -ne 0 ]; then OLD_FILES_DELETED=false; fi; RECENT_FILES_KEPT=false; recent_file_count=$(find \"$BASE_DIR\" -type f -mtime -60 2>/dev/null | wc -l); if [ \"$recent_file_count\" -ge 2 ]; then RECENT_FILES_KEPT=true; fi; if $OLD_FILES_DELETED && $RECENT_FILES_KEPT; then echo \"Success: The task was completed correctly.\"; else echo \"Failure: The task was not completed correctly. Old files (60 days): $old_file_count, Recent files (<60 days): $recent_file_count\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation that requires deleting files older than 60 days. Setup creates old_files (modified 60 days ago) and recent_files (modified now). Evaluator verifies old files are deleted while recent files remain. Using inline bash command for evaluation to check file deletion status.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification_details": "The evaluation checks: (1) no files with modification time of exactly 60 days ago remain in /tmp/test_files directory tree (using 'find -mtime 60'), (2) at least 2 files with modification time less than 60 days ago still exist (using 'find -mtime -60'). This verifies the agent correctly identified and deleted only files modified exactly 60 days ago based on actual timestamps, not directory structure.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies instruction requirements using modification time checks",
+        "Uses 'find -mtime 60' to verify no files exactly 60 days old remain (correctly identifies files to be deleted)",
+        "Uses 'find -mtime -60' to verify recent files (< 60 days) are preserved (at least 2 files remain)",
+        "Logic flow is sound: checks both deletion of old files AND preservation of recent files",
+        "Bash command correctly uses BASE_DIR='/tmp/test_files' to check entire directory tree as specified in instruction"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

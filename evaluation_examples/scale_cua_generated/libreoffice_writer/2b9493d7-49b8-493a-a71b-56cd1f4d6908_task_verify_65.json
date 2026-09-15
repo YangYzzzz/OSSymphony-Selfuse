@@ -1,0 +1,112 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_65",
+  "snapshot": "libreoffice_writer",
+  "instruction": "LibreOffice Writer has become unresponsive while working on a document. I need to kill the process using the terminal on my Ubuntu machine. Can you help me terminate it without affecting my other work?",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep -E \"(kill|pkill|killall)\"); if [ -z \"$output\" ]; then echo \"not killed from terminal\"; else echo \"killed from terminal\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "killed from terminal"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "not killed from terminal"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires killing unresponsive LibreOffice Writer process via terminal. Evaluator checks for process termination and presence of kill-related commands in bash history.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Semantic mismatch: Instruction asks to kill 'LibreOffice Writer' specifically without affecting other work, but evaluator checks if ALL LibreOffice processes (soffice) are killed. If user has Calc or Impress open, killing only Writer would be correct but evaluator would fail.",
+        "Process check is too broad: grep '[s]office' matches all LibreOffice applications (Writer, Calc, Impress, etc.), not just Writer. The evaluator cannot distinguish between different LibreOffice apps.",
+        "In this specific test environment only Writer is opened, so the issue may not manifest, but semantically the evaluator doesn't match the instruction's specificity about targeting only Writer."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Refine the process check to specifically verify that the Writer process is killed. Consider checking for 'soffice.*writer' or verify the specific PID of the Writer process opened in config.",
+        "Consider the scenario where multiple LibreOffice apps are open - the instruction implies only Writer should be killed ('without affecting my other work'), but current verification would fail if any other LibreOffice app remains running.",
+        "Alternative approach: Instead of checking if no LibreOffice is running, check that the specific Writer process (opened for the 15-MB-docx-file) is no longer running, while allowing other LibreOffice processes to continue."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

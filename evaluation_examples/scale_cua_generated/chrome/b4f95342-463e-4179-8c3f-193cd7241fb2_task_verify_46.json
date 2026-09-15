@@ -1,0 +1,95 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Find the Next Available dates for Glacier.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "gotoRecreationPage_glacier__db5caf9c",
+      "selector": "class",
+      "class": "camp-sortable-column-header",
+      "order": "2"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "camp-sortable-column-header": "Next Available"
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "possibility_of_env_change": "high",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task asks agent to search for Glacier on recreation.gov and find next available dates. Similar to original but with different search term.",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/b4f95342-463e-4179-8c3f-193cd7241fb2_task_verify_6/getters/chrome__db5caf9c.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic verification error: The instruction asks to 'Find the Next Available dates for Glacier' (emphasis on DATES), but the evaluator only checks if a table column HEADER contains the text 'Next Available'. This verifies the wrong thing - a column header is not date data.",
+        "Incomplete requirement verification: The instruction requires finding actual date information (e.g., 'Dec 25, 2025' or '01/15/2026'), but the getter extracts text from elements[2] with class 'camp-sortable-column-header' (chrome__db5caf9c.py:143), which is the table header row, not the data cells containing dates.",
+        "Logic technically works but verifies wrong requirement: The data flow is correct (getter returns dict, metric check_direct_json_object compares correctly, expected value matches), but this entire flow verifies 'does the column header say Next Available?' rather than 'are there actual available dates displayed?'",
+        "Missing coverage of actual task goal: Even if this evaluator passes (header = 'Next Available'), it doesn't confirm that the agent successfully found any actual availability dates for Glacier, which is what the instruction requires."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify getter to extract actual date values from table data cells in the 'Next Available' column (not the header). Look for elements containing date information after the header row.",
+        "Update expected value to include actual date data or date patterns (e.g., check that result contains date-formatted strings like 'MM/DD/YYYY' or month names)",
+        "Consider using a different selector strategy: Instead of extracting the column header at index 2, extract the first few data rows from that column and verify they contain valid date information",
+        "Alternative approach: Verify that the availability calendar/table is visible and populated with date data, rather than just checking a header label"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

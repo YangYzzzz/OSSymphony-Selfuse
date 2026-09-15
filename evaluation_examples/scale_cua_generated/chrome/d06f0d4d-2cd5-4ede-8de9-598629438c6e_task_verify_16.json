@@ -1,0 +1,91 @@
+{
+  "id": "d06f0d4d-2cd5-4ede-8de9-598629438c6e",
+  "new_id": "task_verify_16",
+  "snapshot": "chrome",
+  "instruction": "Remove the cone background in VLC player for a cleaner viewing experience.",
+  "source": "https://superuser.com/questions/1039392/changing-colour-of-vlc-volume-slider",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_bgcone",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_bgcone": "0"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling the background cone in VLC (qt-bgcone=0). This is a similar configuration change to the original color task. Uses existing check_qt_bgcone metric function which validates the qt-bgcone setting in vlcrc config file is set to 0 (disabled). Similar complexity and interaction pattern to original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by examining check_qt_bgcone function in vlc.py:335-362. The function reads vlcrc, extracts qt-bgcone value (default '1'), and compares against expected value '0'.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vlc_config (vlc.py:35-61) correctly identifies and retrieves the vlcrc config file based on OS platform",
+        "Metric logic is correct: check_qt_bgcone (vlc.py:335-362) reads the config file, extracts qt-bgcone value with correct default ('1'), and compares against expected value '0'",
+        "Parameter handling is correct: metric function directly accesses rule['expected_qt_bgcone'] without incorrect patterns like rule.get('type') or rule.get('rules')",
+        "Complete coverage: evaluator verifies the exact requirement in the instruction (disable background cone = qt-bgcone=0)",
+        "Postconfig is appropriate: kills and relaunches VLC to ensure settings are persisted and can be verified",
+        "Expected value is correct: '0' means disabled, which matches the instruction requirement"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "d06f0d4d-2cd5-4ede-8de9-598629438c6e_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

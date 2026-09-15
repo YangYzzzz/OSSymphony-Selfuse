@@ -1,0 +1,102 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_67",
+  "snapshot": "chrome",
+  "instruction": "Open the spreadsheet file and locate cell B2. Copy the first name in that cell and use Chrome to search for it on Google.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=dulce(?:&|$|#).*"
+        }
+      }
+    },
+    "postconfig": []
+  },
+  "metadata": {
+    "explanation": "Task requires copying cell B2 value 'Dulce' from Excel file and searching it in Chrome. Evaluator verifies that the active tab URL matches a Google search for 'dulce' (case-insensitive). Verified by reading complete Excel file: B2 contains 'Dulce' at row 1, column 1 (0-indexed).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the final outcome: active tab contains Google search URL for 'Dulce'",
+        "Getter logic is correct: get_active_tab_info (chrome.py:803-890) extracts active tab URL from accessibility tree, navigates to it with Playwright, and returns dict with 'url', 'title', 'content' fields",
+        "Metric logic is correct: is_expected_search_query (chrome.py:247-256) extracts URL from result['url'] (line 253) and performs regex pattern matching with expected['pattern']",
+        "Expected pattern is semantically correct: '(?i)https?://(?:www\\.)?google\\.com/search\\?q=dulce(?:&|$|#).*' matches Google search for 'dulce' (case-insensitive) with flexible query parameters",
+        "Expected value matches instruction requirement: pattern expects 'dulce' which matches cell B2 content 'Dulce' (verified in metadata explanation)",
+        "Data flow is correct: getter returns {url: string, title: string, content: string} -> metric accesses result['url'] -> regex.search(pattern, url) -> returns 1.0 if match else 0.0",
+        "No postconfig needed: evaluator runs after task completion when Chrome already displays search results in active tab; getter can navigate to the URL to extract info; rule validator warning is false positive",
+        "Complete coverage: evaluator verifies END STATE (Google search URL) which implicitly confirms all intermediate steps (open file, locate B2, copy value, search) were completed successfully",
+        "Edge cases handled: metric returns 0.0 if active_tab_info is None or pattern doesn't match; getter handles navigation failures gracefully"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

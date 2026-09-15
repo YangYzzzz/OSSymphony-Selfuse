@@ -1,0 +1,99 @@
+{
+  "id": "337d318b-aa07-4f4f-b763-89d9a2dd013f",
+  "new_id": "337d318b-aa07-4f4f-b763-89d9a2dd013f_traj_verify_1",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Cross-check the invoices on the Desktop against the bank statement. Sort them into two folders: move matching invoices into a 'matching' folder and discrepant ones into a 'discrepant' folder on the Desktop.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Desktop/invoice TII-20220301-90.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/invoice%20TII-20220301-90.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/Invoice # GES-20220215-82.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/Invoice%20%23%20GES-20220215-82.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/Invoice # 243729.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/Invoice%20%23%20243729.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/Bank-Statement.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/Bank-Statement.pdf"
+          }
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/337d318b-aa07-4f4f-b763-89d9a2dd013f",
+  "related_apps": [
+    "os",
+    "pdf"
+  ],
+  "evaluator": {
+    "func": "check_sorted_invoices__5d7cb95eaab32c834b0336c7360277e1",
+    "result": {
+      "type": "sorted_invoice_folders__5d7cb95eaab32c834b0336c7360277e1",
+      "matching_path": "/home/user/Desktop/matching",
+      "discrepant_path": "/home/user/Desktop/discrepant"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "matching_files": [
+          "Invoice # GES-20220215-82.pdf",
+          "invoice TII-20220301-90.pdf"
+        ],
+        "discrepant_files": [
+          "Invoice # 243729.pdf"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "/raid/lvbowen/osworld_eval/qw3vl-sft-57-osworld-std-traj/task_multi_apps_337d318b-aa07-4f4f-b763-89d9a2dd013f_sid_1488431/",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent opened and read 3 invoices and 1 bank statement PDF on Desktop. Created 'problematic' folder and moved all 3 invoices into it. Despite misreading amounts, the evaluator only checked for Invoice #243729 (the discrepant one), so reward=1.0.",
+    "capability_extraction": "Open PDFs with Document Viewer, read PDF content from screenshots, create new folders on Desktop via file manager, move files between folders using right-click context menu.",
+    "task_rationale": "Harder than original: agent must sort ALL invoices into two categories (matching vs discrepant) rather than just moving discrepant ones. Requires creating two folders and correctly categorizing each invoice. The original agent moved all 3 to one folder, which would fail this evaluator.",
+    "explanation": "Custom getter lists files in both /home/user/Desktop/matching/ and /home/user/Desktop/discrepant/ folders. Metric checks correct placement in each folder with partial credit per file and penalties for misplaced files. [Fixed: corrected MD5 hash suffix from 8-char to 32-char, removed old a5135cde files, inlined helper to avoid inner function validation error]",
+    "difficulty": "hard",
+    "scoring_breakdown": "0.33 per correct matching invoice (x2 = 0.66), 0.34 for correct discrepant invoice. -0.2 penalty per misplaced file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_337d318b-aa07-4f4f-b763-89d9a2dd013f_sid_1488431_traj_verify_1/getters/get_sorted_invoice_folders__5d7cb95eaab32c834b0336c7360277e1.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_337d318b-aa07-4f4f-b763-89d9a2dd013f_sid_1488431_traj_verify_1/metrics/check_sorted_invoices__5d7cb95eaab32c834b0336c7360277e1.py"
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly lists files in both /home/user/Desktop/matching and /home/user/Desktop/discrepant folders using env.controller.run_bash_script with ls -1",
+        "Metric correctly accesses expected parameter directly (expected.get('matching_files')) since expected.type='rule' means expected IS the rules dict",
+        "All 3 invoices are accounted for: 2 in matching_files, 1 in discrepant_files - complete coverage of instruction requirements",
+        "Partial credit scoring (0.33 + 0.33 + 0.34 = 1.0) with -0.2 penalty per misplaced file is well-designed",
+        "Data flow is correct: getter returns {matching_files: [...], discrepant_files: [...]} which metric consumes directly",
+        "Minor issue: getter does not handle None return from run_bash_script (connection failure), which would cause AttributeError on .get() call"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add None check for run_bash_script return value in getter (e.g., if result_matching is None, default to empty string)"
+      ]
+    },
+    "fix_history": [
+      "Fix 1: Corrected MD5 hash suffix from 8-char 'a5135cde' to proper 32-char '5d7cb95eaab32c834b0336c7360277e1' (computed from '337d318b-aa07-4f4f-b763-89d9a2dd013f|1') in getter, metric, and result.type",
+      "Fix 2: Renamed inner helper function 'list_files' to '_get_files' in getter to avoid validator detecting it as a top-level function missing 'get_' prefix",
+      "Fix 3: Deleted old files with invalid 8-char MD5 suffix (get_sorted_invoice_folders__a5135cde.py, check_sorted_invoices__a5135cde.py) that were still being scanned by validator",
+      "Fix 4: Inlined helper function _get_files directly into getter body to eliminate inner function definition that validator was flagging"
+    ]
+  }
+}

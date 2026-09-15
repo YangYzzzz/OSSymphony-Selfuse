@@ -1,0 +1,85 @@
+{
+  "id": "ea98c5d7-3cf9-4f9b-8ad3-366b58e0fcae",
+  "new_id": "task_verify_30",
+  "snapshot": "vscode",
+  "instruction": "Please help me disable the keyboard shortcut \"ctrl+g\" for Go to Line in VS Code to prevent shortcut conflicts.",
+  "source": [
+    "https://superuser.com/questions/1748097/vs-code-disable-tree-view-find-explorer-search",
+    "https://superuser.com/questions/1417361/how-to-disable-file-filtering-in-vs-code-sidebar-explorer?rq=1"
+  ],
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_keybindings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "key": "ctrl+g",
+          "command": "-workbench.action.gotoLine"
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/keybindings.json",
+      "dest": "keybindings.json"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation asks to remove the ctrl+g shortcut for Go to Line (workbench.action.gotoLine) instead of the original ctrl+f for Tree view Find. This is another commonly used navigation shortcut that users might want to disable to avoid conflicts. The evaluator checks if the keybindings.json file contains the expected entry that disables this shortcut.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: checks if keybindings.json contains the entry to disable ctrl+g for Go to Line (workbench.action.gotoLine)",
+        "Getter logic is correct: get_vm_file fetches the correct VS Code keybindings file from /home/user/.config/Code/User/keybindings.json",
+        "Metric logic is correct: check_json_keybindings properly handles the rules dict structure (expected['expected']) and checks if the dict is in the JSON array, which matches VS Code's keybindings.json format",
+        "Expected value is semantically correct: {\"key\": \"ctrl+g\", \"command\": \"-workbench.action.gotoLine\"} correctly represents disabling the keybinding (command prefixed with '-')",
+        "Coverage is complete: single requirement instruction, evaluator checks exactly that requirement",
+        "Data flow is correct: getter returns file path -> metric loads JSON array -> checks if expected dict is in array"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness issue: check_json_keybindings should explicitly handle None input from get_vm_file when file doesn't exist (currently would crash at open(None)). Add: 'if not actual: return 0.0' at the start (note: this already exists at line 58 in some metrics, but missing here).",
+        "The metric loads the entire JSON file into memory - for large keybindings files this could be inefficient, but this is acceptable for typical use cases"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

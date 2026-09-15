@@ -1,0 +1,106 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_22",
+  "snapshot": "chrome",
+  "instruction": "Extract the last name from Cell C10 in the Calc file and search for it on Google using Chrome.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=winward(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires copying the last name 'Winward' from cell C10 (row 10, column C contains 'Winward') and searching it in Chrome. The evaluator uses the existing is_expected_search_query metric to check if the active tab URL matches a Google search for 'winward'. Verified data: Cell C10 contains 'Winward' (row index 10 in the Excel file).",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the end state: whether a Google search for 'winward' (case-insensitive) was performed",
+        "Getter (get_active_tab_info) can successfully extract the active tab URL from Chrome using accessibility tree",
+        "Metric (is_expected_search_query) correctly checks if the URL matches the expected Google search pattern using regex",
+        "Regex pattern is well-formed with case-insensitive flag and correctly matches 'google.com/search?q=winward' URLs",
+        "Expected value 'Winward' is semantically correct - matches the actual data in cell C10 of the Excel file",
+        "Evaluator will successfully determine if the instruction was completed (Google search performed with correct term)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator only verifies the final search result, not the intermediate step of copying from cell C10. However, this is acceptable for this task since if the search term is 'Winward', it strongly implies the user copied it from the correct cell.",
+        "Minor: get_active_tab_info reloads the target URL page (line 830 in chrome.py), which could potentially cause issues if the page state has changed, though this is unlikely to affect Google search result URLs."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

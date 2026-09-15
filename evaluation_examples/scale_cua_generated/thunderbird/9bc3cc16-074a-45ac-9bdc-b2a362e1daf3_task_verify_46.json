@@ -1,0 +1,105 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_46",
+  "snapshot": "thunderbird",
+  "instruction": "Can you export all the messages from my inbox folder to ~/message_backup? Each email should be saved as an .eml file.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/message_backup"
+          ],
+          "stdout": "message_backup.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "message_backup.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "歡迎使用新的 Outlook.com 帳戶.*\\.eml",
+          "A Test E-mail.*\\.eml"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "explanation": "Task requires exporting all inbox emails to ~/message_backup folder in .eml format. Evaluator verifies that .eml files with expected email subjects are created. Uses existing check_list metric with regex patterns to match the known email subjects in the Thunderbird profile.",
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction requires exporting 'ALL messages' from inbox, but evaluator only checks for 2 specific email subjects. If inbox contains more emails, the evaluator won't verify they were all exported",
+        "Filename pattern assumption: Expected regex patterns assume filenames will contain email subjects (e.g., 'A Test E-mail.eml'), but Thunderbird's actual export may use different naming conventions (timestamps, message IDs, sanitized subjects). This could cause verification to fail even when task succeeds",
+        "No count verification: Evaluator doesn't verify that the number of exported .eml files matches the total inbox message count, which is critical for verifying 'all messages' requirement",
+        "Partial completion risk: Task could partially succeed (e.g., only 2 out of 10 emails exported) and still pass verification since only 2 specific patterns are checked"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add count verification: First get the total number of messages in the Thunderbird inbox, then verify the count of .eml files in ~/message_backup matches this count",
+        "Use generic .eml pattern: Instead of checking for specific email subjects in filenames, verify that the correct number of .eml files exist (e.g., pattern '.*\\.eml' with count matching inbox)",
+        "Consider content verification: Read the .eml files and check for expected email headers/subjects inside the file content, not just filenames",
+        "Alternative approach: Use a Thunderbird-specific getter to count inbox messages, then verify message_backup directory contains exactly that many .eml files"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

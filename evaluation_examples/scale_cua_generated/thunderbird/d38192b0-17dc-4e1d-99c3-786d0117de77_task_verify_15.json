@@ -1,0 +1,108 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "task_verify_15",
+  "snapshot": "thunderbird",
+  "instruction": "Add ~/aws-bill.pdf as an attachment to the email, ensuring the composition window remains open and unsent.",
+  "source": "https://support.mozilla.org/en-US/kb/how-use-attachments",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/aws-bill.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_attachment_complete__d38192b0",
+    "result": {
+      "type": "thunderbird_attachment_state__d38192b0",
+      "subject": "New-month AWS Bill",
+      "attachment_name": "aws-bill.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "rule": "result_state['window_open'] == True",
+          "reason": "Thunderbird compose window must remain open (not closed or sent)"
+        },
+        {
+          "rule": "result_state['attachment_present'] == True",
+          "reason": "aws-bill.pdf must be attached to the email"
+        }
+      ]
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 4: Paraphrased instruction asking to 'Link the invoice document to the email by adding it as an attachment'. Task requires attaching aws-bill.pdf to Thunderbird compose window AND keeping the compose window open. Evaluator uses custom getter function that inspects Thunderbird accessibility tree to verify both: (1) attachment is present in compose window, and (2) compose window remains open (not closed or sent). This addresses the complete instruction requirements.",
+    "new_functions_paths": [
+      "tmp_funcs/d38192b0-17dc-4e1d-99c3-786d0117de77_task_verify_4/getters/get_thunderbird_attachment_state__d38192b0.py",
+      "tmp_funcs/d38192b0-17dc-4e1d-99c3-786d0117de77_task_verify_4/metrics/check_thunderbird_attachment_complete__d38192b0.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter logic is semantically correct - uses Thunderbird accessibility tree to verify both window state and attachment presence",
+        "Complete instruction coverage - evaluator checks BOTH requirements: (1) attachment present and (2) compose window remains open",
+        "Getter implementation is robust - properly finds compose window by subject, verifies specific attachment by name, handles edge case of hidden attachment panel",
+        "Data flow is correct - getter extracts boolean flags for window_open and attachment_present, which directly correspond to task requirements",
+        "Expected values are semantically correct - rules check the right boolean conditions (window_open == True, attachment_present == True)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Architectural inconsistency - evaluator specifies BOTH a custom metric function AND expected.type='rule'. Should use only one approach: either remove the custom metric and rely solely on rule evaluation, or remove expected.type='rule' and use only the custom metric",
+        "Custom metric function doesn't use expected_state parameter at all - if keeping the metric, it should validate against expected values passed in, not just check result_state directly",
+        "Minor: The metric returns 0.0 for partial completion (e.g., window open but no attachment). Consider partial credit scoring if that matches task requirements"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "d38192b0-17dc-4e1d-99c3-786d0117de77_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_59",
+  "snapshot": "os",
+  "instruction": "I'm trying to use 'pip' but getting \"command not found\". Could you help me set up pip3 as the default pip by creating an appropriate alias in my shell configuration?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "(grep -Eq \"^[[:space:]]*alias[[:space:]]+pip[[:space:]]*=[[:space:]]*['\\\"]?pip3['\\\"]?\" ~/.bashrc || grep -Eq \"^[[:space:]]*alias[[:space:]]+pip[[:space:]]*=[[:space:]]*['\\\"]?pip3['\\\"]?\" ~/.bash_profile || grep -Eq \"^[[:space:]]*alias[[:space:]]+pip[[:space:]]*=[[:space:]]*['\\\"]?pip3['\\\"]?\" ~/.zshrc || grep -Eq \"^[[:space:]]*alias[[:space:]]+pip[[:space:]]*=[[:space:]]*['\\\"]?pip3['\\\"]?\" ~/.profile) && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding pip=pip3 alias to .bashrc to fix 'pip: command not found'. Evaluator checks if the alias exists in .bashrc. Same complexity as original - fixing command not found via shell configuration.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator now checks 4 common shell config files (.bashrc, .bash_profile, .zshrc, .profile) covering most use cases - addresses previous concern about only checking .bashrc",
+        "Uses flexible regex pattern '^[[:space:]]*alias[[:space:]]+pip[[:space:]]*=[[:space:]]*['\\\"]?pip3['\\\"]?' that accepts various valid alias formats including different quoting styles (single quotes, double quotes, no quotes) and optional spacing - addresses previous strict matching concern",
+        "Expected value '1\\n' correctly includes newline character matching shell command output format",
+        "Getter logic correctly returns 1 if alias found in any of the checked config files, 0 otherwise - proper OR logic with grep commands",
+        "Metric 'exact_match' appropriately compares binary result (1 vs 0) with expected value",
+        "Evaluator can semantically verify that the instruction requirement (creating alias in shell configuration) has been completed",
+        "Minor limitation: doesn't check less common config files like .zprofile or .bash_aliases, but these are edge cases and the 4 checked files cover the vast majority of shell configurations"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could add .zprofile for additional zsh coverage and .bash_aliases for Debian-based systems, though this is a minor edge case improvement"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "id": "dd60633f-2c72-42ba-8547-6f2c8cb0fdb0",
+  "new_id": "dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_traj_verify_1",
+  "snapshot": "multiapps",
+  "instruction": "Extract all function and class definition lines from the Colab notebook code cells into 'gpt_defs.txt' in Home directory, one per line.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing#scrollTo=h5hjCcLDr2WC"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_def_extraction__9f211d2fef2982f0959041bc806f53c4",
+    "result": {
+      "type": "def_file__9f211d2fef2982f0959041bc806f53c4",
+      "path": "/home/user/gpt_defs.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_defs": 5
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_sid_1488165",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully extracted Python code from Karpathy's GPT Colab notebook by downloading the .ipynb file, parsing it with a Python script to extract code cells, and saving the merged code to a .py file. Score 1.0 in 44 turns.",
+    "capability_extraction": "Can navigate Chrome Colab notebooks, open terminal, download .ipynb files, write Python scripts to parse notebook JSON, create output files on disk",
+    "task_rationale": "Tests extracting structural elements (function/class definitions) from notebook code cells, requiring pattern matching on top of the notebook parsing skill demonstrated in the trajectory",
+    "explanation": "Task requires parsing Colab notebook code cells to extract function/class definition lines. Getter reads the output file and classifies lines. Metric checks: file exists (0.3), all lines are def/class definitions (0.4), at least 5 definitions found (0.3).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_sid_1488165_traj_verify_1/getters/def_file.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_sid_1488165_traj_verify_1/metrics/def_check.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 15,
+    "scoring_breakdown": {
+      "file_exists": "0.3 - Output file exists and has content",
+      "all_defs": "0.4 - All lines are def/class definition lines",
+      "min_count": "0.3 - At least 5 definitions extracted"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads the output file, strips lines, and classifies them as def/class lines vs non-def lines using startswith('def ') and startswith('class '). Stripping handles indented definitions properly.",
+        "Metric correctly handles expected parameter for type='rule' — accesses expected.get('min_defs', 5) directly from the rules dict, which is correct per framework behavior.",
+        "Scoring breakdown is well-designed: file existence (0.3), content purity (0.4 for all def/class lines, 0.2 partial for >80%), and minimum count (0.3 for >=5 defs). Graduated scoring handles edge cases.",
+        "Minor gap: instruction says 'all' definition lines but evaluator only checks min_defs=5 as a heuristic threshold rather than verifying completeness. This is acceptable since the exact count depends on notebook content which is external and may vary.",
+        "Data flow is correct: getter extracts structured file content -> metric checks quality and quantity of extracted definitions -> expected provides minimum threshold."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing min_defs threshold if the Karpathy GPT notebook is known to have many more definitions, to better verify completeness of extraction."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

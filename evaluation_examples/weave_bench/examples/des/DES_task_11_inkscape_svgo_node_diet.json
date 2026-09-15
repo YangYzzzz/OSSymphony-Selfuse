@@ -1,0 +1,85 @@
+{
+  "id": "DES_task_11_inkscape_svgo_node_diet",
+  "snapshot": "weave_bench",
+  "instruction": "Background: a designer has handed you a logo SVG traced from a bitmap. It renders fine, but its path nodes are heavily redundant (many collinear points and micro-segments shorter than 0.5 px), which bloats file size, slows the CDN, and makes animation stutter. Environment and assets (already provisioned):\n\n- SVG to slim down: `/tmp_workspace/svg/brand_traced.svg` (4 `<path>` elements, total nodes ≥ 1200, but visually only ~120 are needed)\n- The workstation has a full vector / optimisation / rasterisation / pixel-diff / XML toolchain installed (vector editor, SVG optimiser, SVG rasteriser, pixel PSNR comparator, and XML/XPath tools). Pick whichever you need to produce the deliverables below.\n\nGoal: without breaking the visual appearance, perform a two-stage diet — \"geometric node simplification + textual/data-level compression\" — so that the final byte size drops by **≥ 70%**, total node count drops by **≥ 80%**, and PSNR against the original raster is **≥ 38** dB. Keep both quantitative and visual evidence, and cross-verify via **multi-resolution (64 / 512 / 2048 px)**, **frequency-domain**, and **perceptual-hash** checks.\n\n**Trap to watch for**: in addition to the 4 main paths, the warmup also plants 1 fake/folded path in the SVG (id of the form `p_dx_<random_hex>`; **the id is randomly generated and is NOT leaked in the prompt** — you must scan the SVG yourself to find it). Its node count is ≤ 1, so it only adds bytes and contributes nothing visually. The final `worst_path.txt` must still point at the path that genuinely has the most nodes, but `decoy_check.json` must single this decoy out (`detected_decoy_id` must equal the actual random id present in the SVG).\n\nDeliverables under `/tmp_workspace/results/`:\n\n1. **Original node statistics** `node_counts_before.csv`, columns: `path_id,node_count,d_length_chars`. Each row corresponds to one `<path>` in the original SVG (node count = total of `m/M/l/L/c/C/q/Q/a/A/z/Z` command characters in the d attribute).\n\n2. **Worst-path marker** `worst_path.txt`, a single line `id=<path_id>` identifying the path with the most nodes.\n\n3. **Geometry-simplified SVG** `brand_simplified.svg`: an intermediate that keeps the visual look but with thinned nodes. File byte size must be smaller than the original.\n\n4. **Final optimised SVG** `brand_optimized.svg`: on top of the geometric simplification, further compress metadata / merge / round coordinates. The final byte size must be **≥ 70%** smaller than `brand_traced.svg`.\n\n5. **Post-optimisation node statistics** `node_counts_after.csv`, same schema as step 1; total node count across all paths must drop by **≥ 80%** vs before.\n\n6. **Raster comparison** `raster_before.png` and `raster_after.png`: rendered from `brand_traced.svg` and `brand_optimized.svg` respectively at 1024×1024, with the smaller edge ≥ 800 px.\n\n7. **Pixel diff report** `visual_diff.json`:\n   ```json\n   {\n     \"psnr_db\": <float>,\n     \"ssim\": <float>,\n     \"ae_pixels\": <int>,\n     \"size_bytes_before\": <int>,\n     \"size_bytes_after\": <int>,\n     \"size_reduction_pct\": <float>\n   }\n   ```\n   Requires `psnr_db ≥ 38` and `ssim ≥ 0.985`.\n\n8. **Node XML editor view** `view_inkscape_xml_editor.png`: a visualisation file (PNG, ≥ 5 KB). The image must show the SVG document tree view (node tree on the left), the attribute table for the selected path node (including `d`/`fill` etc.), and the corresponding path highlighted/selected on the canvas.\n\n9. **Node tool operation view** `view_inkscape_node_tool.png`: a canvas view with the node-editing tool active. The sparse node points on the path (diamond/square markers) and the node toolbar (with Insert / Delete / Smooth and other node-editing control icons) must be visible.\n\n10. **Overlay comparison view** `view_inkscape_overlay.png`: a view that lets you visually compare the traced and optimised logos (same-frame overlay or side-by-side), so a human can judge whether shape was preserved.\n\n11. **Summary report** `manifest.json`:\n    ```json\n    {\n      \"worst_path_id\": \"<id>\",\n      \"decoy_path_id\": \"<id>\",\n      \"nodes_before_total\": <int>,\n      \"nodes_after_total\": <int>,\n      \"node_reduction_pct\": <float>,\n      \"psnr_db\": <float>,\n      \"ssim\": <float>,\n      \"size_reduction_pct\": <float>,\n      \"agent_notes\": \"<≥ 120 chars: which path was worst / decision rationale / visual risks / multi-resolution result / frequency-domain delta / reason the decoy was identified>\"\n    }\n    ```\n\n12. **Multi-resolution raster set** `multi_dpi/raster_64.png` / `raster_512.png` / `raster_2048.png`: render `brand_optimized.svg` at 3 DPIs. Also store `raster_64_traced.png` / `raster_512_traced.png` / `raster_2048_traced.png` in the same directory (matching-resolution renders of the traced SVG). `multi_dpi/multi_psnr.json`:\n    ```json\n    {\"r64\": <float>, \"r512\": <float>, \"r2048\": <float>}\n    ```\n    Each PSNR must be ≥ 35 dB (prevents barely passing at only one DPI).\n\n13. **Frequency-domain diff report** `fft_diff.json`:\n    ```json\n    {\"hf_energy_before\": <float>, \"hf_energy_after\": <float>, \"hf_ratio\": <float>}\n    ```\n    `hf_ratio = hf_after / hf_before` must fall within `[0.5, 1.10]` (high-frequency energy must not be abnormally amplified, but a drop is allowed since micro-segment jitter was removed).\n\n14. **bbox integrity table** `bbox_check.csv`, columns: `path_id,x_min_before,y_min_before,x_max_before,y_max_before,x_min_after,y_min_after,x_max_after,y_max_after,delta_max`. For each main path, `delta_max ≤ 1.0` pixels (prevents node simplification from wrecking the path bounds).\n\n15. **Perceptual-hash distance** `phash_distance.json`:\n    ```json\n    {\"phash_before\": \"<64-bit hex>\", \"phash_after\": \"<64-bit hex>\", \"hamming_distance\": <int>}\n    ```\n    `hamming_distance ≤ 4` (pHash 8x8).\n\n16. **Decoy identification** `decoy_check.json`:\n    ```json\n    {\"detected_decoy_id\": \"<actual random id scanned from SVG, of the form p_dx_xxxxxx>\", \"node_count\": <int>, \"rationale\": \"<≥ 30 chars>\"}\n    ```\n    Must hit the random decoy id actually written into the SVG (the id is NOT given in the prompt — you must parse the SVG to obtain it) and `node_count ≤ 1`.\n\nHard constraints:\n- size_reduction_pct ≥ **70**, total node reduction ≥ **80%**, PSNR ≥ **38** dB, SSIM ≥ 0.985\n- All 3 multi-resolution PSNRs ≥ 35\n- High-frequency energy ratio 0.5 ≤ hf_ratio ≤ 1.10, pHash hamming ≤ 4, bbox delta ≤ 1.0 px\n- decoy_check must hit the random decoy id actually written into the SVG; worst_path must not be the decoy\n- Do not \"fake-compress\" by stripping critical geometry or by disabling the geometry-touching plugins of the SVG optimiser — the raster recheck must still hit PSNR ≥ 38\n- The three visualisation files must genuinely depict vector-editor UI elements (must genuinely show Inkscape node editing, XML editor, and path simplification UI)",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_11_inkscape_svgo_node_diet.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_11_inkscape_svgo_node_diet",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo \"${SUDO_PASSWORD:-password}\" | sudo -S -p '' bash -c '\nDEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null 2>&1 || true\nDEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\\n    librsvg2-bin imagemagick libxml2-utils \\\n    python3-pil python3-lxml tesseract-ocr nodejs npm \\\n    >/dev/null 2>&1 || true\npip install -q --break-system-packages cairosvg lxml 2>/dev/null || \\\n    pip install -q cairosvg lxml 2>/dev/null || true\nnpm install -g svgo@3.3.2 >/dev/null 2>&1 || true\n' || true\nmkdir -p /tmp_workspace/svg /tmp_workspace/results /tmp_workspace/gt\npython3 - <<'PY'\nimport os, math, random\nrandom.seed(20260429)\nos.makedirs(\"/tmp_workspace/svg\", exist_ok=True)\n\ndef jitter_path(cx, cy, r, n_seg=400, micro=0.3):\n    \"\"\"Simulate trace-bitmap output: many tiny near-collinear segments.\"\"\"\n    pts = []\n    for i in range(n_seg):\n        t = (i / n_seg) * 2 * math.pi\n        rr = r + random.uniform(-micro, micro)\n        x = cx + rr * math.cos(t)\n        y = cy + rr * math.sin(t)\n        pts.append((x, y))\n    d = \"M %.3f %.3f \" % pts[0]\n    for x, y in pts[1:]:\n        d += \"L %.3f %.3f \" % (x, y)\n    d += \"Z\"\n    return d\n\npaths = []\npaths.append(('p_outer_ring',  jitter_path(256, 256, 200, n_seg=600, micro=0.4)))\npaths.append(('p_inner_disc',  jitter_path(256, 256, 120, n_seg=350, micro=0.3)))\npaths.append(('p_left_blob',   jitter_path(160, 256,  60, n_seg=180, micro=0.25)))\npaths.append(('p_right_blob',  jitter_path(352, 256,  60, n_seg=180, micro=0.25)))\n# decoy: invisible 1-node path that bloats bytes but contributes 0 visually\nimport secrets\nDECOY_ID = \"p_dx_\" + secrets.token_hex(3)\nopen(\"/tmp_workspace/svg/.decoy_id\",\"w\").write(DECOY_ID)\npaths.append((DECOY_ID, \"M 0.001 0.001 Z\"))\n\nsvg_parts = ['<?xml version=\"1.0\" encoding=\"UTF-8\"?>',\n             '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"512\" height=\"512\" viewBox=\"0 0 512 512\">',\n             '  <rect width=\"512\" height=\"512\" fill=\"#fdfaf3\"/>']\nfills = [\"#1f3f6e\", \"#fbb13c\", \"#d62828\", \"#2a9d8f\", \"#888888\"]\nfor (pid, d), fc in zip(paths, fills):\n    svg_parts.append(f'  <path id=\"{pid}\" fill=\"{fc}\" stroke=\"none\" d=\"{d}\"/>')\nsvg_parts.append('</svg>')\nout = \"\\n\".join(svg_parts)\nopen(\"/tmp_workspace/svg/brand_traced.svg\",\"w\").write(out)\nprint(\"[warmup] SVG bytes:\", len(out))\ntotal_nodes = sum(d.count(\"L\") + d.count(\"M\") + d.count(\"Z\") for _, d in paths)\nprint(\"[warmup] total node ops:\", total_nodes)\nPY\necho -n \"des11-warmup-ok\" | base64 > /tmp_workspace/.warmup_des11\nbase64 -d /tmp_workspace/.warmup_des11 >/dev/null && echo \"[warmup] base64 idempotent ok\"\nls -la /tmp_workspace/svg/",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "des"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DES_task_11_inkscape_svgo_node_diet/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DES_task_11_inkscape_svgo_node_diet /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_11_inkscape_svgo_node_diet/reward.py",
+              "path": "/opt/eval/weave_bench/DES_task_11_inkscape_svgo_node_diet/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_11_inkscape_svgo_node_diet/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DES_task_11_inkscape_svgo_node_diet/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DES_task_11_inkscape_svgo_node_diet/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_11_inkscape_svgo_node_diet.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_11_inkscape_svgo_node_diet",
+    "workspace_relative": "DES/task_11_inkscape_svgo_node_diet",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

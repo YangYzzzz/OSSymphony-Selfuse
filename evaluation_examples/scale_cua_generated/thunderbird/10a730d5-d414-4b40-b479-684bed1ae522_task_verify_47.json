@@ -1,0 +1,115 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_47",
+  "snapshot": "thunderbird",
+  "instruction": "I want Thunderbird to compose emails using plain text format by default instead of HTML. Can you configure it to use plain text for composing?",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.default.compose_html": {
+            "method": "eq",
+            "ref": false
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting Thunderbird to compose emails in plain text format. The evaluator checks if mail.identity.default.compose_html preference is set to false. Standard Thunderbird preference with similar complexity to original theme task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "All-or-nothing: 1.0 if mail.identity.default.compose_html=false, else 0.0",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly retrieves Thunderbird preferences file (prefs.js) which is the right location for this setting",
+        "Metric (check_thunderbird_prefs) properly parses the preferences file using regex and JSON parsing",
+        "Expected value is semantically correct: mail.identity.default.compose_html=false means plain text composing is enabled",
+        "Postconfig appropriately closes Thunderbird to ensure preferences are written to disk before verification",
+        "Complete coverage: instruction requires configuring plain text composing, evaluator checks exactly that preference",
+        "Logic flow is sound and will work correctly at runtime",
+        "All-or-nothing scoring is appropriate for a single boolean preference check"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

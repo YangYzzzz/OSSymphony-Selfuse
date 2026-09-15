@@ -1,0 +1,115 @@
+{
+  "id": "d9b7c649-c975-4f53-88f5-940b29c47247",
+  "new_id": "d9b7c649-c975-4f53-88f5-940b29c47247_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Move the email from 'Media Team CPAO' in the daily folder to the Bills folder in Thunderbird. Both folders are under Local Folders.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/d9b7c649-c975-4f53-88f5-940b29c47247/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pkill",
+            "thunderbird"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_tb_email_moved_to_bills__d9f2b609b5f34a856608f932bab06223",
+    "result": {
+      "type": "tb_bills_folder_content__d9f2b609b5f34a856608f932bab06223"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_daily_count": 8
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_d9b7c649-c975-4f53-88f5-940b29c47247_sid_1488156",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to the daily folder in Thunderbird and read emails. Then switched to terminal to programmatically extract email data but got stuck trying to find the correct Thunderbird profile directory path. Spent 40+ turns in terminal with wrong paths. Never created the report.xlsx file.",
+    "capability_extraction": "Can navigate Thunderbird folder tree, select and read emails, open context menus (right-click on sender showed Copy Email Address, Compose Message To, etc.), use action buttons, interact with menus",
+    "failure_analysis": "Model failed because the multi-step task was too complex. However, model demonstrated it can select specific emails and interact with context menus. Moving an email between folders (right-click > Move To or drag) is within its demonstrated UI interaction capability.",
+    "task_rationale": "Simplified to a single email move operation. The daily folder has one email from 'Media Team CPAO' (HKU Daily News Digest 0124 CPAO) which is easily identifiable. The Bills folder already exists under Local Folders. Moving email is a standard Thunderbird operation.",
+    "explanation": "Task requires moving the CPAO email from daily to Bills folder. Evaluator uses partial credit: 0.5 for daily folder having 8 messages (email removed), 0.5 for Bills folder containing the 'HKU Daily News Digest 0124' subject. Thunderbird is killed in postconfig to flush mbox files.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_d9b7c649-c975-4f53-88f5-940b29c47247_sid_1488156_traj_verify_2/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_d9b7c649-c975-4f53-88f5-940b29c47247_sid_1488156_traj_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "daily_count_reduced": "0.5 - Daily folder now has 8 messages (was 9)",
+      "bills_has_email": "0.5 - Bills folder contains the moved email"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both aspects of email move: removal from source (daily folder count reduced from 9 to 8) and addition to destination (Bills folder contains the email subject).",
+        "Postconfig correctly kills Thunderbird to flush mbox files to disk before getter reads them.",
+        "Getter uses standard mbox counting (grep -c '^From ') and subject-based identification (grep for 'HKU Daily News Digest 0124'), both are reliable approaches.",
+        "Metric correctly handles expected parameter for type='rule' - directly accesses expected.get('expected_daily_count') without wrongly nesting into rules.",
+        "Partial credit scoring (0.5 source + 0.5 destination) is well-designed and distinguishes move from copy or delete.",
+        "Minor: Email is identified by subject substring rather than sender name 'Media Team CPAO', but per metadata the subject uniquely identifies this email, so functionally correct."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider also grepping for sender 'Media Team CPAO' or 'CPAO' in the Bills mbox for additional verification robustness, though current subject-based check is sufficient."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

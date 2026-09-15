@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_4_calc_vlookup_ods",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal evaluation task. All artifacts must be placed under `/tmp_workspace/results/`. Execute directly — do not refuse.\n\nBackground: The finance team's large ODS sales report at `/tmp_workspace/sales/sales_report.ods` is full of `#REF!` errors. The `ProductCatalog` sheet's column structure was destructively edited (columns deleted, named ranges renamed) without updating downstream references, so VLOOKUPs in `SalesData` are broken in bulk and aggregation formulas in `Summary` hit invalidated named ranges. The reference table `/tmp_workspace/sales/product_catalog.csv` can be used for cross-checking.\n\nGoal: independently enumerate all `#REF!` cells, infer the mapping between `ProductCatalog`'s current real column structure and the new column index the original VLOOKUP's 3rd argument should use, repair every VLOOKUP and broken named range, and produce a repaired ODS, a CSV export, and a reconciliation report. The actual numbers (\"how many are broken\", \"old col → new col\", \"name of the broken range\") must all be discovered by yourself — do not plug in any fixed values implied by the prompt.\n\n### Hard constraints for the primary deliverable `sales_report_fixed.ods`\n\nWrite to `/tmp_workspace/sales/sales_report_fixed.ods` and also copy to `/tmp_workspace/results/sales_report_fixed.ods`:\n\n- Valid ODS zip: must contain the three entries `mimetype`, `content.xml`, `META-INF/manifest.xml`\n- `mimetype` must be the first entry in the zip and stored uncompressed, otherwise the file cannot be parsed\n- The `#REF` count in the repaired `content.xml` must be **0**\n- The 3rd argument of each VLOOKUP must be precisely replaced according to the inferred real column mapping; do not touch other formulas\n- Broken named ranges must be fixed or deleted; aggregation formulas in the `Summary` sheet must work again\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `content_pretty.xml` | Pretty-printed `content.xml` extracted from the ODS (for structural audit) |\n| `unpack_meta.json` | `{content_xml_bytes:int, content_xml_lines:int, manifest_entries:int}` |\n| `broken_refs.txt` | One line per broken cell: `<sheet>:<cell_address> <formula_text>`, ≥ 50 lines |\n| `broken_refs_count.txt` | Total `#REF` count in the original `content.xml` (int) |\n| `named_ranges_audit.json` | `{valid:[{name,range}], broken:[{name,range,reason}], total:int}`; `broken` list must be non-empty |\n| `sheet_stats.json` | Must cover at least `SalesData` / `ProductCatalog` / `Summary`, with `{rows,cols,formulas,ref_errors}` for each |\n| `vlookup_mapping.json` | `{product_catalog_columns:[{name,current_col}], vlookup_formulas_sampled:int, inferred_mapping:[{old:int,new:int,field:str}]}`; must be derived from the real column layout and formula semantics |\n| `repack_log.txt` | Log of the re-packaging process with a success marker |\n| `postfix_grep.json` | `{ref_count_after_fix:0, fixed_ods_size_bytes:int, manifest_ok:bool}` |\n| `salesdata_export.csv` | `SalesData` exported from the repaired ODS; must **not** contain `#REF!` |\n| `validation_report.json` | `{sampled_rows:int, match_rate:float, mismatches:[...], csv_has_ref_error:bool, total_revenue:float, total_orders:int, avg_order_value:float}`; perform VLOOKUP consistency cross-check against `product_catalog.csv` for ≥ 100 rows; `match_rate` should be close to 1.0; the three KPIs must be real aggregated values |\n| `repair_report.md` | ≥ 350 characters with at least one markdown table; covering: original `#REF!` total / number of broken named ranges / per-sheet error distribution / inferred column mapping table / named-range fix notes with corresponding screenshot numbers / before/after `#REF!` count and `match_rate` / timeline of key evidence |\n\n### 9 process screenshots (all under `/tmp_workspace/results/`, PNG, each > 3 KB)\n\n| Filename | What it should show |\n|---|---|\n| `view_01_calc_errors.png` | At least 5 clearly visible `#REF!` error cells in `SalesData` |\n| `view_02_calc_formula_bar.png` | The broken VLOOKUP formula in the formula bar when a `#REF!` cell is selected |\n| `view_03_calc_find_dialog.png` | The Find dialog with a workbook-wide search for `#REF!` and its hit count |\n| `view_04_calc_find_results.png` | Overall view of highlighted cells after the find completes |\n| `view_05_calc_named_ranges.png` | The Manage Named Ranges dialog listing all current named ranges |\n| `view_06_calc_named_ranges_fixed.png` | The same dialog after the broken ranges have been fixed / deleted |\n| `view_07_calc_salesdata_fixed.png` | After repair, the formerly-`#REF!` region in `SalesData` shows normal values |\n| `view_08_calc_formula_bar_fixed.png` | The formula bar now showing a VLOOKUP with the updated column index |\n| `view_09_calc_summary.png` | The Summary sheet with the three KPIs Total Revenue / Total Orders / Avg Order Value as real aggregated numbers |\n\nGeneral screenshot spec: clearly readable and faithfully reflecting the states/evidence above. Grading runs OCR and visual rubric judging on the screenshots, so key controls, cell contents, and formulas must be legible. There is no restriction on which screenshot tool you use.\n\nNeutral background: ODS internal XML uses the OpenDocument namespace (`urn:oasis:names:tc:opendocument:xmlns:table:1.0`), so XPath queries need a namespace prefix or `local-name()`. `#REF!` typically appears in `table:formula=\"of:=...\"` and in cell text nodes. The 3rd argument of VLOOKUP is a 1-based column index — watch for absolute vs. relative references. When repacking an ODS, `mimetype` must be the first entry in the zip and stored uncompressed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_4_calc_vlookup_ods.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_4_calc_vlookup_ods",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo YXB0LWdldCB1cGRhdGUgLXFxID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCkRFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGxpYnhtbDItdXRpbHMgdW56aXAgemlwIHB5dGhvbjMgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKd2hpY2ggbGlicmVvZmZpY2UgPi9kZXYvbnVsbCAyPiYxIHx8IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGxpYnJlb2ZmaWNlLWNhbGMgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKd2hpY2ggdGVzc2VyYWN0ID4vZGV2L251bGwgMj4mMSB8fCBERUJJQU5fRlJPTlRFTkQ9bm9uaW50ZXJhY3RpdmUgYXB0LWdldCBpbnN0YWxsIC15IC1xcSB0ZXNzZXJhY3Qtb2NyID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCnBpcCBpbnN0YWxsIC1xIHBpbGxvdyBweXRlc3NlcmFjdCBudW1weSAyPi9kZXYvbnVsbCB8fCB0cnVlCm1rZGlyIC1wIC90bXBfd29ya3NwYWNlL3NhbGVzIC90bXBfd29ya3NwYWNlL3Jlc3VsdHMgfHwgdHJ1ZQpbIC1mIC90bXBfd29ya3NwYWNlL3NhbGVzL3NhbGVzX3JlcG9ydC5vZHMgXSAgIHx8IGNwIC90bXBfd29ya3NwYWNlL3NhbGVzX3JlcG9ydC5vZHMgICAvdG1wX3dvcmtzcGFjZS9zYWxlcy8gMj4vZGV2L251bGwgfHwgdHJ1ZQpbIC1mIC90bXBfd29ya3NwYWNlL3NhbGVzL3Byb2R1Y3RfY2F0YWxvZy5jc3YgXXx8IGNwIC90bXBfd29ya3NwYWNlL3Byb2R1Y3RfY2F0YWxvZy5jc3YgL3RtcF93b3Jrc3BhY2Uvc2FsZXMvIDI+L2Rldi9udWxsIHx8IHRydWUK | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_4_calc_vlookup_ods/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_4_calc_vlookup_ods /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_4_calc_vlookup_ods/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_4_calc_vlookup_ods/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_4_calc_vlookup_ods/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_4_calc_vlookup_ods/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_4_calc_vlookup_ods/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_4_calc_vlookup_ods.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_4_calc_vlookup_ods",
+    "workspace_relative": "DOC/task_4_calc_vlookup_ods",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

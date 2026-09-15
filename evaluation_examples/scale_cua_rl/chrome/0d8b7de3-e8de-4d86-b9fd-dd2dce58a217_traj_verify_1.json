@@ -1,0 +1,90 @@
+{
+  "id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217",
+  "new_id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's browsing history page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://drugs.com"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://history.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_0d8b7de3-e8de-4d86-b9fd-dd2dce58a217_sid_1488192",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent encountered Access Denied on drugs.com. Tried Google search (got SSL error), alternative URLs (npg.nature.com - also blocked), then opened terminal and used curl to fetch content from Wikipedia, NIAID, nature.com, and KEGG over 50 turns. Never reached drugs.com/npc/ or /npp/.",
+    "capability_extraction": "Can click Chrome address bar, type URLs, perform Google search attempts, open terminal, run curl/bash commands, navigate between windows",
+    "failure_analysis": "drugs.com blocked VM IP (Access Denied). Google.com had SSL certificate error in browser. External websites largely inaccessible in this VM environment.",
+    "task_rationale": "Simplified to navigating to Chrome internal history page (chrome://history) which requires no network access. Model demonstrated ability to type URLs in address bar.",
+    "explanation": "Task requires navigating to chrome://history. Evaluator uses is_expected_url_pattern_match to check the active tab URL matches the chrome://history pattern. [Fixed: added goto_prefix='' to result config to prevent default 'https://' prefix on chrome:// internal URL]",
+    "fix_history": [
+      "Fix 1: Added 'goto_prefix': '' to active_url_from_accessTree result config to prevent prepending 'https://' to chrome:// internal URLs, which caused the pattern 'chrome://history.*' to never match."
+    ],
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "scoring_breakdown": {
+      "navigation": "1.0 - Active tab URL matches chrome://history"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Instruction requires opening Chrome's browsing history page (chrome://history). The evaluator correctly verifies this single requirement.",
+        "Getter 'active_url_from_accessTree' is configured with 'goto_prefix': '' which prevents the default 'https://' prefix from being prepended. This correctly handles chrome:// internal URLs, returning the raw address bar text (e.g., 'chrome://history').",
+        "Metric 'is_expected_url_pattern_match' receives rules={'expected': ['chrome://history.*']} after framework unwraps the rule type. It uses re.search to match the pattern against the getter result, which correctly matches 'chrome://history' or 'chrome://history/...' variants.",
+        "Complete coverage: the instruction has a single requirement (navigate to history page) and the evaluator checks exactly that via URL pattern matching."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

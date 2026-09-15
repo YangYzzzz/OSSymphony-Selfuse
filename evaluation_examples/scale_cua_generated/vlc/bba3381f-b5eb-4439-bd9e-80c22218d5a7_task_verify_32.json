@@ -1,0 +1,73 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "task_verify_32",
+  "snapshot": "base_setup",
+  "instruction": "Can you load and play this video URL in VLC player? https://www.youtube.com/watch?v=JGwWNGJdvx8",
+  "source": "https://www.quora.com/How-do-I-play-online-videos-using-the-VLC-media-player",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "is_vlc_playing",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.youtube.com/watch?v=JGwWNGJdvx8"
+      }
+    },
+    "result": {
+      "type": "vlc_playing_info",
+      "dest": "status.xml"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Variation of VLC streaming task with a different YouTube video URL (Ed Sheeran - Shape of You). Uses the same evaluator pattern (is_vlc_playing with url type). Instruction uses slightly different wording while maintaining identical task complexity.",
+    "new_functions_paths": [
+      "tmp_funcs/bba3381f-b5eb-4439-bd9e-80c22218d5a7_task_verify_4/metrics/vlc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct for YouTube URL verification (tmp_funcs vlc.py:66-137)",
+        "YouTube video ID extraction works correctly: extracts 'JGwWNGJdvx8' from the expected URL using proper regex patterns (lines 198-229)",
+        "Primary verification logic is sound: searches multiple VLC metadata fields for the video ID (lines 85-104), returns 1 only if exact video ID match found",
+        "Conservative fallback logic prevents false positives: when video ID cannot be verified in metadata/stream URLs, returns 0 instead of accepting any YouTube video (lines 126-134)",
+        "Complete instruction coverage: verifies both that VLC is playing (status=='playing') and that it's the correct YouTube video URL",
+        "Getter extracts correct state: get_vlc_playing_info fetches VLC status.xml via HTTP API, which contains playback metadata"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor concern - practical feasibility: The evaluator's correctness depends on whether VLC actually exposes YouTube video IDs in status.xml metadata when playing YouTube URLs. If VLC doesn't preserve this in metadata, the evaluator might fail even for correct task completion. Consider empirical testing to verify VLC's metadata behavior with YouTube URLs.",
+        "Consider adding alternative verification: If VLC doesn't expose video IDs reliably, could add fallback checks for video title/description metadata that might contain identifying information."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

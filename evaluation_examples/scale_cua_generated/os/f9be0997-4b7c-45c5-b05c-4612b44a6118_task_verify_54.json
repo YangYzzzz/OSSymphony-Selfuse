@@ -1,0 +1,86 @@
+{
+  "id": "f9be0997-4b7c-45c5-b05c-4612b44a6118",
+  "new_id": "task_verify_54",
+  "snapshot": "os",
+  "instruction": "I need to adjust my screen brightness settings. Can you disable the automatic brightness adjustment feature for me?",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/display-brightness.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "gsettings set org.gnome.settings-daemon.plugins.power ambient-enabled true",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; pyautogui.press('Escape'); pyautogui.press('Escape');"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling automatic brightness adjustment via gsettings. The setup enables ambient brightness, and the task asks the user to disable it. Evaluator verifies the setting is changed to false using exact_match metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by checking gsettings command pattern - the setting is a boolean that should be toggled from true to false.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correct: vm_command_line executes 'gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled' which directly reads the automatic brightness setting state",
+        "Metric logic correct: exact_match (general.py:41-48) receives rules dict directly when expected.type='rule' and correctly accesses rules['expected'] to compare result == 'false\\n'",
+        "Expected value semantically correct: 'false\\n' matches gsettings output format for disabled state (includes trailing newline from command output)",
+        "Complete coverage: Instruction requires disabling automatic brightness adjustment, evaluator verifies ambient-enabled=false - exact semantic match of requirement",
+        "State accessibility: gsettings reads persistent dconf configuration database, no UI state dependencies, verification works regardless of GUI state",
+        "Data flow logical: Setup enables ambient-enabled=true → Task disables it → Evaluator confirms false. Clear verification of state change.",
+        "No parameter handling errors: No incorrect patterns like expected.get('rules') or rules.get('type') in metric function",
+        "Rule validator warning is false positive: Flagged UI-dependent but gsettings verification doesn't require UI to be open, reads persistent system config"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

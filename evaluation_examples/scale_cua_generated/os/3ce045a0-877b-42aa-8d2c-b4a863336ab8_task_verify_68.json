@@ -1,0 +1,70 @@
+{
+  "id": "3ce045a0-877b-42aa-8d2c-b4a863336ab8",
+  "new_id": "task_verify_68",
+  "snapshot": "os",
+  "instruction": "I need to use an on-screen keyboard because my physical keyboard isn't working well. Please enable the virtual keyboard on the desktop.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/a11y-font-size.html.en",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "OSK_ENABLED=$(timeout 10 gsettings get org.gnome.desktop.a11y.applications screen-keyboard-enabled 2>/dev/null | grep -c true); if [ \"$OSK_ENABLED\" -gt 0 ]; then echo \"On-screen keyboard enabled\"; else echo \"On-screen keyboard not enabled\"; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "On-screen keyboard enabled"
+        ],
+        "exclude": [
+          "On-screen keyboard not enabled",
+          "error"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling on-screen keyboard via Settings > Accessibility > Typing > Screen Keyboard. Evaluator checks screen-keyboard-enabled setting. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks the GNOME accessibility setting 'org.gnome.desktop.a11y.applications screen-keyboard-enabled' which directly controls the on-screen keyboard feature",
+        "The vm_command_line getter with shell command is the appropriate method to query gsettings for system configuration state",
+        "The check_include_exclude metric correctly validates the output by ensuring 'On-screen keyboard enabled' is present and 'On-screen keyboard not enabled' and 'error' are absent",
+        "The shell command has proper error handling with timeout (10s) and stderr redirection (2>/dev/null)",
+        "Expected values match the actual output the command will produce, ensuring correct verification",
+        "Complete coverage: The evaluator checks the exact requirement stated in the instruction - whether the virtual/on-screen keyboard is enabled",
+        "No postconfig needed since gsettings is a persistent configuration that can be queried at any time without reopening UI dialogs"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

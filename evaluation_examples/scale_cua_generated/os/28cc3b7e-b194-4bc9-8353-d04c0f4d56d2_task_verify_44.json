@@ -1,0 +1,66 @@
+{
+  "id": "28cc3b7e-b194-4bc9-8353-d04c0f4d56d2",
+  "new_id": "task_verify_44",
+  "snapshot": "os",
+  "instruction": "The system sound is currently muted. Turn the audio back on by unmuting it.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/sound-volume.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "pulseaudio --start\npactl list sinks | grep 'Mute:' | head -n 1 | awk '{print $2}'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "no\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires agent to unmute system audio. Evaluator uses pactl command to check mute status, expecting 'no\\n' output when unmuted. Uses existing exact_match metric and vm_command_line getter - no custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that pactl command 'pactl list sinks | grep Mute:' returns 'Mute: yes' or 'Mute: no'. When unmuted, awk extracts 'no\\n'.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly executes pactl command to extract system audio mute status",
+        "Metric uses exact_match to compare mute status, which is appropriate for binary state verification",
+        "Expected value 'no\\n' is semantically correct for unmuted audio state",
+        "Complete coverage: evaluator checks exactly what the instruction requires (unmute status)",
+        "No UI dependencies - command-line based verification is reliable and doesn't require postconfig",
+        "Command includes 'pulseaudio --start' to handle edge case where PulseAudio isn't running",
+        "Uses 'head -n 1' to handle multiple audio sinks correctly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

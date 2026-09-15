@@ -1,0 +1,97 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38_traj_verify_0",
+  "snapshot": "multiapps",
+  "instruction": "Open the results history page on speedtest.net.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "speedtest\\.net/result"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_26660ad1-6ebb-4f59-8cba-a8432dfe8d38_sid_1488264",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent dismissed privacy popup, ran speed test (clicked GO, waited for completion), navigated to results page, opened terminal, created ~/Test/Speed/results.txt with lowercase metric names (ping, download, upload) instead of capitalized names (Ping, Download, Upload).",
+    "capability_extraction": "Can navigate Chrome, interact with speedtest.net UI, click buttons, wait for dynamic content, navigate between pages on a website",
+    "failure_analysis": "Model used lowercase metric names ('ping', 'download', 'upload') when the evaluator expected capitalized names ('Ping', 'Download', 'Upload') matching the speedtest.net UI display.",
+    "task_rationale": "Decomposed navigation sub-task: model successfully navigated to results page in original trajectory, testing this specific capability in isolation.",
+    "explanation": "Task requires navigating from speedtest.net main page to the results history page. Evaluator checks that the active URL matches speedtest.net/result using regex pattern matching.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter 'active_url_from_accessTree' correctly extracts the active Chrome tab URL from the accessibility tree and returns it as a string, which is compatible with the metric function.",
+        "Metric 'is_expected_url_pattern_match' correctly receives the rules dict (with 'expected' key containing regex patterns) and performs regex search against the URL string.",
+        "The regex pattern 'speedtest\\.net/result' will match the results history page URL (e.g., speedtest.net/result/history or speedtest.net/result), verifying the instruction requirement.",
+        "The config correctly sets up Chrome with speedtest.net as the starting page, providing proper initial state for the task.",
+        "Minor: The pattern 'speedtest\\.net/result' is slightly broad and could also match individual result pages (e.g., /result/12345), not just the history page. However, this is acceptable since navigating to any results-related page demonstrates the required capability."
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stricter verification of the results *history* page specifically, the pattern could be narrowed to 'speedtest\\.net/result(/history)?$' to exclude individual result pages. However, the current pattern is reasonable for this easy navigation task."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

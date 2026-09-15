@@ -1,0 +1,105 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_60",
+  "snapshot": "multiapps",
+  "instruction": "I need to check my internet connection quality. Use speedtest.net to run a network test, then copy the measurement data from speedtest.net/results and store it in ~/Test/Speed/results.txt (create the directory if it doesn't exist). Format each measurement on a separate line with the measurement name followed by its value, separated by one space.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Test/Speed/results.txt",
+      "dest": "results.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires running speedtest.net network test, copying results from speedtest.net/results page, and saving to file. Evaluator verifies file contains three key metrics: Ping, Download, and Upload. This is a paraphrase of the original instruction while maintaining identical config and evaluator.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_instruction",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification: Evaluator only checks for presence of measurement names ('Ping', 'Download', 'Upload') but does not verify that actual measurement values are present",
+        "Format not verified: Instruction explicitly requires 'measurement name followed by its value, separated by one space' but evaluator would pass even if file contains just the words without values",
+        "Would incorrectly accept invalid content: File containing just 'Ping Download Upload' or 'I tested Ping and Download and Upload' would pass despite not containing actual measurement data",
+        "Missing value verification: No check that numeric values or units (e.g., 'ms', 'Mbps') follow the measurement names"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use check_list metric with regex patterns to verify format: e.g., 'Ping\\s+\\d+', 'Download\\s+[\\d.]+', 'Upload\\s+[\\d.]+' to ensure values are present",
+        "Alternatively, create a custom metric that parses each line and verifies: (1) measurement name exists, (2) followed by whitespace, (3) followed by a numeric value with optional units",
+        "Add verification that each measurement appears on a separate line as specified in instruction",
+        "Consider using regex patterns in expected rules to match 'Ping <value>', 'Download <value>', 'Upload <value>' format explicitly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

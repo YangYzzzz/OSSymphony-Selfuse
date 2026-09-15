@@ -1,0 +1,84 @@
+{
+  "id": "ea98c5d7-3cf9-4f9b-8ad3-366b58e0fcae",
+  "new_id": "task_verify_73",
+  "snapshot": "vscode",
+  "instruction": "I want to disable the Ctrl+B shortcut that toggles the sidebar visibility in VS Code. What's the procedure?",
+  "source": [
+    "https://superuser.com/questions/1748097/vs-code-disable-tree-view-find-explorer-search",
+    "https://superuser.com/questions/1417361/how-to-disable-file-filtering-in-vs-code-sidebar-explorer?rq=1"
+  ],
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_keybindings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "key": "ctrl+b",
+          "command": "-workbench.action.toggleSidebarVisibility"
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/keybindings.json",
+      "dest": "keybindings.json"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling the Ctrl+B shortcut for toggling sidebar visibility. The evaluator uses the existing check_json_keybindings function to verify that the keybindings.json file contains the expected configuration with command '-workbench.action.toggleSidebarVisibility'.",
+    "new_functions_paths": [
+      "tmp_funcs/ea98c5d7-3cf9-4f9b-8ad3-366b58e0fcae-2_task_verify_4"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vm_file properly fetches /home/user/.config/Code/User/keybindings.json from VM (file.py:74-143), which is the correct path for VS Code keybindings on Linux",
+        "Metric logic is correct: check_json_keybindings (vscode.py:9-46) opens the file at 'actual' path (lines 21, 29), parses JSON with fallback for comment lines (VS Code keybindings.json often has comments), and checks if expected entry exists in the keybindings array",
+        "Expected parameter handling is CORRECT for type='rule': Line 42 uses 'expected = expected[\"expected\"]' which properly extracts the nested 'expected' key from the rules dict returned by get_rule (misc.py:88-92). The rules structure is {\"expected\": {\"key\": \"ctrl+b\", \"command\": \"-workbench.action.toggleSidebarVisibility\"}}",
+        "Expected value is semantically correct: {\"key\": \"ctrl+b\", \"command\": \"-workbench.action.toggleSidebarVisibility\"} uses VS Code's standard syntax where '-' prefix before command name disables/removes a default keybinding",
+        "Data flow is semantically sound: VM file path → get_vm_file downloads to cache → metric receives cache path string → opens file with open(actual, 'r') → parses JSON → verifies expected entry exists in array",
+        "Complete coverage: Evaluator fully verifies the instruction requirement - presence of this keybinding entry in keybindings.json is the correct and complete way to verify Ctrl+B shortcut has been disabled in VS Code",
+        "Edge cases handled properly: Invalid JSON returns 0.0 (line 41), JSON with comments uses skip_first_line_load_json fallback (lines 27-34), non-array JSON checked (line 38), missing files handled by get_vm_file returning None",
+        "Static validation warnings are FALSE POSITIVES: Metric DOES consume the vm_file result - 'actual' parameter is the file path string, explicitly opened and read with 'open(actual, \"r\")' on lines 21, 29. The static validator likely missed this due to try/except/for loop control flow."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_keybindings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

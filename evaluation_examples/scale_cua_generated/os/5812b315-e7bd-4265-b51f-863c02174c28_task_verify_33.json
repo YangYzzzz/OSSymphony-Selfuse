@@ -1,0 +1,68 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_33",
+  "snapshot": "os",
+  "instruction": "Please create a user named \"emily\" with a password and set the password to expire in 30 days.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"emily\"; id \"$USERNAME\" &>/dev/null && PASS_STATUS=$(passwd -S \"$USERNAME\" | awk '{print $2}') && [ \"$PASS_STATUS\" = \"P\" ] && MAX_DAYS=$(chage -l \"$USERNAME\" | grep 'Maximum number of days' | awk -F: '{print $2}' | tr -d ' ') && [ \"$MAX_DAYS\" = \"30\" ] && echo 'User exists with password and 30-day expiry' || echo 'Check failed'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "User exists with 30-day password expiry"
+        ],
+        "exclude": [
+          "Check failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating user 'emily' with a password and setting password expiration to 30 days. Evaluator uses 'id' to verify user exists, 'passwd -S' to verify password is set (status 'P' for password set, not 'L' for locked or 'NP' for no password), and 'chage -l' to verify maximum password age is set to 30 days. Note: Password value cannot be verified programmatically without authentication testing.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification: Instruction requires three things: (1) create user 'emily', (2) set a password, (3) set 30-day expiry. Evaluator correctly verifies all three requirements.",
+        "User existence check: 'id \"$USERNAME\"' correctly verifies user 'emily' exists on the system.",
+        "Password status check: 'PASS_STATUS=$(passwd -S \"$USERNAME\" | awk '{print $2}') && [ \"$PASS_STATUS\" = \"P\" ]' correctly verifies that a password is set (status 'P' means password set, not 'L' for locked or 'NP' for no password).",
+        "Password expiry check: 'chage -l \"$USERNAME\" | grep 'Maximum number of days' | awk -F: '{print $2}' | tr -d ' '' extracts max password days and '[ \"$MAX_DAYS\" = \"30\" ]' correctly verifies it equals 30.",
+        "Logic flow: Command uses proper bash chaining with && so all checks must pass before echoing success message. If any check fails, 'Check failed' is echoed.",
+        "State accessibility: All required system state (user account, password status, password aging) is accessible via standard Linux commands (id, passwd -S, chage -l).",
+        "Expected values: Include/exclude rules correctly match the command output ('User exists with password and 30-day expiry' for success, 'Check failed' for failure)."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

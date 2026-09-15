@@ -1,0 +1,124 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "Access the initial link in the newest Bills folder email and view it in Chrome.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/",
+          "https://www.amazon.com/"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 6: Uses 'access' and 'view' verbs. Task requires accessing the first link (https://www.amazon.com/) from the newest Bills email and viewing it in Chrome. Evaluator checks for the presence of all three URLs in open Chrome tabs.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Evaluator verifies ALL three URLs (apple.com, scholar.google.com, amazon.com) must be present, but only amazon.com should be verified as the user action",
+        "The first two URLs (apple.com, scholar.google.com) are pre-opened in config setup, NOT opened by the user - evaluator cannot distinguish setup state from user action",
+        "Instruction requires accessing 'the initial link' (singular) from the email, but evaluator checks for multiple pre-existing tabs",
+        "If user closes any pre-opened tab during task execution, evaluation incorrectly fails even though task was completed",
+        "The metric 'is_expected_tabs' uses list equality check which is order-sensitive - if amazon.com appears in different tab position, evaluation may fail",
+        "Evaluator conflates environment setup with task verification - it verifies setup state rather than user's specific action"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected URLs to only verify amazon.com is present in open tabs: urls: ['https://www.amazon.com/']",
+        "Use a different metric that checks if amazon.com was newly added, not just present",
+        "Use 'is_expected_active_tab' metric instead to verify the active/focused tab is amazon.com",
+        "Add a metric that checks tab count increased by 1 and the new tab is amazon.com"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

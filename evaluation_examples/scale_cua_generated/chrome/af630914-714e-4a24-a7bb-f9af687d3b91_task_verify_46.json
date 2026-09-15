@@ -1,0 +1,95 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Turn on Safe Browsing protection in Chrome's security settings.",
+  "source": "https://support.google.com/chrome/answer/99020",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_safe_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling Safe Browsing in Chrome security settings. Uses existing get_enable_safe_browsing getter (returns 'true'/'false') and exact_match metric. Similar difficulty to Do Not Track setting.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly reads Chrome Preferences file and checks safebrowsing.enhanced OR safebrowsing.enabled, returning 'true' if either is enabled",
+        "Metric exact_match correctly compares result string ('true'/'false') against expected value ('true') with strict equality",
+        "Data flow is correct: getter returns string -> metric receives string and rules dict -> comparison works as expected",
+        "Expected value is semantically correct: {'expected': 'true'} matches the getter's return value when Safe Browsing is enabled",
+        "Coverage is complete: instruction requires turning on Safe Browsing, evaluator verifies Safe Browsing is enabled (standard or enhanced)",
+        "Postconfig appropriately restarts Chrome to verify setting persistence, which is important for security settings",
+        "Edge cases handled: missing files, missing keys handled with .get() defaults"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

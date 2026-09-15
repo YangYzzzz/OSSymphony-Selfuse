@@ -1,0 +1,143 @@
+{
+  "id": "e2392362-125e-4f76-a2ee-524b183a3412",
+  "new_id": "e2392362-125e-4f76-a2ee-524b183a3412_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "In the academicpages template cloned at ~/Code/Website, change the site title in _config.yml to 'My Research Page'.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Code/Website"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/.tmp.tar.xz",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/e2392362-125e-4f76-a2ee-524b183a3412/academicpages.github.io.tar.xz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xJvf",
+          "/home/user/.tmp.tar.xz",
+          "-C",
+          "/home/user/Code/Website/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://academicpages.github.io/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      }
+    ],
+    "func": "check_json",
+    "options": {
+      "is_yaml": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "title"
+            ],
+            "method": "eq",
+            "ref": "My Research Page"
+          }
+        ]
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Code/Website/academicpages.github.io/_config.yml",
+      "dest": "_config.yaml"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_e2392362-125e-4f76-a2ee-524b183a3412_sid_1488314",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated file manager to ~/Code/Website/academicpages.github.io, opened _config.yml in text editor, attempted Find & Replace but used wrong search values (searched 'mona@emich.edu.org' which doesn't exist in the file). Then switched to terminal with grep/sed/nano but ultimately failed to correctly update all 3 required YAML fields.",
+    "capability_extraction": "Can navigate file system via file manager, open files in text editor, use Find & Replace dialog, open terminal, use grep/sed/nano commands, navigate to correct directory paths.",
+    "failure_analysis": "Model confused field values during Find & Replace, used incorrect search strings, and failed to properly edit all 3 YAML fields (name, author.name, author.email). The multi-field requirement caused confusion between similar field names.",
+    "task_rationale": "Simplified to a single YAML field edit (title). The original required 3 fields which confused the model. A single field edit is within demonstrated capability.",
+    "explanation": "Task requires editing the 'title' field in _config.yml from 'Your Name / Site Title' to 'My Research Page'. Evaluator uses official check_json metric with is_yaml option and vm_file getter to verify the YAML field value.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "title_change": "1.0 - title field set to 'My Research Page'"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter (get_vm_file) correctly fetches _config.yml from the right path (/home/user/Code/Website/academicpages.github.io/_config.yml), matching the instruction's target file.",
+        "Metric (check_json with is_yaml=true) correctly parses the YAML file, navigates to the 'title' key, and checks equality with 'My Research Page' using _match_value_to_rule.",
+        "Expected value 'My Research Page' exactly matches what the instruction requires.",
+        "Complete coverage: the instruction has a single requirement (change site title) and the evaluator checks exactly that.",
+        "Postconfig (Ctrl+S) ensures the file is saved before evaluation, handling the case where the agent edits in a text editor.",
+        "Minor note: get_vm_file returns Union[Optional[str], List[...]] but check_json handles None gracefully (returns 0.0), so the type mismatch flagged by static analysis is not a runtime issue for single-file usage."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

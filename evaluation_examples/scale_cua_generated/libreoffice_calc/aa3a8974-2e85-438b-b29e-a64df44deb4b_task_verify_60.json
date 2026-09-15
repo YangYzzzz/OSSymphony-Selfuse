@@ -1,0 +1,81 @@
+{
+  "id": "aa3a8974-2e85-438b-b29e-a64df44deb4b",
+  "new_id": "task_verify_60",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Could you help me create a PDF from this spreadsheet? I need all the cells resized to fit everything on a single page for efficient viewing. Save the PDF with the spreadsheet's name in my home folder.",
+  "source": "https://www.quora.com/Libre-Office-Calc-How-do-I-resize-all-cells-in-a-sheet-to-make-them-fit-to-1-page-for-printing-and-exporting-as-PDF",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/aa3a8974-2e85-438b-b29e-a64df44deb4b/Resize_Cells_Fit_Page.xlsx",
+            "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "func": "check_pdf_pages",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Resize_Cells_Fit_Page.pdf",
+      "dest": "Resize_Cells_Fit_Page.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relation": "eq",
+        "ref_value": 1,
+        "verify_content": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "User-friendly request format. Evaluator confirms single-page PDF creation at correct location.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "0e0e2997",
+    "verification_details": "Uses existing check_pdf_pages metric to verify: (1) PDF file exists at /home/user/Resize_Cells_Fit_Page.pdf, (2) PDF has exactly 1 page (relation=eq, ref_value=1), (3) PDF file size > 10KB (verify_content=True). No custom functions needed as check_pdf_pages is already available in desktop_env.evaluators.metrics.pdf.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: The check_pdf_pages metric with verify_content=true checks for embedded images in the PDF (lines 46-58 in pdf.py), but LibreOffice Calc exports to PDF create text/vector-based PDFs, not image-based PDFs. Spreadsheet content (cells, text, numbers) is rendered as PDF text and vector graphics, not as raster images.",
+        "The evaluator will incorrectly return 0.0 even when a valid single-page PDF is created from the spreadsheet, because the image check at line 57-58 will fail (has_images=False for normal spreadsheet PDFs).",
+        "Missing verification: The instruction requires 'all cells resized to fit everything on a single page' but the evaluator only checks page count, not whether cells were actually resized or if content fits properly.",
+        "The verify_content flag is semantically incorrect for this use case - it was likely designed for image-to-PDF conversion tasks, not spreadsheet-to-PDF conversion."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove the verify_content=true flag, or change check_pdf_pages logic to not require images for spreadsheet PDFs (only check file size > 10KB, skip image verification)",
+        "Consider adding a custom metric that verifies the PDF contains text content from the spreadsheet (e.g., extract text and check for non-empty content)",
+        "Alternatively, use a simpler verification that only checks: (1) file exists, (2) page count = 1, (3) file size > reasonable threshold (e.g., 5KB)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_pages first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

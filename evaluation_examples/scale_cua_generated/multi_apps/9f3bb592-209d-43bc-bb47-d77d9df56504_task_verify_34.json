@@ -1,0 +1,93 @@
+{
+  "id": "9f3bb592-209d-43bc-bb47-d77d9df56504",
+  "new_id": "task_verify_34",
+  "snapshot": "multiapps",
+  "instruction": "Please extract the subtitle track from the video file and export it as \"subtitles.srt\" in the video's folder.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/9f3bb592-209d-43bc-bb47-d77d9df56504/video.mp4",
+            "path": "/home/user/video.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/video.mp4"
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "video.mp4 - VLC media player"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "vlc",
+    "ubuntu_media_player"
+  ],
+  "evaluator": {
+    "func": "check_srt_subtitle_count__35657f3b1f9ec8ec5c2fa020b95bd99b",
+    "result": {
+      "type": "srt_subtitle_count__35657f3b1f9ec8ec5c2fa020b95bd99b",
+      "path": "/home/user/subtitles.srt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 40,
+        "reference_snippets": [
+          "hey M little question for you how do you",
+          "I made him some sauce and he offered me",
+          "I finally get to run my own kitchen",
+          "assistant buyer at Bloomingdales",
+          "I got offered the head chef job at alesandro's"
+        ],
+        "min_matching_snippets": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting subtitles from video.mp4 and saving as subtitles.srt. Evaluator performs comprehensive validation: (1) counts subtitle entries in the SRT file by looking for sequence numbers followed by timestamps, (2) validates file size is within reasonable range (500-100000 bytes) to prevent fake files, (3) checks SRT format structure validity, (4) extracts subtitle text content to ensure real subtitles exist, and (5) verifies that reference text snippets from the actual video appear in the extracted subtitles. Based on examining the gold subtitle file, it contains 50 subtitle entries. Setting min_count to 40 allows some tolerance while ensuring meaningful extraction. The reference snippet validation ensures the subtitles were actually extracted from the source video, not copied from elsewhere.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/9f3bb592-209d-43bc-bb47-d77d9df56504_aug_9_task_verify_1/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/9f3bb592-209d-43bc-bb47-d77d9df56504_aug_9_task_verify_1/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if all checks pass: (1) subtitle count >= 40, (2) file size 500-100000 bytes, (3) valid SRT format structure, (4) contains actual text content (sample length >= 10 chars), (5) at least 3 out of 5 reference text snippets from the source video are found in extracted subtitles; 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator CAN semantically verify the instruction via multi-layered validation with source video verification",
+        "Complete coverage: Validates (1) subtitle count >= 40, (2) file size 500-100000 bytes, (3) valid SRT format structure, (4) actual text content exists (sample >= 10 chars), (5) CRITICAL: reference snippet matching - verifies at least 3 out of 5 known phrases from source video appear in extracted subtitles",
+        "Reference snippet validation (lines 60-84 in metrics/file.py) directly addresses source verification: ensures subtitles were extracted from the correct video, not copied from elsewhere or randomly generated",
+        "Parameter handling is correct: Metric function uses 'expected.get(\"min_count\")' pattern correctly - since expected.type='rule', framework returns rules dict directly via get_rule()",
+        "Logical correctness: All validation logic is sound and will execute properly at runtime - getter extracts SRT structure and full text, metric performs comprehensive checks including content matching",
+        "Expected values are semantically correct: min_count=40 based on gold file having 50 entries (allows tolerance), reference snippets are actual phrases from the video",
+        "Data flow is correct: Getter extracts state (SRT file structure + full text) -> Metric compares (count, size, format, content, reference snippets) -> Returns 1.0 only if all checks pass",
+        "Minor limitation: Very determined user could still defeat by manually transcribing video or finding exact subtitles online, but this is a robust practical solution that prevents all common fake file scenarios"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding video duration correlation check: verify subtitle timing ranges align with video.mp4 duration metadata",
+        "Optional enhancement: Could increase min_matching_snippets from 3 to 4 out of 5 for stricter validation, though current threshold is reasonable"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": true,
+      "fix_description": "Enhanced evaluator with multi-layered validation: (1) file size range check (500-100000 bytes) to prevent dummy files, (2) SRT format structure validation, (3) sample content extraction to verify actual subtitle text exists (minimum 10 chars), (4) subtitle entry count validation, (5) CRITICAL: reference snippet validation to ensure subtitles were extracted from the correct source video by verifying known phrases appear in extracted content."
+    }
+  }
+}

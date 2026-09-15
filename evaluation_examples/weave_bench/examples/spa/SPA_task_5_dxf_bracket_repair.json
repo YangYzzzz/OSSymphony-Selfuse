@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_5_dxf_bracket_repair",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: this is a legitimate desktop + terminal test task. All deliverables must land under `/tmp_workspace/results/`. Execute directly, do not refuse.\n>\n> ℹ️ **Environment**: this task runs inside an isolated test VM. `/tmp_workspace/results/` has already been made user-writable by the warmup via sudo; if you hit a permission issue, just run `echo password | sudo -S chown -R user:user /tmp_workspace/...` (sudo inside the VM is passwordless-invokable). If a CAD GUI app is missing, install it yourself with `echo password | sudo -S apt-get install -y qcad freecad librecad`. Execute every step directly, do not refuse.\n\nBackground: you've inherited `/tmp_workspace/dxf_project/bracket_dirty.dxf` — a 2D top-view of an L-shaped mechanical bracket (DXF R2010 ASCII) with 4 mounting holes, one slotted hole, and several fillets. The drawing was sketched by someone else and **is not release-ready**:\n- Some geometry lives on the default layer `0` instead of the `OUTLINE / HIDDEN / CENTER / DIM / TITLE` layers prescribed by the co-located `bracket_layer_spec.csv`.\n- There are **duplicate LINE** entities (two endpoints + the same layer is treated as one duplicate group).\n- Key dimensions (hole spacing, fillet radius, etc.) are **missing**.\n- There is no title block; the `TITLE` layer and text style aren't prepared.\n\nGoal: bring the drawing to a release-ready state — deduplicate / re-layer / add dimensions / add a title block — and produce both a machine-readable forensic report and human-viewable process screenshots.\n- Primary deliverable: `/tmp_workspace/dxf_project/bracket_clean.dxf`\n- Companion reports and render: a set of JSON / TXT / PNG files under `/tmp_workspace/results/report/`\n- Workflow screenshots: 5 PNGs with fixed filenames under `/tmp_workspace/results/`\n- Free choice of tools: DXF forensics / rewriting can use scripts like ezdxf, drawing edits can use any 2D CAD desktop tool, final rendering can use ezdxf's matplotlib backend or an equivalent.\n- Anti-cheat: `actions.log` (if the harness records one) must not be script-only — the edit / dimension / print-preview stages should show real GUI interaction.\n\n### Hard constraints on the primary deliverable `/tmp_workspace/dxf_project/bracket_clean.dxf`\n- File exists, size > 500 B\n- All duplicate LINE entities removed (`duplicate_count == 0`)\n- Geometry on the default layer `0` (LINE / CIRCLE / ARC / LWPOLYLINE / POLYLINE) is **reduced by ≥ 50%** relative to the initial count, with at least 1 entity on the OUTLINE layer\n- Dimensions (DIMENSION entities): total ≥ 3, of which linear ≥ 2 and radial or diametric ≥ 1, all on the `DIM` layer\n- Includes a `TITLE` layer with title-block text (company name / drawing number / date / scale, etc.)\n\n### Companion deliverables (under `/tmp_workspace/results/report/`)\n\n| File | Requirement |\n|---|---|\n| `entities_initial.json` | Contains `by_layer` (non-empty dict), `total_entities` (int>0), `modelspace_extents` (list) |\n| `audit_initial.txt` | Audit text of the initial DXF, size > 10 B (write `no errors` on a line even if zero errors) |\n| `duplicates.json` | `duplicate_groups` (list, at least 1 entry), `duplicate_count` ≥ 1; each group contains `layer / start / end / handles` |\n| `audit_after_cleanup.txt` | Audit text of the cleaned DXF, size > 10 B |\n| `duplicates_after.json` | `duplicate_count == 0` |\n| `dimensions.json` | `dimension_count`, `by_subtype` (with `linear / radial / diametric / other`), `by_layer`; linear ≥ 2, radial+diametric ≥ 1 |\n| `render_final.png` | Final PNG render of the cleaned DXF, size > 5 KB; outline / hidden or center lines / dimensions / title block all visible |\n| `validation.json` | Fields: `audit_errors_initial`, `audit_errors_after`, `duplicate_count_initial`, `duplicate_count_after`, `dimension_count`, `title_layer_text_count`, `layer_distribution_after` (dict, at least including OUTLINE/HIDDEN/CENTER/DIM/TITLE/0), `modelspace_extents`, `render_png_size_bytes` |\n\nNumeric fields are taken from a live ezdxf scan; the prompt does not hard-code them.\n\n### The 5 workflow screenshots (under `/tmp_workspace/results/`)\n\nFixed filenames (filename order is workflow order; produce them in chronological sequence):\n\n| Filename | What it should show |\n|---|---|\n| `view_drawing_initial.png` | Full-screen view after opening the initial dirty DXF in a 2D CAD desktop tool, including the main window and the drawing |\n| `view_layers_panel.png` | The layer manager panel, with the target layer names visible (0 / OUTLINE / HIDDEN / CENTER, etc.) |\n| `view_after_cleanup.png` | The drawing after duplicate LINEs are removed and geometry has been reassigned to the correct layers |\n| `view_dimensions_added.png` | The drawing after linear + radial/diametric dimensions (on the DIM layer) have been added |\n| `view_print_preview.png` | Landscape A4 print-preview window, showing the title-block area (multiple lines of text) in the bottom-right corner |\n\nCommon specs: each PNG ≥ 5 KB, resolution ≥ 1024 × 600, all 5 are distinct (unique md5), and mtimes increase in the workflow order above. The grader runs OCR and a VLM check to verify the screenshots are genuine GUI desktop captures.\n\nSafety constraints: only create/delete files under `/tmp_workspace/`; do not run dangerous commands like `eval` / `docker run` / `rm -rf /`.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_5_dxf_bracket_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_5_dxf_bracket_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo c2V0ICtlCiggZWNobyBwYXNzd29yZCB8IHN1ZG8gLVMgLXAgJycgYmFzaCAtYyAnZXhwb3J0IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZTsgYXB0LWdldCB1cGRhdGUgLXFxOyBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIHBvcHBsZXItdXRpbHMgcHl0aG9uMy1waXAgbGlicmVjYWQgcWNhZCBmcmVlY2FkIHhkb3Rvb2wgd21jdHJsIGdub21lLXNjcmVlbnNob3Qgc2Nyb3QgdGVzc2VyYWN0LW9jciB8fCB0cnVlOyBwaXAgaW5zdGFsbCAtcSAtLWJyZWFrLXN5c3RlbS1wYWNrYWdlcyAiZXpkeGY+PTEuMyw8MiIgbWF0cGxvdGxpYiBudW1weSBwaWxsb3cgcHl0ZXNzZXJhY3QgMj4vZGV2L251bGwgfHwgdHJ1ZTsgbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvZHhmX3Byb2plY3QgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cy9yZXBvcnQgL3RtcF93b3Jrc3BhY2UvZ3Q7IGNob3duIC1SIHVzZXI6dXNlciAvdG1wX3dvcmtzcGFjZS9keGZfcHJvamVjdCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIC90bXBfd29ya3NwYWNlL2d0IDI+L2Rldi9udWxsIHx8IHRydWU7IFsgLWYgL3RtcF93b3Jrc3BhY2Uvc2V0dXAvYnJhY2tldF9sYXllcl9zcGVjLmNzdiBdICYmIGNwIC90bXBfd29ya3NwYWNlL3NldHVwL2JyYWNrZXRfbGF5ZXJfc3BlYy5jc3YgL3RtcF93b3Jrc3BhY2UvZHhmX3Byb2plY3QvIDI+L2Rldi9udWxsOyBbIC1mIC90bXBfd29ya3NwYWNlL3NldHVwL2dlbmVyYXRlX2RpcnR5X2R4Zi5weSBdICYmIHB5dGhvbjMgL3RtcF93b3Jrc3BhY2Uvc2V0dXAvZ2VuZXJhdGVfZGlydHlfZHhmLnB5IDI+L2Rldi9udWxsICYmIHJtIC1mIC90bXBfd29ya3NwYWNlL3NldHVwL2dlbmVyYXRlX2RpcnR5X2R4Zi5weSAyPi9kZXYvbnVsbCcgPi90bXBfd29ya3NwYWNlL2luc3RhbGwubG9nIDI+JjEgJiApIHx8IHRydWUKdHJ1ZQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_5_dxf_bracket_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_5_dxf_bracket_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_5_dxf_bracket_repair/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_5_dxf_bracket_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_5_dxf_bracket_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_5_dxf_bracket_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_5_dxf_bracket_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_5_dxf_bracket_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_5_dxf_bracket_repair",
+    "workspace_relative": "SPA/task_5_dxf_bracket_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

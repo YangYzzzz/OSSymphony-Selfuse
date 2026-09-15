@@ -1,0 +1,116 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Locate women's dresses and display those with the highest prices first.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Dresses",
+          "Women"
+        ],
+        "sbSelector": [
+          "Price High-Low"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Dresses": "Dresses",
+        "dresses": "Dresses",
+        "Women": "Women",
+        "women": "Women",
+        "S=3": "Price High-Low"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "dresses": true,
+          "women": true,
+          "price high-low": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 1: Changed to women's dresses category with price high-to-low sort. Same pattern as original - navigate to category, apply price sorting. Uses similar breadcrumb and URL validation.",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly extracts breadcrumb navigation (category path) from HTML class 'pmpSearch_breadcrumb' to verify navigation to women's dresses category",
+        "Getter correctly extracts sort selector from HTML class 'sbSelector' to verify 'Price High-Low' filter is applied",
+        "Dual verification approach (HTML class elements + URL parameters) provides robust validation - breadcrumb classes and URL keywords both checked",
+        "Expected rules structure matches getter output structure: all keys are lowercase (dresses, women, price high-low, is_other_exist) with boolean values",
+        "Metric 'check_direct_json_object' performs correct exact boolean comparison between result and expected values",
+        "Complete coverage: verifies BOTH requirements - (1) category navigation to women's dresses AND (2) price high-to-low sort filter",
+        "is_other_exist flag correctly detects unexpected elements, ensuring only the expected categories/filters are active",
+        "Edge case handling is sound: missing keys result in getter not setting the key, metric detects mismatch and returns 0.0, correctly failing incomplete tasks",
+        "Case-insensitive matching in getter (converts to lowercase) aligns with expected rules format"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The dual-checking logic (class_multiObject_li + url_include_expected_multichoice) is somewhat complex and could be simplified for maintainability, though functionally correct",
+        "Minor: Consider adding explicit logging to track which verification method (class vs URL) succeeded, to aid debugging in case of website structure changes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

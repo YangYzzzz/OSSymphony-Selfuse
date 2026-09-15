@@ -1,0 +1,95 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_49",
+  "snapshot": "os",
+  "instruction": "I want to increase my bash command history size to remember more commands. Could you configure the HISTSIZE variable in my shell to store 10000 commands instead of the default?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -qE '^[[:space:]]*(export[[:space:]]+)?HISTSIZE[[:space:]]*=[[:space:]]*10000[[:space:]]*$' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting HISTSIZE=10000 in .bashrc to increase command history. Evaluator checks if HISTSIZE=10000 exists in .bashrc. Similar to original - modifying shell configuration variables.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "The grep regex pattern correctly handles leading whitespace with '^[[:space:]]*'",
+        "The pattern correctly handles optional 'export' keyword with '(export[[:space:]]+)?'",
+        "The pattern correctly handles spaces around the equals sign with '[[:space:]]*=[[:space:]]*'",
+        "The '^' anchor correctly prevents matching commented lines (lines starting with #)",
+        "Core verification logic is sound - checking for HISTSIZE=10000 in ~/.bashrc is the correct approach for most users",
+        "Minor limitation: only checks ~/.bashrc, not other potential config files like ~/.bash_profile or ~/.profile, but ~/.bashrc is the standard location for interactive shell configuration",
+        "Minor edge case: strict '$' anchor means 'HISTSIZE=10000 # comment' would fail, though this is functionally correct"
+      ],
+      "llm_judge_fix_suggestions": [
+        "To handle trailing comments, consider replacing '$' with '([[:space:]]*#.*)?$' to allow optional trailing comments",
+        "For completeness, could check multiple config files with: 'grep -qE ... ~/.bashrc || grep -qE ... ~/.bash_profile || grep -qE ... ~/.profile'",
+        "Alternatively, for more robust verification: source the config and check actual variable value with: 'bash -c \"source ~/.bashrc && [ \\$HISTSIZE -eq 10000 ] && echo 1 || echo 0\"'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

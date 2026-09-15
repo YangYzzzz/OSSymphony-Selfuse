@@ -1,0 +1,102 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Search for electric vehicles costing no more than $55,000 located within 40 miles of 02101.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "55000",
+          "maximum_distance": "40",
+          "zip": "02101",
+          "fuel_slugs[]": "electric"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 4: Electric cars with price limit $55,000, 40 miles search radius, and Boston zip code 02101. Same complexity and interaction pattern as original - identical number of filters and steps required. Uses existing getter get_active_tab_url_parse and metric check_direct_json_object, no custom functions needed.",
+    "new_functions_paths": [],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 instruction requirements: electric fuel type, max price $55000, distance 40 miles, and zip code 02101",
+        "Getter logic (get_active_tab_url_parse) correctly extracts URL query parameters from active tab",
+        "Metric logic (check_direct_json_object) correctly performs exact string comparison of extracted parameters against expected values",
+        "Expected values are semantically correct and match instruction requirements",
+        "Data flow is sound: active tab URL -> parse query params -> extract specified keys -> compare with expected"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Evaluator assumes cars.com uses specific query parameter names (list_price_max, maximum_distance, zip, fuel_slugs[]) - this is a reasonable assumption but worth noting",
+        "Minor: Uses string comparison for numeric values (\"55000\", \"40\") - should work correctly if cars.com's URL parameters are string-based, which is typical",
+        "Minor: Does not validate that user performed an actual search interaction vs. just navigating directly to a URL with these parameters, but this is acceptable for URL-based verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "82279c77-8fc6-46f6-9622-3ba96f61b477_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

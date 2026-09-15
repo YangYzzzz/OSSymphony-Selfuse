@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_15_sourcemap_stack_decode",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: a small production SPA at `http://127.0.0.1:8200/` throws a `TypeError` when the user clicks the \"Crash\" button. SRE has already captured the minimized stack trace locations of that crash into `/tmp_workspace/exec/error.log`, one frame per line in the format `BUNDLE  LINE  COL`, three frames total (`feature.bundle.js`, `app.bundle.js`, `vendor.bundle.js`).\n\nThe three `*.bundle.js` + `*.bundle.js.map` pairs under `/tmp_workspace/exec/dist/` are the deployed build. `src/` is the current trunk source. **Only one bundle's map is stale** — its `sourcesContent` embeds an old version that is several lines shorter than the current `src/`, so the source line it decodes to is not the actual line that threw. The two signal channels for detecting this staleness — \"a source line in `sourcesContent` that looks unrelated to the crash\" and \"structural mismatch between `sourcesContent` line count and `src/<name>.js` line count\" — must both be exercised: on the script side, decode the three frames and cross-check against `src/`; in the browser source forensics view, hover the failing frame and inspect the source line it actually jumps to.\n\nMaterials already prepared on site:\n- Target page: `http://127.0.0.1:8200/` (warmup starts it automatically; click \"Crash\" to trigger the `TypeError`).\n- Three-frame stack trace input: `/tmp_workspace/exec/error.log` (`BUNDLE LINE COL`, three lines).\n- Deployed artifacts: `/tmp_workspace/exec/dist/{vendor,app,feature}.bundle.js{,.map}` (in **exactly one** of these maps, `sourcesContent[0]` differs in line count from the corresponding `src/<name>.js` by > 4).\n- Current trunk source: `/tmp_workspace/exec/src/{vendor,app,feature}.js`.\n- Helpers (the agent may reuse them directly or rewrite them):\n  - `/tmp_workspace/exec/tools/decode.py`: pure-stdlib sourcemap decoder. Takes `error.log` plus a set of `.map` files and outputs a JSON array of `{input, decoded:{source, line, source_line_text, ...}}` per frame.\n  - `/tmp_workspace/exec/tools/build_map.py`: pure-stdlib sourcemap regenerator. Three arguments `<src.js> <bundle.js> <out.map>`; rewrites `.map.sourcesContent[0]` from the current `src/`.\n\nGoal: identify the bundle name that is actually stale → use `build_map.py` to regenerate its map → verify that after re-decoding, the frame in question now resolves to the real throw site. How to launch the browser, how to cross-check source lines, and how to invoke the helpers are up to you.\n\nThe following deliverables must be produced under `/tmp_workspace/results/`:\n\n1. **Pre-fix decode** `decoded_before.json`: array of decode results for `error.log` × the three `.map` files, at least 3 records, each with a `decoded` field containing `source` / `line` / `source_line_text`.\n\n2. **Stale bundle name** `stale_bundle.txt`: a single line containing the basename of the truly stale bundle (e.g. `feature.bundle.js`). The named bundle must actually exist in `dist/`, and its `.map.sourcesContent[0]` line count must differ from the current `src/<name>.js` line count by > 4.\n\n3. **Map integrity comparison** `map_validation.json`:\n   ```json\n   {\n     \"vendor\":  {\"src_lines\": <int>, \"map_sourcesContent_lines\": <int>, \"match\": <bool>},\n     \"app\":     {\"src_lines\": <int>, \"map_sourcesContent_lines\": <int>, \"match\": <bool>},\n     \"feature\": {\"src_lines\": <int>, \"map_sourcesContent_lines\": <int>, \"match\": <bool>}\n   }\n   ```\n   Exactly one entry must have `match == false` (the same one named in `stale_bundle.txt`).\n\n4. **Diagnosis report** `diagnosis.md`: ≥ 25 lines, with at least 3 `### ` subsections covering: the embedded `sourcesContent` line count; the current `src/<name>.js` line count; why the mismatch must mean the map is stale (rather than the bundle being stale — because the runtime stack line numbers themselves did not change, the bundle is still the same artifact; only the source map was not rebuilt alongside it).\n\n5. **Visual forensic screenshots** (each ≥ 4 KB, from actual rendered state):\n   - `view_01_console_stack.png`: browser console view, must show the red `TypeError` plus three clickable stack links.\n   - `view_02_sources_stale_frame.png`: browser source forensics view; the left file tree highlights the `*.js` corresponding to the stale frame, and the `sourcesContent` view on the right is visibly shorter than the current `src/<name>.js`, with the highlighted line's contents not matching the real `src/`.\n   - `view_03_sources_correct_frame.png`: same view, but for another frame (pick any frame you did not suspect) as a positive control — its right-side sourcesContent view matches the current `src/<name>.js`.\n   - `view_04_after_fix_stack.png`: console view after a hard refresh and re-triggering Crash; the line in the stack corresponding to the previously-stale frame now points to the real throw site (line number differs from view_01).\n\n6. **Regenerate the map**: use `tools/build_map.py` to rewrite `dist/<stale-bundle-base>.bundle.js.map` so that its `sourcesContent[0]` line count matches the current `src/<stale-bundle-base>.js` line count (tolerance ≤ 2).\n\n7. **Post-fix decode** `decoded_after.json`: run `tools/decode.py` again to produce the decode result array for `error.log` × the three `.map` files (including the regenerated one). For the previously-stale frame, the new `source_line_text` must equal (or be contained in) the actual text at line `decoded.line` of the current `src/<name>.js`.\n\nHard constraints:\n- `stale_bundle.txt` must name the actually stale bundle (determined by `sourcesContent` line-count diff > 4).\n- `map_validation.json` must have exactly one entry with `match == false`.\n- After regeneration, the stale bundle's `.map.sourcesContent[0]` line count must match the current `src/<name>.js` line count (tolerance ≤ 2).\n- You may not directly edit `error.log` or `dist/*.bundle.js` — the decode results must align only via map regeneration.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_15_sourcemap_stack_decode.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_15_sourcemap_stack_decode",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/web15_gt && chmod 777 /tmp_workspace/results /tmp_workspace/state\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/web15_gt/expected.json 2>/dev/null || cp /tmp_workspace/gt/expected.json /opt/web15_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/web15_gt 2>/dev/null || true\n  chmod 700 /opt/web15_gt 2>/dev/null || true\n  chmod 600 /opt/web15_gt/expected.json 2>/dev/null || true\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich curl || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing curl ca-certificates && break; sleep 5; done) || true\nwhich jq || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing jq && break; sleep 5; done) || true\nwhich python3 || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing python3 python3-pip && break; sleep 5; done) || true\nwhich tesseract || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tesseract-ocr fonts-noto-cjk && break; sleep 5; done) || true\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet flask pillow pytesseract requests sourcemap 2>/dev/null || pip3 install --quiet flask pillow pytesseract requests sourcemap || true\nchmod +x /tmp_workspace/start.sh 2>/dev/null || true; chmod +x /tmp_workspace/tools/*.py 2>/dev/null || true\nnohup bash /tmp_workspace/start.sh >/tmp/start.log 2>&1 & sleep 3; for i in $(seq 1 30); do curl -sf http://localhost:8200/ >/dev/null && break; sleep 1; done",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_15_sourcemap_stack_decode/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_15_sourcemap_stack_decode /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_15_sourcemap_stack_decode/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_15_sourcemap_stack_decode/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_15_sourcemap_stack_decode/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_15_sourcemap_stack_decode/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_15_sourcemap_stack_decode/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_15_sourcemap_stack_decode.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_15_sourcemap_stack_decode",
+    "workspace_relative": "WEB/task_15_sourcemap_stack_decode",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

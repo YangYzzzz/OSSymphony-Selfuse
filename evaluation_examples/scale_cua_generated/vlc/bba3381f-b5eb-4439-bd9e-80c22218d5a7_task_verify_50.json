@@ -1,0 +1,76 @@
+{
+  "id": "bba3381f-b5eb-4439-bd9e-80c22218d5a7",
+  "new_id": "task_verify_50",
+  "snapshot": "base_setup",
+  "instruction": "Can you open this streaming link in VLC? https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8",
+  "source": "https://developer.apple.com/streaming/examples/ - Apple HLS HEVC test stream",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "is_vlc_playing",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8"
+      }
+    },
+    "result": {
+      "type": "vlc_playing_info",
+      "dest": "status.xml"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation using Apple HEVC advanced example stream. Uses existing is_vlc_playing metric for URL verification. Same complexity as original task.",
+    "new_functions_paths": [
+      "tmp_funcs/bba3381f-b5eb-4439-bd9e-80c22218d5a7_task_verify_9/getters/vlc.py",
+      "tmp_funcs/bba3381f-b5eb-4439-bd9e-80c22218d5a7_task_verify_9/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vlc_playing_info) correctly fetches VLC status via HTTP interface and saves XML to file, returns None on HTTP failure",
+        "Metric (is_vlc_playing) has proper None check (lines 26-28) before opening file, preventing crashes on getter failure",
+        "Metric correctly verifies both: (1) VLC state is 'playing', and (2) expected URL matches the actual playing URL",
+        "URL matching logic is robust with multiple fallback strategies for HLS streams: direct match, filename match, domain/path comparison",
+        "Complete coverage: evaluator checks ALL requirements in instruction (VLC playing + correct URL loaded)",
+        "Expected parameter handling is CORRECT: metric receives rules dict directly as 'rule' parameter, accesses rule['type'] and rule['url'] without nesting",
+        "Edge case handling: Properly handles HTTP failures (None check), missing URL info (logs warning, returns 0), state mismatches (returns 0)",
+        "Semantic correctness: The getter extracts the RIGHT state (VLC playing status + URL info), metric compares the RIGHT aspects (state='playing' + URL match)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "id": "0512bb38-d531-4acf-9e7e-0add90816068",
+  "new_id": "task_verify_42",
+  "snapshot": "vscode",
+  "instruction": "Check if the VS Code extension 'undefined_publisher.test' is already installed, and if not, install it from the local VSIX file at '/home/user/test.vsix'.",
+  "source": "https://download.microsoft.com/download/8/A/4/8A48E46A-C355-4E5C-8417-E6ACD8A207D4/VisualStudioCode-TipsAndTricks-Vol.1.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/0512bb38-d531-4acf-9e7e-0add90816068/test.vsix",
+            "path": "/home/user/test.vsix"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "is_extension_installed",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "code",
+        "--list-extensions",
+        "|",
+        "grep",
+        "undefined_publisher.test"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contain",
+        "expected": "undefined_publisher.test"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task is similar to original but with conditional phrasing ('if not installed'). Config does NOT pre-install the extension, so agent must check and then install. Evaluator verifies extension is in the list.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete coverage: Instruction contains conditional logic ('if not installed, then install'), but evaluator only verifies final state (extension is installed), not whether agent correctly followed the conditional logic",
+        "Evaluator will pass regardless of whether: (1) extension was pre-installed and agent did nothing, (2) agent checked and installed when needed, or (3) agent blindly installed without checking",
+        "Missing 'shell' parameter: Command uses shell piping ('|' operator) but evaluator config does not set 'shell: true' in the result config, which may cause runtime failure when get_vm_command_line executes the command",
+        "For conditional tasks, evaluator should verify BOTH the condition check AND the conditional action, not just the final outcome"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'shell: true' to the result config: {\"type\": \"vm_command_line\", \"command\": [...], \"shell\": true}",
+        "Consider simplifying instruction to remove conditional logic: 'Install the VS Code extension from /home/user/test.vsix' (since evaluator cannot verify conditional behavior anyway)",
+        "OR add multi-step evaluator to verify: (1) agent runs check command first, (2) agent conditionally installs based on check result, (3) final state has extension installed",
+        "Current evaluator is acceptable for verifying installation outcome but does not match the conditional instruction semantics"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

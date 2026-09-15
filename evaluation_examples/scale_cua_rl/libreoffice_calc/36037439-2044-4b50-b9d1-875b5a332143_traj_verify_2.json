@@ -1,0 +1,92 @@
+{
+  "id": "36037439-2044-4b50-b9d1-875b5a332143",
+  "new_id": "36037439-2044-4b50-b9d1-875b5a332143_traj_verify_2",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Find the second author listed in the open PDF and search for them on Google Scholar in Chrome.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/36037439-2044-4b50-b9d1-875b5a332143/shi17a.pdf",
+            "path": "/home/user/Desktop/shi17a.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/shi17a.pdf"
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.hotkey('f11'); time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.scroll(-40)"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "scholar\\.google\\.com",
+          "[Kk]arpathy"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_36037439-2044-4b50-b9d1-875b5a332143_sid_1488127",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent read the PDF, identified the corresponding author (Tianlin Shi), but spent 20+ turns struggling to switch from the Evince PDF viewer to Chrome. Eventually reached scholar.google.com loading page but ran out of turns (50 turns, 337s).",
+    "capability_extraction": "Can read PDF content, navigate PDF pages, identify author names and their ordering, type URLs in Chrome address bar, scroll within documents",
+    "failure_analysis": "Model could not efficiently switch from Evince PDF viewer to Chrome browser. Repeatedly clicked on taskbar icons, Activities button, and tried keyboard shortcuts (Alt+Tab, Super) without success. The core failure was app-switching, not comprehension or navigation.",
+    "task_rationale": "Intermediate decomposition: requires identifying the second author from the PDF (Andrej Karpathy) and searching for them on Google Scholar. Simpler than the original task because (1) 'second author' is straightforward to identify vs 'corresponding author' which requires finding footnotes, and (2) only requires a search on Scholar, not finding the actual profile page.",
+    "explanation": "Task requires identifying the second author from the open PDF (Andrej Karpathy) and searching for them on Google Scholar. The paper lists authors as: Tianlin Shi, Andrej Karpathy, Linxi Fan, Jonathan Hernandez, Percy Liang. Evaluator checks that the active Chrome tab URL contains 'scholar.google.com' and 'Karpathy' (case-insensitive first letter). Uses standard is_expected_url_pattern_match metric with regex patterns.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 12,
+    "variation_index": 2,
+    "scoring_breakdown": {
+      "navigation_and_search": "1.0 - Chrome URL contains scholar.google.com AND Karpathy search query"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active Chrome tab URL, which is the right state to verify a Google Scholar search.",
+        "Metric (is_expected_url_pattern_match) correctly iterates through all regex patterns and requires ALL to match, returning 1.0 only if both patterns are found in the URL.",
+        "Expected patterns ['scholar\\.google\\.com', '[Kk]arpathy'] correctly verify both requirements: (1) navigated to Google Scholar domain, and (2) searched for the second author Karpathy.",
+        "Parameter handling is correct: with expected.type='rule', the framework passes rules dict directly to the metric, and the metric accesses rules['expected'] to get the pattern list.",
+        "Second author identification is correct: paper authors are Tianlin Shi, Andrej Karpathy, Linxi Fan, Jonathan Hernandez, Percy Liang — Andrej Karpathy is indeed the second author.",
+        "Minor: evaluator checks only last name 'Karpathy' rather than full name, but this is sufficient since Karpathy in a Scholar URL is strong evidence of correct task completion."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using the full name pattern 'Andrej.*Karpathy|Karpathy.*Andrej' for stricter verification, though current pattern is practically sufficient."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

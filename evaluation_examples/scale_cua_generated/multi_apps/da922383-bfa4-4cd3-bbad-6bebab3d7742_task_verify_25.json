@@ -1,0 +1,95 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "task_verify_25",
+  "snapshot": "multiapps",
+  "instruction": "Archive all blog articles visible in Chrome by exporting them as PDF files titled with each article's name, and store them in /home/user/Documents/Blog.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_pdf_validity__1cc9c1bfb30ee1b2b3cdbf7926894918",
+    "result": {
+      "type": "pdf_files_with_validation__1cc9c1bfb30ee1b2b3cdbf7926894918",
+      "directory": "/home/user/Documents/Blog",
+      "expected_titles": [
+        "LLM Powered Autonomous Agents",
+        "Human Data Quality For AI"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_count": 2
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires downloading 2 blog articles as PDFs with article titles as filenames to /home/user/Documents/Blog directory. Evaluator verifies: (1) at least 2 valid PDF files exist, (2) filenames match article titles. Custom getter retrieves Chrome tab titles via CDP and compares with PDF filenames using normalized matching. Metric provides graduated scoring: 0.5 for count only, 1.0 for count + filename matching.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_1/getters/pdf_validation.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_1/metrics/pdf_validation.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "scoring_breakdown": "Partial credit: valid_count/min_count up to 1.0",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all instruction requirements - (1) PDF count, (2) filenames matching article titles, (3) correct directory location",
+        "Getter correctly extracts Chrome tab titles via CDP (port 9222) and matches them against PDF filenames using robust normalization and multiple matching strategies",
+        "Metric provides graduated scoring: 1.0 for perfect match (count + filenames), 0.5-0.99 for partial matches, handling both complete and incomplete verification scenarios",
+        "Correct parameter handling: Metric function accesses 'expected' dictionary directly (expected.get('min_count')), which is correct for type='rule' evaluators",
+        "Good edge case handling: Fallback to expected_titles when Chrome tabs unavailable, handles missing directory, empty results, and partial filename matches",
+        "Filename matching logic is appropriately flexible with normalization (lowercase, special char removal) and multiple matching strategies (substring, word overlap)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Could add validation that PDF files are actually valid PDFs (not corrupted) by checking file headers, though current implementation is sufficient for most cases",
+        "Minor: Consider logging more detailed matching results for debugging purposes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "da922383-bfa4-4cd3-bbad-6bebab3d7742_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

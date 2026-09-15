@@ -1,0 +1,105 @@
+{
+  "id": "c6bf789c-ba3a-4209-971d-b63abf0ab733",
+  "new_id": "task_verify_30",
+  "snapshot": "vscode",
+  "instruction": "Please help me modify VS Code settings to hide all \".git\" folders in the explorer view.",
+  "source": "https://download.microsoft.com/download/8/A/4/8A48E46A-C355-4E5C-8417-E6ACD8A207D4/VisualStudioCode-TipsAndTricks-Vol.1.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/c6bf789c-ba3a-4209-971d-b63abf0ab733/hw_python_oop-master-20240320T121244Z-001.zip",
+            "path": "/home/user/Downloads/hw_python_oop-master.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "cd /home/user/Downloads && unzip -q hw_python_oop-master.zip"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Downloads/hw_python_oop-master"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "files.exclude": {
+            "**/.git": true
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/settings.json",
+      "dest": "settings.json"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires hiding .git folders in VS Code explorer view by modifying settings.json. Similar to original task but targets .git folders instead of __pycache__. Uses existing check_json_settings metric to verify the files.exclude setting contains **/.git: true.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "The check_json_settings metric uses exact dictionary equality checking (actual_value != value at vscode.py:74), which will fail if the user already has other patterns in files.exclude",
+        "Instruction requires adding '**/.git': true to files.exclude (subset match), but evaluator checks if files.exclude exactly equals {'**/.git': true} (exact match)",
+        "If settings.json already contains other exclude patterns like '__pycache__' or '.DS_Store', the evaluator will incorrectly return 0.0 even though the task was completed correctly",
+        "The metric does not check for the presence of the specific pattern within files.exclude, only that the entire files.exclude value matches exactly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify check_json_settings to support nested key checking: instead of checking if data['files.exclude'] == {'**/.git': true}, check if data.get('files.exclude', {}).get('**/.git') == true",
+        "Alternative: Create a new metric function that checks if a specific key-value pair exists within a nested dictionary, rather than requiring exact match of the entire nested structure",
+        "Alternative: Change the expected value to be more flexible, checking only that '**/.git' is present in files.exclude with value true, allowing other patterns to coexist"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

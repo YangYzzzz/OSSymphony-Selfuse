@@ -1,0 +1,106 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_78",
+  "snapshot": "multiapps",
+  "instruction": "I have a Chrome extension zip file on the Desktop. Please install it manually into Chrome and open the chrome://extensions page to confirm it appears in the extensions list.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "sleep 1",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_extension_in_page__ae6416e4",
+    "result": {
+      "type": "extensions_page_content__ae6416e4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension_name": "Hello Extensions"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing an unpacked Chrome extension and verifying it appears on chrome://extensions page. Custom getter navigates to chrome://extensions via CDP and extracts page text content. Metric checks if 'Hello Extensions' appears in the page text.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_3/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_3/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Semantic verification coverage is complete - evaluator checks if 'Hello Extensions' appears on chrome://extensions page, which correctly verifies the instruction requirement",
+        "Metric correctly handles expected parameter for type='rule' by directly accessing expected.get('extension_name'), not expected.get('rules', {}).get('extension_name')",
+        "Getter logic is sound: navigates to chrome://extensions, uses CDP to extract page text content, and has retry logic for robustness",
+        "Expected value 'Hello Extensions' correctly matches the extension name from the downloaded file (helloExtension.zip)",
+        "Code has proper error handling: websocket ImportError is caught (line 49-52), CDP connection errors are handled (line 63-64), and retry logic is implemented (line 32-77)",
+        "Postconfig sleep(1) gives time for extension page to load before verification",
+        "Minor issue: Simple substring match could theoretically have false positives, but is acceptable for this specific extension name verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider checking for extension in a more structured way (e.g., looking for specific DOM elements) rather than simple text search, though current approach is acceptable",
+        "Could increase sleep time from 2.0s to 3.0s at line 28 to ensure chrome://extensions page fully loads before content extraction"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

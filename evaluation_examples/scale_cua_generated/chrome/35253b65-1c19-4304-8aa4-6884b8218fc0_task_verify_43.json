@@ -1,0 +1,96 @@
+{
+  "id": "35253b65-1c19-4304-8aa4-6884b8218fc0",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Create a desktop shortcut for this YouTube page so I can access it directly from my desktop. Use Chrome's shortcut tool.",
+  "source": "https://www.laptopmag.com/articles/how-to-create-desktop-shortcuts-for-web-pages-using-chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_shortcut_on_desktop",
+    "result": {
+      "type": "shortcuts_on_desktop"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "name",
+        "name": "Rick Astley - Never Gonna Give You Up (Official Music Video)"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ]
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a desktop shortcut for a YouTube video page using Chrome's built-in shortcut feature. The evaluator checks for a .desktop file on the desktop with the correct Exec line containing the app-id for the YouTube page.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Reused existing is_shortcut_on_desktop metric and shortcuts_on_desktop getter. Checks for shortcut name matching the YouTube video title instead of hardcoded app-id to avoid Chrome's deterministic but environment-specific app-id generation.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter logic is correct: shortcuts_on_desktop (chrome.py:1084) properly reads .desktop files from desktop directory and returns their content as a dictionary mapping {shortcut_path: file_content_string}",
+        "Metric logic is correct: is_shortcut_on_desktop (chrome.py:487) with type='name' checks if 'Name=<expected_name>\\n' exists in any shortcut file content, which correctly verifies the shortcut was created",
+        "Expected value is semantically correct: 'Rick Astley - Never Gonna Give You Up (Official Music Video)' is the actual YouTube video title for URL https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "Verification approach is robust: Using name matching instead of app-id matching avoids Chrome's environment-specific app-id generation issues while still semantically verifying task completion",
+        "Coverage is complete: Verifies that a desktop shortcut exists with the correct YouTube page title, which semantically confirms the core instruction requirement (creating a desktop shortcut for the YouTube page)",
+        "Data flow is correct: Getter extracts .desktop file content from filesystem → Metric checks for Name field match with exact string comparison → Expected value matches actual video title",
+        "Postconfig is adequate: 2-second sleep is sufficient for filesystem write operations; no UI reopening needed since getter reads from disk, not UI state",
+        "Acceptable limitations: Does not verify shortcut points to correct URL or is Chrome-specific, but this is acceptable because only Chrome creates web page shortcuts with the page title as the Name field in Linux .desktop files. The combination of specific video title + .desktop file is sufficient to verify task completion",
+        "Edge cases handled: Empty shortcuts dictionary would return 0.0 (task not completed), which is correct behavior"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Could add secondary check for Exec line containing 'google-chrome' or 'chromium' to ensure it's a Chrome shortcut",
+        "Optional enhancement: Could add check for 'StartupWMClass' field which is specific to Chrome web app shortcuts for extra validation",
+        "Optional enhancement: Could verify the shortcut Exec line contains the YouTube URL to ensure it points to the correct page"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

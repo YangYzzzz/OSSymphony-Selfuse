@@ -1,0 +1,113 @@
+{
+  "id": "2b9493d7-49b8-493a-a71b-56cd1f4d6908",
+  "new_id": "task_verify_60",
+  "snapshot": "libreoffice_writer",
+  "instruction": "LibreOffice Writer has stopped responding while I was editing a document. Can you use the command line to forcefully end the process? I'm on Ubuntu and want to avoid restarting the whole system.",
+  "source": "https://devicetests.com/kill-libreoffice-writer-command-line-ubuntu",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/2b9493d7-49b8-493a-a71b-56cd1f4d6908/15-MB-docx-file-download.docx",
+            "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/15-MB-docx-file-download.docx"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "/bin/bash",
+          "-c",
+          "history -c && echo > ~/.bash_history && sleep 3"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngnome-terminal --maximize --working-directory=/home/user/",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer",
+    "terminal"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-c",
+            "killall gnome-terminal-server"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "output=$(ps aux | grep \"[s]office\"); if [ -z \"$output\" ]; then echo \"no libreoffice is running\"; else echo \"libreoffice is still running\"; fi; output=$(cat ~/.bash_history | grep -E \"(pkill|killall)\"); if [ -z \"$output\" ]; then echo \"not killed from terminal\"; else echo \"killed from terminal\"; fi"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "no libreoffice is running",
+          "killed from terminal"
+        ],
+        "exclude": [
+          "libreoffice is still running",
+          "not killed from terminal"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Similar task requiring force quit of LibreOffice Writer from terminal. Evaluator checks for pkill or killall commands (more flexible than just kill) and verifies soffice process is terminated.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both instruction requirements: (1) LibreOffice process is terminated, and (2) user used command line to kill it",
+        "State extraction logic is sound: checks process status via 'ps aux | grep soffice' and command usage via bash history",
+        "Expected values correctly match the bash script output format",
+        "The check for pkill/killall commands is appropriate for the task context, as these are the most common commands for forcefully killing processes on Ubuntu",
+        "Postconfig appropriately closes the terminal to ensure clean state for verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The bash history check only detects 'pkill' and 'killall' commands, but users could also use 'kill -9 <pid>' which is equally valid. Consider expanding the regex to '(pkill|killall|kill -9|kill -SIGKILL)' for more comprehensive coverage",
+        "Minor: Bash history writing depends on shell exit or explicit 'history -a' command. In some edge cases, if the user runs the command but the shell doesn't exit properly, the history might not be written. This is likely handled correctly in the test environment, but worth noting"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

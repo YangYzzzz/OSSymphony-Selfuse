@@ -1,0 +1,148 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_20",
+  "snapshot": "chrome",
+  "instruction": "Extract attachment filenames from emails in the Notes folder in Thunderbird, record each filename on a new line in 'attachments_list.txt', and then upload the file to the 'attachments' folder on Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachments' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_text_content__a652858db2e92fae77817389157c8edc",
+    "result": {
+      "type": "gdrive_text_file__a652858db2e92fae77817389157c8edc",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "query_list": [
+        [
+          "title = 'attachments' and trashed = false and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+          "title = 'attachments_list.txt' and trashed = false"
+        ]
+      ],
+      "dest": [
+        "attachments_list.txt"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "is_empty": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires extracting attachment filenames from the Notes folder emails and creating a list file on Google Drive. Analysis of the Thunderbird profile (global-messages-db.sqlite) confirms the Notes folder (folder ID: 8) contains exactly 0 messages and therefore 0 attachments. The evaluator checks that the text file uploaded to Google Drive is empty or contains only whitespace, which is the correct expected behavior when extracting attachments from an empty folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_2/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_2/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification is CORRECT: The metadata analysis confirms the Notes folder contains exactly 0 messages and therefore 0 attachments (folder ID: 8)",
+        "Expected value is semantically correct: 'is_empty: true' is the correct expected outcome when extracting attachments from an empty email folder",
+        "Complete coverage: Evaluator verifies both file location (Google Drive 'attachments' folder) and file content (empty/whitespace-only)",
+        "Getter logic is correct: Retrieves text file from Google Drive using proper query path, decodes UTF-8 content, handles missing files",
+        "Metric logic is correct: Properly handles 'expected' parameter for type='rule' (directly accesses 'is_empty' without nested 'rules' key), correctly verifies empty file condition",
+        "Edge case properly handled: This task represents the edge case where source data is empty, and the evaluator correctly expects an empty output file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "46407397-a7d5-4c6b-92c6-dbe038b1457b_xhaug_0_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

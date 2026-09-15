@@ -1,0 +1,93 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_52",
+  "snapshot": "chrome",
+  "instruction": "Verify that Hiking is among the activities listed at Albion Basin campground.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {},
+      "class_multiObject_search_exist": {
+        "rec-activity-tag": [
+          "Hiking"
+        ]
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "Hiking": true
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 9: Task checks activities available at Albion Basin. Similar to original, verifying activity tags displayed on recreation.gov.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Uses existing check_direct_json_object metric and active_tab_html_parse getter. Uses class_multiObject_search_exist mode to check if 'Hiking' exists among activity tags, avoiding brittle order dependency.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "The evaluator logic correctly verifies the instruction requirement: checking if 'Hiking' appears among the activity tags at Albion Basin campground.",
+        "Getter data flow is correct: get_active_tab_html_parse with 'class_multiObject_search_exist' config extracts all text from elements with class 'rec-activity-tag', then checks if 'Hiking' exists in that list, returning {'Hiking': true/false}.",
+        "Metric comparison is correct: check_direct_json_object receives result={'Hiking': true/false} and expected={'expected': {'Hiking': true}}, then compares result.get('Hiking') == expected['expected'].get('Hiking'), which correctly verifies the task.",
+        "The config structure is properly set up: 'class_multiObject_search_exist': {'rec-activity-tag': ['Hiking']} correctly uses a list, not a dict, so the getter iterates through list items as expected.",
+        "The evaluator will return 1.0 if 'Hiking' is found among activity tags, and 0.0 if not, which is semantically correct for this verification task.",
+        "No postconfig needed since the getter reads from the active tab's current HTML state."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

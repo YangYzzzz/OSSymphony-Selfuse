@@ -1,0 +1,107 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "Please locate Cell D12 in the Calc spreadsheet, copy its content, and use Chrome to search for it on Google.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=male(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell D12 (Gender column, row 12) from the spreadsheet and search it in Chrome. Verified from Excel file: Row 12, Column D contains 'Male'. Evaluator checks if active tab URL matches Google search for 'male'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Incomplete verification: Only checks final step (Google search) but not intermediate steps (locate D12, copy from D12)",
+        "Cannot verify that content actually came from cell D12 - could be typed manually or copied from elsewhere",
+        "No verification that the copy operation occurred or that the correct cell was selected",
+        "Possible false positives: Agent could search 'male' without copying from spreadsheet at all",
+        "Expected value is correct (matches D12 content 'Male') and pattern correctly handles case-insensitivity",
+        "Getter function reloads the URL which could affect search result page state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification steps to check: (1) spreadsheet state showing D12 is selected or highlighted, (2) clipboard content matches 'Male', (3) search query parameter matches clipboard content",
+        "Consider using accessibility tree or screenshot analysis to verify cell selection before copy operation",
+        "Add intermediate evaluation steps with partial credit: 0.33 for correct cell selection, 0.33 for successful copy, 0.34 for correct search",
+        "Alternatively, simplify instruction to only verify search outcome if intermediate steps cannot be verified"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

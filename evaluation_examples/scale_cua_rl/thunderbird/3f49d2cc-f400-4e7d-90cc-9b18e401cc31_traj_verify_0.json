@@ -1,0 +1,116 @@
+{
+  "id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31",
+  "new_id": "3f49d2cc-f400-4e7d-90cc-9b18e401cc31_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Switch the folder pane view to show only favorite folders in Thunderbird.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_json",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/xulstore.json",
+      "dest": "xulstore.json"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "chrome://messenger/content/messenger.xhtml",
+              "folderTree",
+              "mode"
+            ],
+            "method": "re",
+            "ref": "\\bfavorite\\b"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_3f49d2cc-f400-4e7d-90cc-9b18e401cc31_sid_1488285",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated hamburger menu to View > Folders and saw Unified Folders option. Incorrectly assumed it was grayed out and needed multiple accounts. Spent remaining turns trying to add a fake email account (test.user@example.com) which failed. Never actually clicked on Unified Folders.",
+    "capability_extraction": "Can navigate Thunderbird hamburger menu, access View > Folders submenu, open Account Settings, fill form fields, interact with tabs",
+    "failure_analysis": "Model misinterpreted the Unified Folders option as grayed out/unavailable. Instead of clicking it, spent all turns on an irrelevant workaround (adding a fake email account). The core issue was incorrect assumption about UI state.",
+    "task_rationale": "Simplified to switching folder view to Favorite Folders via the same menu path (View > Folders). This is an achievable sub-task within the model's demonstrated menu navigation capability.",
+    "explanation": "Task requires switching folder pane to Favorite Folders view via hamburger menu > View > Folders > Favorite Folders. Evaluator checks xulstore.json for folderTree mode containing 'favorite', same pattern as original task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads xulstore.json from the Thunderbird profile, which is where Thunderbird persists UI state including folder pane view mode.",
+        "Metric check_json correctly navigates the JSON key path ['chrome://messenger/content/messenger.xhtml', 'folderTree', 'mode'] to find the folder tree view mode setting.",
+        "Regex '\\bfavorite\\b' correctly matches the 'favorite' folder view mode value that Thunderbird stores when Favorite Folders view is selected.",
+        "Postconfig correctly closes Thunderbird before reading the file, ensuring xulstore.json is written to disk with the latest UI state.",
+        "Single-step instruction with complete verification coverage - the folder pane view mode is fully checked.",
+        "Parameter flow is correct: get_vm_file returns a file path string, check_json receives it as the result parameter, and the rules dict is passed directly as the second parameter."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

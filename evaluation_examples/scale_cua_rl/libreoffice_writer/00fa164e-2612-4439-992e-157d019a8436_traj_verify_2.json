@@ -1,0 +1,127 @@
+{
+  "id": "00fa164e-2612-4439-992e-157d019a8436",
+  "new_id": "00fa164e-2612-4439-992e-157d019a8436_traj_verify_2",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Insert a table with GPT-4's name, 'os' score, and 'chrome' score from \"~/Documents/awesome-desktop/expe-results.xlsx\" into the \"Main Results\" section of the report.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/awesome-desktop/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Documents/awesome-desktop/awe_desk_env.docx",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/00fa164e-2612-4439-992e-157d019a8436/awe_desk_env.docx"
+          },
+          {
+            "path": "/home/user/Documents/awesome-desktop/expe-results.xlsx",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/00fa164e-2612-4439-992e-157d019a8436/results.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Documents/awesome-desktop/awe_desk_env.docx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "awe_desk_env.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "check_docx_gpt4_specific_scores__9467a3bac5aae80d6f5894cff6144c37",
+    "result": {
+      "type": "docx_table_text__9467a3bac5aae80d6f5894cff6144c37",
+      "path": "/home/user/Documents/awesome-desktop/awe_desk_env.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "model_name": "Gpt-4",
+        "os_score": "0.3333",
+        "chrome_score": "0.3636"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_00fa164e-2612-4439-992e-157d019a8436_sid_1488430",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent scrolled through Writer doc, opened Calc, navigated to expe-results.xlsx, selected GPT-4 row, switched to Writer at 'Main Results' section, inserted a partial table with only 7 of 12 columns and no headers.",
+    "capability_extraction": "Can open files cross-app (Writer/Calc), read xlsx data, navigate Writer document sections, insert tables into specific sections",
+    "failure_analysis": "Table was incomplete - only first 7 columns pasted (model through gimp), missing chrome/thunderbird/vscode/multi/avg columns and header row.",
+    "task_rationale": "Asks for 3 specific values (name + 2 scores) instead of full row. Model showed it can insert partial data; this tests targeted extraction of specific columns by name.",
+    "explanation": "Task requires a table with GPT-4's name, os score, and chrome score. Getter reads docx tables. Metric gives partial credit: 0.34 for name, 0.33 for os score (~0.3333), 0.33 for chrome score (~0.3636).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_00fa164e-2612-4439-992e-157d019a8436_sid_1488430_traj_verify_2/getters/docx_table.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_00fa164e-2612-4439-992e-157d019a8436_sid_1488430_traj_verify_2/metrics/docx_table.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 12,
+    "scoring_breakdown": {
+      "model_name": "0.34 - Table contains 'Gpt-4'",
+      "os_score": "0.33 - Table contains os score ~0.3333",
+      "chrome_score": "0.33 - Table contains chrome score ~0.3636"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly extracts all table data from the docx file using python-docx, returning cell text for each row of each table.",
+        "Metric correctly handles expected parameter for type='rule' — directly accesses expected.get('model_name'), expected.get('os_score'), etc.",
+        "Partial credit scoring (0.34 name + 0.33 os + 0.33 chrome) is reasonable for a 3-component verification.",
+        "Postconfig correctly saves the file (Ctrl+S) before getter reads it, ensuring fresh state.",
+        "Minor issue: Metric does not verify that name and scores are co-located in the same table or row. 'Gpt-4' could appear in one table and scores in another, yielding a false positive.",
+        "Minor issue: Instruction requires the table be in the 'Main Results' section, but getter reads ALL tables from the entire document with no section filtering. If the document already contains tables with similar data, this could give false positives.",
+        "The specificity of the expected values (0.3333, 0.3636, 'Gpt-4') makes accidental false positives unlikely in practice, mitigating the above issues."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying that the model name and scores appear in the same table (or same row) to ensure they represent a coherent inserted table rather than scattered matches.",
+        "Consider checking that the table appears after a 'Main Results' heading in the document to verify correct section placement."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

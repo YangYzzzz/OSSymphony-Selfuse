@@ -1,0 +1,117 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_68",
+  "snapshot": "chrome",
+  "instruction": "Browse Batman action figures for kids and sort by highest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Batman",
+          "Action Figures",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price High-Low"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Batman": "Batman",
+        "batman": "Batman",
+        "Action": "Action Figures",
+        "Kids": "Kids",
+        "S=5": "Price High-Low"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "batman": true,
+          "action figures": true,
+          "kids": true,
+          "price high-low": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires browsing Batman action figures in Kids category and sorting by price high-low (S=5). Same 3-step navigation complexity as original. Uses existing evaluator components without custom code.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three task requirements: Batman category, Action Figures for Kids, and Price High-Low sorting",
+        "Uses multi-pronged verification approach with both HTML content extraction (breadcrumbs, sort selector) and URL parameter checking",
+        "Getter logic (get_active_tab_html_parse) can extract HTML elements by class names and parse URL parameters appropriately",
+        "Metric logic (check_direct_json_object) correctly compares extracted values against expected values",
+        "Website-specific brittleness: relies on kohls.com-specific class names (pmpSearch_breadcrumb, sbSelector) which may change",
+        "URL parameter mapping (S=5 → Price High-Low) is hardcoded and website-specific, reducing robustness",
+        "No postconfig to refresh page state, but this is acceptable as failure to extract would correctly indicate incomplete task"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding fallback verification methods if class names change (e.g., checking multiple possible selectors)",
+        "Add more flexible URL parameter detection instead of hardcoding S=5",
+        "Consider adding postconfig to reopen the page or refresh state to ensure verification reliability",
+        "Document the website-specific dependencies so maintainers know which parts may break if website changes"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

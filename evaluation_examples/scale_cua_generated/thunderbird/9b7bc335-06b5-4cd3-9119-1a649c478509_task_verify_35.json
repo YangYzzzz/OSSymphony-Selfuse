@@ -1,0 +1,114 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_35",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to automatically delete any incoming emails with 'Outlook' in the subject from the anonym-x2024@outlook.com account locally.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Delete",
+            "condition": [
+              "AND (subject,contains,Outlook)",
+              "AND (from,contains,anonym-x2024@outlook.com)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a message filter to delete all emails with 'Outlook' in the subject from anonym-x2024@outlook.com account. The evaluator checks the msgFilterRules.dat file for a filter with enabled='yes', action='Delete', and conditions checking both subject contains 'Outlook' and from contains 'anonym-x2024@outlook.com'. Uses existing check_thunderbird_filter metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks all requirements: enabled status, Delete action, subject condition, and from condition",
+        "Expected rules properly specify both conditions as a list: ['AND (subject,contains,Outlook)', 'AND (from,contains,anonym-x2024@outlook.com)']",
+        "Metric function check_thunderbird_filter correctly parses msgFilterRules.dat and matches against expected conditions",
+        "Postconfig appropriately closes Message Filters window to ensure filter rules are saved before verification",
+        "Minor type warning (str vs Union) is not a semantic issue - get_vm_file returns str when multi=False (default)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "9b7bc335-06b5-4cd3-9119-1a649c478509_aug_15_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

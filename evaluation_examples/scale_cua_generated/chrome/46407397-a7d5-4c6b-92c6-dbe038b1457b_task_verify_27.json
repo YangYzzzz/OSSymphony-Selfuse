@@ -1,0 +1,150 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_27",
+  "snapshot": "chrome",
+  "instruction": "Find the email named 'Lecture Document' in the Thunderbird Notes folder, extract all charts and images from its Word attachment, convert them to PNGs, and upload them to the 'figures' Google Drive folder with numbered filenames (1.png, 2.png, etc.).",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_filenames_match__71c23132811d122bc61dca33636b8f81",
+    "result": {
+      "type": "gdrive_filenames__71c23132811d122bc61dca33636b8f81",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "figures"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "filenames": [
+          "1.png",
+          "2.png",
+          "3.png"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting images from docx file and uploading with specific naming pattern (1.png, 2.png, 3.png). Evaluator verifies that the files in the figures/ folder have exactly these names. Based on original task which had 3 images.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_1/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_1/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 8,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary score: 1.0 if files are named exactly 1.png, 2.png, 3.png, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts file names from Google Drive 'figures' folder using appropriate API queries",
+        "Metric correctly compares actual vs expected filenames using exact match (sorted comparison)",
+        "Expected values ['1.png', '2.png', '3.png'] semantically match instruction requirement for sequential numeric PNG names",
+        "Complete coverage: evaluator verifies the task outcome (correct files in correct location with correct names)",
+        "Data flow is correct: getter returns List[str] of filenames, metric receives rules dict and accesses 'filenames' key correctly",
+        "Edge cases handled: empty folder, missing folder, extra/missing files all result in appropriate 0.0 score",
+        "No UI dependency or state timing issues - Google Drive state is accessible via API after task completion",
+        "Binary scoring (1.0 or 0.0) matches the metadata scoring_breakdown and task requirement"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

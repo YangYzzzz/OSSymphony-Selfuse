@@ -1,0 +1,95 @@
+{
+  "id": "5ea617a3-0e86-4ba6-aab2-dac9aa2e8d57",
+  "new_id": "task_verify_13",
+  "snapshot": "os",
+  "instruction": "I accidentally deleted a party night poster from my Desktop and moved it to Trash. Please recover it from the Trash and rename it to 'recovered_poster.webp' on the Desktop.",
+  "source": "https://help.ubuntu.com/lts/ubuntu-help/files-recover.html.en",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/5ea617a3-0e86-4ba6-aab2-dac9aa2e8d57/poster_party_night.webp",
+            "path": "/home/user/Desktop/poster_party_night.webp"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "sha256sum /home/user/Desktop/poster_party_night.webp > /tmp/original_poster_hash.txt",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "gio trash /home/user/Desktop/poster_party_night.webp",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_file_recovery__5ea617a3",
+    "result": {
+      "type": "file_recovery_state__5ea617a3",
+      "target_path": "/home/user/Desktop/recovered_poster.webp",
+      "original_name": "poster_party_night.webp"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_file_size": 1000
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires recovering the deleted poster file from Trash and renaming it to 'recovered_poster.webp'. The evaluator uses custom functions to comprehensively verify: (1) the file exists at the target path with correct name, (2) the file has reasonable size (not empty/corrupted), (3) the file is no longer in Trash, and (4) CRITICAL - the recovered file's SHA256 hash matches the original file's hash (stored during setup), ensuring it's the SAME file and not a different file created/downloaded to pass the checks.",
+    "new_functions_paths": [
+      "tmp_funcs/5ea617a3-0e86-4ba6-aab2-dac9aa2e8d57_task_verify_0/getters/get_file_recovery_state__5ea617a3.py",
+      "tmp_funcs/5ea617a3-0e86-4ba6-aab2-dac9aa2e8d57_task_verify_0/metrics/check_file_recovery__5ea617a3.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: All instruction requirements are verified - file exists at correct path with correct name, file is no longer in Trash, and critically, the file is verified to be the SAME file as the original.",
+        "Excellent hash verification: SHA256 hash comparison between recovered file and original file (stored during setup) successfully prevents false positives where an agent could create a new file instead of recovering the original.",
+        "Correct data flow: Setup stores original hash in /tmp/original_poster_hash.txt -> Getter computes recovered file hash and reads original hash -> Metric performs strict comparison. This flow correctly verifies file identity.",
+        "Proper edge case handling: Returns 0.0 if hashes are missing (cannot verify identity) or don't match (wrong file). Handles file reading errors gracefully.",
+        "Correct metric parameter handling: Metric directly accesses expected_state.get('min_file_size') which correctly handles the rules dictionary returned by get_rule() when expected.type='rule'.",
+        "Robust Trash verification: Checks that original filename is no longer in Trash, which correctly verifies the file was removed from Trash (whether recovered or permanently deleted, combined with other checks proves recovery)."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fixes_applied": {
+        "timestamp": "2025-12-21",
+        "description": "Added SHA256 hash verification to prevent false positives. The fix includes: (1) Added config step to compute and store original file hash before moving to Trash, (2) Updated getter to compute hash of recovered file and read stored original hash, (3) Updated metric to verify hashes match, ensuring the recovered file is the SAME file as the original."
+      }
+    }
+  }
+}

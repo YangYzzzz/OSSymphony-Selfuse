@@ -1,0 +1,169 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_52",
+  "snapshot": "chrome",
+  "instruction": "From Thunderbird, export the emails in the Bills folder as .eml files and store them in my Google Drive 'emails' folder, naming each file after its subject.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_eml_files__74b11cf6",
+    "result": {
+      "type": "googledrive_file",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "path_list": [
+        [
+          "emails",
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789].eml"
+        ],
+        [
+          "emails",
+          "Your receipt from X (formerly Twitter) #0123-4567.eml"
+        ]
+      ],
+      "dest": [
+        "pred1.eml",
+        "pred2.eml"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "file_count": 2,
+        "check_headers": [
+          "X-Mozilla-Status:",
+          "From:",
+          "Subject:"
+        ],
+        "expected_subjects": [
+          "Amazon Web Services Invoice Available [Account: 0123456789ab] [Invoice ID: 0123456789]",
+          "Your receipt from X (formerly Twitter) #0123-4567"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting Bills folder emails to Google Drive with filenames matching their subjects. Evaluator checks that 2 .eml files exist, contain Thunderbird-specific headers (X-Mozilla-Status) along with standard email headers, have filenames that match their Subject headers, and the expected email subjects are present.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_6/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_gdrive_eml_files__74b11cf6 first parameter type (List) may not match getter get_googledrive_file return type (Any)"
+        }
+      ],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "VERIFIED: The metric function correctly handles the expected parameter by directly accessing expected_state.get('file_count', 0) and expected_state.get('check_headers', []) at lines 107-109 in googledrive.py:85-187.",
+        "VERIFIED: Filename-to-subject verification IS implemented. Lines 152-172 extract the subject from each .eml file using extract_subject_from_eml(), normalize it using normalize_filename(), and verify the actual filename matches the expected filename derived from the subject. This directly validates the instruction requirement 'naming each file after its subject'.",
+        "VERIFIED: Header check correctly validates Thunderbird export format by checking for 'X-Mozilla-Status:' (Thunderbird-specific), 'From:', and 'Subject:' headers (lines 144-147).",
+        "VERIFIED: File count validation ensures exactly 2 emails are exported (lines 119-121).",
+        "VERIFIED: Expected subjects are specified in rules and validated against actual email subjects (lines 175-184).",
+        "Minor limitation: Cannot verify source folder was 'Bills' folder in Thunderbird (no standard .eml metadata for folder origin), but this is a practical limitation of the .eml format rather than evaluator design flaw.",
+        "Minor limitation: Getter uses hardcoded path_list with specific filenames, making it less flexible if filenames change, but this is acceptable since the metric validates the filename-to-subject mapping at runtime."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Consider adding a dynamic file listing approach in the getter to find all .eml files in the 'emails' folder rather than hardcoding specific paths, improving flexibility.",
+        "Optional enhancement: Add logging in the metric to show which subject was extracted and how it was normalized, aiding debugging if filename normalization differs from expected."
+      ]
+    }
+  }
+}

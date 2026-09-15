@@ -258,7 +258,8 @@ def run_env_tasks(task_queue, run_args: argparse.Namespace, shared_scores: list)
                 logger.error("Exception in %s %s/%s: %s", current_process().name, domain, example_id, exc)
                 logger.error(traceback.format_exc())
                 try:
-                    env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
+                    # env.controller.end_recording(os.path.join(example_result_dir, "recording.mp4"))
+                    pass
                 except Exception:
                     pass
                 with open(os.path.join(example_result_dir, "traj.jsonl"), "a", encoding="utf-8") as file_obj:

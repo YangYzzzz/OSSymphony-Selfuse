@@ -1,0 +1,91 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_64",
+  "snapshot": "thunderbird",
+  "instruction": "Enable automatic BCC on all outgoing messages for the email account \"anonym-x2024@outlook.com\".",
+  "source": "https://support.mozilla.org/en-US/kb/automatically-send-bcc-copy",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_bcc__497f2c49",
+    "result": {
+      "type": "thunderbird_prefs__497f2c49",
+      "profile_path": "/home/user/.thunderbird/t5q2a5hp.default-release"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "do_bcc": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling automatic BCC on all outgoing messages. The evaluator checks the mail.identity.id1.doBcc preference in prefs.js. Verified by examining the original prefs.js where mail.identity.id1.doBcc is currently set to false.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397_aug_8_task_verify_4/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397_aug_8_task_verify_4/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly implements dynamic identity lookup: The getter searches for the identity ID by finding which identity has useremail='anonym-x2024@outlook.com' (lines 39-49), not hardcoded to id1. This correctly handles multiple accounts.",
+        "Metric parameter handling is correct: Metric correctly accesses expected.get('do_bcc') since the framework's get_rule() returns config['rules'] directly when expected.type='rule'.",
+        "Account-specific verification works: The getter extracts identity_id, do_bcc, and bcc_list for the specific email account, and the metric validates that the correct identity was found before checking the setting.",
+        "Minor semantic consideration: The instruction says 'automatic BCC on all outgoing messages' which typically requires both doBcc=true AND a BCC address configured in doBccList. The metric extracts bcc_list but doesn't strictly enforce it (lines 43-50 show lenient logic). However, the core instruction 'Enable automatic BCC' can be interpreted as just enabling the setting (doBcc=true), with the BCC address configuration being a separate step. The current implementation is reasonable for this interpretation."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: If strict verification is desired, uncomment line 50 in the metric to enforce that bcc_list is not empty when doBcc is enabled. This would ensure a BCC address is actually configured, not just the boolean flag.",
+        "Optional enhancement: Add a config parameter to control whether bcc_list verification is strict or lenient, allowing flexibility based on task requirements."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_bcc__497f2c49 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

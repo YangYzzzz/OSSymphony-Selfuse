@@ -1,0 +1,116 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_40",
+  "snapshot": "chrome",
+  "instruction": "Find the country name listed in cell E6 of the spreadsheet and use Chrome to search for it online.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "open",
+        "parameters": {
+          "path": "/home/user/cell_search.xls"
+        }
+      }
+    ],
+    "func": "is_expected_search_query__e154bb96",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "xls_path": "/home/user/cell_search.xls",
+      "xls_sheet": 0,
+      "xls_cell": "E6"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "cell_value": "United States",
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=united[+%20]states(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires reading cell E6 from the spreadsheet (Country: 'United States') and searching for it in Chrome. Verified by reading the Excel file: Row 6, Column E contains 'United States'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f8cfa149-d1c1-4215-8dac-4a0932bad3c2_aug_11_task_verify_1/metrics/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f8cfa149-d1c1-4215-8dac-4a0932bad3c2_aug_11_task_verify_1/getters/general.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f8cfa149-d1c1-4215-8dac-4a0932bad3c2_aug_11_task_verify_1/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator correctly checks BOTH instruction requirements - (1) cell E6 contains 'United States' and (2) Chrome active tab URL matches Google search pattern for 'united states'",
+        "Correct metric logic: The metric function 'is_expected_search_query__e154bb96' (chrome.py:62-96) requires both cell_score==1.0 AND url_score==1.0 to pass (chrome.py:91), ensuring both steps of the instruction are verified",
+        "Proper state extraction: Combined getter 'get_combined_cell_and_url_state' (general.py:64-98) correctly extracts both required states - XLS cell value via get_xls_cell_value and Chrome URL via get_active_url_from_accessTree",
+        "Correct parameter handling for type='rule': Metric correctly accesses rules['expect'] directly (chrome.py:50, 84) without the common error pattern of trying expected.get('rules') or expected.get('type')",
+        "Semantically correct expected values: Cell value 'United States' matches metadata explanation (metadata.explanation confirms cell E6 contains 'United States'), and regex pattern correctly matches Google search URLs with query parameter 'united states' (allows both '+' and '%20' as space encoding)",
+        "No state timing issues: Uses 'get_active_url_from_accessTree' which reads URL from accessibility tree without reloading the page, avoiding state disruption. Postconfig reopens XLS file ensuring accessibility",
+        "Cell parsing logic correct: get_xls_cell_value (general.py:26-37) correctly parses 'E6' to column index 4 (E is 5th letter, 0-indexed = 4), row index 5 (row 6 in 1-indexed, 0-indexed = 5)",
+        "Data flow correctness: Getter extracts {'cell_value': str, 'active_url': str} -> Metric receives combined_state and rules -> Extracts cell_value and active_url -> Compares both against expected values -> Returns 1.0 only if both match"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

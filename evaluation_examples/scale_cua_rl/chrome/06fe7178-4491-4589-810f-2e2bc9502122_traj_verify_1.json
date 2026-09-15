@@ -1,0 +1,82 @@
+{
+  "id": "06fe7178-4491-4589-810f-2e2bc9502122",
+  "new_id": "06fe7178-4491-4589-810f-2e2bc9502122_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Open Chrome's settings page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.google.com"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "chrome://settings.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_06fe7178-4491-4589-810f-2e2bc9502122_sid_1488130",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to restore the last closed tab (TripAdvisor) using Ctrl+Shift+T. The tab visually appeared restored (3 tabs visible in screenshot), but the evaluator scored 0, likely due to URL mismatch at evaluation time.",
+    "capability_extraction": "Can use keyboard shortcuts (Ctrl+Shift+T), understand Chrome tab concepts, interact with browser tabs",
+    "failure_analysis": "Model correctly identified the action (Ctrl+Shift+T) and the tab appeared restored visually, but is_expected_tabs evaluator returned 0, possibly due to URL redirect or timing issue between tab restoration and evaluation.",
+    "task_rationale": "Simplified to navigating to Chrome's internal settings page, which tests the model's ability to use Chrome's internal URLs or menu navigation.",
+    "explanation": "Task requires opening Chrome's settings page. Evaluator checks if the active tab URL matches chrome://settings pattern using is_expected_url_pattern_match. [Fixed: added goto_prefix='' to prevent https:// being prepended to chrome:// URLs; removed irrelevant travel site config steps]",
+    "fix_history": [
+      "Fix 1: Added 'goto_prefix': '' to active_url_from_accessTree result config to prevent default 'https://' prefix from corrupting chrome:// internal URLs",
+      "Fix 2: Removed irrelevant chrome_open_tabs (travel sites) and chrome_close_tabs (TripAdvisor) config steps that were leftover from the original task"
+    ],
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'get_active_url_from_accessTree' correctly configured with 'goto_prefix': '' to avoid prepending 'https://' to chrome:// internal URLs. The getter will return the raw address bar text 'chrome://settings' as-is.",
+        "Metric 'is_expected_url_pattern_match' correctly receives rules dict with 'expected': ['chrome://settings.*'] via get_rule, and uses re.search to match the URL pattern against the getter result. The regex 'chrome://settings.*' will correctly match 'chrome://settings' or any subpath.",
+        "The instruction has a single requirement (open Chrome settings page) and the evaluator fully covers it by checking the active tab URL matches the chrome://settings pattern.",
+        "Config setup appropriately launches Chrome with remote debugging and opens a starting page (google.com), providing a valid initial state for the task."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

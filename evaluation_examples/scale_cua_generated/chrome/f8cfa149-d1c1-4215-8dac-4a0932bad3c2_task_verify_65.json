@@ -1,0 +1,104 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_65",
+  "snapshot": "chrome",
+  "instruction": "Open the spreadsheet, retrieve the last name from cell C2, and conduct a Google search for that name.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query__df8126bf",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=abril(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires reading cell C2 from the spreadsheet (Last Name: 'Abril') and searching for it in Chrome. Verified by reading the Excel file: Row 2, Column C contains 'Abril'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/f8cfa149-d1c1-4215-8dac-4a0932bad3c2_aug_11_task_verify_7/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the final outcome - Google search for 'Abril' from cell C2",
+        "Getter (active_tab_info) can successfully extract active Chrome tab URL through accessibility tree",
+        "Metric uses appropriate case-insensitive regex pattern matching for Google search URL with query parameter 'q=abril'",
+        "Expected value 'Abril' is semantically correct - metadata confirms cell C2 contains 'Abril' in the spreadsheet",
+        "Pattern handles various URL formats robustly (http/https, www/non-www, various query parameter orders)",
+        "Minor limitation: Does not directly verify intermediate steps (opening spreadsheet, reading cell C2), only verifies final search outcome - this is acceptable for outcome-based verification in GUI automation",
+        "Data flow is correct: active tab URL -> regex pattern match -> verify search query matches expected cell value"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to ensure Chrome is the active window before evaluation, though the accessibility tree getter should handle this",
+        "The evaluator assumes the agent performed the task correctly by reading the cell - it cannot detect if the agent hardcoded 'abril' without reading the spreadsheet. This is an inherent limitation of outcome-based testing and is acceptable."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

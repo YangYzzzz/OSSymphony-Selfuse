@@ -1,0 +1,112 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_46",
+  "snapshot": "chrome",
+  "instruction": "Find LEGO toys suitable for kids and sort the results from highest to lowest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "LEGO",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price High-Low"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "LEGO": "LEGO",
+        "lego": "LEGO",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=5": "Price High-Low"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "lego": true,
+          "toys": true,
+          "kids": true,
+          "price high-low": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for LEGO toys on Kohls.com, filtering for kids category, and sorting by price from high to low. Evaluator verifies breadcrumbs contain 'LEGO', 'Toys', 'Kids' and sort selector shows 'Price High-Low' (S=5 in URL). Uses existing Chrome evaluator framework.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: LEGO filtering, kids category, toys category, and price sorting (highest to lowest)",
+        "Getter uses active_tab_html_parse with category='class&url' to extract breadcrumbs from HTML class 'pmpSearch_breadcrumb' and sort selector from 'sbSelector' class, which are Kohls.com-specific",
+        "URL parameter checking (S=5 for Price High-Low) provides redundant verification for price sorting, improving robustness",
+        "Case-insensitive matching in getter code handles variations in text case (e.g., 'LEGO' vs 'lego')",
+        "The 'is_other_exist' check ensures no unexpected filters are applied, providing strict verification",
+        "Metric check_direct_json_object correctly compares boolean flags for each requirement",
+        "Minor concern: Evaluator relies on specific Kohls.com HTML class names (pmpSearch_breadcrumb, sbSelector) which may change if site structure updates, but this is acceptable for site-specific tasks",
+        "The evaluator combines both DOM element checking (breadcrumbs, selectors) and URL parameter checking, providing multiple verification paths"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a fallback mechanism if the specific CSS class names change on Kohls.com (though this is acceptable as-is for the current implementation)",
+        "The evaluator could benefit from explicit documentation that it's designed specifically for Kohls.com's HTML structure"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217",
+  "new_id": "task_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the drug interactions checker on Drugs.com.",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://drugs.com"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.drugs.com/drug_interactions.html"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires navigating from the drugs.com homepage to the drug interactions checker page. Uses existing is_expected_active_tab metric to verify the active URL matches the expected interactions page. This is a simple navigation task similar in complexity to the original natural products database navigation.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "The drug interactions checker is a standard feature on drugs.com. Task requires agent to find and navigate to this tool from the homepage.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_active_url_from_accessTree can extract the active tab URL from the accessibility tree",
+        "Metric logic is correct: is_expected_active_tab properly compares the actual URL against the expected URL using compare_urls",
+        "Complete coverage: The evaluator checks the exact requirement - whether the user navigated to the drug interactions checker page",
+        "Data flow is correct: Getter extracts URL string -> Metric compares with expected URL",
+        "Expected value is semantically correct: https://www.drugs.com/drug_interactions.html is the actual URL for the drug interactions checker",
+        "Metric handles both string URLs and dict format (with 'url' field) correctly"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor consideration: The goto_prefix 'https://www.' could potentially cause URL duplication if the accessibility tree already includes 'www.' in the address bar text. However, this is likely handled correctly by the compare_urls function during URL normalization."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

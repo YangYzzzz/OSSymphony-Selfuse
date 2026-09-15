@@ -1,0 +1,105 @@
+{
+  "id": "bedcedc4-4d72-425e-ad62-21960b11fe0d",
+  "new_id": "task_verify_56",
+  "snapshot": "os",
+  "instruction": "Please enable automatic screen brightness and set it to on in the power settings.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "gsettings",
+          "set",
+          "org.gnome.settings-daemon.plugins.power",
+          "ambient-enabled",
+          "false"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import subprocess; subprocess.run(['gnome-control-center', 'power'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "gsettings",
+        "get",
+        "org.gnome.settings-daemon.plugins.power",
+        "ambient-enabled"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling automatic brightness (ambient-enabled) from false to true. Verified that gsettings outputs format 'true\\n' for boolean true values. Added postconfig to reopen Settings UI for robustness, though gsettings command-based verification works independently of UI state.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: vm_command_line executes 'gsettings get org.gnome.settings-daemon.plugins.power ambient-enabled' which directly reads the system setting for automatic brightness",
+        "Metric logic is correct: exact_match function properly handles type='rule' expected parameter by accessing 'rules[\"expected\"]' directly (not rules.get('rules', {})), which is the correct pattern per framework design",
+        "Expected value is semantically correct: 'true\\n' matches the exact gsettings output format for boolean true values (verified in metadata.explanation)",
+        "Complete coverage: instruction has single requirement (enable automatic brightness) which is fully verified by checking ambient-enabled setting",
+        "Data flow is correct: gsettings command output → vm_command_line getter returns string → exact_match compares string to expected 'true\\n'",
+        "No state timing issues: gsettings reads system configuration directly and doesn't require UI dialogs or windows to be open",
+        "Postconfig appropriateness: reopens power settings UI (gnome-control-center power) as good practice, though not strictly required for gsettings-based verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": "Added postconfig to reopen Settings UI (gnome-control-center power) to address heuristic warning about UI-dependent tasks. While the gsettings-based verification doesn't strictly require the UI to be open, this makes the task more robust and follows best practices for settings-related tasks."
+    }
+  }
+}

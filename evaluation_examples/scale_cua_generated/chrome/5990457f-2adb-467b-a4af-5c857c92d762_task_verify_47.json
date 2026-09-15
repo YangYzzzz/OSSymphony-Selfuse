@@ -1,0 +1,130 @@
+{
+  "id": "5990457f-2adb-467b-a4af-5c857c92d762",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "In the researchers.xlsx file on the Desktop, sort all researchers by their h-index in descending order (highest to lowest).",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/5990457f-2adb-467b-a4af-5c857c92d762/researchers.xlsx",
+            "path": "/home/user/Desktop/researchers.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Desktop"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "researchers.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sorted__fa4c111e",
+    "result": {
+      "type": "xlsx_column_values__fa4c111e",
+      "path": "/home/user/Desktop/researchers.xlsx",
+      "sheet": 0,
+      "column": "C",
+      "start_row": 2,
+      "end_row": 5
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "order": "desc",
+        "expected_values": [
+          183,
+          160,
+          145,
+          87
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires sorting researchers by h-index descending. Verified with Python: sorted order should be [183, 160, 145, 87] corresponding to Geoffrey Hinton, Christopher D Manning, Andrew Ng, Ilya Sutskever. Evaluator checks column C (h-index) is in descending order.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5990457f-2adb-467b-a4af-5c857c92d762_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5990457f-2adb-467b-a4af-5c857c92d762_task_verify_3/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "CRITICAL - Incomplete row coverage: Getter only reads rows 2-5 (4 rows) but metadata indicates there are 28 total researchers in the dataset",
+        "Instruction requires sorting 'all researchers' but evaluator only verifies 4 out of 28 rows",
+        "Verification is semantically inadequate: A user could manually reorder just the first 4 rows without actually sorting the entire dataset, and the evaluator would pass",
+        "Expected values [183, 160, 145, 87] are semantically correct for those 4 rows, but this doesn't verify the complete task requirement",
+        "Postconfig correctly saves the file before verification",
+        "Getter logic is correct for extracting column values, but the row range is insufficient",
+        "Metric logic correctly checks descending order and exact value match, but operates on incomplete data"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update getter config to read all researcher rows (rows 2-29 if there are 28 researchers plus 1 header row)",
+        "Update expected values to include all 28 h-index values in descending sorted order",
+        "Alternatively, if checking all rows is impractical, at minimum verify first, last, and several middle rows to ensure global sort correctness",
+        "Consider adding a check for total row count to ensure no data was lost during sorting"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

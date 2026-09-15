@@ -1,0 +1,125 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_42",
+  "snapshot": "thunderbird",
+  "instruction": "Replace the account \"anonym-x2024@outlook.com\" with a new account \"newuser2024@gmail.com\".",
+  "source": "https://www.wikihow.com/Remove-an-Email-Account-from-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "user": "newuser2024@gmail.com"
+          }
+        ],
+        "unexpect": [
+          {
+            "user": "anonym-x2024@outlook.com"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires removing one account and adding a different account. Evaluator uses existing check_csv metric to verify the new account exists and the old account has been removed. No custom functions needed - reuses existing check_csv from general.py.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies BOTH requirements: new account exists (expect) and old account removed (unexpect)",
+        "Complete coverage of instruction - checks account replacement comprehensively",
+        "Correct parameter handling for type='rule': metric receives rules dict directly, not nested structure",
+        "Appropriate postconfig: firefox_decrypt.py extracts Thunderbird account credentials to CSV format for verification",
+        "Correct data flow: postconfig extracts state → get_cache_file retrieves CSV → check_csv verifies expect/unexpect rules",
+        "check_csv logic is sound: iterates through CSV records, matches expect rules (all must match) and unexpect rules (none should match)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor concern: Assumes firefox_decrypt.py outputs CSV with 'user' column header. If the tool uses different column names (e.g., 'username', 'email', 'account'), verification will fail. Consider verifying the actual CSV output format from firefox_decrypt.py or adding documentation about the expected CSV schema.",
+        "Consider adding error handling documentation for cases where firefox_decrypt.py might fail in non-interactive mode (-n flag) or if the Thunderbird profile is locked/corrupted"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

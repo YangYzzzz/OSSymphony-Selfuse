@@ -1,0 +1,110 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Add the illustrated-transformer page to the bookmarks bar for quick access later.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Paraphrase of original task - save the active page (illustrated-transformer) to bookmarks bar. Uses the existing is_expected_bookmarks metric. Same as original task with different wording.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "The instruction clearly specifies 'illustrated-transformer page' which unambiguously identifies the target page to bookmark",
+        "The getter function get_bookmarks correctly retrieves Chrome bookmark data from the Bookmarks file (chrome.py:465-491)",
+        "The metric function is_expected_bookmarks correctly verifies bookmark_bar_websites_urls by checking if expected URLs are a subset of actual bookmarks (chrome.py:185-198, line 198)",
+        "The evaluator expects exactly the right URL: 'https://jalammar.github.io/illustrated-transformer/' which matches the instruction requirement",
+        "The postconfig correctly restarts Chrome (pkill + relaunch + sleep 3s) ensuring bookmarks are persisted to disk and can be read from the Bookmarks file",
+        "Complete coverage: instruction requires bookmarking the illustrated-transformer page, and the evaluator verifies this exact URL is in bookmark_bar",
+        "Logic flow is correct: postconfig ensures state persistence → getter reads bookmarks file → metric checks URL subset → returns 1.0 if URL present, 0.0 otherwise"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

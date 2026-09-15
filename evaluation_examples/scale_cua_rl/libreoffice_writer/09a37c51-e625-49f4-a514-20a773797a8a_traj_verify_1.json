@@ -1,0 +1,87 @@
+{
+  "id": "09a37c51-e625-49f4-a514-20a773797a8a",
+  "new_id": "09a37c51-e625-49f4-a514-20a773797a8a_traj_verify_1",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Open the picture on the Desktop in GIMP and flip it horizontally. Export the flipped image as 'pic.jpg' on the Desktop.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/09a37c51-e625-49f4-a514-20a773797a8a/requirement.docx",
+            "path": "/home/user/Desktop/requirment.docx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/09a37c51-e625-49f4-a514-20a773797a8a/ChMkKV8wsR6IBfEtABYfc0Tgu9cAAA1lQHO_78AFh-L733.jpg",
+            "path": "/home/user/Desktop/ChMkKV8wsR6IBfEtABYfc0Tgu9cAAA1lQHO_78AFh-L733.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/requirment.docx"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_horizontal_flip__30cadb0ec7eca28df693cf924ab88301",
+    "result": {
+      "type": "image_flip_data__30cadb0ec7eca28df693cf924ab88301",
+      "result_path": "/home/user/Desktop/pic.jpg",
+      "original_path": "/home/user/Desktop/ChMkKV8wsR6IBfEtABYfc0Tgu9cAAA1lQHO_78AFh-L733.jpg"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "ssim_threshold": 0.9
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_09a37c51-e625-49f4-a514-20a773797a8a_sid_1488428",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent read the requirement docx, launched GIMP, opened the image, and attempted to remove the background using Select by Color tool. Spent 50 turns clicking various areas but failed to properly isolate the background from the foreground. Never saved the result.",
+    "capability_extraction": "Can read documents in LibreOffice Writer, launch GIMP from Activities, open images in GIMP via File > Open, use selection tools, navigate GIMP menus and tool options",
+    "failure_analysis": "Model could not properly isolate the background using Select by Color. Over-selected areas including the person. Never completed the task or exported the result. The background removal task was too complex for the model's current GIMP skills.",
+    "task_rationale": "Simplified to a horizontal flip operation. Model demonstrated ability to open images in GIMP and navigate menus. Image > Transform > Flip Horizontally is a single menu click within its capability.",
+    "explanation": "Task requires opening the image in GIMP and flipping horizontally. Custom getter fetches both pic.jpg and the original from VM, flips the original horizontally, and computes SSIM. Custom metric checks if SSIM >= 0.90 threshold. [Fixed: replaced vm_file expected with rule type, created custom getter/metric with proper hash suffixes]",
+    "new_functions_paths": [
+      "tmp_funcs/task_multi_apps_09a37c51-e625-49f4-a514-20a773797a8a_sid_1488428_traj_verify_1/getters/image.py",
+      "tmp_funcs/task_multi_apps_09a37c51-e625-49f4-a514-20a773797a8a_sid_1488428_traj_verify_1/metrics/image.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 7,
+    "variation_index": 1,
+    "scoring_breakdown": {
+      "mirror_check": "1.0 - Image is correctly flipped horizontally (SSIM >= 0.90 against flipped original)"
+    },
+    "fix_history": [
+      "Fix 1: Changed expected.type from 'vm_file' to 'rule' with rules wrapper containing ssim_threshold",
+      "Fix 2: Replaced undefined 'check_image_mirror' func with custom 'check_horizontal_flip__30cadb0ec7eca28df693cf924ab88301'",
+      "Fix 3: Replaced vm_file result.type with custom getter 'image_flip_data__30cadb0ec7eca28df693cf924ab88301' that fetches both images and computes SSIM",
+      "Fix 4: Created getter (getters/image.py) and metric (metrics/image.py) function files",
+      "Fix 5: Updated new_functions_paths to reference the new function files"
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly fetches both the result image (pic.jpg) and the original image from the VM, flips the original horizontally using PIL, and computes SSIM - this is the right approach to verify a horizontal flip",
+        "Metric correctly handles expected parameter for type='rule': accesses expected.get('ssim_threshold', 0.90) directly from the rules dict, which is correct per framework behavior",
+        "Coverage is complete: file existence is implicitly verified (getter returns error if pic.jpg doesn't exist), and flip correctness is verified via SSIM comparison against the flipped original",
+        "SSIM threshold of 0.90 is reasonable - accounts for JPEG compression artifacts while still requiring high similarity",
+        "Edge cases handled: getter checks for missing files, handles dimension mismatches via resize, and catches exceptions"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The getter performs computation (SSIM) which is atypical for a getter (usually getters just extract state). This works but is unconventional - could be split so metric does the computation instead."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

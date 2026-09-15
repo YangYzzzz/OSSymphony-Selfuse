@@ -1,0 +1,141 @@
+{
+  "id": "df67aebb-fb3a-44fd-b75b-51b6012df509",
+  "new_id": "task_verify_36",
+  "snapshot": "vscode",
+  "instruction": "From the papers listed in references.docx, retrieve their DBLP BibTeX entries (published versions preferred over arXiv) and save exactly 6 entries to 'references.bib', with entries separated by blank lines.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://dblp.org/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "touch",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/df67aebb-fb3a-44fd-b75b-51b6012df509/references.docx",
+            "path": "/home/user/Desktop/references.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/references.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_bib_entry_count__f937c6b8",
+    "result": {
+      "type": "bib_entry_count__f937c6b8",
+      "path": "/home/user/Desktop/references.bib"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 6
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Comprehensively verifies references.bib file: (1) exactly 6 BibTeX entries exist, (2) entries are separated by blank lines, (3) entries contain DBLP-specific fields (booktitle, publisher, doi, etc.), (4) entries prefer published versions (@inproceedings, @article) over arXiv sources (@misc), (5) BibTeX entries match papers from references.docx using fuzzy string matching on titles and authors with 0.7+ similarity threshold. Score is weighted: 25% entry count, 15% blank line separation, 15% DBLP indicators, 15% published preference, 30% source document matching (requires 50%+ papers matched with high similarity for meaningful credit).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_3_task_verify_0/getters/bib_file.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_3_task_verify_0/metrics/bib_file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "IMPROVEMENT: Now uses fuzzy string matching on titles/authors with 0.7+ threshold instead of keyword overlap - this is semantically correct",
+        "IMPROVEMENT: Weighted title (70%) + author (30%) similarity matching is appropriate for paper verification",
+        "IMPROVEMENT: Source match score now requires 50%+ for meaningful credit, much better than previous 10-30% threshold",
+        "CRITICAL FLAW: Match ratio calculation uses len(docx_papers) as denominator (line 344 in getter), but should consider expected_count instead",
+        "Logic error scenario: If references.docx has 10 papers but task requires only 6 entries, and agent correctly retrieves 6 matching papers, match_ratio = 6/10 = 0.6, resulting in reduced score despite perfect execution",
+        "The evaluator will only give full credit if references.docx contains exactly 6 papers; will penalize correct solutions when docx contains more papers than required",
+        "Paper extraction heuristics (lines 88-153 in getter) may be fragile with unconventional docx formatting, could fail to extract papers and cause false negatives",
+        "DBLP indicators check (line 307 in getter) only verifies ANY indicator appears ANYWHERE in file, not that all entries have DBLP characteristics",
+        "Expected parameter handling is CORRECT: uses expected.get('count') directly as required for type='rule'",
+        "Entry count verification works correctly (25% weight)",
+        "Blank line separation check works correctly (15% weight)",
+        "Published vs arXiv preference check works correctly (15% weight)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix match_ratio calculation in getter (line 344): Change from 'matched_paper_count / max(len(docx_papers), 1)' to 'matched_paper_count / expected_count' or 'matched_paper_count / min(len(docx_papers), expected_count)' to avoid penalizing correct solutions when docx contains more papers than required",
+        "Consider making paper extraction more robust: add multiple parsing strategies (bullet points, numbered lists, paragraph-based) with fallbacks",
+        "Strengthen DBLP indicators check: verify that majority of entries (e.g., 80%+) contain at least 2-3 DBLP-specific fields, not just checking if any field appears anywhere",
+        "Add metadata to track extraction success rate: log how many papers were successfully extracted from docx to help diagnose failures",
+        "Consider adding validation that matched_paper_count >= expected_count * 0.8 as a hard requirement for partial credit"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_bib_entry_count__f937c6b8 first parameter type (dict) may not match getter get_bib_entry_count__f937c6b8 return type (Dict)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_bib_entry_count__f937c6b8 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

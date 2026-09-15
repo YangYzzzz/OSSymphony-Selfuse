@@ -1,0 +1,110 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "task_verify_33",
+  "snapshot": "thunderbird",
+  "instruction": "Create a new folder named 'Archived' under your email account and move all emails from the Inbox to this folder.",
+  "source": "https://www.quora.com/How-do-I-backup-email-files-in-Mozilla-Thunderbird",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "command",
+        "parameters": {
+          "command": [
+            "find",
+            "/home/user/.thunderbird",
+            "-name",
+            "folderTree.json",
+            "-exec",
+            "cat",
+            "{}",
+            ";"
+          ],
+          "stdout": "folder_tree.txt"
+        }
+      }
+    ],
+    "func": "check_folder_exists__dc2d0173",
+    "result": {
+      "type": "cache_file",
+      "path": "folder_tree.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "folder_name": "Archived"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a new folder 'Archived' in Thunderbird and moving inbox emails to it. Evaluator checks if the folder 'Archived' exists in folderTree.json, contains emails (message count > 0), and that the Inbox is empty (message count = 0).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_aug_12_task_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_folder_exists__dc2d0173 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete instruction coverage: The evaluator correctly verifies both requirements - (1) folder 'Archived' exists, and (2) emails were moved from Inbox to Archived folder.",
+        "Folder existence check: The metric recursively searches folderTree.json for the 'Archived' folder (lines 69).",
+        "Email movement verification: The metric checks that Archived folder contains messages (lines 78-80: fails if folder_count == 0) AND that Inbox is empty (lines 83-85: fails if inbox_count > 0).",
+        "Robust parsing: The metric handles multiple possible field names for message counts (totalMessages, numMsgs, messages) and recursively searches through the folder tree structure.",
+        "Correct data flow: postconfig extracts folderTree.json → get_cache_file retrieves it → metric parses and validates both conditions.",
+        "The fix from the previous judgment has been successfully applied and resolves the incomplete coverage issue."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "fix_applied": true,
+      "fix_description": "Enhanced the check_folder_exists__dc2d0173 metric function to verify both requirements: (1) the 'Archived' folder exists and contains emails (totalMessages > 0), and (2) the Inbox is empty (totalMessages = 0). The function now extracts message counts from folderTree.json for both folders and validates that emails were moved from Inbox to Archived."
+    }
+  }
+}

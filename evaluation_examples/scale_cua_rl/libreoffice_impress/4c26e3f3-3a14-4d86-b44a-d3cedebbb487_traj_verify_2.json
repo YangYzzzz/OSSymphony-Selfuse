@@ -1,0 +1,109 @@
+{
+  "id": "4c26e3f3-3a14-4d86-b44a-d3cedebbb487",
+  "new_id": "4c26e3f3-3a14-4d86-b44a-d3cedebbb487_traj_verify_2",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Remove the large background image on the second slide of the presentation and save the file.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4c26e3f3-3a14-4d86-b44a-d3cedebbb487/PPT-Template_widescreen.pptx",
+            "path": "/home/user/Desktop/PPT-Template_widescreen.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/PPT-Template_widescreen.pptx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "LibreOffice Impress",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1); pyautogui.press('enter')"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_image_removed__07113500ab2edd0ce92ed5a5e9e8b1aa",
+    "result": {
+      "type": "slide_image_count__07113500ab2edd0ce92ed5a5e9e8b1aa",
+      "path": "/home/user/Desktop/PPT-Template_widescreen.pptx",
+      "slide_index": 1
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_large_images": 0,
+        "original_large_images": 1
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_4c26e3f3-3a14-4d86-b44a-d3cedebbb487_sid_1488183",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to slide 2, selected the background image, increased brightness to 50% using the Properties panel, saved the image as background.png to Desktop via right-click > Save. However, the evaluator expected GIMP-level brightness enhancement, not LibreOffice display property change. Score was -0.2 (task error).",
+    "capability_extraction": "Can navigate between slides, select images, modify image properties (brightness/contrast) via Properties panel, right-click and save images, navigate file system dialogs, type text values in fields",
+    "failure_analysis": "Original task required multi-app workflow (Impress -> GIMP -> save). Model tried to do everything within LibreOffice Impress. The model successfully selected the background image on slide 2, demonstrating the ability to identify and interact with image elements.",
+    "task_rationale": "Simplified to a single-operation task: select and delete the background image. The model demonstrated it can navigate to slide 2 and select the background image. Deleting a selected image (pressing Delete key) is simpler than the original multi-app brightness enhancement workflow.",
+    "explanation": "Getter reads the PPTX file from VM, navigates to slide 2 (index 1), counts all images and categorizes them by size (>100KB = large). Original slide 2 has 1 large image (~1.4MB background) and 2 small logos (~20KB each). Metric checks that large_images count is 0 after deletion. Partial credit (0.5) if fewer large images than original.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_4c26e3f3-3a14-4d86-b44a-d3cedebbb487_sid_1488183_traj_verify_2/getters/pptx_getter.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_4c26e3f3-3a14-4d86-b44a-d3cedebbb487_sid_1488183_traj_verify_2/metrics/pptx_metric.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "scoring_breakdown": {
+      "image_removed": "1.0 - Large background image completely removed (0 large images remain)",
+      "partial_removal": "0.5 - Fewer large images than original but not fully removed"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly reads slide 2 (index 1) of the PPTX file and counts images categorized by size (>100KB = large), which accurately targets the 'large background image' described in the instruction.",
+        "Metric correctly handles the expected parameter for type='rule' — directly accesses expected.get('expected_large_images') without incorrectly unwrapping a 'rules' key.",
+        "Metric implements sensible scoring: 1.0 for complete removal (0 large images), 0.5 for partial removal, 0.0 for no change.",
+        "Postconfig ensures file is saved (Ctrl+S) before getter reads the PPTX, addressing the 'save the file' requirement and preventing stale state.",
+        "Both instruction requirements (remove image + save file) are covered by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The getter uses hasattr(shape, 'image') which detects Picture shapes but would not detect a background image set via slide background properties (Format > Slide > Background). If the background is a slide-level background rather than a shape, the getter would miss it. However, metadata confirms it is a shape-level image, so this is acceptable for this task."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

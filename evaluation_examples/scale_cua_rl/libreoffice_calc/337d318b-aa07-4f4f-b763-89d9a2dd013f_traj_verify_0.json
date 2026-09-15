@@ -1,0 +1,93 @@
+{
+  "id": "337d318b-aa07-4f4f-b763-89d9a2dd013f",
+  "new_id": "337d318b-aa07-4f4f-b763-89d9a2dd013f_traj_verify_0",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Compare the invoices on the Desktop with the bank statement. Move the invoices whose amounts match the bank statement into a new folder called 'verified' on the Desktop.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Desktop/invoice TII-20220301-90.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/invoice%20TII-20220301-90.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/Invoice # GES-20220215-82.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/Invoice%20%23%20GES-20220215-82.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/Invoice # 243729.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/Invoice%20%23%20243729.pdf"
+          },
+          {
+            "path": "/home/user/Desktop/Bank-Statement.pdf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/337d318b-aa07-4f4f-b763-89d9a2dd013f/Bank-Statement.pdf"
+          }
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/337d318b-aa07-4f4f-b763-89d9a2dd013f",
+  "related_apps": [
+    "os",
+    "pdf"
+  ],
+  "evaluator": {
+    "func": "check_verified_invoices__445a1e82d5445803b67308e02fdc3544",
+    "result": {
+      "type": "verified_folder_files__445a1e82d5445803b67308e02fdc3544",
+      "folder_path": "/home/user/Desktop/verified"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_files": [
+          "Invoice # GES-20220215-82.pdf",
+          "invoice TII-20220301-90.pdf"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "/raid/lvbowen/osworld_eval/qw3vl-sft-57-osworld-std-traj/task_multi_apps_337d318b-aa07-4f4f-b763-89d9a2dd013f_sid_1488431/",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent opened and read 3 invoices and 1 bank statement PDF on Desktop. Created 'problematic' folder and moved all 3 invoices into it. Despite misreading amounts, the evaluator only checked for Invoice #243729 (the discrepant one), so reward=1.0.",
+    "capability_extraction": "Open PDFs with Document Viewer, read PDF content from screenshots, create new folders on Desktop via file manager, move files between folders using right-click context menu.",
+    "task_rationale": "Inverse of the original task: instead of identifying discrepant invoices, the agent must identify and move the matching ones. This requires the same cross-checking skill but tests whether the agent correctly identifies the two matching invoices (GES and TII) while excluding the discrepant one (243729).",
+    "explanation": "Custom getter lists files in /home/user/Desktop/verified/. Metric checks that both matching invoices (GES-20220215-82 and TII-20220301-90) are present with partial credit, and penalizes for incorrectly included files. [Fixed: corrected MD5 hash suffix from truncated 8-char to full 32-char hash; cleared stale __35595c7a function files]",
+    "difficulty": "medium",
+    "scoring_breakdown": "0.5 per correct matching invoice in verified folder. -0.25 penalty per unexpected PDF file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_337d318b-aa07-4f4f-b763-89d9a2dd013f_sid_1488431_traj_verify_0/getters/get_verified_folder_files__445a1e82d5445803b67308e02fdc3544.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_337d318b-aa07-4f4f-b763-89d9a2dd013f_sid_1488431_traj_verify_0/metrics/check_verified_invoices__445a1e82d5445803b67308e02fdc3544.py"
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly lists files in /home/user/Desktop/verified/ via ls -1 and returns {files: [...], count: N} which is compatible with the metric's result.get('files', []) access pattern.",
+        "Metric correctly handles expected parameter for type='rule': directly accesses expected.get('expected_files', []) since get_rule returns the rules dict.",
+        "Expected files ['Invoice # GES-20220215-82.pdf', 'invoice TII-20220301-90.pdf'] match the original download config filenames exactly, and are consistent with the task rationale (these are the two matching invoices, excluding discrepant Invoice #243729).",
+        "Scoring logic is sound: 0.5 per correct matching invoice (2 files = 1.0 max), -0.25 penalty per unexpected PDF, clamped to [0, 1]. Partial credit and penalty system is reasonable.",
+        "No postconfig needed since this is a file system check, not UI-dependent state.",
+        "Complete coverage: the evaluator verifies both that the correct invoices are present AND penalizes incorrect inclusions, fully covering the instruction requirements."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The getter lists all files (not just PDFs) via ls -1, but the metric only penalizes unexpected .pdf files. This is acceptable behavior but could be made more explicit in documentation."
+      ]
+    },
+    "fix_history": [
+      "Fix 1: Corrected MD5 hash suffix from truncated '35595c7a' (8 chars) to full 32-char MD5 hash '445a1e82d5445803b67308e02fdc3544' computed from '337d318b-aa07-4f4f-b763-89d9a2dd013f|0'. Updated getter function name, metric function name, evaluator.func, evaluator.result.type, and new_functions_paths accordingly.",
+      "Fix 2: Cleared stale function files with invalid 8-char MD5 suffix '__35595c7a' (getter and metric). These were leftover from the original generation. The correctly-named files with full 32-char MD5 hash '__445a1e82d5445803b67308e02fdc3544' are the only active ones referenced by evaluator and new_functions_paths."
+    ]
+  }
+}

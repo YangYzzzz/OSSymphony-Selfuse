@@ -1,0 +1,110 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_48",
+  "snapshot": "thunderbird",
+  "instruction": "Build a local folder structure in Thunderbird with URGENT, IMPORTANT, and LATER folders.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bURGENT\\.msf\\b",
+          "\\bURGENT/?(?!\\.msf)",
+          "\\bIMPORTANT\\.msf\\b",
+          "\\bIMPORTANT/?(?!\\.msf)",
+          "\\bLATER\\.msf\\b",
+          "\\bLATER/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating three local folders in Thunderbird for priority-based email organization. Evaluator checks for all three folder files and their .msf metadata files. More complex variation requiring three folders.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator checks for URGENT, IMPORTANT, and LATER folders and their .msf files using regex patterns.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses postconfig to capture Thunderbird Local Folders directory structure with 'ls -R'",
+        "check_list metric appropriately applies regex matching to verify all expected folders exist",
+        "Complete coverage: checks all three required folders (URGENT, IMPORTANT, LATER)",
+        "Correctly verifies both folder entries and their .msf metadata files for each folder",
+        "Data flow is correct: ls output -> cache file -> check_list -> regex pattern matching",
+        "Expected regex patterns correctly target Thunderbird folder structure (folders and .msf files)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Regex patterns like '\\bURGENT/?(?!\\.msf)' could be simplified to '^URGENT:?$' for more precise matching of folder entries in ls -R output",
+        "Consider adding patterns to exclude false positives from folders with similar names (e.g., URGENT_OLD)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

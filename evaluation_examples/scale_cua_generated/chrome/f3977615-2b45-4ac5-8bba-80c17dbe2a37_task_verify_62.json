@@ -1,0 +1,90 @@
+{
+  "id": "f3977615-2b45-4ac5-8bba-80c17dbe2a37",
+  "new_id": "task_verify_62",
+  "snapshot": "chrome",
+  "instruction": "I want to increase VLC's maximum volume limit beyond the default 125%. How do I configure VLC to allow a maximum volume of 200% for better audio amplification?",
+  "source": "https://www.reddit.com/r/Fedora/comments/rhljzd/how_to_run_multiple_instances_of_vlc_media_player/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": 200
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to configure VLC's maximum volume to 200% (qt-max-volume=200). The evaluator checks the vlcrc config file for the 'qt-max-volume' setting and verifies it is set to 200. Using existing metric function check_qt_max_volume from vlc.py. Default value is 125.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "requires_action": true,
+    "verification": "Reuses existing check_qt_max_volume metric which checks the qt-max-volume setting in VLC config file (default is 125, task requires setting to 200)",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vlc_config extracts the VLC configuration file from the appropriate OS-specific path (Linux: ~/.config/vlc/vlcrc, macOS: ~/Library/Preferences/org.videolan.vlc/vlcrc, Windows: ~\\AppData\\Roaming\\vlc\\vlcrc)",
+        "Metric logic is correct: check_qt_max_volume reads the config file, searches for 'qt-max-volume=' setting, extracts the value, and compares it to the expected value of 200",
+        "Expected value is correct: The instruction requires setting VLC max volume to 200%, and the evaluator expects 'expected_qt_max_volume: 200'",
+        "Complete coverage: The instruction has one requirement (configure max volume to 200%), and the evaluator checks exactly that requirement",
+        "Appropriate postconfig: Kills and relaunches VLC to ensure the config file is reloaded and the setting was persisted to disk",
+        "Adequate edge case handling: Metric handles missing config file (returns 0), missing setting (defaults to '125'), and type conversion for expected values"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "task_verify_28",
+  "snapshot": "chrome",
+  "instruction": "Configure VLC to open every file in a new window rather than reusing the same instance.",
+  "source": "https://superuser.com/questions/1224784/how-to-change-vlcs-splash-screen",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_one_instance_when_started_from_file",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_one_instance_when_started_from_file": 0
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling VLC's single instance mode when files are opened by setting one-instance-when-started-from-file=0 (default is 1). The evaluator uses the existing check_one_instance_when_started_from_file metric function to verify the setting is disabled. The get_vlc_config getter reads the VLC config file (~/.config/vlc/vlcrc) and the metric checks if the setting is 0. No new functions needed - reusing existing VLC evaluation infrastructure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very similar - both tasks involve changing a single VLC preference setting. Original disables splash cone icon, this disables single instance mode.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_vlc_config reads the VLC configuration file from the correct platform-specific path (~/.config/vlc/vlcrc on Linux)",
+        "Metric logic is correct: check_one_instance_when_started_from_file properly parses the config file, searches for 'one-instance-when-started-from-file=' setting, and compares with expected value",
+        "Expected value is semantically correct: expected value of 0 correctly represents disabling single instance mode, matching the instruction requirement",
+        "Complete coverage: The evaluator checks the exact setting that controls the feature described in the instruction (disable single instance mode when files are opened)",
+        "Correct parameter handling: Metric function correctly accesses the expected parameter as rule['expected_one_instance_when_started_from_file'] without incorrect 'rules' nesting",
+        "Appropriate postconfig: Kills and relaunches VLC to ensure config file is read in a clean state",
+        "Data flow is semantically correct: Getter extracts config file → Metric parses specific setting → Comparison with expected value works correctly"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "215dfd39-f493-4bc3-a027-8a97d72c61bf-3_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

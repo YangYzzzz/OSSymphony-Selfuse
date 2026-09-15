@@ -1,0 +1,115 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "task_verify_43",
+  "snapshot": "thunderbird",
+  "instruction": "I want to see the message pane below the message list instead of on the right side. Can you configure Thunderbird to use a vertical layout?",
+  "source": "https://superuser.com/questions/1757333/how-can-i-view-thunderbird-in-full-dark-mode",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.pane_config.dynamic": {
+            "method": "eq",
+            "ref": 0
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing Thunderbird pane layout to vertical (message pane below list). The evaluator checks if mail.pane_config.dynamic preference is set to 0 (vertical layout). Standard Thunderbird preference: 0=vertical, 1=wide. Similar complexity to original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "All-or-nothing: 1.0 if mail.pane_config.dynamic=0, else 0.0",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly retrieves Thunderbird preferences file (prefs.js) using get_vm_file getter",
+        "Metric check_thunderbird_prefs correctly parses prefs.js and extracts mail.pane_config.dynamic preference",
+        "Expected value of 0 is semantically correct for vertical layout (0=vertical, 1=wide in Thunderbird)",
+        "Postconfig correctly closes Thunderbird window before verification to ensure preferences are flushed to disk",
+        "Complete coverage: instruction requires vertical layout, evaluator checks exactly mail.pane_config.dynamic==0",
+        "All-or-nothing scoring is appropriate for this binary configuration task",
+        "State accessibility is correct: postconfig with sleep(0.5s) ensures preference file is saved before reading"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

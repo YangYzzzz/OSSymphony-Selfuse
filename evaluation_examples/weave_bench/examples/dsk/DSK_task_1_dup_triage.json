@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_1_dup_triage",
+  "snapshot": "weave_bench",
+  "instruction": "Copy `/tmp_workspace/source/` (contains 135 files, of which 45 filenames collide with destination) into `/tmp_workspace/dest/` (which already has 95 files, 45 of which will collide with source by name). The file manager will pop up a conflict dialog for each duplicate filename during the copy.\n\n### Task\n\nHandle conflicts one by one according to the following policy (4 decision classes total):\n- If source and dest files have mtime difference ≤ 1 day and identical size → skip (`skip`);\n- If filenames are identical but contents are in entirely different domains (e.g. meeting notes on one side, recipe on the other) → keep both (`keep_both`, the new file gets a ` (copy)` suffix);\n- If the dst file has a newer mtime but content is obviously truncated (placeholder) → skip and preserve the older but more complete dst (`skip_older`);\n- Otherwise → replace and preserve the old version (`replace` + old file gets a `.bak.<unix_ts>` suffix, i.e. use rename to first rename the old dest file and then overwrite).\n\nSpecific scale:\n- source/ contains **135 files**, dest/ contains **95**, with **45 pairs** of name collisions.\n- Of these, **10 pairs** are \"same name, different domain\" — identical filenames but entirely different contents (meeting notes on one side, recipe on the other), and must be **keep_both**.\n- Of these, **5 pairs** are \"newer mtime but worse content\" — dst is a placeholder (newer mtime), src is 30 days old but more complete; these must be **skip_older** (i.e. preserve the older but better dst and discard src's fake \"newer\" version). **Looking at mtime alone will misclassify all of them.**\n\n### Deliverables (write to `/tmp_workspace/results/`)\n\n- `conflict_log.csv`: columns `filename,decision(skip|replace|keep_both|skip_older),reason`.\n- `final_inventory.csv`: every file under the dest directory + size + mtime + sha256.\n- `conflict_<n>.png`: screenshot of the dialog / operation for each conflict decision, **at least 15 images**.\n- Final `/tmp_workspace/dest/` file count ≥ **150** and no original important dest file is lost (the list of important files is in `keep_list.txt`).\n- `/tmp_workspace/dest/` must contain ≥ **10** newly added files with the `.bak.<unix_ts>` suffix (this format is used when renaming old dest files).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_1_dup_triage.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_1_dup_triage",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/dest 2>/dev/null || true\nchown -R user:user /tmp_workspace 2>/dev/null || true\nrm -f /home/user/.openclaw/agents/main/sessions/*.lock 2>/dev/null || true\nopenclaw config unset agents.defaults.imageModel >/dev/null 2>&1 || true\nopenclaw config set agents.defaults.sandbox.imageModel.primary \"\" >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_1_dup_triage/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_1_dup_triage /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_1_dup_triage/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_1_dup_triage/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_1_dup_triage/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_1_dup_triage/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_1_dup_triage/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_1_dup_triage.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_1_dup_triage",
+    "workspace_relative": "DSK/task_1_dup_triage",
+    "uses_vlm_helper": false,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_21",
+  "snapshot": "chrome",
+  "instruction": "Close all Chrome tabs except paperswithcode.com.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "tabs": [
+          {
+            "url": [
+              "contains",
+              "paperswithcode.com"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "explanation": "Task requires closing all tabs except paperswithcode.com. Evaluator uses existing is_expected_tabs metric to verify only paperswithcode.com tab remains.",
+    "new_functions_paths": [],
+    "estimated_steps": 2,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical data structure mismatch: Metric 'is_expected_tabs' expects rule['type']='url' and rule['urls'] list, but the expected value structure has nested 'rules.tabs' array without a 'type' field at the rule level",
+        "The 'contains' operator in 'url': ['contains', 'paperswithcode.com'] is not processed by the is_expected_tabs metric - it only handles exact URL matching via compare_urls()",
+        "Expected getter 'get_rule' returns {'tabs': [{'url': ['contains', 'paperswithcode.com']}]} but metric expects {'type': 'url', 'urls': [...]}, causing KeyError at runtime when accessing rule['type']",
+        "Metric logic at chrome.py:128-140 will fail with KeyError when trying to access rule['type'] since the rule dict only has 'tabs' key"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected structure to flat format: {\"type\": \"rule\", \"rules\": {\"type\": \"url\", \"urls\": [\"https://paperswithcode.com/\"]}} and modify get_rule to extract rules['rules']",
+        "OR: Modify is_expected_tabs metric to handle nested 'tabs' structure and support 'contains' operator for URL matching",
+        "OR: Create new metric function that properly handles the current rule format with 'tabs' array and 'contains' operator",
+        "Ensure the expected value format matches what the metric function can parse - current mismatch will cause immediate runtime failure"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

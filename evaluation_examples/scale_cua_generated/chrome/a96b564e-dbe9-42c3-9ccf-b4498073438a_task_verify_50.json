@@ -1,0 +1,92 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "Locate and open the community discussion topic with the maximum reply count.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://discussions.flightaware.com/t/the-banter-thread/4412"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation requiring user to find and access the discussion with the most replies. Same target URL as original task, verifying correct navigation to the highest-reply discussion thread.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete task verification: The evaluator only checks if the final URL is correct, but does NOT verify that the user actually located/identified the discussion with maximum reply count",
+        "The evaluator cannot distinguish between: (1) user properly finding the max-reply discussion through search/comparison, (2) user directly typing the URL, or (3) user clicking a random link and getting lucky",
+        "No verification that the expected URL (https://discussions.flightaware.com/t/the-banter-thread/4412) actually corresponds to the discussion with maximum replies - no metadata documenting reply count or verification date",
+        "Getter choice issue: Uses 'active_tab_info' type which reloads the page (potentially causing state issues), when 'active_url_from_accessTree' type would be more appropriate since only URL verification is needed",
+        "Dynamic content risk: The discussion with 'maximum reply count' can change over time, making the hardcoded expected URL potentially incorrect in the future"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add metadata documenting: (a) the actual reply count of the expected discussion, (b) verification date, (c) confirmation this is the max-reply discussion",
+        "Consider using 'active_url_from_accessTree' type instead of 'active_tab_info' to avoid page reload issues, since only URL verification is needed",
+        "Ideally, use a more sophisticated evaluator that can verify the user actually compared reply counts (e.g., by checking page content for reply count information before navigation)",
+        "Add a postconfig step to navigate back to the discussions list page and verify the chosen discussion has the highest reply count among visible discussions",
+        "Document in metadata that this evaluator only verifies the destination URL, not the process of finding the maximum reply count"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

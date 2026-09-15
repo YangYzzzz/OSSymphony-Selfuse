@@ -1,0 +1,131 @@
+{
+  "id": "68a25bd4-59c7-4f4d-975e-da0c8509c848",
+  "new_id": "68a25bd4-59c7-4f4d-975e-da0c8509c848_traj_verify_2",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Find the paper with the earliest publication date in the spreadsheet. Write 'Earliest Paper' in cell E1 and the paper's title in cell E2.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/68a25bd4-59c7-4f4d-975e-da0c8509c848/rsc-ebook-collection-2023.xlsx",
+            "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "rsc-ebook-collection-2023.xlsx",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_earliest_entry__53a0fb3c44861b74092bea203bb878cc",
+    "result": {
+      "type": "xlsx_earliest_paper__53a0fb3c44861b74092bea203bb878cc",
+      "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "header": "Earliest Paper",
+        "title": "Attention Is All You Need"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent read the spreadsheet, attempted to download PDFs via curl (got HTML instead), tried pdftotext extraction, eventually opened BERT PDF in Chrome and saved it via save dialog. Never completed the citation analysis or ans.docx creation. Ran out of 50 turns.",
+    "capability_extraction": "Can read/interact with LibreOffice Calc cells, use terminal commands (curl, apt-get, grep, ls), navigate Chrome, open URLs, use Chrome save dialog",
+    "failure_analysis": "Model failed due to multi-app complexity: curl downloaded HTML instead of PDF from arxiv, spent many turns troubleshooting PDF extraction, eventually succeeded downloading via Chrome but ran out of turns before citation analysis and docx creation.",
+    "task_rationale": "Decomposed original task into a simple data lookup: find the earliest paper by date and record it. Tests model's ability to analyze dates and write results to cells.",
+    "explanation": "Task requires identifying the paper with the earliest pub date (Attention Is All You Need, 2017/6/12) and writing a header in E1 and the title in E2. Getter reads E1:E2. Metric gives partial credit: 0.3 for correct header, 0.7 for correct title. [Fixed: corrected MD5 hash suffix from truncated 12-char to full 32-char hash]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344_traj_verify_2/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344_traj_verify_2/metrics/xlsx.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "header": "0.3 - 'Earliest Paper' in E1",
+      "title": "0.7 - 'Attention Is All You Need' in E2"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Replaced truncated 12-char MD5 suffix '9bd2a1498a4f' with correct 32-char MD5 hash '53a0fb3c44861b74092bea203bb878cc' computed from '68a25bd4-59c7-4f4d-975e-da0c8509c848|2' in getter function, metric function, and evaluator config"
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter correctly reads cells E1 and E2 from the xlsx file using openpyxl, matching the instruction requirements",
+        "Metric correctly handles type='rule' expected parameter - accesses expected.get('header') and expected.get('title') directly without incorrect nesting",
+        "Partial credit scoring (0.3 header + 0.7 title) is reasonable and covers both instruction requirements",
+        "Case-insensitive comparison is appropriate for text matching",
+        "Postconfig correctly activates window and saves file (Ctrl+S) before getter reads, ensuring fresh state",
+        "Minor concern: expected title 'Attention Is All You Need' is a CS/AI paper but spreadsheet is 'rsc-ebook-collection-2023.xlsx' (RSC = Royal Society of Chemistry) - the expected value may be incorrect for this dataset, though cannot be verified without actual spreadsheet data"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify that 'Attention Is All You Need' is actually present in the RSC ebook collection spreadsheet and has the earliest publication date - this seems unusual for a chemistry ebook collection"
+      ]
+    }
+  }
+}

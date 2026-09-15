@@ -1,0 +1,91 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_28",
+  "snapshot": "chrome",
+  "instruction": "Chrome keeps showing me notifications from websites and it's really annoying. How do I turn off all website notifications?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"session\":{\"restore_on_startup\":4, \"startup_urls\":[\"http://funbrain.com/\"]}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "chrome_notifications_blocked__4f8fdc8b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires blocking all website notifications in Chrome settings. Similar to original task - navigate to Settings > Privacy and security > Site settings > Notifications and set to 'Don't allow sites to send notifications'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_1/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if notifications blocked (default_content_setting_values.notifications=2 in Preferences), 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly reads Chrome Preferences file and checks if notifications are blocked (value=2)",
+        "Metric (exact_match) correctly compares getter result ('true'/'false') with expected value ('true')",
+        "Expected value semantically correct: 'true' means notifications are blocked globally",
+        "Evaluator fully covers instruction requirement: turning off all website notifications",
+        "Getter has appropriate error handling (returns 'false' on error)",
+        "Minor concern: Chrome preferences may not be immediately flushed to disk after UI changes, though Chrome typically auto-saves settings"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to ensure Chrome preferences are saved (e.g., close Chrome or add delay)",
+        "Alternative: Add postconfig to relaunch Chrome to force preference flush, though this may be overkill for this specific case since Chrome auto-saves"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

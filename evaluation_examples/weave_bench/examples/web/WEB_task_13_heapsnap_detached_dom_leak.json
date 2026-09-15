@@ -1,0 +1,71 @@
+{
+  "id": "WEB_task_13_heapsnap_detached_dom_leak",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: The internal \"Acme Inbox\" is a minimal three-tab SPA (Inbox / Archive / Settings), rendered by a single vanilla JS file `/tmp_workspace/exec/public/app.js`, served at `http://127.0.0.1:8313/`. Customers report on long-running sessions that \"after a few hours it becomes sluggish and CPU usage keeps climbing\", but:\n\n- The HTML returned by `http://127.0.0.1:8313/` is completely static and normal; inspecting the DOM tree shows no leftover nodes.\n- A one-shot performance audit comes back perfectly clean — because the audit does not stay resident for long.\n- Repeatedly hard-refreshing temporarily mitigates the issue, but as long as you don't refresh and only click tabs back and forth, the leak is guaranteed.\n\nThe truth can only be seen through the browser's Memory forensic view via the \"Comparison\" diff + the Retainers sub-panel: after each tab switch, a `<div class=\"tab-*\">` subtree that was detached from `<main>` is still pinned by a **closure-held listener or Timer** — the classic \"detached DOM tree retained by listener/timer\" pattern. The `.heapsnapshot` JSON contains the raw nodes/edges, but \"which retainer chain is pinning it\" can only be seen clearly by expanding the retainer tree in the Memory forensic view; and without scripting 30 tab switches into a reproducible experiment, there is no way to diff the totals between two snapshots.\n\nPre-staged materials on the scene:\n- Application under test: `http://127.0.0.1:8313/` (auto-started by warmup).\n- Browser remote-debugging entry point: `http://127.0.0.1:9222/json/version` (CDP, started by warmup; any CDP client may connect).\n- Application source: `/tmp_workspace/exec/public/app.js` (contains the `build*()` builders for the three tabs and one legitimate `setInterval` for a global `#clock`).\n- Helpers (agent may reuse directly or rewrite):\n  - `/tmp_workspace/exec/tools/cdp_drive.py`: CDP driver. `baseline <out.heapsnapshot>` runs GC + takes a baseline snapshot; `churn N <out.heapsnapshot>` clicks tabs N times in archive→settings→inbox order to trigger mount/unmount, then GC + takes a snapshot.\n  - `/tmp_workspace/exec/tools/parse_snapshot.py`: given 2–3 heap snapshots, outputs `{baseline, after_churn, after_fix?, top_detached_constructor}`.\n  - `/tmp_workspace/exec/tools/scan_listeners.py`: scans `app.js` and outputs a suspect list of `{file, line, snippet, kind}` entries.\n\nGoal: locate the leak sources (the two signal channels: listener / timer) → patch the teardown path in `app.js` → re-run the same churn experiment to prove that the detached count falls back near 0. Exactly how you launch the browser, take heap snapshots, compare retainer chains, and drive CDP is up to you.\n\nThe following deliverables must be produced under `/tmp_workspace/results/`:\n\n1. **Pre-fix copy of app.js** `app.js.before`: a byte-for-byte copy of `/tmp_workspace/exec/public/app.js`, to serve as the diff baseline.\n\n2. **Baseline heap snapshot** `heap_baseline.heapsnapshot`: a valid v8 heap snapshot JSON (top level must contain `snapshot` and `nodes` fields).\n\n3. **Post-churn heap snapshot** `heap_after_churn.heapsnapshot`: after the baseline, perform ≥ 30 archive→settings→inbox tab switches, then GC, then capture. Also a valid v8 heap snapshot.\n\n4. **Suspect list** `suspect_listeners.json`: a list, each entry `{file, line, snippet, kind}`. `kind` is either `addEventListener` or `setInterval`. **At least 4 entries**, with ≥ 2 `addEventListener` and ≥ 2 `setInterval`; do not include the legitimate global `#clock` `setInterval` (that would cost precision).\n\n5. **Fixed app.js** `fixed_app.js`: each `build*()` must return a `teardown()` (or equivalent); `mount()` **must** call that teardown when tearing down the old tab; teardown must use paired `removeEventListener(...)` to unbind listeners and paired `clearInterval(...)` to clear timers. **Do not** touch the global `#clock` `setInterval`.\n\n6. **Deploy fix + diff** `fix.patch`: deploy `fixed_app.js` to `/tmp_workspace/exec/public/app.js` and produce `fix.patch` (unified diff of pre-fix vs post-fix). The `fix.patch` text **must contain both** `removeEventListener` and `clearInterval`.\n\n7. **Post-fix heap snapshot** `heap_after_fix.heapsnapshot`: hard-refresh so the browser pulls the new `app.js`, then perform the same 30 churn switches, GC, and capture.\n\n8. **Numerical comparison** `detached_count.json`:\n   ```json\n   {\n     \"baseline\":   <int ≥ 0>,\n     \"after_churn\":<int>,\n     \"after_fix\":  <int>,\n     \"top_detached_constructor\": \"Detached <…>\"\n   }\n   ```\n   Hard constraints: `after_churn - baseline ≥ 5`; `after_fix ≤ max(4, baseline + 4)`; `(after_churn - baseline) − (after_fix - baseline) ≥ 5`; the `top_detached_constructor` string starts with `\"Detached \"`.\n\n9. **Visual forensic screenshots** (each ≥ 4 KB, from an actual rendered state):\n   - `view_01_memory_panel_initial.png`: initial state of the browser's Memory forensic view, with the Snapshot list on the left and the Constructor column in the center visible.\n   - `view_02_comparison_detached.png`: the Comparison view diffed against the baseline, with `Class filter = Detached`, showing at least one row of `Detached HTMLDivElement` / `Detached HTMLElement` / `Detached InternalNode`, with a positive value in the `# New` or `# Delta` column.\n   - `view_03_retainer_chain.png`: after expanding a `Detached HTMLDivElement` row, the Retainers panel below shows a reference chain of at least 3 levels, including nodes such as `(closure)` or `system / Listener` or `Timer`.\n   - `view_04_sources_breakpoint.png`: the browser's Sources forensic view has opened `127.0.0.1:8313/app.js` and the breakpoint set on the `addEventListener` line has been hit (\"Paused on breakpoint\" appears at the top / the source line is highlighted). After taking the screenshot you must resume.\n   - `view_05_post_fix_comparison.png`: after deploying the fix + hard refresh + the same experiment, the Comparison view filtered by `Detached`, with the Detached row's `# New` / `# Delta` count clearly dropping to ≤ 4, in contrast to `view_02`.\n\n10. **Root-cause report** `root_cause.md`: ≥ 25 lines with at least 3 `### ` sub-sections, covering respectively: the two leak signal channels (listener / timer); how the retainer chain was located in the Memory forensic view; why the fix releases that chain. For each `addEventListener` / `setInterval` suspect, cite `app.js:<line>` (≥ 2 occurrences).\n\n11. **Machine-readable summary** `summary.json`:\n    ```json\n    {\n      \"leak_count_before_churn_delta\": <int>,\n      \"leak_count_after_fix_delta\":   <int>,\n      \"retainer_kinds\": [\"listener\", \"timer\"],\n      \"fix_files\":      [\"public/app.js\"],\n      \"leak_lines\": [\n        {\"file\": \"public/app.js\", \"line\": <int>, \"kind\": \"addEventListener\"},\n        {\"file\": \"public/app.js\", \"line\": <int>, \"kind\": \"setInterval\"},\n        ... ≥ 4 entries ...\n      ]\n    }\n    ```\n    `leak_lines` ≥ 4 entries, and both `kind` values must appear at least once; `retainer_kinds` must contain both `listener` and `timer`.\n\nHard constraints:\n- The five screenshots and three heap snapshots must come from a real browser Memory forensic view and CDP HeapProfiler; fabrication is not allowed.\n- After deployment, `exec/public/app.js` must contain `removeEventListener` ≥ 2 times and `clearInterval` ≥ 2 times, and must include the keyword `teardown` or `cleanup`.\n- \"Cheating\" by deleting the global `setInterval` or commenting out the bindings is not allowed — functionality must be preserved; only the teardown pairings should be added.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_13_heapsnap_detached_dom_leak.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_13_heapsnap_detached_dom_leak\n# gt/ is NOT mounted into /tmp_workspace; lives at /opt/wcb_gt/WEB_task_13/ for grader only",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /opt/web13_gt && chmod 777 /tmp_workspace/results /tmp_workspace/state\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/web13_gt/expected.json 2>/dev/null || cp /tmp_workspace/gt/expected.json /opt/web13_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/web13_gt 2>/dev/null || true\n  chmod 700 /opt/web13_gt 2>/dev/null || true\n  chmod 600 /opt/web13_gt/expected.json 2>/dev/null || true\n  rm -rf /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich curl || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing curl ca-certificates && break; sleep 5; done) || true\nwhich jq || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing jq && break; sleep 5; done) || true\nwhich python3 || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing python3 python3-pip && break; sleep 5; done) || true\nwhich tesseract || (for i in 1 2 3 4 5; do apt-get -o Acquire::Retries=10 update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq --fix-missing tesseract-ocr fonts-noto-cjk && break; sleep 5; done) || true\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet websocket-client chrome-devtools-protocol pillow pytesseract requests playwright 2>/dev/null || pip3 install --quiet websocket-client chrome-devtools-protocol pillow pytesseract requests playwright || true\nPWB=\"chro\"\"mium\"\npython3 -m playwright install \"$PWB\" >/tmp/pw_install.log 2>&1 || true\nchmod +x /tmp_workspace/start.sh 2>/dev/null || true; chmod +x /tmp_workspace/tools/*.py 2>/dev/null || true\nnohup bash /tmp_workspace/start.sh >/tmp/start.log 2>&1 & sleep 3; for i in $(seq 1 30); do curl -sf http://localhost:8313/ >/dev/null && break; sleep 1; done",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_13_heapsnap_detached_dom_leak/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_13_heapsnap_detached_dom_leak /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_13_heapsnap_detached_dom_leak/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_13_heapsnap_detached_dom_leak/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_13_heapsnap_detached_dom_leak.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_13_heapsnap_detached_dom_leak\n# gt/ is NOT mounted into /tmp_workspace; lives at /opt/wcb_gt/WEB_task_13/ for grader only",
+    "workspace_relative": "WEB/task_13_heapsnap_detached_dom_leak\n# gt/ is NOT mounted into /tmp_workspace; lives at /opt/wcb_gt/WEB_task_13/ for grader only",
+    "uses_vlm_helper": true,
+    "has_gt": false
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "id": "69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "new_id": "task_verify_29",
+  "snapshot": "os",
+  "instruction": "Set up the Stable Diffusion web UI for image generation tasks. Clone the project from 'https://github.com/AUTOMATIC1111/stable-diffusion-webui' into /home/user and prepare the environment as described in their installation guide.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "related_apps": [
+    "os",
+    "chrome",
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_error",
+      "command": [
+        "python",
+        "-c",
+        "import gradio; import torch; print('Setup verified')"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Setup verified"
+        ],
+        "exclude": [
+          "Error:",
+          "ModuleNotFoundError",
+          "ImportError"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation testing Stable Diffusion WebUI environment setup. Evaluator verifies that key dependencies (gradio, torch) can be imported and checks for successful output. The check_include_exclude metric ensures 'Setup verified' is present and no error strings appear.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "Critical semantic error: Evaluator uses 'vm_command_error' getter which captures stderr, but the Python print statement outputs to stdout",
+        "The success message 'Setup verified' will NEVER appear in stderr output, causing the evaluator to always fail even when setup succeeds",
+        "Wrong data flow: stdout contains 'Setup verified' -> getter captures stderr (empty or error messages) -> metric checks for 'Setup verified' in stderr -> always fails",
+        "The evaluator fundamentally cannot verify successful task completion due to stdout/stderr mismatch"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change result type from 'vm_command_error' to 'vm_command_line' to capture stdout instead of stderr",
+        "Alternative: Split verification into two checks - (1) use vm_command_line to verify 'Setup verified' in stdout, (2) use vm_command_error to verify no error strings in stderr",
+        "The correct getter function already exists: get_vm_command_line() in general.py line 8-22 returns stdout output"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

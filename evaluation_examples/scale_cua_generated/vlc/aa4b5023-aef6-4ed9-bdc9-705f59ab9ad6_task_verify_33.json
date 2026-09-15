@@ -1,0 +1,85 @@
+{
+  "id": "aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6",
+  "new_id": "task_verify_33",
+  "snapshot": "base_setup",
+  "instruction": "Take the upside-down video and rotate it to the correct viewing angle, then save it as 'Macintosh_Commercial.mp4' on the Desktop.",
+  "source": "https://www.dedoimedo.com/computers/vlc-rotate-videos.html",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6/flipped_1984_Apple_Macintosh_Commercial.mp4",
+            "path": "/home/user/Desktop/flipped_1984_Apple_Macintosh_Commercial.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/flipped_1984_Apple_Macintosh_Commercial.mp4",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_is_video_file__4939fb90",
+    "result": {
+      "type": "video_file_properties__4939fb90",
+      "path": "/home/user/Desktop/Macintosh_Commercial.mp4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 7: Verify that 'Macintosh_Commercial.mp4' exists and is a valid video file by checking its file type properties.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6_task_verify_7/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/aa4b5023-aef6-4ed9-bdc9-705f59ab9ad6_task_verify_7/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: The instruction requires TWO actions - (1) rotate the upside-down video to correct viewing angle, and (2) save as 'Macintosh_Commercial.mp4'. The evaluator only verifies the file creation (requirement 2) but completely ignores video rotation verification (requirement 1).",
+        "Missing core requirement check: An agent could simply copy/rename the flipped video without rotating it, and this evaluator would incorrectly pass it as correct since it only checks file existence and type, not rotation state.",
+        "Semantic verification failure: The evaluator answers 'Is there a valid video file at this path?' but does NOT answer 'Was the upside-down video rotated to the correct viewing angle?', which is the primary task requirement.",
+        "No rotation verification mechanism: The getter does not extract video rotation metadata (e.g., using ffprobe to check rotation matrix, display matrix, or orientation tags), and the metric does not compare rotation properties between source and output."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add rotation verification to the getter: Use ffprobe or mediainfo to extract video rotation metadata from both the source file (flipped_1984_Apple_Macintosh_Commercial.mp4) and output file (Macintosh_Commercial.mp4). Check for rotation/displaymatrix values or compare frame orientation.",
+        "Update the metric to verify rotation correction: The metric should verify that the output video has correct orientation (no rotation metadata or 0-degree rotation) compared to the source which is upside-down (likely 180-degree rotation).",
+        "Alternative approach: Extract a sample frame from both videos and compare their orientation using image analysis to verify the video was actually rotated.",
+        "Consider adding a two-step evaluator: First check file existence and type (current logic), then add a second check for rotation verification with appropriate scoring (e.g., 0.5 for file creation only, 1.0 for correct rotation)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

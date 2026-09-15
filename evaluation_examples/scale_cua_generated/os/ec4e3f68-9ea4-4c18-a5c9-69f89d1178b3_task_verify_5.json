@@ -1,0 +1,87 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_5",
+  "snapshot": "os",
+  "instruction": "Delete Vim from your favorites dock.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "thunderbird.desktop",
+          "google-chrome.desktop"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires removing vim.desktop (the middle app) from the favorites dock. Initial setup creates favorites list ['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']. After removing Vim, the expected result is ['thunderbird.desktop', 'google-chrome.desktop']. Uses existing check_gnome_favorite_apps metric which compares sets (order-independent). This is actually what the original task was supposed to check.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter extracts the correct state: Uses gsettings command to retrieve GNOME favorite-apps list, which is the exact state needed to verify the instruction",
+        "Metric logic is correct: check_gnome_favorite_apps parses the gsettings output and compares using set equality (order-independent), which is appropriate for verifying app removal from dock",
+        "Complete coverage: Evaluator verifies that vim.desktop is removed AND that the remaining apps (thunderbird.desktop, google-chrome.desktop) are still present",
+        "Expected values are semantically correct: ['thunderbird.desktop', 'google-chrome.desktop'] matches the initial setup minus vim.desktop, which is exactly what the instruction requires",
+        "Correct parameter handling: Metric function correctly accesses rule['expected'] when expected.type='rule', following the correct pattern for framework's get_rule()",
+        "No state timing issues: Favorite apps setting persists after task completion, no postconfig needed to access state",
+        "Will work correctly at runtime: gsettings command will successfully retrieve favorites list, eval() will parse the string output, and set comparison will correctly verify task completion"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3_aug_6_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "Search for electric vehicles with a maximum budget of $52,000 within 45 miles of 19101.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "52000",
+          "maximum_distance": "45",
+          "zip": "19101",
+          "fuel_slugs[]": "electric"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires finding electric vehicles with price ≤ $52,000 within 45 miles of Philadelphia (19101). Evaluator validates URL query parameters.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly extracts URL query parameters from active tab via active_tab_url_parse",
+        "All 4 instruction requirements are verified: fuel_slugs[]=electric, list_price_max=52000, maximum_distance=45, zip=19101",
+        "Metric check_direct_json_object performs correct exact string matching for URL parameters",
+        "Expected values semantically match instruction requirements accurately",
+        "Getter handles missing required parameters correctly (returns None, causing verification to fail as expected)",
+        "Complete coverage: evaluator checks all aspects of the search task"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to ensure browser remains on search results page during verification (minor - doesn't affect logical correctness but could improve robustness)",
+        "URL parameter naming depends on cars.com website structure - evaluation could break if website changes parameter names (inherent limitation, not a logic error)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

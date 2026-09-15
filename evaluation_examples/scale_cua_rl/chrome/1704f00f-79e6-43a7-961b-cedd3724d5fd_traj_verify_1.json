@@ -1,0 +1,84 @@
+{
+  "id": "1704f00f-79e6-43a7-961b-cedd3724d5fd",
+  "new_id": "1704f00f-79e6-43a7-961b-cedd3724d5fd_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default font size to Large.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.rentalcars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_1704f00f-79e6-43a7-961b-cedd3724d5fd_sid_1488050",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent was blocked by CAPTCHA on rentalcars.com for all 50 turns. Repeatedly attempted to solve image CAPTCHAs (buckets, curtains, bags, chairs) but always failed verification. Never reached the rental car search page.",
+    "capability_extraction": "Can interact with Chrome UI elements (click images, buttons), type in address bar, navigate between pages",
+    "failure_analysis": "Model completely blocked by CAPTCHA human verification on rentalcars.com. Spent all 50 turns clicking CAPTCHA images and getting 'Incorrect. Please try again.' errors. Could not bypass the bot detection.",
+    "task_rationale": "Simplified to a Chrome settings modification task that avoids external website CAPTCHA. Tests the model's ability to navigate to Chrome settings and change font size, which requires finding and interacting with Chrome's internal UI.",
+    "explanation": "Task requires changing Chrome's default font size to Large (20px). Evaluator uses chrome_font_size getter to read the preference file and check_font_size metric to verify the value equals 20.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'chrome_font_size' correctly reads Chrome's Preferences JSON file and extracts the 'webkit.webprefs' dict containing 'default_font_size', which is exactly the state needed to verify font size changes.",
+        "Metric 'check_font_size' correctly accesses result['default_font_size'] and compares it against rule['value'] (20) using exact equality, which is appropriate for this discrete setting.",
+        "Expected value of 20 is correct: Chrome's 'Large' font size preset corresponds to 20px default font size.",
+        "The expected parameter handling is correct: with expected.type='rule', the metric receives {'type': 'value', 'value': 20} directly, and the metric correctly checks rule['type'] == 'value' and rule['value'].",
+        "No postconfig is needed since the getter reads directly from the Chrome Preferences file on disk, not from any UI dialog.",
+        "Single-step instruction (change font size) is fully covered by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

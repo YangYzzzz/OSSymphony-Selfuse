@@ -1,0 +1,107 @@
+{
+  "id": "efcf0d81-0835-4880-b2fd-d866e8bc2294",
+  "new_id": "efcf0d81-0835-4880-b2fd-d866e8bc2294_traj_verify_2",
+  "snapshot": "base_setup",
+  "instruction": "Disable the VLC cone logo that appears when no media is playing.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s, https://help.ubuntu.com/stable/ubuntu-help/look-background.html.en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/efcf0d81-0835-4880-b2fd-d866e8bc2294/Interstellar%20Movie%20-%20Official%20Trailer.mp4",
+            "path": "/home/user/Desktop/Interstellar Movie - Official Trailer.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "check_qt_bgcone",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc_traj_verify_2.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_bgcone": "0"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import subprocess; subprocess.run(['pkill', '-f', 'vlc'], timeout=5)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_efcf0d81-0835-4880-b2fd-d866e8bc2294_sid_1488257",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully took a VLC snapshot of the Interstellar trailer frame, then navigated to Settings > Background to set it as desktop wallpaper. Completed in 25 turns.",
+    "capability_extraction": "Can use VLC menus (Video > Take Snapshot), navigate Ubuntu Settings, set desktop wallpaper, interact with system tray",
+    "task_rationale": "Tests VLC interface preferences. Agent proved it can navigate VLC menus; this variation requires accessing Tools > Preferences > Interface to toggle the background cone setting.",
+    "explanation": "Task requires disabling the VLC background cone via Tools > Preferences > Interface. Evaluator reads vlcrc config and checks qt-bgcone=0. Postconfig kills VLC to ensure config is written to disk.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "bgcone_disabled": "1.0 - VLC qt-bgcone setting is 0 (disabled)"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config -> get_vlc_config) correctly reads the VLC configuration file (vlcrc) from the VM, which is where qt-bgcone is stored.",
+        "Metric (check_qt_bgcone) correctly parses vlcrc to find the qt-bgcone setting, defaults to '1' (enabled) if not found, and compares against expected value '0' (disabled).",
+        "Expected value '0' correctly represents the disabled state of the VLC cone logo, matching the instruction requirement.",
+        "Metric correctly handles expected parameter: accesses rule['expected_qt_bgcone'] directly, which is correct since get_rule returns the rules dict.",
+        "Postconfig correctly kills VLC before reading config, ensuring VLC writes its settings to disk on exit. The 2-second sleep allows time for the process to terminate and flush config.",
+        "Single instruction requirement (disable cone logo) is fully covered by a single evaluator check (qt-bgcone=0). Complete coverage."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

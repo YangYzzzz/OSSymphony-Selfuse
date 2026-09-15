@@ -1,0 +1,143 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "Compose and save a new draft email in Thunderbird addressed to billing@company.com with subject 'Bills Review' in the Drafts folder.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_draft_count__a4b48c8b",
+    "result": {
+      "type": "draft_count__a4b48c8b",
+      "profile_path": "/home/user/.thunderbird/t5q2a5hp.default-release",
+      "account": "outlook.office365.com"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recipient": "billing@company.com",
+        "subject": "Bills Review",
+        "min_matching_drafts": 1
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a draft email addressed to billing@company.com with subject 'Bills Review'. Evaluator checks that at least 1 draft exists with the correct recipient and subject.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_9/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_9/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator verifies all instruction requirements - (1) draft exists, (2) recipient=billing@company.com, (3) subject='Bills Review', (4) saved in Drafts folder (getter reads correct Drafts mbox path).",
+        "Correct getter logic: get_draft_count__a4b48c8b parses the Thunderbird Drafts mbox file, extracts individual draft details (recipient via parseaddr, subject, timestamp), and returns structured list of draft dictionaries.",
+        "Correct metric logic: check_draft_count__a4b48c8b iterates through drafts, compares both recipient (case-insensitive) AND subject (case-sensitive) against expected values, counts matches, and verifies at least min_matching_drafts exist.",
+        "Correct parameter handling: Metric correctly handles expected.type='rule' by directly accessing expected.get('recipient'), expected.get('subject'), expected.get('min_matching_drafts') - no incorrect patterns like expected.get('rules', {}).",
+        "Expected values are semantically correct: recipient='billing@company.com', subject='Bills Review', min_matching_drafts=1 match the instruction requirements exactly."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Consider adding postconfig to ensure Thunderbird has saved drafts to disk before verification (e.g., wait or trigger auto-save), though current implementation reads from mbox file which should persist drafts.",
+        "Optional enhancement: Could add timestamp-based logic to distinguish new drafts created during task execution from pre-existing drafts, but this is not critical if environment has controlled initial state."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

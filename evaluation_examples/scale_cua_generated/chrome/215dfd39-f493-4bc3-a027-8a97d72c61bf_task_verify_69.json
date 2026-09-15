@@ -1,0 +1,94 @@
+{
+  "id": "215dfd39-f493-4bc3-a027-8a97d72c61bf",
+  "new_id": "task_verify_69",
+  "snapshot": "chrome",
+  "instruction": "Can you disable the update notifications? I don't want to be bothered with update prompts.",
+  "source": "https://superuser.com/questions/1224784/how-to-change-vlcs-splash-screen",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_updates_notif__b84bb567",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_updates_notif": "0"
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling update notifications. Created custom check_qt_updates_notif__b84bb567 metric to validate the qt-updates-notif setting (0=disabled, 1=enabled) in vlcrc config file.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/215dfd39-f493-4bc3-a027-8a97d72c61bf_task_verify_9/metrics/vlc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to disable update notifications",
+        "Getter (get_vlc_config) extracts the right state: reads VLC's vlcrc configuration file from appropriate OS-specific location",
+        "Metric (check_qt_updates_notif__b84bb567) implements correct logic: searches for qt-updates-notif setting and compares against expected value '0' (disabled)",
+        "Expected value '0' is semantically correct for disabling update notifications (0=disabled, 1=enabled)",
+        "Postconfig appropriately kills and relaunches VLC to ensure config changes are loaded",
+        "Complete coverage: evaluator checks the exact setting required by the instruction",
+        "Minor issue: FileNotFoundError exception handler in metric is after file open statement (line 8 opens file, line 26 catches FileNotFoundError), but this doesn't affect normal operation when config file exists"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider moving the file open statement inside the try block to properly catch FileNotFoundError: 'try:\\n    with open(actual_config_path, 'rb') as file:\\n        config_file = file.read().decode('utf-8')\\nexcept FileNotFoundError:...'",
+        "The metric defaults qt_updates_notif to '1' if not found in config - this is reasonable but could be documented in a comment"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "37887e8c-da15-4192-923c-08fa390a176d_traj_verify_0",
+  "snapshot": "os",
+  "instruction": "Save a recursive listing of all files in the /tmp/test_files directory tree to /tmp/file_list.txt",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "cat",
+        "/tmp/file_list.txt"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "old_file1.txt",
+          "old_file2.txt",
+          "new_file1.txt",
+          "new_file2.txt"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_37887e8c-da15-4192-923c-08fa390a176d_sid_1488151",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent used find with -mtime 30 to locate old files, then used tar -czvf to create a single archive. The task expected individual file compression (gzip), not a tar bundle. The agent correctly identified the right files but used the wrong compression approach.",
+    "capability_extraction": "Can use terminal, find command with -mtime flag, tar, ls, redirect output, verify file existence",
+    "failure_analysis": "Model used tar -czvf to create a single archive instead of compressing each file individually with gzip. The evaluator expected individual .gz files in-place, not a tar.gz bundle.",
+    "task_rationale": "Simplified to a basic file listing task that uses find/ls which the model demonstrated proficiency with",
+    "explanation": "Task requires recursively listing all files in /tmp/test_files and saving to a text file. Evaluator checks that the output file contains all 4 expected filenames using check_include_exclude.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "scoring_breakdown": {
+      "all_files_listed": "1.0 - Output file contains all 4 filenames"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly reads /tmp/file_list.txt via 'cat' command to obtain the recursive listing output",
+        "Metric check_include_exclude correctly receives rules dict directly (type='rule') and uses substring matching to verify all 4 expected filenames appear in the output",
+        "Parameter handling is correct: check_include_exclude(result, rules) accesses rules.get('include') and rules.get('exclude') directly, matching the framework's get_rule behavior",
+        "Data flow is sound: getter extracts file content as string, metric checks substring inclusion for each expected filename",
+        "Minor: evaluator does not explicitly verify that the listing is recursive (e.g., checking for subdirectory path prefixes), but filename presence is a reasonable proxy if files exist in subdirectories"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding subdirectory path fragments (e.g., 'subdir1/old_file1.txt') to the include list to more explicitly verify recursive listing behavior",
+        "Consider adding an exclude entry for error messages or empty output to catch edge cases where the file exists but is empty"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

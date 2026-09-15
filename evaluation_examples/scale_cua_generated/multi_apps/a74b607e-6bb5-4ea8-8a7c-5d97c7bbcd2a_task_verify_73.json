@@ -1,0 +1,97 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_73",
+  "snapshot": "multiapps",
+  "instruction": "There is a Chrome extension package in the Desktop directory that needs to be loaded. Please install it manually in Chrome as an unpacked extension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_ext_count__dc791077",
+    "result": {
+      "type": "ext_count__dc791077"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": 1
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_1/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_1/metrics/chrome.py"
+    ],
+    "explanation": "Task requires installing the extension from Desktop. Evaluator checks that at least 1 unpacked extension is installed in Chrome (counting extensions with 'path' attribute in preferences).",
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical semantic flaw: Evaluator checks for ANY unpacked extension (count >= 1) rather than verifying the SPECIFIC extension from Desktop was installed",
+        "False positive risk: If pre-existing unpacked extensions exist in the VM, evaluator will incorrectly pass even if user did nothing",
+        "Insufficient specificity: Getter cannot distinguish between the target 'Hello Extension' from Desktop and other unrelated unpacked extensions",
+        "Missing verification: No check for extension properties (name, path from Desktop folder, or manifest details) to confirm the correct extension was loaded"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify getter to check for specific extension properties: verify extension name contains 'Hello' or path contains '/home/user/Desktop/'",
+        "Alternative approach: Store initial unpacked extension count in config (via initial getter call), then verify count increased by exactly 1",
+        "Alternative approach: Check extension manifest.json properties if extension has unique identifiable fields (name, version, description)",
+        "Add getter logic to iterate through all unpacked extensions and verify at least one has path starting with '/home/user/Desktop/'",
+        "Consider adding better error handling for missing or corrupt Chrome Preferences file"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

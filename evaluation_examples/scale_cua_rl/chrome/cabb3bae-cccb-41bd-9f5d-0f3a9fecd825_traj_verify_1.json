@@ -1,0 +1,89 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Go to amazon.com and search for 'kids toys'.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "amazon\\.com/s",
+          "kids.*toys|toys.*kids"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_cabb3bae-cccb-41bd-9f5d-0f3a9fecd825_sid_1488135",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent encountered 'Access Denied' on kohls.com. Navigated to Amazon, searched 'Spider-Man toys for kids', and sorted by 'Price: Low to High'. Task scored 0 because evaluator required kohls.com-specific elements.",
+    "capability_extraction": "Can navigate Chrome address bar, search products on Amazon, use sort dropdowns, handle blocked sites by navigating elsewhere",
+    "failure_analysis": "Kohls.com returned Access Denied. Model adapted by going to Amazon, but evaluator checks kohls.com-specific HTML breadcrumbs and sort selector.",
+    "task_rationale": "Simplified version: only navigation to Amazon and searching for a product. No sort step required. Tests core search capability demonstrated in trajectory.",
+    "explanation": "Uses is_expected_url_pattern_match to verify URL contains amazon.com/s search path and 'kids toys' query parameters.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active tab URL from Chrome's accessibility tree, which is the right state to verify navigation and search.",
+        "Metric (is_expected_url_pattern_match) correctly iterates over all regex patterns and requires all to match, ensuring both amazon.com navigation and 'kids toys' search are verified.",
+        "Expected patterns are semantically correct: 'amazon\\.com/s' verifies the user reached Amazon's search results page, and 'kids.*toys|toys.*kids' verifies the search query contains both terms in either order.",
+        "Data flow is correct: getter returns a string URL, metric handles string input, and rules['expected'] is accessed correctly after get_rule returns the rules dict.",
+        "Both instruction requirements (go to amazon.com AND search for 'kids toys') are covered by the two regex patterns."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The initial config opens kohls.com which is unrelated to the task instruction. Consider changing it to a neutral page (e.g., about:blank or google.com) to avoid confusion, though this does not affect evaluator correctness.",
+        "Minor: The search term pattern 'kids.*toys|toys.*kids' may also match URL-encoded forms like 'kids+toys' or 'kids%20toys' which is good, but note that Amazon sometimes uses 'k=kids+toys' query parameter format — the .* in the pattern handles this correctly."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

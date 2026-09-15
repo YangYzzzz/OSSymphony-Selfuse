@@ -1,0 +1,83 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_37",
+  "snapshot": "chrome",
+  "instruction": "Browse the FlightAware discussion forums and locate the 'General Aviation' category, then open any discussion thread within it.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "https://discussions\\.flightaware\\.com/c/general-aviation/.+"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation requires navigating to General Aviation category in discussions and opening a thread. Uses regex pattern matching with '.+' to verify URL contains additional path segments beyond the category, ensuring a thread was opened rather than just the category page.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete instruction verification: The evaluator correctly verifies both requirements of the instruction: (1) navigating to the General Aviation category, and (2) opening a discussion thread within it.",
+        "Correct regex pattern: The pattern 'https://discussions\\.flightaware\\.com/c/general-aviation/.+' uses '.+' which requires ONE OR MORE additional characters after '/c/general-aviation/'. This ensures the URL has additional path segments beyond the category path.",
+        "Proper thread verification: The regex will match thread URLs (e.g., 'https://discussions.flightaware.com/c/general-aviation/123/thread-title') but will NOT match the category page alone (e.g., 'https://discussions.flightaware.com/c/general-aviation/') because the trailing slash is followed by nothing, not matching '.+'.",
+        "Semantic correctness: The getter (active_tab_info) extracts the active tab URL, and the metric (is_expected_url_pattern_match) performs regex matching. The data flow is correct and the logic will work at runtime."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

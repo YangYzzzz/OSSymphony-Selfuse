@@ -1,0 +1,105 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_40",
+  "snapshot": "os",
+  "instruction": "Archive all files in the \"/tmp/test_files\" directory tree that were last modified 30 days ago into a tar.gz file",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'if find /tmp -maxdepth 1 -name \"*.tar.gz\" -type f | grep -q .; then if tar -tzf $(find /tmp -maxdepth 1 -name \"*.tar.gz\" -type f | head -1) 2>/dev/null | grep -q \"old_file\"; then echo \"Success: Old files archived\"; else echo \"Fail: Archive does not contain old files\"; fi; else echo \"Fail: No tar.gz archive found\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files archived"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires archiving files modified 30 days ago into a tar.gz file. Uses command-line verification to check if a tar.gz archive exists in /tmp and contains the old files. No custom functions needed - reuses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Wrong search location: Command searches '/tmp -maxdepth 1' but instruction specifies files are in '/tmp/test_files' directory tree",
+        "Incomplete verification: Only checks if archive contains a file with 'old_file' string, doesn't verify files were actually modified 30 days ago",
+        "Missing completeness check: Doesn't verify ALL matching files were archived (partial archiving would pass)",
+        "Hardcoded string dependency: Relies on 'old_file' naming pattern from setup.sh, not mentioned in instruction",
+        "No source path verification: Doesn't verify archived files came from /tmp/test_files specifically"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change search location from '/tmp -maxdepth 1' to '/tmp/test_files' to match instruction",
+        "Verify archive contains files from /tmp/test_files by checking tar contents paths",
+        "Add verification that archived files have modification time matching 30 days ago criterion",
+        "Count files in /tmp/test_files matching the 30-day criterion and verify same count in archive",
+        "Consider checking setup.sh to understand actual test file structure and modify verification accordingly"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

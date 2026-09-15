@@ -1,0 +1,70 @@
+{
+  "id": "99146c54-4f37-4ab8-9327-5f3291665e1e",
+  "new_id": "99146c54-4f37-4ab8-9327-5f3291665e1e_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's startup behavior to continue where you left off.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "new_startup_page"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_99146c54-4f37-4ab8-9327-5f3291665e1e_sid_1488309",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened Chrome menu, navigated to Settings > Privacy and security, explored third-party cookies, site settings, on-startup page, searched 'clear on exit' in settings, then tried chrome://flags with various queries. Never found the auto-delete browsing data setting.",
+    "capability_extraction": "Can open Chrome three-dot menu, navigate to chrome://settings, click sidebar sections (Privacy and security, On start-up), use settings search bar, navigate to chrome://flags and search flags",
+    "failure_analysis": "Model could not locate the 'Delete browsing data on close' setting. Searched in wrong areas (cookies, site settings, flags) instead of finding the correct path.",
+    "task_rationale": "Simplified to changing startup behavior on the On start-up page, which the model already navigated to successfully (screenshot 25). Tests model's ability to select a radio button in settings.",
+    "explanation": "Task requires changing Chrome startup to 'Continue where you left off'. Evaluator reads Chrome Preferences file and checks session.restore_on_startup == 5.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter get_new_startup_page correctly reads Chrome Preferences file and checks session.restore_on_startup == 5, which corresponds to 'Continue where you left off' startup behavior.",
+        "Metric exact_match correctly compares getter result string 'true' against expected string 'true' from rules.",
+        "Data flow is correct: get_rule returns {'expected': 'true'}, getter returns 'true'/'false' string, exact_match compares them.",
+        "Coverage is complete: the single instruction requirement (change startup to continue where you left off) is fully verified.",
+        "Minor concern: getter returns 'true' when no 'session' key exists in Preferences (assuming fresh-start mode), which could be a false positive if Chrome hasn't been configured. However, since Chrome is launched in config, the session key should exist in practice."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider that the getter's fallback of returning 'true' when no 'session' key exists could cause false positives in edge cases where Chrome Preferences lacks the session key. A stricter check would return 'false' when the session key is absent, since 'Continue where you left off' requires an explicit restore_on_startup=5 setting."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

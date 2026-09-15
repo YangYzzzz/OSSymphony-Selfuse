@@ -1,0 +1,125 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "task_verify_49",
+  "snapshot": "thunderbird",
+  "instruction": "Replace the email body text with 'Please find attached the AWS invoice for December 2023. Total amount due: $10.02.'",
+  "source": "https://support.mozilla.org/en-US/kb/compose-new-messages",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/aws-bill.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/d088f539-cab4-4f9a-ac92-9999fc3a656e",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://files.pythonhosted.org/packages/ee/58/257350f7db99b4ae12b614a36256d9cc870d71d9e451e79c2dc3b23d7c3c/cssselect-1.3.0-py3-none-any.whl",
+              "path": "/home/user/cssselect-1.3.0-py3-none-any.whl"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pip",
+            "install",
+            "/home/user/cssselect-1.3.0-py3-none-any.whl"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import os; profile_dir = os.path.expanduser('~/.thunderbird'); profiles = [d for d in os.listdir(profile_dir) if d.endswith('.default')]; draft_file = os.path.join(profile_dir, profiles[0], 'ImapMail/outlook.office365.com/Drafts') if profiles else None; content = open(draft_file, 'r', errors='ignore').read() if draft_file and os.path.exists(draft_file) else ''; original_body = open('/home/user/.aws-bill-mail-body.html', 'r', errors='ignore').read() if os.path.exists('/home/user/.aws-bill-mail-body.html') else ''; has_new_text1 = 'Please find attached the AWS invoice for December 2023' in content; has_new_text2 = 'Total amount due: $10.02' in content; original_removed = original_body not in content if original_body else True; print('Body replaced!' if has_new_text1 and has_new_text2 and original_removed else 'Body not replaced')"
+          ],
+          "stdout": "body-replace-check.output"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "body-replace-check.output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "Body replaced!"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires replacing the email body with specific text. Evaluator checks if both required text snippets are present in the draft and that the original body content was removed (ensuring true replacement, not appending). Similar difficulty to original (body modification vs attachment action). Verified that the expected text includes invoice amount from the PDF ($10.02).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: The evaluator correctly verifies ALL requirements in the instruction - replacing the email body with the specified text containing both 'Please find attached the AWS invoice for December 2023' and 'Total amount due: $10.02'.",
+        "Correct replacement verification: The evaluator properly checks that the original body content was removed (line 82: 'original_removed = original_body not in content if original_body else True'), ensuring true replacement rather than appending.",
+        "Appropriate verification logic: The Python script checks three conditions - has_new_text1 AND has_new_text2 AND original_removed - all of which must be true to output 'Body replaced!'. This logic correctly verifies replacement semantics.",
+        "Valid verification method: Reading from the Thunderbird Drafts file is the correct approach to verify email body content after it has been auto-saved by Thunderbird.",
+        "Correct expected values: The expected text snippets match exactly what the instruction requires, including the specific invoice amount ($10.02) mentioned in the instruction."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

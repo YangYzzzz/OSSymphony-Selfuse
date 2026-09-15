@@ -1,0 +1,93 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_16",
+  "snapshot": "os",
+  "instruction": "Please create an SSH user named \"alice\" with password \"Secure#2024Pass\" on Ubuntu who is only allowed to access the folder \"/home/data1\".",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir /home/data1",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get install -y expect",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "cat > check_password.sh << 'EOFSCRIPT'\n#!/bin/bash\n\nUSERNAME=$1\nPASSWORD=$2\n\n# Verify the user exists\nif ! id \"$USERNAME\" &>/dev/null; then\n    echo \"User does not exist\"\n    exit 1\nfi\n\n# Check if expect is installed\nif ! command -v expect &>/dev/null; then\n    echo \"expect is not installed\"\n    exit 1\nfi\n\n# Test SSH password using expect\nexpect << EOF\nset timeout 10\nspawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $USERNAME@localhost\nexpect {\n    \"password:\" {\n        send \"$PASSWORD\\r\"\n        expect {\n            \"$ \" { exit 0 }\n            \"# \" { exit 0 }\n            timeout { exit 1 }\n            eof { exit 1 }\n        }\n    }\n    timeout { exit 1 }\n    eof { exit 1 }\n}\nEOF\n\nexit $?\nEOFSCRIPT\n",
+          "shell": true
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": "chmod +x check_password.sh",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"alice\"; HOMEDIR=\"/home/data1\"; PASSWORD=\"Secure#2024Pass\"; ./check_password.sh \"$USERNAME\" \"$PASSWORD\" && [ \"$(getent passwd \"$USERNAME\" | cut -d: -f6)\" = \"$HOMEDIR\" ] && [ $(stat -c \"%A\" \"$HOMEDIR\" | cut -b 3) = \"w\" ] && echo \"Password, home directory, and write permission check passed\" || echo \"Check failed\"",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Password, home directory, and write permission check passed"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task creates SSH user 'alice' with password 'Secure#2024Pass' restricted to folder '/home/data1'. Evaluator verifies: (1) SSH password authentication works, (2) home directory is set to /home/data1, (3) user has write permission to the folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/5812b315-e7bd-4265-b51f-863c02174c28_task_verify_0/scripts/check_password.sh"
+    ],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification of access restriction: The instruction requires alice be 'only allowed to access' /home/data1, implying isolation/restriction. The evaluator only checks that home directory is set to /home/data1, but does NOT verify that alice is actually restricted from accessing other system directories. A user with home=/home/data1 but no chroot/restricted shell would pass this test while having full system access, violating the core requirement.",
+        "Password authentication method is fragile: The expect-based SSH password check is prone to timing issues, race conditions, and depends on SSH service configuration (password auth might be disabled in favor of key-based auth). The 10-second timeout may be insufficient in some environments.",
+        "Write permission check is imprecise: The stat command only checks position 3 of permission string (owner write bit) but doesn't verify alice is actually the owner of /home/data1, nor does it check group/other permissions.",
+        "Missing verification of SSH restriction mechanisms: No check for chroot configuration, ForceCommand, or restricted shell settings that would actually enforce the 'only access' requirement."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that SSH is configured with chroot or ForceCommand to restrict alice's access (e.g., check /etc/ssh/sshd_config for 'Match User alice' with 'ChrootDirectory /home/data1' or similar)",
+        "Add check to verify alice cannot access directories outside /home/data1 (e.g., attempt to list /home or /etc and verify access is denied)",
+        "Enhance ownership verification: use 'stat -c \"%U\" /home/data1' to verify alice is the owner, not just checking the permission bits",
+        "Consider alternative to expect-based password testing that is more reliable, or add retry logic with longer timeouts",
+        "Add verification of restricted shell assignment (e.g., check if alice's shell is set to rbash or similar restricted shell)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

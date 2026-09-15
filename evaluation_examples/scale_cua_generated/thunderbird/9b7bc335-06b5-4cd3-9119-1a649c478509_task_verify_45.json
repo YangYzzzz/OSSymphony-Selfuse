@@ -1,0 +1,118 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_45",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to forward all future emails from anonym-x2024@outlook.com to archive-2024@protonmail.com. Set this up locally in the Thunderbird client without modifying the online account.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Forward",
+            "actionValue": "archive-2024@protonmail.com",
+            "condition": [
+              "ALL"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation with different forward target email (archive-2024@protonmail.com). Evaluator verifies filter is enabled, action is Forward, target is archive-2024@protonmail.com, and condition is ALL. Same complexity as original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic mismatch: Instruction requires forwarding emails FROM anonym-x2024@outlook.com, but evaluator only checks condition=['ALL'] which accepts ALL emails regardless of sender",
+        "Incomplete verification coverage: The evaluator does not verify the source email filter (from anonym-x2024@outlook.com) - only 75% of requirements are checked (3/4)",
+        "False positive risk: A user could create a filter that forwards ALL emails to archive-2024@protonmail.com (not just from anonym-x2024@outlook.com) and the evaluator would incorrectly pass",
+        "The expected.rules should include a condition check for the FROM field matching 'anonym-x2024@outlook.com', not just condition=['ALL']"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update expected.rules.expect[0].condition to verify the filter includes a FROM condition. Based on the Thunderbird filter format (see check_thunderbird_filter at src/envs/osworld_env/desktop_env/evaluators/metrics/thunderbird.py:118-122), the condition field should contain a pattern like 'AND (from,is,anonym-x2024@outlook.com)' or similar",
+        "The expected structure should be: {'enabled': 'yes', 'action': 'Forward', 'actionValue': 'archive-2024@protonmail.com', 'condition': [pattern matching 'from' field with 'anonym-x2024@outlook.com']}",
+        "Verify that _match_record function can correctly match the condition field patterns - may need to adjust the matching logic or use a different comparison method for condition patterns"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

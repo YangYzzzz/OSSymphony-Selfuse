@@ -1,0 +1,115 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_87",
+  "snapshot": "thunderbird",
+  "instruction": "When forwarding emails, I prefer to have the original message included inline in the body rather than as an attachment. Could you configure Thunderbird to forward messages inline?",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.forward_message_mode": {
+            "method": "eq",
+            "ref": 0
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires configuring forward mode by setting mail.forward_message_mode to 0 (inline). This preference controls how messages are forwarded: 0=inline, 1=as attachment, 2=ask each time.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "The preference mail.forward_message_mode is a standard Thunderbird setting: 0 forwards inline (in message body), 1 forwards as attachment, 2 asks user each time.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: configuring Thunderbird to forward messages inline by checking mail.forward_message_mode=0",
+        "Getter logic is correct: fetches the prefs.js file from VM to local cache for parsing",
+        "Metric logic is correct: check_thunderbird_prefs parses preferences file and matches against expected rules using proper comparison",
+        "Expected value is semantically correct: mail.forward_message_mode=0 represents inline forwarding (confirmed by metadata documentation)",
+        "Complete coverage: evaluator checks exactly what the instruction requires - no missing requirements",
+        "Postconfig is appropriate: closes Thunderbird window to ensure preferences are saved before verification",
+        "Parameter handling is correct: metric function directly accesses rules dictionary without incorrect patterns like rule.get('rules') or rule.get('type')"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

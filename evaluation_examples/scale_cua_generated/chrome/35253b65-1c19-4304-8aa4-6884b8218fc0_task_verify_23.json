@@ -1,0 +1,85 @@
+{
+  "id": "35253b65-1c19-4304-8aa4-6884b8218fc0",
+  "new_id": "task_verify_23",
+  "snapshot": "chrome",
+  "instruction": "Create a bookmark for this website in Chrome.",
+  "source": "https://www.laptopmag.com/articles/how-to-create-desktop-shortcuts-for-web-pages-using-chrome",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.mathsisfun.com/games/2048.html"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://www.mathsisfun.com/games/2048.html"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires adding the website (https://www.mathsisfun.com/games/2048.html) as a bookmark in Chrome. The evaluator uses the existing `get_bookmarks` getter and `is_expected_bookmarks` metric to verify that the URL appears in the bookmark bar. No custom functions needed as the existing Chrome evaluator infrastructure supports bookmark validation.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies that the expected URL is bookmarked in Chrome's bookmark bar",
+        "Getter (get_bookmarks) correctly reads Chrome's Bookmarks file from filesystem and extracts bookmark structure",
+        "Metric (is_expected_bookmarks) correctly handles the rules dictionary parameter when expected.type='rule'",
+        "Expected URL matches the URL opened in the config setup",
+        "No postconfig needed - Chrome persists bookmarks to disk immediately",
+        "Data flow is semantically correct: getter extracts bookmarks → metric filters bookmark_bar URLs → compares with expected",
+        "Minor semantic issue: Uses set equality (==) which requires EXACT match - if user bookmarks the correct URL plus any additional URLs, verification fails. A more lenient check would verify the expected URL is present (subset check) rather than requiring exact equality. However, strict interpretation of 'bookmark this website' (implying only this one) is also reasonable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using subset check instead of set equality: 'set(rule['urls']).issubset(set(bookmark_bar_websites_urls))' to allow users to bookmark additional URLs without failing verification. This would be more robust and user-friendly.",
+        "Alternatively, if strict verification is desired, clarify in the instruction: 'Bookmark only this website' or 'Bookmark this website (and no others)' to make the requirement explicit."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "35253b65-1c19-4304-8aa4-6884b8218fc0_aug_7_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

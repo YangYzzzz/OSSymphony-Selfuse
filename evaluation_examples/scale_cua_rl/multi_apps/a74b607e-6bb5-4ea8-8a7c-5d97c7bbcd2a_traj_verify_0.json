@@ -1,0 +1,89 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_traj_verify_0",
+  "snapshot": "multiapps",
+  "instruction": "Open Chrome's extensions management page.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": ""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "chrome://extensions"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_sid_1488328",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to chrome://extensions, enabled Developer mode, clicked Load unpacked, but couldn't find helloExtension folder in file picker. Opened Terminal, unzipped extension to /tmp/chrome_extensions/, loaded extension from there instead of Desktop path. Extension installed but from wrong path.",
+    "capability_extraction": "Can navigate Chrome URLs, enable Developer mode, use Load unpacked button, open Terminal, run bash commands, navigate file dialogs",
+    "failure_analysis": "Model loaded extension from /home/user/tmp/chrome_extensions/helloExtension instead of /home/user/Desktop/helloExtension. File picker may not have shown the unzipped folder on Desktop.",
+    "task_rationale": "Simplified to just navigating to chrome://extensions page, which the model demonstrated successfully in the trajectory",
+    "explanation": "Task requires navigating to chrome://extensions. Evaluator checks active tab URL matches chrome://extensions using existing active_url_from_accessTree getter.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Instruction requires opening Chrome's extensions management page (chrome://extensions). The evaluator correctly checks this single requirement.",
+        "Getter active_url_from_accessTree with goto_prefix='' correctly extracts the active tab URL without adding a default 'https://' prefix, which is necessary for chrome:// scheme URLs.",
+        "Metric is_expected_active_tab correctly receives the rules dict {'type': 'url', 'url': 'chrome://extensions'} and uses compare_urls to match the active tab URL against the expected URL.",
+        "Complete coverage: the instruction has a single requirement (navigate to chrome://extensions) and the evaluator fully verifies it.",
+        "No postconfig needed since the URL state is persistent in the active tab."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

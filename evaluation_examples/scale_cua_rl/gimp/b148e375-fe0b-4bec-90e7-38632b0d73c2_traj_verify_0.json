@@ -1,0 +1,96 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "b148e375-fe0b-4bec-90e7-38632b0d73c2_traj_verify_0",
+  "snapshot": "gimp",
+  "instruction": "Add a new layer and name it 'Frame'.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type:": "key-value",
+        "key": "layer-new-name",
+        "value": "\"Frame\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_b148e375-fe0b-4bec-90e7-38632b0d73c2_sid_1488319",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created a new layer named 'Square' in GIMP by right-clicking the layers panel, selecting New Layer, clearing the default name, typing 'Square', and clicking OK. Completed in 6 turns.",
+    "capability_extraction": "Can navigate GIMP layer context menus, open New Layer dialog, edit layer name field, confirm dialog",
+    "task_rationale": "Same layer creation task with a different layer name to verify the model can generalize the operation",
+    "explanation": "Task requires creating a new layer named 'Frame'. Evaluator quits GIMP (writing gimprc) then checks the gimprc key 'layer-new-name' for value 'Frame'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "layer_creation": "1.0 - Layer created with correct name 'Frame'"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter (gimp_config_file) correctly reads gimprc from ~/.config/GIMP/2.10/gimprc after postconfig quits GIMP, which triggers gimprc write.",
+        "Metric (check_config_status) correctly parses gimprc lines by stripping parens and splitting, then matches rule['key']='layer-new-name' and rule['value']='\"Frame\"' against parsed tokens. The 'type:' typo key in rules is unused by the metric and does not affect functionality.",
+        "Expected value format '\"Frame\"' (with embedded quotes) correctly matches how GIMP stores string values in gimprc, e.g., (layer-new-name \"Frame\").",
+        "Postconfig appropriately quits GIMP with Ctrl+Q to flush preferences to disk before the getter reads the config file.",
+        "Minor limitation: Verification is indirect - it checks the last-used layer name in GIMP preferences rather than verifying the layer actually exists in the image. An agent could type 'Frame' in the dialog but cancel, or the gimprc could already have this value. However, this is a well-established OSWorld pattern for GIMP config-based tasks."
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stronger verification, consider using GIMP's Script-Fu console to query actual layers in the image (e.g., via gimp-image-get-layers) rather than relying on gimprc preference tracking. This would directly confirm the layer named 'Frame' exists.",
+        "Fix the typo 'type:' -> 'type' in the rules dict, even though it doesn't affect current metric logic, to avoid confusion."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

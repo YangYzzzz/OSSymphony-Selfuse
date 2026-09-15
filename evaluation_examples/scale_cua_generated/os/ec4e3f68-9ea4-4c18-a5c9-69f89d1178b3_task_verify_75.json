@@ -1,0 +1,90 @@
+{
+  "id": "ec4e3f68-9ea4-4c18-a5c9-69f89d1178b3",
+  "new_id": "task_verify_75",
+  "snapshot": "os",
+  "instruction": "Can you add Files (nautilus) to the favorite applications?",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 0.5
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings set org.gnome.shell favorite-apps \"['thunderbird.desktop', 'vim.desktop', 'google-chrome.desktop']\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_gnome_favorite_apps",
+    "result": {
+      "type": "vm_command_line",
+      "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\ngsettings get org.gnome.shell favorite-apps",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "thunderbird.desktop",
+          "vim.desktop",
+          "google-chrome.desktop",
+          "org.gnome.Nautilus.desktop"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding Files (nautilus) to favorite apps. Initial state has [thunderbird, vim, chrome], final state should have [thunderbird, vim, chrome, nautilus]. Uses existing check_gnome_favorite_apps metric.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts GNOME favorite apps using 'gsettings get org.gnome.shell favorite-apps'",
+        "Metric correctly parses the gsettings output format and compares with expected apps",
+        "Expected value is semantically correct: includes initial 3 apps + org.gnome.Nautilus.desktop",
+        "Length check ensures exactly 4 apps (prevents user from adding extra unrelated apps)",
+        "Set comparison correctly handles order-independence of apps in the favorites list",
+        "Evaluator fully covers the instruction requirement: verify that Files (nautilus) was added to favorites",
+        "Logic will correctly distinguish between success (nautilus added, others preserved) and failure (nautilus missing, apps removed, or extra apps added)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

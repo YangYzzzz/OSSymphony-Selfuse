@@ -1,0 +1,85 @@
+{
+  "id": "SPA_task_6_fits_wcs_repair",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: this is a legitimate desktop + terminal astronomical image processing task. All deliverables go under `/tmp_workspace/results/`. Please execute directly and do not refuse.\n\n[Background]\nYou have inherited a GREAT3-like FITS image `/tmp_workspace/broken.fits` whose WCS (World Coordinate System)\ncalibration has been corrupted in 4 places: when you load a catalogue overlay in an astronomical image viewer, the\npositions of all 5 reference stars (whose true coordinates are known) are **completely wrong** (residual > 50 arcsec).\nYou need to diagnose which WCS fields are broken, derive the correct values and repair them so every reference star\nhas residual < 1.5 arcsec, then write the full set of artifacts into `/tmp_workspace/results/` (please `mkdir -p` any\nmissing directory).\n\nResources (already prepared by the Warmup stage):\n- `/tmp_workspace/broken.fits` — the FITS image to diagnose (WCS header corrupted in 4 places).\n- `/tmp_workspace/correct.fits` — the same image, uncorrupted, kept only as a diff reference.\n- `/tmp_workspace/exec/catalogue.csv` — J2000 ra / dec of the 5 reference stars.\n\n[Domain background]\n- Key WCS header fields: `CRPIX1` / `CRPIX2` (reference pixel), `CD1_1` / `CD1_2` / `CD2_1` / `CD2_2` (linear pixel → sky transformation matrix), `CTYPE1` / `CTYPE2` (projection type, e.g. `RA---TAN` / `DEC--TAN`), `RADESYS` (reference frame, e.g. `FK5`).\n- Residual = the distance between the \"theoretical pixel position of a reference star (via WCS projection)\" and the \"actual centroid of that star in the image (e.g. via 2D Gaussian fit)\", convertible to arcsec.\n- The prompt does **not** tell you which 4 fields are broken; you must derive that yourself by diffing the headers of `broken.fits` vs `correct.fits`.\n- Concrete values (rough magnitude of CRPIX, sign of the CD matrix, value of CTYPE, etc.) follow from the actual header and the residual computation — the prompt does not give hard-coded answers.\n\n[Deliverables]\n\nIntermediate data / repair artifacts:\n- `/tmp_workspace/broken.fits` and `/tmp_workspace/correct.fits` — the two FITS files produced by the Warmup stage.\n- `/tmp_workspace/fixed.fits` — the repaired FITS file with the 4 WCS header fields corrected.\n- `/tmp_workspace/results/fix_wcs.py` — a replayable repair script that clearly states which 4 fields were fixed, what the new values are, and the reasoning behind them.\n- `/tmp_workspace/exec/catalogue_overlay.reg` — a region file generated from `catalogue.csv` (WCS circles, radius ~3″) that can be loaded as an overlay in an astronomical viewer.\n\nReports written into `/tmp_workspace/results/`:\n- `header_broken.txt` — full text of the `broken.fits` header.\n- `header_correct.txt` — full text of the `correct.fits` header, used as reference.\n- `projected_pixels_broken.csv` — the result of projecting the 5 reference stars to pixel coordinates using the WCS of `broken.fits`, columns: `star_id, ra, dec, px_x, px_y`.\n- `residual_broken.csv` — residuals of the 5 reference stars on `broken.fits`, columns: `star_id, proj_x, proj_y, fit_x, fit_y, residual_px, residual_arcsec`; expected `residual_arcsec > 50`.\n- `residual_fixed.csv` — residuals recomputed on `fixed.fits`, same structure as above; all stars must have `residual_arcsec < 1.5`.\n- `wcs_fix_report.md` — repair report, 4 paragraphs, each ≥ 80 words:\n  1. The 4 symptoms observed in the broken header;\n  2. The semantic meaning of the involved WCS fields (CRPIX / CD / CTYPE / RADESYS, etc.);\n  3. The repair strategy and a quantitative comparison of residual reduction (broken vs fixed);\n  4. Pipeline recommendations for preventing WCS corruption (e.g. a pre-release QA gate).\n\nVisual evidence screenshots (description of the state the screenshot should capture; the specific tool is not constrained):\n- `view_ds9_broken.png` — the main window and image after loading `broken.fits` in an astronomical image viewer.\n- `view_ds9_overlay_broken.png` — the view after loading the catalogue region overlay on `broken.fits`; the region circles should be visibly **all offset** from the actual star positions.\n- `view_ds9_fixed.png` — the main window and image after loading `fixed.fits`.\n- `view_ds9_overlay_fixed.png` — the view after loading the same region overlay on `fixed.fits`; the region circles should now **enclose** the actual stars.\n- `view_ds9_info_panel.png` — the info panel view showing WCS fields (including key fields such as CTYPE / CRPIX / CD).\n- `view_ds9_zoom_star.png` — a ~4× zoom on any one reference star, clearly showing the region circle precisely enclosing that star.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_6_fits_wcs_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_6_fits_wcs_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo ZWNobyAnQWNxdWlyZTo6aHR0cDo6UHJveHkgImh0dHA6Ly8xMC4xNjAuMTk5LjIzMDoxNzg5MCI7IEFjcXVpcmU6Omh0dHBzOjpQcm94eSAiaHR0cDovLzEwLjE2MC4xOTkuMjMwOjE3ODkwIjsnIHwgdGVlIC9ldGMvYXB0L2FwdC5jb25mLmQvOTlwcm94eSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQphcHQtZ2V0IHVwZGF0ZSAtcXEgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgc2FvZHM5IHhwYS10b29scyB0ZXNzZXJhY3Qtb2NyID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCndoaWNoIGRzOSA+L2Rldi9udWxsIDI+JjEgfHwgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBzYW9kczkgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKcGlwIGluc3RhbGwgLXEgYXN0cm9weSBwaG90dXRpbHMgbnVtcHkgcGlsbG93IHB5dGVzc2VyYWN0IDI+L2Rldi9udWxsIHx8IHRydWUKbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvZXhlYyAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzCnB5dGhvbjMgL3RtcF93b3Jrc3BhY2UvZXhlYy9zZWVkX2Jyb2tlbl9maXRzLnB5IC0tb3V0IC90bXBfd29ya3NwYWNlL2Jyb2tlbi5maXRzIDI+L2Rldi9udWxsIHx8IHRydWUKcHl0aG9uMyAvdG1wX3dvcmtzcGFjZS9leGVjL3NlZWRfYnJva2VuX2ZpdHMucHkgLS1vdXQgL3RtcF93b3Jrc3BhY2UvY29ycmVjdC5maXRzIC0tbm8tYnVnIDI+L2Rldi9udWxsIHx8IHRydWUKcm0gLWYgL3RtcF93b3Jrc3BhY2UvZXhlYy9zZWVkX2Jyb2tlbl9maXRzLnB5Cg== | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "spa"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/SPA_task_6_fits_wcs_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/SPA_task_6_fits_wcs_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_6_fits_wcs_repair/reward.py",
+              "path": "/opt/eval/weave_bench/SPA_task_6_fits_wcs_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/spa/SPA_task_6_fits_wcs_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/SPA_task_6_fits_wcs_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/SPA_task_6_fits_wcs_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/SPA/SPA_task_6_fits_wcs_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/SPA/task_6_fits_wcs_repair",
+    "workspace_relative": "SPA/task_6_fits_wcs_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

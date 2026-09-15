@@ -1,0 +1,101 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_68",
+  "snapshot": "chrome",
+  "instruction": "Register the helloExtension from /home/user/Desktop/ in Chrome's extension manager as an unpacked extension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_in_list",
+    "result": {
+      "type": "find_unpacked_extension_path"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "/home/user/Desktop/helloExtension"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "chrome://extensions/",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 8: Uses 'register' terminology and 'extension manager'. Evaluator checks for /home/user/Desktop/helloExtension in extensions list. Task requires navigating to chrome://extensions/, enabling Developer mode, clicking Load unpacked, and selecting the extension folder.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: extracts all unpacked extension paths from Chrome Preferences file (extensions.settings.<id>.path)",
+        "Metric logic is correct: is_in_list properly checks if expected path is present in the list of extension paths",
+        "Expected value is semantically correct: '/home/user/Desktop/helloExtension' matches the exact location prepared by config",
+        "Complete coverage: evaluator verifies the core requirement that the extension is registered in Chrome",
+        "Data flow is correct: getter returns List[str], metric checks string membership in list, expected provides string",
+        "Practical feasibility: Chrome Preferences file is persistent and updated when extension is loaded, no stale state issues",
+        "Postconfig opens chrome://extensions/ but this is not needed since getter reads from persistent Preferences file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

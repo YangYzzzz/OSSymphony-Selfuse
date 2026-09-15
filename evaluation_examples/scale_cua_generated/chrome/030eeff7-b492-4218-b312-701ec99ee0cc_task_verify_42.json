@@ -1,0 +1,102 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "Enable Chrome's option to resume previous tabs on startup.",
+  "source": "https://support.google.com/chrome/answer/3220216",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "new_startup_page"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting Chrome to 'Continue where you left off' startup mode. The evaluator uses the existing get_new_startup_page getter which checks the session.restore_on_startup field in Chrome Preferences file. When this value is 5, it means Chrome will restore previous session tabs. This is verified by reading the Chrome Preferences JSON structure where session.restore_on_startup is an integer value. The exact_match metric compares the result against expected value 'true'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the Chrome startup setting by checking session.restore_on_startup field in Preferences file",
+        "Getter get_new_startup_page properly reads Chrome Preferences JSON and checks if restore_on_startup == 5 (which means 'Continue where you left off')",
+        "Postconfig appropriately kills and restarts Chrome to simulate startup behavior, which is essential for verifying 'when starting up' requirement",
+        "Expected value 'true' matches the getter's return value when setting is correctly configured",
+        "Complete coverage - evaluator checks the exact requirement stated in instruction",
+        "Runtime feasible - getter can access Preferences file, parse JSON, and extract the needed field"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor code quality issue in chrome.py:1376 - error case returns 'Google' instead of appropriate error value (copy-paste error from another function). Does not affect main logic path but should be fixed for code consistency."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

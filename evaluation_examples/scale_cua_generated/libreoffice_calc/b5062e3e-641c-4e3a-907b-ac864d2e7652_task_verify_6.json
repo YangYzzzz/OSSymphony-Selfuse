@@ -1,0 +1,175 @@
+{
+  "id": "b5062e3e-641c-4e3a-907b-ac864d2e7652",
+  "new_id": "task_verify_6",
+  "instruction": "Extract the first author's name, e-mail, and affiliation from every paper in the folder, organize the information in an Excel spreadsheet with columns labeled 'Name', 'Email', and 'Affiliation', and save it to '~/authors.xlsx'.",
+  "source": "authors",
+  "snapshot": "libreoffice_calc",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Papers"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Documents/Papers/zhang_appagent.pdf",
+            "url": "https://arxiv.org/pdf/2312.13771.pdf"
+          },
+          {
+            "path": "/home/user/Documents/Papers/niu_screenagent.pdf",
+            "url": "https://arxiv.org/pdf/2402.07945.pdf"
+          },
+          {
+            "path": "/home/user/Documents/Papers/koh_visualwebarena.pdf",
+            "url": "https://arxiv.org/pdf/2401.13649.pdf"
+          },
+          {
+            "path": "/home/user/Documents/Papers/deng_mind2web.pdf",
+            "url": "https://papers.nips.cc/paper_files/paper/2023/file/5950bf290a1570ea401bf98882128160-Paper-Datasets_and_Benchmarks.pdf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Papers"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "authors.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(0.5)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_author_table_structure__f918ebce432b3a8956b1f7dd26a64d11",
+    "result": {
+      "type": "xlsx_table_data__f918ebce432b3a8956b1f7dd26a64d11",
+      "path": "/home/user/authors.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "required_headers": [
+          "Name",
+          "Email",
+          "Affiliation"
+        ],
+        "min_columns": 3,
+        "expected_row_count": 4,
+        "sample_authors": [
+          {
+            "name": "Chi Zhang",
+            "email_domain": "tencent.com",
+            "affiliation_keywords": [
+              "Tencent"
+            ]
+          },
+          {
+            "name": "Runliang Niu",
+            "email_domain": "jlu.edu.cn",
+            "affiliation_keywords": [
+              "Jilin University"
+            ]
+          },
+          {
+            "name": "Jing Yu Koh",
+            "email_domain": "cmu.edu",
+            "affiliation_keywords": [
+              "Carnegie Mellon"
+            ]
+          },
+          {
+            "name": "Xiang Deng",
+            "email": "deng.595@osu.edu",
+            "affiliation_keywords": [
+              "Ohio State"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "trajectory": "trajectories/b5062e3e-641c-4e3a-907b-ac864d2e7652",
+  "related_apps": [
+    "libreoffice_calc",
+    "os"
+  ],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires extracting first author name, email, and affiliation from 4 PDFs and creating a 3-column Excel table with headers. Evaluator checks: (1) Table has exactly 4 data rows (15% score), (2) Headers exactly match Name/Email/Affiliation (20% score), (3) All rows have at least 3 columns (10% score), (4) Email column contains valid email addresses with @ and domain (15% score), (5) Affiliation column contains institution-like keywords (15% score), (6) Name validation for proper formatting (10% score), (7) Content verification - at least 2 sample authors match expected data (name similarity, email domain, or affiliation keywords) (15% score). This ensures data is extracted correctly from the specific PDFs.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/b5062e3e-641c-4e3a-907b-ac864d2e7652_task_verify_3/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/b5062e3e-641c-4e3a-907b-ac864d2e7652_task_verify_3/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "row_count_correct": 0.15,
+      "headers_exact_match": 0.2,
+      "columns_complete": 0.1,
+      "email_format_valid": 0.15,
+      "affiliation_keywords": 0.15,
+      "name_format_valid": 0.1,
+      "content_verification": 0.15
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator successfully validates both structure AND content - the expected.rules.sample_authors contains actual gold standard author data from the 4 PDFs (Chi Zhang/Tencent, Runliang Niu/Jilin University, Jing Yu Koh/Carnegie Mellon, Xiang Deng/Ohio State)",
+        "Content verification logic (_verify_sample_authors, lines 203-272) uses multi-criteria matching: requires 2 out of 3 criteria (name similarity, email domain match, affiliation keywords) for each author, providing robust semantic verification",
+        "Sample author matching with 50% threshold (2 out of 4 authors must match) is reasonable for partial credit scoring while still verifying correctness",
+        "Structural validation is comprehensive: row count (15%), exact header matching after normalization (20%), column completeness (10%), email format regex validation (15%), affiliation keyword validation (15%), name format validation (10%)",
+        "The evaluator can distinguish between correct extraction and fake/garbage data - plausible fake data like 'fake1@university.edu at Fake University' would fail the sample author matching",
+        "Postconfig is appropriate: activates authors.xlsx window, saves file (Ctrl+S), includes sleep for stability",
+        "Data flow is correct: getter extracts table structure → metric validates structure, format, and content against gold standard",
+        "Edge cases are handled: empty data, missing columns, invalid email formats, missing institution keywords"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider increasing sample author matching threshold from 50% (2 out of 4) to 75% (3 out of 4) for stricter verification, though current threshold is reasonable for partial credit",
+        "Minor: The multi-criteria matching could be enhanced to weight name matching more heavily than email domain or affiliation keywords, as name is the most distinctive identifier"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "b5062e3e-641c-4e3a-907b-ac864d2e7652_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

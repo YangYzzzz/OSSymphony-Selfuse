@@ -1,0 +1,102 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_21",
+  "snapshot": "chrome",
+  "instruction": "Please configure Google as my primary search engine for web searches.",
+  "source": "https://support.google.com/chrome/answer/95426?sjid=16867045591165135686-AP",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Google",
+          "Google Search"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the user to change the default search engine to Google. The evaluator uses the existing get_default_search_engine getter to retrieve the current search engine setting and match_in_list metric to verify it matches 'Google' or 'Google Search'. Similar complexity to the original Bing task.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "Very high - same type of task (search engine change), same number of steps, same interaction pattern",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_default_search_engine reads Chrome's Preferences file and correctly extracts the search engine name from the 'default_search_provider_data.template_url_data.short_name' path",
+        "Metric comparison is correct: match_in_list performs the right type of comparison (membership check) for verifying the search engine setting",
+        "Expected values are semantically correct: ['Google', 'Google Search'] are both valid representations of Google as a search engine in Chrome, handling potential variations",
+        "Complete coverage: The evaluator checks the only requirement in the instruction - that Google is set as the primary search engine",
+        "Appropriate postconfig: Restarting Chrome ensures that any changes made by the agent are written to the Preferences file before evaluation",
+        "Good edge case handling: The getter has fallback logic (returns 'Google' on error) and handles different OS types correctly",
+        "State accessibility: The Preferences file is accessible after Chrome is restarted, ensuring fresh state is read"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

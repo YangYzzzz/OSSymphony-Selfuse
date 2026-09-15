@@ -1,0 +1,94 @@
+{
+  "id": "4783cc41-c03c-4e1b-89b4-50658f642bd5",
+  "new_id": "4783cc41-c03c-4e1b-89b4-50658f642bd5_traj_verify_2",
+  "snapshot": "os",
+  "instruction": "Create a tar.gz archive of the ~/Desktop/dir1 directory and save it as ~/dir1_backup.tar.gz.",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "sourceDir=\"/home/user/Desktop/\"\nmkdir -p \"$sourceDir\"/dir1/dir2\nmkdir -p \"$sourceDir\"/dir3/dir4",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click(960, 540); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "bash",
+        "-c",
+        "tar -tzf /home/user/dir1_backup.tar.gz 2>/dev/null || echo ARCHIVE_NOT_FOUND"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "dir1",
+          "dir2"
+        ],
+        "exclude": [
+          "ARCHIVE_NOT_FOUND"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_4783cc41-c03c-4e1b-89b4-50658f642bd5_sid_1488201",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent was given an infeasible task to copy directory hierarchy using undefined variables $sourceDir and $targetDir. Spent 31 turns systematically checking environment variables, config files (.bashrc, .profile), searching with grep/find across home directory and system files. Correctly determined the task was infeasible and reported [INFEASIBLE].",
+    "capability_extraction": "Can navigate terminal, run bash commands (grep, find, ls, cat), check environment variables, search config files systematically, use shell pipes and redirection",
+    "task_rationale": "Tests archival/compression skill using the same directory structure. Model demonstrated strong terminal proficiency, so tar operations are within capability. Evaluator checks both that the archive was created and that it contains the expected directory hierarchy.",
+    "explanation": "Task requires creating a tar.gz archive of ~/Desktop/dir1 saved as ~/dir1_backup.tar.gz. Evaluator lists archive contents with tar -tzf and checks that both 'dir1' and 'dir2' appear in the listing (confirming hierarchy preserved). If archive doesn't exist, ARCHIVE_NOT_FOUND appears in exclude list causing failure.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly lists archive contents using 'tar -tzf' with a fallback sentinel 'ARCHIVE_NOT_FOUND' for missing archives.",
+        "Metric 'check_include_exclude' correctly receives the rules dict directly (type='rule') and checks include/exclude lists via substring matching.",
+        "Evaluator verifies archive exists and contains 'dir1' and 'dir2', confirming the directory hierarchy is preserved.",
+        "Minor coverage gap: Setup creates dir3/dir4 alongside dir1/dir2, but evaluator does not check that dir3 is excluded from the archive. An agent that archives the entire ~/Desktop/ directory instead of only ~/Desktop/dir1 would still pass."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'dir3' to the exclude list to ensure only dir1 was archived and not the entire Desktop directory."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

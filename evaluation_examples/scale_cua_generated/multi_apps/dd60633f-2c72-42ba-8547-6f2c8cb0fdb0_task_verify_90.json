@@ -1,0 +1,139 @@
+{
+  "id": "dd60633f-2c72-42ba-8547-6f2c8cb0fdb0",
+  "new_id": "task_verify_90",
+  "snapshot": "multiapps",
+  "instruction": "Open the Colab notebook at https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx- in Chrome (already open), view the Python code cells, extract all method names from all classes (methods starting with 'def' inside class definitions), and save them to 'method_names.txt' in the Home directory with one method name per line. Only include methods defined inside classes, not module-level functions.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing#scrollTo=h5hjCcLDr2WC"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os",
+    "writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_method_names__d8f1c2a9",
+    "result": {
+      "type": "class_method_names__d8f1c2a9",
+      "path": "/home/user/method_names.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_methods": 10,
+        "expected_common_methods": [
+          "__init__",
+          "forward"
+        ],
+        "min_unique_names": 8,
+        "ground_truth_method_names": [
+          "__init__",
+          "forward",
+          "generate",
+          "get_num_params",
+          "estimate_mfu",
+          "configure_optimizers",
+          "crop_block_size",
+          "_init_weights"
+        ],
+        "expected_class_methods_only": true
+      }
+    },
+    "options": {
+      "partial_credit": true
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires opening a Colab notebook in Chrome, viewing Python code cells, and extracting method names from class definitions. The notebook contains PyTorch neural network classes with methods like __init__, forward, generate, etc. Evaluator verifies: (1) file contains valid Python method names (one per line), (2) at least 10 methods are listed, (3) names follow method naming conventions (snake_case or dunder methods, not PascalCase class names), (4) contains common PyTorch patterns like __init__ and forward, (5) at least 8 unique method names, (6) includes ground truth method names from typical GPT implementations. The Colab is already open in Chrome via preconfig.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_aug_8_task_verify_4/getters/class_method_names__d8f1c2a9.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/dd60633f-2c72-42ba-8547-6f2c8cb0fdb0_aug_8_task_verify_4/metrics/check_method_names__d8f1c2a9.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "notebook_context": {
+      "notebook_name": "gpt-dev.ipynb",
+      "notebook_type": "Karpathy's GPT tutorial",
+      "expected_classes": [
+        "Head",
+        "MultiHeadAttention",
+        "FeedForward",
+        "Block",
+        "GPT",
+        "GPTLanguageModel"
+      ],
+      "typical_methods_per_class": 2,
+      "common_pytorch_methods": [
+        "__init__",
+        "forward"
+      ],
+      "rationale_for_min_methods_10": "Typical GPT implementation has 5+ classes with 2+ methods each (__init__, forward), resulting in 10+ total method names when extracted",
+      "rationale_for_min_unique_8": "With 5+ classes each having unique __init__ and forward, plus helper methods, expect at least 8 unique method names (accounting for duplicates of __init__ and forward)"
+    },
+    "scoring_breakdown": "Weighted scoring: 25% for method count (min 10), 20% for unique methods (min 8), 20% for PyTorch patterns (__init__ and forward present), 35% for ground truth overlap (at least 50% of ground truth method names must match). Partial credit enabled for each component.",
+    "verification_limitations": "Cannot directly verify methods were extracted from Colab vs other sources, but evaluator validates: (1) file format and valid Python identifiers, (2) method count and uniqueness thresholds, (3) presence of expected ground truth method names from GPT implementations, (4) PyTorch patterns like __init__ and forward. Chrome preconfig ensures Colab is accessible to agent.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.55,
+      "llm_judge_reasons": [
+        "Critical: Cannot verify extraction source. Instruction requires extracting from specific Colab URL (https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-), but evaluator only checks file content. Agent could extract from any Python file and pass.",
+        "Critical: Cannot distinguish class methods from module-level functions. Instruction explicitly requires 'methods starting with def inside class definitions, not module-level functions', but getter at class_method_names__d8f1c2a9.py:42-69 only filters PascalCase and validates identifiers - cannot verify methods are from classes.",
+        "Significant: Ground truth not from actual Colab. The ground_truth_method_names list (__init__, forward, generate, etc.) is based on assumptions about 'typical GPT implementations' (see metadata.notebook_context.rationale_for_min_methods_10), not extracted from the actual Colab notebook URL.",
+        "Significant: Incomplete coverage of instruction requirement. Core requirement is 'extract from Colab code cells', but evaluator has no mechanism to verify this. Only validates: file exists, contains valid identifiers, meets count thresholds, contains expected patterns.",
+        "Logic limitation: Getter filtering logic (class_method_names__d8f1c2a9.py:57-59) filters PascalCase to remove 'class names', but this heuristic is weak - it would accept module-level snake_case functions as if they were class methods."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Access the actual Colab notebook URL to extract ground truth: exact method names, exact class structure, exact counts. Update expected.rules.ground_truth_method_names with verified data from the notebook.",
+        "Strengthen verification by adding exact method name matching. Replace heuristic thresholds (min_methods=10, min_unique_names=8) with exact expected method names from ground truth analysis.",
+        "Consider adding Chrome accessibility tree verification in postconfig to check if agent interacted with the Colab URL (e.g., check active tab contains 'colab.research.google.com').",
+        "Alternative: Simplify instruction to remove unverifiable requirement. Change to 'extract method names from a Python code file' without specifying Colab source, making the task fully verifiable.",
+        "If keeping Colab requirement, document this as a limitation: evaluator verifies format and content quality but cannot verify extraction source (Colab vs other Python files)."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "env_may_change": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,118 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "task_verify_53",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird so that replies appear above the quoted original email when responding.",
+  "source": "https://superuser.com/questions/1781004/how-do-i-remove-the-indentation-and-character-in-quoted-text-of-a-reply-mess",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.reply_on_top": {
+            "method": "eq",
+            "ref": 1
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires configuring Thunderbird to place reply text above the quoted message (top-posting). The evaluator uses the existing check_thunderbird_prefs function to verify that the preference 'mail.identity.id1.reply_on_top' is set to 1 (0=bottom, 1=top, 2=select on reply). This is closely related to the original task which also deals with reply message formatting.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: checking that 'mail.identity.id1.reply_on_top' preference is set to 1 (reply above quoted text)",
+        "Data flow is semantically correct: postconfig closes Thunderbird to ensure prefs.js is written to disk, getter fetches the file from VM, metric parses and validates the specific preference",
+        "Metric function check_thunderbird_prefs correctly handles None result (returns 0.0) and properly parses prefs.js file format",
+        "Expected value is correct: value=1 corresponds to top-posting as required by instruction",
+        "Complete coverage: instruction asks to configure reply position above original message, evaluator checks exactly this setting",
+        "Postconfig appropriately closes Thunderbird before reading filesystem-based prefs.js, ensuring preferences are persisted"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Static validator warns about type compatibility (str vs Union), but this is a false alarm - get_vm_file with multi=False returns str or None, which check_thunderbird_prefs handles correctly",
+        "Minor consideration: Evaluator only checks mail.identity.id1 (default identity). If user has multiple email identities (id2, id3), those won't be verified. However, this matches the instruction which doesn't specify 'for all identities'"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "f201fbc3-44e6-46fc-bcaa-432f9815454c_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

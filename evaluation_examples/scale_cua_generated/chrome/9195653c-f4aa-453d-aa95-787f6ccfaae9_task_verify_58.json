@@ -1,0 +1,90 @@
+{
+  "id": "9195653c-f4aa-453d-aa95-787f6ccfaae9",
+  "new_id": "task_verify_58",
+  "snapshot": "chrome",
+  "instruction": "I want to reduce the maximum volume in VLC to prevent accidentally setting it too loud. Can you set the maximum volume slider to 100% in VLC?",
+  "source": "https://superuser.com/questions/1513285/how-can-i-increase-the-maximum-volume-output-by-vlc?rq=1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "vlc"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": "vlc --no-audio --no-video-title-show",
+          "shell": true
+        }
+      }
+    ],
+    "func": "check_qt_max_volume",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_qt_max_volume": 100
+      }
+    },
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting VLC's max volume to 100% (qt-max-volume=100 in vlcrc config file). Nearly identical to original task but with different target value (100% vs 200%).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_vlc_config) correctly extracts VLC configuration file from OS-appropriate location (~/.config/vlc/vlcrc on Linux)",
+        "Metric (check_qt_max_volume) correctly parses the vlcrc config file and extracts the qt-max-volume setting",
+        "Metric properly handles default value (125) when setting is not present in config",
+        "Metric correctly compares extracted value against expected value (100), with proper type conversion",
+        "Expected value (100) is semantically correct - represents 100% max volume as requested in instruction",
+        "Postconfig appropriately kills and relaunches VLC to flush config changes to disk before evaluation",
+        "Complete coverage: instruction has one requirement (set max volume to 100%) and evaluator checks exactly that",
+        "Data flow is sound: User completes task -> Postconfig ensures config written -> Getter reads config -> Metric verifies setting"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

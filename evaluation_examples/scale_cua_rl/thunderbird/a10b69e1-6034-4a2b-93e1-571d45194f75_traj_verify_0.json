@@ -1,0 +1,121 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "a10b69e1-6034-4a2b-93e1-571d45194f75_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Create three local folders in Thunderbird: WORK, PERSONAL, and NEWSLETTERS.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder-v0.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder-v0.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bWORK\\.msf\\b",
+          "\\bWORK/?(?!\\.msf)",
+          "\\bPERSONAL\\.msf\\b",
+          "\\bPERSONAL/?(?!\\.msf)",
+          "\\bNEWSLETTERS\\.msf\\b",
+          "\\bNEWSLETTERS/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_a10b69e1-6034-4a2b-93e1-571d45194f75_sid_1488346",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created two local folders (COMPANY, UNIVERSITY) by right-clicking Local Folders, selecting New Folder, typing name, and clicking Create Folder. Completed in 9 turns.",
+    "capability_extraction": "Can navigate Thunderbird sidebar, right-click context menus, create local folders via New Folder dialog, type folder names",
+    "task_rationale": "Extends original 2-folder creation to 3 folders, testing the same capability with slightly more repetition",
+    "explanation": "Task requires creating 3 local folders instead of 2. Evaluator uses ls -R on Local Folders directory and check_list to verify each folder exists as both a directory entry and .msf file.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 12,
+    "scoring_breakdown": {
+      "WORK_folder": "0.167 - WORK.msf exists",
+      "WORK_dir": "0.167 - WORK directory exists",
+      "PERSONAL_folder": "0.167 - PERSONAL.msf exists",
+      "PERSONAL_dir": "0.167 - PERSONAL directory exists",
+      "NEWSLETTERS_folder": "0.167 - NEWSLETTERS.msf exists",
+      "NEWSLETTERS_dir": "0.165 - NEWSLETTERS directory exists"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all three folders (WORK, PERSONAL, NEWSLETTERS) by checking both .msf files and directory entries in the Thunderbird Local Folders directory.",
+        "Postconfig correctly runs 'ls -R' on the Local Folders path to capture filesystem state before evaluation.",
+        "Getter (get_cache_file) correctly reads the cached ls output, and get_rule correctly passes the rules dict to check_list.",
+        "check_list metric correctly iterates over expected regex patterns and checks each line of the ls output, returning 1.0 only if all 6 patterns match.",
+        "Regex patterns are well-crafted: \\bWORK\\.msf\\b matches the index file, \\bWORK/?(?!\\.msf) matches the directory entry without false-matching the .msf file.",
+        "Minor issue: scoring_breakdown in metadata suggests per-pattern partial credit (0.167 each), but check_list returns binary 0.0 or 1.0 (all-or-nothing). This is a metadata documentation inconsistency, not a verification logic error."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider noting in scoring_breakdown that check_list returns binary (all-or-nothing) rather than partial credit per pattern, to avoid confusion about grading granularity."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

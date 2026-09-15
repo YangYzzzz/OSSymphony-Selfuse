@@ -1,0 +1,146 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_44",
+  "snapshot": "chrome",
+  "instruction": "Access invoice.pdf in Google Drive, extract service information, and create 'invoice.xlsx' on the Desktop. Find if there's any service costing more than $400, and if yes, place the count of such services in cell F10.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_value__1986d15a",
+    "result": {
+      "type": "xlsx_cell__1986d15a",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0,
+      "cell": "F10"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 1
+      }
+    },
+    "options": {
+      "tolerance": 0.01
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires counting services > $400. Verified: Only Web Design Services ($500) meets this criteria. The evaluator reads cell F10 and checks if the value matches the expected value.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_6/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_6/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if F10 contains 1, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly extracts cell F10 value from /home/user/Desktop/invoice.xlsx as required by instruction",
+        "Metric correctly compares result with expected value (1) using integer comparison",
+        "Expected value is semantically correct: count of services > $400 = 1 (only Web Design Services at $500)",
+        "Postconfig properly activates window and saves file before verification",
+        "Evaluator can verify the core requirement: whether agent correctly counted services costing more than $400",
+        "Final output verification (F10=1) implicitly validates that the agent successfully accessed PDF, extracted service data, and performed the calculation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Evaluator only checks final output (F10 value) and doesn't verify intermediate steps like whether service data was correctly extracted to other cells. However, this is acceptable as the final value implies correct intermediate processing."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

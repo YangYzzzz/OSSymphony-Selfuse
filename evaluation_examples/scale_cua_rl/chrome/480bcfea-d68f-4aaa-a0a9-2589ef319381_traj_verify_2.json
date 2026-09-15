@@ -1,0 +1,102 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "480bcfea-d68f-4aaa-a0a9-2589ef319381_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Enable the refreshed Task Manager design through Chrome's flags page.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "enable-task-manager-desktop-refresh"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_480bcfea-d68f-4aaa-a0a9-2589ef319381_sid_1488424",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated to chrome://flags and searched for 'refresh', 'ChromeRefresh2023', and 'modern'. Found some refresh-related flags when searching 'refresh' but did not find or enable the target flags. Gave up after 11 turns.",
+    "capability_extraction": "Can navigate to chrome://flags, use the search box to filter flags, type URLs in address bar, interact with Chrome UI elements",
+    "failure_analysis": "The target flags chrome-refresh-2023 and chrome-webui-refresh-2023 do not exist in Chrome 130. The model searched with correct intent but wrong flag names. It found related flags (ntp-realbox-cr23-theming, pdf-cr23, enable-task-manager-desktop-refresh) but did not attempt to change any dropdown values.",
+    "task_rationale": "Simplified to enabling a single flag (enable-task-manager-desktop-refresh) that was visible in the trajectory screenshot when model searched 'refresh'. Tests flag-modification capability with a flag that can be found by searching 'refresh' or 'task manager'.",
+    "explanation": "Task requires navigating to chrome://flags, finding the Task Manager Desktop Refresh flag, and enabling it. Evaluator restarts Chrome and checks enabled experiments include enable-task-manager-desktop-refresh.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "flag_enabled": "1.0 - enable-task-manager-desktop-refresh flag is enabled"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (get_enabled_experiments) correctly reads browser.enabled_labs_experiments from Chrome's Local State file, which stores manually changed flags.",
+        "Postconfig correctly kills and restarts Chrome to flush state to disk before the getter reads the Local State file.",
+        "Metric (check_enabled_experiments) correctly strips '@' suffixes from experiment names (e.g., 'flag@1' -> 'flag') before comparison.",
+        "Expected parameter handling is correct: get_rule returns config['rules'] directly, and the metric accesses rule['type'] and rule['names'] directly without wrapping.",
+        "Minor concern: Metric uses strict list equality (==) instead of subset/containment check. If any other flags are pre-enabled in the environment, verification would fail even though the target flag is correctly enabled. In a controlled clean environment this should work, but it's less robust than checking containment."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using a containment check (e.g., 'all(name in enabled_experiments_names for name in rule[\"names\"])') instead of strict list equality to make verification more robust against pre-existing enabled flags."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

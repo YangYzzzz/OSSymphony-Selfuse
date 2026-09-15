@@ -1,0 +1,134 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_54",
+  "snapshot": "thunderbird",
+  "instruction": "I've prepared a payment reminder email. Please check the tuition payment spreadsheet and add all students who haven't paid to the recipient list. Make sure you don't miss anyone.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_recipient_count__c9ce3f52",
+    "result": {
+      "type": "thunderbird_recipient_count__c9ce3f52"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 4,
+        "names": [
+          "Fox",
+          "Iron",
+          "Nancy",
+          "Stella"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires adding all students who haven't paid to the recipient field. Verified with Python: exactly 4 students have not paid (Fox, Iron, Nancy, Stella). The evaluator counts the number of recipient pills in the accessibility tree and verifies it equals 4.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/f5c13cdd-205c-4719-a562-348ae5cd1d91_task_verify_2/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/f5c13cdd-205c-4719-a562-348ae5cd1d91_task_verify_2/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies BOTH recipient count AND identity of students who haven't paid",
+        "Getter extracts list of recipient names from Thunderbird accessibility tree address-pill elements (not just count)",
+        "Metric checks two requirements: (1) len(result) == 4, (2) all expected names ['Fox', 'Iron', 'Nancy', 'Stella'] are present in recipients",
+        "Parameter handling is correct: directly accesses expected.get('count') and expected.get('names') when expected.type='rule'",
+        "Substring matching logic (expected_name.lower() in recipient.lower()) handles different email formats correctly (e.g., 'Fox <fox@email.com>' contains 'Fox')",
+        "Returns 1.0 only if both count matches AND all 4 correct students are present - prevents false positives",
+        "Edge cases handled: type checking for result, case-insensitive matching, validates all names individually"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Could add more robust parsing to handle edge cases like duplicate recipients, but current logic is sound for typical use",
+        "Consider adding validation that no extra recipients are present (current logic allows superset), but instruction doesn't explicitly forbid extra recipients"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,96 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "030eeff7-b492-4218-b312-701ec99ee0cc_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Turn off Safe Browsing protection in Chrome's security settings.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_safe_browsing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_030eeff7-b492-4218-b312-701ec99ee0cc_sid_1488307",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully enabled Do Not Track in Chrome by navigating Settings > Privacy and Security > Third-party cookies, toggling the DNT option, and confirming the dialog. Completed in 7 turns.",
+    "capability_extraction": "Can open Chrome menu, navigate to Settings, find specific settings sections, toggle switches, and confirm dialog prompts.",
+    "task_rationale": "Tests the same Privacy and Security settings navigation but targets a different sub-section (Security > Safe Browsing). Requires disabling instead of enabling, and involves selecting 'No protection' from the Safe Browsing options with a confirmation dialog.",
+    "explanation": "Task requires navigating to Chrome Security settings and disabling Safe Browsing protection. Evaluator uses official enable_safe_browsing getter and exact_match metric to verify Safe Browsing is turned off.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 6,
+    "scoring_breakdown": {
+      "safe_browsing_disabled": "1.0 - Safe Browsing protection disabled"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter get_enable_safe_browsing correctly reads Chrome Preferences file and checks both safebrowsing.enhanced and safebrowsing.enabled flags, returning 'false' when Safe Browsing is disabled.",
+        "Metric exact_match correctly compares getter result 'false' against expected value 'false' for the disabled state.",
+        "Postconfig properly kills Chrome and restarts it to flush preferences to disk before the getter reads the Preferences file.",
+        "Full coverage: the single instruction requirement (turn off Safe Browsing) is completely verified by the evaluator.",
+        "Expected value 'false' is semantically correct for the disabled Safe Browsing state."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Save all PDF files from the 'Paper Recommendation' email in Thunderbird to Google Drive, renaming each as 'paper_N.pdf' where N is a consecutive number beginning with 1.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title contains 'paper_' and title contains '.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_pattern__6538c56492a239416edab32324471fe6",
+    "result": {
+      "type": "gdrive_files_with_pattern__6538c56492a239416edab32324471fe6",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "query": "title contains '.pdf' and trashed = false and 'root' in parents",
+      "pattern": "^paper_\\d+\\.pdf$"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "exact_count": 3,
+        "verify_sequential": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires uploading all PDF attachments from the 'Paper Recommendation' email and renaming them with a sequential pattern (paper_1.pdf, paper_2.pdf, paper_3.pdf). The email contains exactly 3 PDF attachments. The evaluator verifies that exactly 3 files matching the pattern 'paper_N.pdf' exist on Google Drive with sequential numbering from 1 to 3. Custom getter queries Google Drive and uses regex to match files following the naming pattern. Custom metric validates exact count and sequential numbering.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_4/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_4/metrics/googledrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Semantic logic is correct: Getter properly queries Google Drive for PDF files, extracts file numbers using regex pattern matching, and returns sorted list of numbers.",
+        "Coverage is complete: Evaluator checks both exact count (3 files) and sequential numbering (1, 2, 3 with no gaps) as required by the instruction.",
+        "Metric logic is correct: Properly verifies matching_count == exact_count AND file_numbers == [1, 2, 3, ..., N], returning 1.0 only if both conditions pass.",
+        "Expected values are documented: Metadata explicitly states 'The email contains exactly 3 PDF attachments', justifying exact_count=3.",
+        "Parameter handling is correct: Metric receives rules dict directly as expected parameter (correct for type='rule'), accessing expected.get('exact_count') without incorrect nested access.",
+        "Minor limitation (not a logic error): Cannot verify files originated from 'Paper Recommendation' email - this is a Google Drive API limitation, not an evaluator logic issue. The evaluator correctly verifies what CAN be verified."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a comment in the metadata explaining that file origin verification is not possible via Google Drive API alone."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

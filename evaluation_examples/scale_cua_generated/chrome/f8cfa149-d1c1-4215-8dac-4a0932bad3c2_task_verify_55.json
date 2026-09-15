@@ -1,0 +1,103 @@
+{
+  "id": "f8cfa149-d1c1-4215-8dac-4a0932bad3c2",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "Copy the data in Cell F8 from this Libreoffice Calc file and search it on Google using the Chrome browser.",
+  "source": "https://superuser.com/questions/1803088/libreoffice-calc-clears-clipboard",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f8cfa149-d1c1-4215-8dac-4a0932bad3c2/file.xls",
+            "path": "/home/user/cell_search.xls"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://en.wikipedia.org/wiki/Main_Page",
+          "https://pytorch.org/tutorials/",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/cell_search.xls"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_search_query",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "pattern": "(?i)https?://(?:www\\.)?google\\.com/search\\?q=27(?:&|$|#).*"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task asks to copy cell F8 (Age column, row 8) from the spreadsheet and search it in Chrome. Verified from Excel file: Row 8, Column F contains '27.0' (age). Evaluator checks if active tab URL matches Google search for '27'.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if correct Google search performed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Regex pattern expects 'q=27' but cell F8 contains '27.0' (with decimal). If user copies cell as-is, search query may be 'q=27.0', causing regex mismatch.",
+        "Missing postconfig to ensure Chrome is the active application/tab. The getter 'get_active_tab_info' relies on accessibility tree to find active tab, which requires Chrome to be focused.",
+        "State timing concern: getter navigates to active tab URL using Playwright, which may reload the page. This could fail if page content has changed since search was performed."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Update regex pattern to handle decimal values: '(?i)https?://(?:www\\.)?google\\.com/search\\?q=27(?:\\.0)?(?:&|$|#).*'",
+        "Add postconfig to focus Chrome window and ensure the Google search tab is active before evaluation runs",
+        "Consider that LibreOffice Calc may format numeric cells differently when copied (e.g., '27' vs '27.0'). The regex should be flexible enough to handle both formats."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

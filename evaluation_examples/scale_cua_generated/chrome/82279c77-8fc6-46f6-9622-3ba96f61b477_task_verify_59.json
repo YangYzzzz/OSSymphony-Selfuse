@@ -1,0 +1,99 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "Look for hybrid vans priced under $55,000 within 150 miles of 33101.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]",
+        "body_style_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "55000",
+          "maximum_distance": "150",
+          "zip": "33101",
+          "fuel_slugs[]": "hybrid",
+          "body_style_slugs[]": "van"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task searches for hybrid vans on cars.com with filters: max price $55,000, within 150 miles of Miami (33101). Same search pattern with different vehicle type and location.",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter 'get_active_tab_url_parse' correctly extracts URL query parameters from the active Chrome tab's URL, which is the right state for verifying this search task",
+        "Metric 'check_direct_json_object' correctly performs exact string matching on each URL parameter against expected values",
+        "All instruction requirements are covered: vehicle type (van), fuel type (hybrid), price constraint (< $55,000), distance constraint (150 miles), and location (33101)",
+        "Expected values are semantically correct and match the instruction requirements exactly",
+        "Data flow is correct: getter extracts URL parameters as a dict -> metric compares each key-value pair against expected values",
+        "Practical feasibility confirmed: the getter can access active tab URL from accessibility tree, and the metric can correctly compare string values"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

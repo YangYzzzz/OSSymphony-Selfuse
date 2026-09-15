@@ -1,0 +1,98 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_10",
+  "snapshot": "chrome",
+  "instruction": "Search for hybrid vehicles for sale near ZIP code 02101, staying within a 40-mile radius and a $30,000 budget.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "30000",
+          "maximum_distance": "40",
+          "zip": "02101",
+          "fuel_slugs[]": "hybrid"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 4: Changed to search for hybrid vehicles in Boston area (ZIP 02101 instead of 10001), with lower price cap ($30,000 instead of $50,000), and different search radius (40 miles instead of 50). Uses the same evaluator logic - parsing URL query parameters. No custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all 4 instruction requirements: ZIP code (02101), price limit ($30,000), distance range (40 miles), and fuel type (hybrid)",
+        "Getter logic (get_active_tab_url_parse) correctly extracts URL query parameters from the active tab using accessibility tree, which is a reliable OSWorld pattern",
+        "Parse keys (list_price_max, maximum_distance, zip, fuel_slugs[]) correctly map to cars.com URL parameters for the required filters",
+        "Expected values semantically match instruction requirements: list_price_max='30000' for $30k budget, maximum_distance='40' for 40-mile range, zip='02101' for Boston area, fuel_slugs[]='hybrid' for hybrid cars",
+        "Metric function (check_direct_json_object) performs exact key-by-key comparison between extracted URL params and expected values, which is appropriate for this verification",
+        "Complete coverage - all instruction requirements are verified by the evaluator",
+        "No state timing issues - URL is stable once navigation to search results completes",
+        "No edge case concerns - URL parsing is deterministic and the getter reads directly from Chrome's address bar"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "82279c77-8fc6-46f6-9622-3ba96f61b477_aug_15_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

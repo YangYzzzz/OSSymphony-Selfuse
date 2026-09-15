@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_11_helm_headlamp_rollout_diagnose",
+  "snapshot": "weave_bench",
+  "instruction": "Background: The local kind cluster `demo`, in namespace `demo`, has a Helm release named `demo`. The warmup has already advanced it to at least 2 revisions — rev1 installed successfully, while rev2 was rejected by K8s during `helm upgrade` (with the error `Deployment.apps \"demo\" is invalid: spec.selector: ... field is immutable`). However, the Pod is still running 1/1 under the old spec, so the issue is not visible by only looking at the live runtime state. KUBECONFIG is already configured, and the chart source code lives at `/tmp_workspace/exec/broken-chart/`.\n\nGoal: Deliver a complete incident forensics + remediation package from an SRE's perspective, explaining **which field the upgrade changed, why K8s refuses to allow the change, and how the fix PR should be written**. All deliverables must be written under `/tmp_workspace/results/`. **You are not allowed to use `helm rollback` to flatten the history and call it done** — the release's maximum revision number must remain ≥ 2, and the last revision's status must not be `deployed`. **Do not copy any file from `/tmp_workspace/gt/` into `results/`**.\n\n### Hard constraints for the main deliverable `helm_history.json`\n\n- JSON array, length ≥ 2;\n- The last revision's `status` must be in {`failed`, `pending-upgrade`, `pending_upgrade`, `superseded`} (i.e. not `deployed`).\n\n### Hard constraints for the main deliverable `immutable_diffs.json`\n\n- Top-level shape `{\"diffs\":[ ... ]}`, with at least 1 entry in `diffs`;\n- Each entry must be shaped like `{\"kind\":\"Deployment\",\"name\":\"demo\",\"path\":\"spec.selector.matchLabels.app\",\"from\":\"...\",\"to\":\"...\"}`;\n- **Every** `path` must fall within the K8s immutable-field whitelist (prefix must belong to `spec.selector.matchLabels` / `spec.clusterIP` / `spec.serviceName` / `spec.volumeClaimTemplates.` / `spec.template.spec.containers.resources`); putting mutable fields such as `replicas` / `image` here will be counted as false positives and penalized;\n- At least 1 `path` must contain `matchLabels`.\n\n### Hard constraints for the main deliverable `critical_event.txt`\n\n- A single line of original text that must contain `field is immutable`, `selector`, and at least one of `Deployment` or `apps/v1`.\n\n### Hard constraints for the main deliverable `postmortem.md`\n\n- ≥ 300 characters;\n- Must cross-reference all 4 categories of evidence: (a) revision number; (b) the specific field-path keyword (`spec.selector` / `matchLabels` / `selector` / `clusterIP`); (c) the key `immutable` message; (d) a remediation-strategy keyword (one of `patch` / `diff` / `uninstall`).\n\n### Supporting deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `manifest_rev1.yaml` | Complete K8s manifest rendered from rev1, ≥ 20 non-empty lines |\n| `manifest_rev2.yaml` | Target manifest of rev2 (the failed release), ≥ 20 non-empty lines |\n| `manifest_rev1_rev2.diff` | Unified diff between the two manifests, ≥ 6 non-empty lines |\n| `events.json` | Events list for namespace `demo`, with at least one entry whose reason/message hits `immutable` / `FailedCreate` / `FieldImmutable` / `field is immutable` |\n| `fix_chart.patch` | Unified-diff format fix patch, ≥ 12 non-empty lines, containing `--- ` / `+++ ` headers and `@@` hunks, targeting `broken-chart/templates/deployment.yaml`, with the text containing one of `selector` / `matchLabels` / `helm.sh/resource-policy`. Pick any one fix strategy: restore the old value of the immutable field; or `uninstall + install` (with `helm.sh/resource-policy: keep`); or an equivalent `helm upgrade --force` approach |\n| `post_fix_diff.txt` | Diff output between the fixed chart and the current cluster state (e.g. comparing `helm template` against live state), ≥ 200 characters, with ≥ 4 diff-marker lines (`+`/`-`/`@@`/`<`/`> `), and mentioning `Deployment` / `selector` / `matchLabels` |\n\n### 5 in-process screenshots (under `/tmp_workspace/results/`, fixed file names)\n\nEach must be a real screenshot at resolution ≥ 800×600 and file size ≥ 60 KB; OCR will be performed, so the corresponding resource view content must be clearly visible.\n\n| File name | Required content |\n|---|---|\n| `view_01_headlamp_workloads.png` | Workloads/Deployments list view filtered to namespace `demo` |\n| `view_02_headlamp_events.png` | Events panel for the `demo` Deployment, ≥ 3 event rows, with at least one row whose reason column indicates the failure cause |\n| `view_03_headlamp_manifest_yaml.png` | YAML view of the current manifest of the `demo` Deployment, scrolled to the `spec.selector` / `matchLabels` section |\n| `view_04_headlamp_replicaset.png` | ReplicaSet list for the `demo` Deployment, with both rev1 and rev2 ReplicaSets visible at the same time; the rev2 row shows desired/ready as 0 or NOT READY |\n| `view_05_headlamp_after_fix.png` | Workloads/Deployments view after the fix, with the new ReplicaSet ready |",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_11_helm_headlamp_rollout_diagnose.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_11_helm_headlamp_rollout_diagnose",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\nmkdir -p /tmp_workspace/results /tmp_workspace/state /opt/ops11_gt\nfor i in $(seq 1 30); do [ -d /tmp_workspace/exec ] && break; sleep 1; done\nwhich curl >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich curl >/dev/null 2>&1 || timeout 300 apt-get -o Acquire::Retries=10 install -y -qq curl ca-certificates || true\nwhich kubectl >/dev/null 2>&1 || (timeout 120 curl -sSL -o /usr/local/bin/kubectl https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl && chmod +x /usr/local/bin/kubectl) || true\nwhich helm >/dev/null 2>&1 || (timeout 120 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash) || true\nwhich kind >/dev/null 2>&1 || (timeout 120 curl -fsSL -o /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64 && chmod +x /usr/local/bin/kind) || true\nwhich headlamp >/dev/null 2>&1 || (timeout 180 curl -sSL -o /usr/local/bin/headlamp https://github.com/headlamp-k8s/headlamp/releases/latest/download/Headlamp-linux-x86_64.AppImage && chmod +x /usr/local/bin/headlamp) || true\nwhich docker >/dev/null 2>&1 && (kind get clusters 2>/dev/null | grep -q demo || timeout 180 kind create cluster --name demo --wait 60s || true) || echo \"[warmup] docker engine not present in VM; kind cluster bring-up skipped (best-effort)\"\nwhich docker >/dev/null 2>&1 && (kubectl get ns demo >/dev/null 2>&1 || kubectl create ns demo || true) || true\nwhich docker >/dev/null 2>&1 && (helm history demo -n demo >/dev/null 2>&1 || { timeout 120 helm install demo /tmp_workspace/exec/broken-chart -n demo --set selectorLabel=demo --wait || true; timeout 120 helm upgrade demo /tmp_workspace/exec/broken-chart -n demo --set selectorLabel=demo-v2 --wait || true; }) || true\nls /tmp_workspace/exec/ || true\n# Move expected.json (contains fix_hint solution sketch + event keywords)\n# to root-only /opt/ops11_gt so the agent cannot grep the answer.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/ops11_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/ops11_gt 2>/dev/null || true\n  chmod 700 /opt/ops11_gt 2>/dev/null || true\n  chmod 600 /opt/ops11_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\necho \"[warmup] OPS_task_11 best-effort done (docker engine required for full task; flagged in FIX_LOG_OPS_WARMUP2.md)\"",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_11_helm_headlamp_rollout_diagnose/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_11_helm_headlamp_rollout_diagnose /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_11_helm_headlamp_rollout_diagnose/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_11_helm_headlamp_rollout_diagnose/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_11_helm_headlamp_rollout_diagnose/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_11_helm_headlamp_rollout_diagnose/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_11_helm_headlamp_rollout_diagnose/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_11_helm_headlamp_rollout_diagnose.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_11_helm_headlamp_rollout_diagnose",
+    "workspace_relative": "OPS/task_11_helm_headlamp_rollout_diagnose",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

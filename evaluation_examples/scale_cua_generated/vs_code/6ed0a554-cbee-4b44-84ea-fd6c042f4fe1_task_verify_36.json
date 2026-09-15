@@ -1,0 +1,134 @@
+{
+  "id": "6ed0a554-cbee-4b44-84ea-fd6c042f4fe1",
+  "new_id": "task_verify_36",
+  "snapshot": "vscode",
+  "instruction": "Please add the directories \"/home/user/source\" and \"/home/user/output\" to my workspace.",
+  "source": "https://www.youtube.com/watch?v=B-s71n0dHUk",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/project"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/source"
+        ]
+      }
+    },
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/output"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/6ed0a554-cbee-4b44-84ea-fd6c042f4fe1/project.code-workspace",
+            "path": "/home/user/project.code-workspace"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/project.code-workspace"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "folders": [
+            {
+              "path": "project"
+            },
+            {
+              "path": "source"
+            },
+            {
+              "path": "output"
+            }
+          ]
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/project.code-workspace",
+      "dest": "project.code-workspace"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding two new folders 'source' and 'output' to the workspace. The evaluator checks that workspace JSON contains all three folders: project (already there), source, and output. Uses existing check_json_settings metric - no custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator logic: check_json_settings compares expected folders structure against actual workspace JSON file.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "The check_json_settings metric uses exact list equality comparison (line 74: 'actual_value != value'), which means the folders list must match exactly in both content AND order",
+        "Order-dependent verification: If the agent adds folders in a different order (e.g., output before source), the check will fail even though both folders are correctly added to the workspace",
+        "Path format brittleness: VSCode can store workspace paths as relative ('source') or absolute ('/home/user/source'). The expected values use relative paths, so if VSCode stores absolute paths, verification will fail",
+        "The evaluator does verify the core requirement (that source and output folders are present in workspace JSON), but the brittle exact-match logic may cause false negatives on valid solutions"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Replace check_json_settings with a more robust metric that checks for folder presence regardless of order (e.g., verify that all expected folder paths exist in the actual folders list, ignoring order)",
+        "Add path normalization to handle both relative and absolute path formats (e.g., normalize all paths to relative or compare basenames)",
+        "Alternative: Use a custom metric that extracts folder path values and checks set membership rather than exact list equality"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

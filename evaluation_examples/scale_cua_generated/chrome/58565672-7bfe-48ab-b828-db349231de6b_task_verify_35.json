@@ -1,0 +1,121 @@
+{
+  "id": "58565672-7bfe-48ab-b828-db349231de6b",
+  "new_id": "task_verify_35",
+  "snapshot": "chrome",
+  "instruction": "Ensure Chrome has exactly two tabs open: Apple and Amazon. Close the Google Scholar tab if present.",
+  "source": "https://superuser.com/questions/1792660/open-link-from-other-application-does-not-open-the-url-in-firefox",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/",
+          "https://scholar.google.com/"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/58565672-7bfe-48ab-b828-db349231de6b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_tabs",
+    "result": {
+      "type": "open_tabs_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "urls": [
+          "https://www.apple.com/",
+          "https://www.amazon.com/"
+        ]
+      }
+    },
+    "postconfig": []
+  },
+  "metadata": {
+    "explanation": "Task requires ensuring Chrome has exactly 2 tabs: Apple and Amazon, with Google Scholar tab closed. The evaluator checks the final tab state matches this requirement. Uses existing functions is_expected_tabs and get_open_tabs_info. Simplified from process-dependent to outcome-based verification since the evaluator only verifies final tab state, not the method used to achieve it.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Instruction requires exactly 2 tabs (Apple and Amazon) with Scholar tab closed. Evaluator verifies final tab state matches exactly using is_expected_tabs which checks both URL content and count.",
+        "Correct getter logic: get_open_tabs_info (chrome.py:623) correctly extracts all open tab URLs from Chrome via Playwright CDP, iterating through all browser contexts and pages to build list of {title, url} dicts.",
+        "Correct metric logic: is_expected_tabs (chrome.py:120) properly verifies both URL matching and tab count. Uses are_lists_equal with compare_urls to check expected_urls match actual_urls exactly, returns 1.0 only if both match.",
+        "Correct expected values: Expected URLs ['https://www.apple.com/', 'https://www.amazon.com/'] semantically match instruction requirements for Apple and Amazon tabs.",
+        "Outcome-based verification appropriate: Instruction states 'Ensure Chrome has exactly two tabs open' which is an outcome requirement. Evaluator correctly verifies final state without requiring specific process.",
+        "Initial state properly configured: Config opens Apple and Scholar tabs (lines 28-33), requiring agent to add Amazon tab and remove Scholar tab to achieve required state.",
+        "No postconfig needed: Chrome tab state is persistent and accessible via CDP at evaluation time without reopening UI.",
+        "Rule validator warning is false positive: Heuristic warning about UI/state-dependent tasks does not apply - Chrome tab state remains accessible via CDP without UI reopening."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

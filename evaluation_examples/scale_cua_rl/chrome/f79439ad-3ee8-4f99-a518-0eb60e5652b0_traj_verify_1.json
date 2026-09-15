@@ -1,0 +1,117 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_traj_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Search for a one way flight from Berlin to Dublin on 10th next month for 3 adults on Ryanair.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "10th next month"
+        },
+        "expected": {
+          "originIata": "BER",
+          "destinationIata": "DUB",
+          "tpAdults": "3",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f79439ad-3ee8-4f99-a518-0eb60e5652b0_sid_1488250",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully searched for a one-way flight from Dublin to Vienna on 10th next month for 2 adults on Ryanair. Accepted cookies, selected one-way, set origin/destination airports, date, passengers, and clicked search to reach flight results.",
+    "capability_extraction": "Can navigate Ryanair website, handle cookie dialogs, select one-way trips, change origin/destination airports via country/airport picker, set travel dates, modify passenger counts, and submit flight search",
+    "task_rationale": "Same flight search pattern but reversed direction (Berlin to Dublin instead of Dublin to Vienna), different date (10th), and more passengers (3 adults). Tests ability to handle a different European route with higher passenger count.",
+    "explanation": "Task requires searching Ryanair for a one-way Berlin to Dublin flight on 10th next month with 3 adults. Evaluator parses URL parameters to verify origin/destination IATA codes (BER/DUB), passenger counts, date, and trip type. [Fixed: changed relativeTime from '11th next month' to '10th next month' because '11th next month' has no handler in the single-time path of get_rule_relativeTime - only '5th next month' and '10th next month' are supported there]",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 15,
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Changed relativeTime from '20th next month' to '12th next month' (incorrect - '12th next month' also not supported).",
+      "Fix 2: Changed relativeTime from '12th next month' to '11th next month' (incorrect - '11th next month' exists in relativeTime_to_IntDay but has no handler in single-time path).",
+      "Fix 3: Changed relativeTime from '11th next month' to '10th next month' which has a working handler in the single-time path of get_rule_relativeTime. Updated instruction text to match."
+    ],
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "The previous critical issue has been fixed: relativeTime 'from' is now '10th next month', which has a working handler in the single-time path of get_rule_relativeTime (misc.py lines 146-151). The date will be correctly resolved to an absolute date.",
+        "Getter active_tab_url_parse correctly parses Ryanair URL query parameters (originIata, destinationIata, tpAdults, tpTeens, tpChildren, tpStartDate, isReturn) and the replace mapping renames tpStartDate to 'time' to match the expected key.",
+        "Expected values are semantically correct: BER (Berlin) and DUB (Dublin) are the correct IATA codes, tpAdults='3' matches '3 adults', tpTeens='0' and tpChildren='0' are correct defaults, isReturn='false' correctly verifies one-way trip.",
+        "Date template '{Year}-{Month0D}-{DayD}' will produce format like '2026-03-10' which matches Ryanair's tpStartDate URL parameter format.",
+        "Metric check_direct_json_object correctly compares each key-value pair from the expected JSON against the parsed URL parameters. All instruction requirements (route, passengers, date, one-way) are fully covered."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "fix_applied": "Changed relativeTime from '11th next month' to '10th next month' which has a working handler in the single-time path of get_rule_relativeTime. Updated instruction to match."
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "e2b5e914-ffe1-44d2-8e92-58f8c5d92bb2",
+  "new_id": "e2b5e914-ffe1-44d2-8e92-58f8c5d92bb2_traj_verify_2",
+  "snapshot": "vscode",
+  "instruction": "Disable the minimap in VS Code's editor settings.",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "code",
+          "--install-extension",
+          "ms-python.python"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/settings.json",
+      "dest": "settings.json"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "editor.minimap.enabled": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vs_code_e2b5e914-ffe1-44d2-8e92-58f8c5d92bb2_sid_1488315",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened VS Code settings, searched for python missing imports setting, found python.analysis.diagnosticSeverityOverrides, opened settings.json via command palette, typed the correct JSON content with reportMissingImports set to none, but failed to save the file before evaluation ended.",
+    "capability_extraction": "Can open VS Code settings UI, search settings by keyword, use command palette (Ctrl+Shift+P), navigate to Preferences: Open User Settings (JSON), edit settings.json with correct JSON syntax",
+    "failure_analysis": "Model correctly edited settings.json with the right nested JSON structure but did not save the file. The unsaved indicator (dot in tab title) was visible in the final screenshot. The evaluator read the file from disk which still contained old content.",
+    "task_rationale": "Simplified to disabling the minimap (a boolean toggle in settings). Can be done via Settings UI checkbox which auto-saves, avoiding the JSON editing and save issue from the original trajectory.",
+    "explanation": "Task requires setting editor.minimap.enabled to false in VS Code settings.json. Evaluator uses check_json_settings to verify the setting value in the saved file.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 4,
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads VS Code user settings from /home/user/.config/Code/User/settings.json",
+        "Metric check_json_settings correctly accesses expected['expected'] to get the settings dict, matching the rules structure {'expected': {'editor.minimap.enabled': false}}",
+        "Expected value 'editor.minimap.enabled': false is semantically correct for disabling the minimap",
+        "VS Code stores settings as flat dotted keys, so top-level key lookup in JSON works correctly",
+        "Complete coverage: instruction only requires one verification (minimap disabled) and evaluator checks exactly that",
+        "Task rationale wisely notes that using Settings UI auto-saves, avoiding the file-save issue from the original trajectory"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: VS Code settings.json is JSONC format (supports comments and trailing commas). json.load in check_json_settings may fail if the file contains comments. Consider using a JSONC-aware parser, though in practice settings modified via the UI are typically clean JSON."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

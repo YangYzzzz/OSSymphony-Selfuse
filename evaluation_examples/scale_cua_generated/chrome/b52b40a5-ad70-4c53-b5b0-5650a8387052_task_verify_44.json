@@ -1,0 +1,141 @@
+{
+  "id": "b52b40a5-ad70-4c53-b5b0-5650a8387052",
+  "new_id": "task_verify_44",
+  "snapshot": "chrome",
+  "instruction": "Create a text summary of the 'Paper Recommendation' email subject and sender in Thunderbird, save it as email_summary.txt locally, then upload it to Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment_full.pdf' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com",
+          "https://www.deepl.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/b52b40a5-ad70-4c53-b5b0-5650a8387052/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_file_exists__b2463eb9",
+    "result": {
+      "type": "gdrive_file_metadata__b2463eb9",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "query": "title = 'email_summary.txt' and trashed = false and 'root' in parents",
+      "dest": "email_summary_downloaded.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "subject": "Paper Recommendation",
+        "check_sender": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a text summary from Thunderbird email and uploading to Google Drive. Evaluator checks if 'email_summary.txt' file exists on Google Drive root folder. Custom getter retrieves Google Drive file metadata, custom metric checks for non-empty result.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_5/getters/gdrive_file_metadata__b2463eb9.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/b52b40a5-ad70-4c53-b5b0-5650a8387052_xhaug_0_task_verify_5/metrics/check_file_exists__b2463eb9.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator correctly verifies both required elements - email subject ('Paper Recommendation') and sender information",
+        "Correct data flow: Getter downloads file from Google Drive using query, reads file content, and returns content string to metric",
+        "Correct metric logic: Metric validates that file content contains expected subject (line 23) and sender information patterns (lines 28-36 checking for '@', 'from:', 'sender:')",
+        "Correct expected parameter handling: Metric correctly accesses expected.get('subject') and expected.get('check_sender') - when expected.type='rule', framework passes rules dict directly via get_rule()",
+        "All required config parameters present: Result config includes settings_file, query, and dest parameters needed by get_googledrive_file()",
+        "Practical feasibility: The evaluator can successfully download the file from Google Drive, read its content, and verify it contains the required information"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

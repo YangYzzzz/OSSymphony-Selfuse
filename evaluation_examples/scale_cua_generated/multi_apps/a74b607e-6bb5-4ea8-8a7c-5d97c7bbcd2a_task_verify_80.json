@@ -1,0 +1,117 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_80",
+  "snapshot": "multiapps",
+  "instruction": "I need to install a custom Chrome extension from a zip file on the Desktop. Please load it as an unpacked extension and confirm it uses manifest version 3.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_extension_manifest_version__ae6416e4",
+    "result": {
+      "type": "extension_manifest_version__ae6416e4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "extension_name": "Hello Extensions",
+        "manifest_version": 3
+      }
+    }
+  },
+  "postconfig": [
+    {
+      "type": "copyfile_from_host_to_guest",
+      "parameters": {
+        "src": "evaluation_examples/postconfig_helpers/navigate_chrome.py",
+        "dest": "/tmp/navigate_chrome.py"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "python3 /tmp/navigate_chrome.py chrome://extensions",
+        "shell": true,
+        "wait_time": 5
+      }
+    }
+  ],
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires installing an unpacked Chrome extension and verifying manifest version. From manifest.json, the extension uses manifest_version 3. Custom getter reads Chrome Preferences to extract manifest_version from extension manifests. Metric checks if 'Hello Extensions' has manifest_version 3.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_5/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_5/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies ALL instruction requirements: (1) extension loaded as unpacked, (2) manifest version 3",
+        "Getter logic correctly reads Chrome Preferences file from platform-specific paths (chrome.py:21-41) and extracts both manifest_version and is_unpacked status for all extensions",
+        "Metric correctly handles expected parameter (type='rule') by directly accessing expected.get('extension_name') and expected.get('manifest_version') at lines 16-17 - proper parameter handling per guidance section 5.1",
+        "Metric checks BOTH required conditions (chrome.py:25-28): has_correct_version AND is_unpacked, returns 1.0 only if both true - complete coverage",
+        "Unpacked extension detection logic is semantically correct (chrome.py:82): identifies extensions loaded via 'Load unpacked' by checking path field exists and excludes chrome:// paths",
+        "Robust retry mechanism with 3 attempts and 2-second delays (chrome.py:43-108) handles async Chrome file writes",
+        "Expected values are accurate: extension_name='Hello Extensions' matches actual extension, manifest_version=3 matches instruction requirement",
+        "Postconfig appropriately navigates to chrome://extensions with 5-second wait (line 77), ensuring UI state is visible and Chrome flushes Preferences to disk",
+        "Data flow is correct: getter extracts {extension_name: {manifest_version, is_unpacked}} dict → metric validates specific extension has both required properties"
+      ],
+      "llm_judge_fix_suggestions": [
+        "No critical fixes needed - evaluator logic is sound and robust",
+        "The combination of 5-second postconfig wait and 3-retry mechanism provides adequate timing coverage for async file operations"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

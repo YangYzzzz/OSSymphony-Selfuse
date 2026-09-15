@@ -1,0 +1,98 @@
+{
+  "id": "da46d875-6b82-4681-9284-653b0c7ae241",
+  "new_id": "da46d875-6b82-4681-9284-653b0c7ae241_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Go to the MBTA Charlie Card Store booking page and fill in the appointment details: Emily Johnson, emily.j@gmail.com.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.mbta.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_booking_form_state__cf1c94ef66b2087660e9bbd9fc7c9d7e",
+    "result": {
+      "type": "booking_form_state__cf1c94ef66b2087660e9bbd9fc7c9d7e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "url_pattern": "book/CharlieCardStoreAppointments",
+        "expected_name": "Emily Johnson",
+        "expected_mail": "emily.j@gmail.com"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_da46d875-6b82-4681-9284-653b0c7ae241_sid_1488042",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated from MBTA homepage to the booking page and selected the TAP service, but got stuck on calendar navigation. Never filled in personal details. Spent 50 turns mostly clicking the same calendar button.",
+    "capability_extraction": "Can navigate MBTA website, reach the booking page, see form fields. Did not demonstrate form filling but the form was visible and accessible.",
+    "failure_analysis": "Model failed at date calculation and calendar navigation. Got stuck in a loop. The form fields were visible but model never attempted to fill them due to being stuck on calendar.",
+    "task_rationale": "Simplified original task by removing date/time selection and service selection requirements. Only requires navigation to booking page + filling in name and email, which are basic form interactions.",
+    "challenge_additions": "Removed the complex date calculation and calendar navigation that caused the original failure",
+    "explanation": "Task requires navigating to the MBTA Charlie Card Store booking page and filling in name and email. Custom getter extracts URL and form input values. Custom metric gives partial credit: 0.4 for correct page, 0.3 for name, 0.3 for email.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_da46d875-6b82-4681-9284-653b0c7ae241_sid_1488042_traj_verify_2/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_da46d875-6b82-4681-9284-653b0c7ae241_sid_1488042_traj_verify_2/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "url_navigation": "0.4 - On the correct booking page (URL contains CharlieCardStoreAppointments)",
+      "name_field": "0.3 - Name field contains 'Emily Johnson'",
+      "email_field": "0.3 - Email field contains 'emily.j@gmail.com'"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator covers all 3 instruction requirements: URL navigation (0.4), name field (0.3), email field (0.3) with appropriate partial credit scoring.",
+        "Metric correctly handles expected parameter for type='rule' — accesses rules keys directly (url_pattern, expected_name, expected_mail) without incorrectly nesting under 'rules' key.",
+        "Data flow is correct: getter returns dict with 'url', 'name', 'mail' keys; metric reads these same keys.",
+        "Case-insensitive comparison for name and email is appropriate and robust.",
+        "Getter uses hardcoded XPaths (div[7]/div/div/div[1]/input[1] and input[2]) which are very brittle and depend on the exact DOM structure of the MBTA/Microsoft Bookings page. If the page layout changes, these XPaths will silently return empty strings, causing false negatives.",
+        "Getter extracts URL from accessibility tree by searching for 'mbta.com' string, which is less reliable than using Chrome DevTools Protocol to get the active tab URL directly. Also includes an irrelevant 'outlook.office365.com' check."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using Chrome DevTools Protocol (CDP) to get the current tab URL instead of parsing the accessibility tree, which would be more reliable.",
+        "Consider using more robust selectors for form fields — e.g., query by input name/id/placeholder attributes rather than absolute XPaths, which break easily with DOM changes.",
+        "Remove the irrelevant 'outlook.office365.com' URL match in the getter to avoid confusion."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

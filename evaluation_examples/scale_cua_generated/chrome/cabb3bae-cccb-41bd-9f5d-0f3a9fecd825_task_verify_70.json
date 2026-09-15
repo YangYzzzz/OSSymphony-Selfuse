@@ -1,0 +1,115 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_70",
+  "snapshot": "chrome",
+  "instruction": "Browse Star Wars toys for kids and sort by lowest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Star Wars",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Star": "Star Wars",
+        "Wars": "Star Wars",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "star wars": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires browsing Star Wars products in Kids/Toys category and sorting by price low-high (S=4). Maintains same pattern and complexity as original task. Reuses existing evaluator infrastructure.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "The evaluator uses very specific HTML class selectors (pmpSearch_breadcrumb, sbSelector) that may not exist on the actual Kohl's website",
+        "The class_multiObject_li approach assumes a specific HTML structure (<li class='catAllProducts'><span>) that may not match the actual page structure",
+        "The evaluator does not have fallback mechanisms if the expected HTML classes are not found",
+        "While the logic is sound in theory, there's high risk of runtime failure due to selector mismatches with the actual Kohl's website HTML"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify that the class names 'pmpSearch_breadcrumb' and 'sbSelector' actually exist on Kohl's website for this search scenario",
+        "Add more flexible selectors or multiple fallback selectors for breadcrumbs and sort dropdown elements",
+        "Consider using class_multiObject_flexible instead of class_multiObject_li to handle varying HTML structures",
+        "Test the actual HTML structure of Kohl's search results page to ensure selectors will match at runtime",
+        "Add explicit validation in the getter to log when expected elements are not found, improving debuggability"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

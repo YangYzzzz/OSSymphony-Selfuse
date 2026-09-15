@@ -1,0 +1,102 @@
+{
+  "id": "6f56bf42-85b8-4fbb-8e06-6c44960184ba",
+  "new_id": "task_verify_30",
+  "snapshot": "os",
+  "instruction": "Copy file1 into dir1 and dir2, but not dir3.",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/6f56bf42-85b8-4fbb-8e06-6c44960184ba/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_total_file_count__ed6a3699fe6af7deef02a8e547504034",
+    "result": {
+      "type": "total_files_in_dirs__ed6a3699fe6af7deef02a8e547504034",
+      "directories": [
+        "dir1",
+        "dir2",
+        "dir3"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "dir1": 1,
+        "dir2": 1,
+        "dir3": 0
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires copying file1 into dir1 and dir2, but not into dir3. The evaluator counts files in each directory individually and verifies that dir1 has exactly 1 file, dir2 has exactly 1 file, and dir3 has 0 files. This ensures correct file placement and prevents false positives.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/6f56bf42-85b8-4fbb-8e06-6c44960184ba_aug_4_task_verify_4/getters/dir_ops.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/6f56bf42-85b8-4fbb-8e06-6c44960184ba_aug_4_task_verify_4/metrics/dir_ops.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly extracts per-directory file counts using find command with maxdepth 1, returning dict {'dir1': count, 'dir2': count, 'dir3': count}",
+        "Metric correctly verifies each directory's count independently against expected values (dir1=1, dir2=1, dir3=0)",
+        "Expected values semantically match instruction requirements: file should be in dir1 and dir2 but not dir3",
+        "Complete coverage: all three directories mentioned in instruction are verified",
+        "Data flow is correct: getter extracts state -> metric compares per-directory -> returns pass/fail based on exact match for all directories",
+        "Minor limitation: counts ANY files rather than specifically 'file1', which could cause false negatives if directories contain other files, but this is acceptable in a controlled test environment with setup.sh"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional improvement: Could check for specific file 'file1' existence using 'test -f dir/file1' instead of counting all files, to be more robust against pre-existing files in directories",
+        "Optional improvement: Could add better error messages to help debug failures (e.g., indicate which directory has wrong count)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

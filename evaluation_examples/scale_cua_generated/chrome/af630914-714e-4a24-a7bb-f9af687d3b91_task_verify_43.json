@@ -1,0 +1,96 @@
+{
+  "id": "af630914-714e-4a24-a7bb-f9af687d3b91",
+  "new_id": "task_verify_43",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default text size to large (20 pixels).",
+  "source": "https://www.howtogeek.com/680260/how-to-change-chromes-default-text-size/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting Chrome's default text size to 20px (large). Evaluator uses existing get_chrome_font_size getter and check_font_size metric with exact value check. Similar to original but with specific target size.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_chrome_font_size reads Chrome's Preferences file and extracts webkit.webprefs.default_font_size, which is the correct state for verifying default text size",
+        "Metric logic is correct: check_font_size properly compares the extracted default_font_size with the expected value of 20 pixels using exact value matching",
+        "Expected value is correct: The instruction requires 20 pixels (large), and the expected value matches this exactly",
+        "Parameter handling is correct: The metric function correctly accesses rule['type'] and rule['value'] directly from the rules dictionary (not rule.get('rules')), following the framework pattern for type='rule'",
+        "Postconfig is appropriate: Restarting Chrome ensures the setting is persisted to disk before verification, which is necessary for file-based settings verification",
+        "Complete coverage: The evaluator verifies the exact requirement from the instruction (default text size = 20 pixels)",
+        "Data flow is correct: Getter returns dict with default_font_size, metric extracts and compares it with expected value"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

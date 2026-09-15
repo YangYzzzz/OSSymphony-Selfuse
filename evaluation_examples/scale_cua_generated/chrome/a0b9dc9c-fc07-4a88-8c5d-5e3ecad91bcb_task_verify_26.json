@@ -1,0 +1,155 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_26",
+  "snapshot": "chrome",
+  "instruction": "Export all emails from the 'Bills' folder in Thunderbird as .eml files with simplified filenames (aws_invoice.eml and twitter_receipt.eml), and upload them to the 'emails' folder on my Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_simplified_names__43be33c33f047d68d3b6cab5bd4d55ce",
+    "result": {
+      "type": "gdrive_simplified_names__43be33c33f047d68d3b6cab5bd4d55ce",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "emails",
+      "filenames": [
+        "aws_invoice.eml",
+        "twitter_receipt.eml"
+      ],
+      "dest": [
+        "pred_aws.eml",
+        "pred_twitter.eml"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires exporting all emails from Thunderbird 'Bills' folder (2 emails: AWS invoice and Twitter receipt) with simplified filenames (aws_invoice.eml and twitter_receipt.eml) to Google Drive 'emails' folder. Evaluator checks if both files exist in Google Drive with the simplified naming convention. Partial credit: 0.5 for one file, 1.0 for both files.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_3/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_0_task_verify_3/metrics/thunderbird.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "0.5 points per successfully exported and uploaded email file with simplified name (2 files total)",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly queries Google Drive for the 'emails' folder and searches for the two specified files (aws_invoice.eml, twitter_receipt.eml)",
+        "Getter logic properly returns a list of file paths or None for missing files, enabling partial credit scoring",
+        "Metric correctly handles the expected parameter as a rules dict (not nested under 'rules' key) - static warning is a false positive",
+        "Metric correctly counts successful downloads and returns appropriate partial credit (0.5 per file)",
+        "Evaluator successfully verifies core requirements: correct filenames and correct Google Drive folder location",
+        "Minor limitation: evaluator does not verify file content or format (whether files are valid .eml files from Thunderbird), but this is an acceptable trade-off for this task type"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding validation to verify files are valid .eml format (check file headers or MIME type)",
+        "Could enhance getter to verify file size is non-zero to ensure files are not empty"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_simplified_names__43be33c33f047d68d3b6cab5bd4d55ce second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

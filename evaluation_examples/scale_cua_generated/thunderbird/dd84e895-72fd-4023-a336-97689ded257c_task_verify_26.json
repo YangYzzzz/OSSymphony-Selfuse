@@ -1,0 +1,111 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_26",
+  "snapshot": "thunderbird",
+  "instruction": "Mark all emails in the local Bills folder as unread",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3__dd84e895_72fd_4023_a336_97689ded257c_task_verify_4",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(*) = 0 from messageAttributes where attributeID = 59 and value = 1 and messageID in (select id from messages where folderID = 13);"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires marking all emails in Bills folder (folderID=13) as unread. There are 2 emails (messageID 44, 45) in this folder. The evaluator uses run_sqlite3 to check that attribute 59 (read flag) has NO value of 1 for any message in the Bills folder. The SQL query verifies that no messages in folderID 13 have the read attribute set (count should be 0), meaning all are unread.",
+    "new_functions_paths": [
+      "tmp_funcs/dd84e895-72fd-4023-a336-97689ded257c_task_verify_4/metrics/thunderbird_db.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified by querying the Thunderbird database: folderID 13 contains 2 emails (IDs 44, 45). Attribute 59 represents the 'read' flag in Thunderbird. The SQL query checks that count of read messages equals 0, confirming all messages are marked as unread.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "SQL query logic is semantically correct: verifies count of read messages (attributeID=59, value=1) in Bills folder (folderID=13) equals 0, correctly checking that all emails are unread",
+        "Complete coverage: evaluator checks the instruction requirement that all emails in Bills folder are marked as unread",
+        "Proper error handling: metric function includes None-check for failed file fetch (lines 25-27) and comprehensive exception handling (lines 39-44)",
+        "Postconfig logic is appropriate: closes Thunderbird before reading database to ensure consistency and avoid file locks",
+        "Data flow is correct: get_vm_file fetches the Thunderbird database → metric executes SQL query → expected value (count=0) represents all-unread state",
+        "Expected value is semantically correct: count=0 means no read messages exist in the folder, which is what the instruction requires",
+        "Metadata verification confirms semantic correctness: folderID 13 contains 2 emails (IDs 44, 45), and the query correctly targets this folder"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3__dd84e895_72fd_4023_a336_97689ded257c_task_verify_4 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "The scrolling in Chrome feels jerky. Can you enable the 'smooth-scrolling' experiment flag to make it smoother?",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "smooth-scrolling"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires enabling the smooth-scrolling experiment flag. Uses custom evaluator function with subset check to verify.",
+    "new_functions_paths": [
+      "tmp_funcs/480bcfea-d68f-4aaa-a0a9-2589ef319381_task_verify_5/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses custom check_enabled_experiments metric with subset check instead of exact equality.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can properly verify the instruction",
+        "Getter correctly extracts enabled_labs_experiments from Chrome's Local State file (browser.enabled_labs_experiments)",
+        "Metric correctly uses subset check (required_experiments.issubset(actual_experiments)) to verify smooth-scrolling is enabled",
+        "This allows other experiments to be enabled simultaneously, which is the correct behavior",
+        "Experiment names are properly extracted by splitting on '@' to remove version suffixes",
+        "Postconfig correctly restarts Chrome (pkill + relaunch) which is necessary for experiment flags to take effect",
+        "The evaluator will return 1.0 if 'smooth-scrolling' is present in enabled experiments, 0.0 otherwise",
+        "Coverage is complete: the single requirement (enable smooth-scrolling flag) is fully verified"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

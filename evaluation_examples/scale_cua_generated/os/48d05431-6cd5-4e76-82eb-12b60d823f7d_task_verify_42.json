@@ -1,0 +1,94 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_42",
+  "snapshot": "os",
+  "instruction": "I tried to run \"cargo build\" in terminal but encountered \"cargo: command not found\". Can you help me fix this so cargo commands are available immediately?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_5",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q '.cargo/env' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'cargo: command not found' by adding Rust/Cargo initialization to ~/.bashrc. Evaluator checks if '.cargo/env' is sourced in .bashrc, which is the standard Rust installation pattern. Similar complexity to original conda task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for .cargo/env sourcing in .bashrc which is the standard Rust/Cargo setup.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "Semantic mismatch: Instruction requires cargo to be 'available immediately' but evaluator only checks if .cargo/env is in ~/.bashrc, which makes cargo available in NEW terminal sessions, not the current one",
+        "Incomplete verification: grep only checks if string '.cargo/env' appears in .bashrc, doesn't verify it's a proper source command, not commented out, or that cargo actually works",
+        "Missing direct functionality check: Evaluator doesn't verify cargo is actually executable and working (e.g., 'which cargo' or 'cargo --version')",
+        "The instruction's key requirement 'immediately' suggests the current terminal session should have cargo available, but .bashrc changes only affect new sessions unless explicitly sourced"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change evaluator to check if cargo is actually available in the current session: 'which cargo > /dev/null 2>&1 && echo 1 || echo 0'",
+        "Or check both immediate availability AND persistence: verify cargo works now AND .bashrc is updated for future sessions",
+        "Add postconfig to start a new terminal session if the intent is to verify persistence across sessions, making the 'immediately' requirement semantically match .bashrc verification",
+        "Use a more robust grep pattern like 'grep -E \"^[^#]*source.*\\.cargo/env\" ~/.bashrc' to ensure the line is not commented and is a proper source command"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

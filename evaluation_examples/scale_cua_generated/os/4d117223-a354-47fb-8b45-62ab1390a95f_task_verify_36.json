@@ -1,0 +1,114 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_36",
+  "snapshot": "os",
+  "instruction": "List all regular files under current directory tree and save their paths to a file named file_list.txt",
+  "source": "NL2Bash",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cat testDir/file_list.txt",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "file1.txt",
+          "file2.txt",
+          "file3.txt"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires listing all regular files in testDir and saving to file_list.txt. Evaluator checks that the file contains all three filenames: file1.txt, file2.txt, and file3.txt.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Path discrepancy in getter command: The getter uses 'cat testDir/file_list.txt' but the working directory is likely already in testDir (after 'cd testDir' in config), which could cause file-not-found errors at runtime",
+        "Weak verification of 'paths' requirement: The instruction requires saving file 'paths' but evaluator only checks for filename substring matches ('file1.txt'), not proper path formatting (e.g., './file1.txt' or 'testDir/file1.txt')",
+        "'Regular files' requirement not verified: The evaluator doesn't ensure only regular files (not directories/symlinks) are listed - it just checks if three filenames appear anywhere in output",
+        "Incomplete coverage: Only checks for presence of three specific filenames, doesn't verify completeness or correctness of the full file listing structure"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Correct the getter command path: Use 'cat file_list.txt' (since working directory is testDir) or use absolute path, or verify the correct path relative to evaluation working directory",
+        "Improve expected values to check for actual paths instead of just filenames: Use patterns like './file1.txt' or 'testDir/file1.txt' to verify proper path format",
+        "Consider using check_list metric with regex patterns to verify proper path format and ensure only regular files are listed (no directories or special files)",
+        "If subdirectories exist in the test setup (created by setup.sh), verify that files from subdirectories are also included in the verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "dd84e895-72fd-4023-a336-97689ded257c",
+  "new_id": "task_verify_41",
+  "snapshot": "thunderbird",
+  "instruction": "Mark all emails in the Bills folder as unread",
+  "source": "https://support.mozilla.org/en-US/kb/organize-your-messages-using-filters",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/global-messages-db.sqlite",
+      "dest": "global-messages-db.sqlite"
+    },
+    "func": "run_sqlite3",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sql": "select count(*) = 0 from messageAttributes where attributeID = 56 and value = 1 and messageID in (select id from messages where folderID = 13);"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires marking all emails in the Bills folder (folderID=13) as unread. The evaluator checks that NO emails in folder 13 have the read attribute (attributeID=56) set to 1. This is verified via SQL query on the Thunderbird global-messages-db.sqlite database, ensuring all messages remain unread.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: The SQL query checks that count(*) = 0 for emails with read attribute (attributeID=56, value=1) in folder 13 (Bills), which semantically verifies all emails are unread",
+        "Complete coverage: The evaluator verifies all emails in the Bills folder (folderID=13 filter) and checks their unread status (no read attribute set to 1)",
+        "Correct data flow: Getter fetches Thunderbird's global-messages-db.sqlite database, metric executes SQL query that returns 1 if no read emails exist (count = 0), otherwise returns 0",
+        "Appropriate postconfig: Closes Thunderbird window before evaluation to ensure database is flushed and not locked",
+        "Function exists and is correct: run_sqlite3 function (general.py:273-276) correctly executes SQL query and returns float result",
+        "SQL query logic is sound: In Thunderbird's schema, unread emails either have no read attribute row or value=0, so checking count(*) = 0 for attributeID=56 with value=1 correctly verifies all are unread"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric run_sqlite3 first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

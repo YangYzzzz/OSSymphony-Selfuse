@@ -1,0 +1,100 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_59",
+  "snapshot": "chrome",
+  "instruction": "Compare AirPods Pro 2 with AirPods 3 and AirPods Max",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "airpods-pro-2",
+            "airpods-3",
+            "airpods-max"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "proxy": true,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task requires comparing 3 AirPods models on Apple's website. Evaluator checks that the active tab URL contains the modelList parameter with the 3 specified AirPods models (order-independent). Similar complexity to original task, just different product category.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: ignore_list_order flag placement is incorrect - the metric check_direct_json_object looks for ignore_list_order in expected_json (rules.expected.ignore_list_order) but the flag is placed at rules.ignore_list_order level",
+        "The metric will perform strict order comparison instead of order-independent comparison, causing the evaluation to fail if models are compared in a different order than expected",
+        "The getter logic is semantically correct - it extracts modelList parameter from URL and splits it into a list",
+        "The expected model IDs appear correct for Apple's URL format",
+        "MISSING: No postconfig to navigate back to verify the comparison page is still active"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Move ignore_list_order flag from rules level to rules.expected level, so the structure becomes: 'expected': {'type': 'rule', 'rules': {'expected': {'modelList': [...], 'ignore_list_order': true}}}",
+        "OR modify the evaluator to use a different structure that properly supports the ignore_list_order flag at the correct level",
+        "Add postconfig to ensure the comparison page remains open for verification"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

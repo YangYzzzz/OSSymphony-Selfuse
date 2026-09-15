@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_10_polars_streamlit_xfilter",
+  "snapshot": "weave_bench",
+  "instruction": "The data team maintains a Polars LazyFrame ETL that aggregates BTS flight on-time data by `origin × carrier` to produce p95 delay and cancellation rate. Most batches finish in 30s, but a few take 4–6 minutes. **The problem is not \"find a single bottleneck\"** — the same pipeline has multiple kinds of bottlenecks coexisting across different abstraction layers (logical plan / physical exec / parquet storage), and at least one anomalous-looking metric spike is actually a measurement artifact and must not be listed as a root cause.\n\nMaterials already in place:\n- Input data: `/tmp_workspace/data/flights.parquet` (≈ 600k rows of synthetic data following the BTS schema; carries row-group metadata, so `pyarrow.parquet.ParquetFile` can extract `num_row_groups`, plus per-row-group `num_rows` / column chunk byte sizes).\n- Baseline query script: `/tmp_workspace/etl/query.py` (a production-equivalent lazy query; `--explain` / `--profile` print the Polars optimized plan and a per-node timing table respectively; `--repeat N` runs the same query repeatedly to surface JIT/GC/cache-class measurement artifacts).\n- Debug dashboard: `/tmp_workspace/etl/streamlit_app.py`, automatically started by warmup and listening on `http://localhost:8501`. It includes a top KPI strip, a Departures by Hour histogram, an Altair scatter plot (origin frequency × p95 delay), and a linked datatable. The scatter supports a rectangular brush selection; once a brush is active the linked table shows only the selected `(origin, carrier)` combinations; hovering on a row pops up a tooltip with the true row count (**this number only exists in the front-end runtime state** — it cannot be obtained from the static DOM or backend JSON, so a screenshot of the rendered state is required).\n\nTask deliverables (drop artifacts into `/tmp_workspace/results/`):\n\n1. **Execution-plan evidence (before / after)**\n   - `plan_before.txt` / `plan_after.txt`: the optimized plan text of the original and rewritten queries; each must contain at least two keywords drawn from `JOIN` / `FILTER` / `SCAN` / `AGGREGATE`; in `plan_after.txt` the filter predicate must appear before the join (predicate pushdown).\n\n2. **Per-node profile evidence (before / after)**\n   - `profile_before.txt` / `profile_after.txt`: the `.profile()` output (header + body). `profile_before.txt` must retain ≥ 8 node-record lines (used for event-timing reasoning).\n\n3. **Rewritten query source** `optimized_query.py`\n   - Must be parseable by `ast.parse`; must `import polars`; in source-character order `.filter(...)` must appear before `.join(...)`; semantically equivalent to `query.py` (hard-coding to bypass the skewed partitions is forbidden). The top of the file must contain a `# COUNTER-EXAMPLES` comment block listing ≥ 2 rewrite attempts that were tried but did not work, with their failure reasons (e.g. \"switching the join to a cross-join caused OOM\").\n\n4. **Long-tail partition list** `skew_partitions.json`\n   - JSON array with **≥ 7 entries**; per-entry schema:\n     ```json\n     {\"origin\":\"<3-letter IATA>\",\"carrier\":\"<2-letter>\",\"p95_delay_min\":<float>,\"n_rows\":<int>,\"layer_evidence\":[\"logical_plan\",\"physical_exec\",\"storage\"]}\n     ```\n   - `layer_evidence` must contain ≥ 2 items (i.e. each skew must be supported by evidence from at least two abstraction layers). All values must come from the real ETL run and the rendered dashboard — fabrication is forbidden.\n\n5. **Multi-bottleneck causal chain** `bottlenecks.json`\n   - JSON array with **≥ 5 entries**; each entry represents a bottleneck of a different `type` (allowed types: `join_explosion` / `projection_bloat` / `cardinality_blowup` / `late_filter` / `sort_skew` / `groupby_spill`; **the 5 entries must all use different types**). Per-entry schema:\n     ```json\n     {\n       \"id\":\"B1\",\n       \"type\":\"join_explosion\",\n       \"abstraction_layers\":[\"logical_plan\",\"physical_exec\",\"storage\"],\n       \"causal_chain\":[\"plan_node X selectivity 1.0\",\"intermediate result inflates to 4.2M rows after the join\",\"physical operator spills to disk\",\"wall-clock +210s\"],\n       \"fix\":\"...\",\n       \"counter_example\":\"...\",\n       \"benchmark_before_ms\":<float>,\n       \"benchmark_after_ms\":<float>\n     }\n     ```\n   - `abstraction_layers` ≥ 2 items; `causal_chain` ≥ 4 hops; `benchmark_before_ms > benchmark_after_ms`.\n\n6. **Cross-source correlation** `cross_source_evidence.json`\n   - Tie each bottleneck to ≥ 3 independent evidence sources. Schema:\n     ```json\n     {\n       \"links\":[\n         {\"bottleneck_id\":\"B1\",\"plan_node_id\":\"<from plan_after.txt>\",\"profile_node_time_ms\":<float>,\"dashboard_n_rows\":<int>,\"parquet_row_group_count\":<int>},\n         ...\n       ]\n     }\n     ```\n   - The `links` array must have ≥ 5 entries; `plan_node_id` must actually appear in `plan_after.txt` (substring match).\n\n7. **Multi-layer abstraction evidence** `multilayer_evidence.json`\n   - For each bottleneck id, provide concrete evidence (snippet + numeric value) from at least 3 abstraction layers:\n     ```json\n     {\n       \"B1\":{\n         \"logical_plan\":{\"snippet\":\"FILTER ... ON ...\",\"node_id\":\"...\"},\n         \"physical_exec\":{\"snippet\":\"profile row\",\"time_ms\":<float>},\n         \"storage\":{\"row_group_id\":<int>,\"row_group_rows\":<int>,\"column_chunk_bytes\":<int>}\n       },\n       ...\n     }\n     ```\n   - Must cover at least the first 3 ids in `bottlenecks.json`.\n\n8. **Event-timing reasoning** `event_timeline.json`\n   - A JSON array of ≥ 8 events sorted by `t_start_ms`; each entry:\n     ```json\n     {\"step\":<int>,\"node_id\":\"<plan node>\",\"t_start_ms\":<float>,\"t_end_ms\":<float>,\"parent\":\"<parent node_id or null>\"}\n     ```\n   - Must allow a root → leaf causal chain to be reconstructed (the root's parent is null; every other parent must reference a node_id that appears earlier in the array). The timeline must also show that \"filter pushed before join\" is visible after the rewrite (filter step.t_start_ms < join step.t_start_ms).\n\n9. **False-signal identification** `false_positives.json`\n   - A JSON array with ≥ 1 entry; each entry:\n     ```json\n     {\"metric\":\"<name>\",\"observed_spike\":\"<description>\",\"claimed_root_cause\":\"<misleading conclusion>\",\"actual_explanation\":\"<true cause, e.g. JIT warmup / GC / page cache>\",\"is_artifact\":true}\n     ```\n   - Must be derived from multiple `--repeat` runs; at least one entry with `is_artifact:true`. The same metric **must not** also appear in `bottlenecks.json`.\n\n10. **Formal equivalence verification** `equivalence.json`\n    - Run `query.py` and `optimized_query.py` on the same input, sort the final aggregated result by `(origin, carrier)`, and compute the sha256:\n      ```json\n      {\"hash_before\":\"<sha256>\",\"hash_after\":\"<sha256>\",\"equal\":true,\"row_count_before\":<int>,\"row_count_after\":<int>}\n      ```\n    - Requires `equal=true` and `hash_before == hash_after` and `row_count_before == row_count_after`.\n\n11. **Dashboard visual evidence** (each ≥ 4 KB, captured with pyautogui or gnome-screenshot)\n    - `view_streamlit_overview.png`: full first screen of the dashboard (KPIs / histogram / scatter all in frame).\n    - `view_brush_tooltip.png`: rectangular brush selection over the long-tail cluster on the scatter plot, with the hover tooltip overlay (including the `n=` number).\n    - `view_brush_table.png`: the datatable linked to the brush selection, with ≥ 7 rows including the columns `origin` / `carrier` / `p95_delay_min` / `n_rows`.\n    - `view_brush_after.png`: after rerunning the rewritten query, the same brushed region reproduced on the dashboard.\n\n12. **Final report** `findings.json`\n    ```json\n    {\n      \"total_runtime_before_s\":<float>,\n      \"total_runtime_after_s\":<float>,\n      \"speedup\":<float>,\n      \"bottleneck_count\":<int>,\n      \"false_positive_id\":\"<name from false_positives.json>\",\n      \"cross_source_chain_ids\":[\"B1\",\"B2\",\"...\"],\n      \"equivalence_hash\":\"<sha256>\",\n      \"skew_dimension\":\"<column>\",\n      \"skew_values\":[\"<v1>\",\"...\"],\n      \"tail_share_pct\":<float>,\n      \"predicate_pushed_down\":\"<verbatim snippet from optimized_query.py>\",\n      \"evidence_screenshots\":[\"view_streamlit_overview.png\",\"view_brush_tooltip.png\",\"view_brush_table.png\",\"view_brush_after.png\"]\n    }\n    ```\n\nHard constraints (cross-dependent — failing any one of them auto-zeroes downstream sub-scores):\n- `total_runtime_before_s / total_runtime_after_s ≥ 5.0` and `speedup ≥ 4.5`.\n- `bottlenecks.json` must contain ≥ 5 distinct `type` values; count < 5 → multi-layer-evidence / cross-source-evidence sub-scores auto-zero.\n- `equivalence.json.equal` must be `true`; mismatch → speedup and predicate sub-scores auto-zero.\n- A metric marked `is_artifact:true` in `false_positives.json` **must not** appear in any `causal_chain` string in `bottlenecks.json`; if it does, trap_score=0 and the overall score is capped at 0.4.\n- In `event_timeline.json` the filter node's `t_start_ms` must be < the join node's `t_start_ms`, otherwise predicate_pushdown_ordering auto-zeroes.\n- All numeric values must come from real runs / real parquet metadata / the real rendered dashboard state; hard-coding or bypassing the skew is forbidden.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_10_polars_streamlit_xfilter.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_10_polars_streamlit_xfilter",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/data /tmp_workspace/etl /tmp_workspace/gt /opt/dav10_priv /opt/dav10_gt\n# Ensure the agent (non-root user) can write the rewrite (`optimized_query.py`)\n# and supporting evidence into etl/results/state. Without this the warmup\n# leaves these dirs root-owned and the agent cascades to 0 on the\n# `optimized_*` and `predicate_*` sub-scores even when its analysis is\n# correct.\nchmod 777 /tmp_workspace/results /tmp_workspace/state /tmp_workspace/data /tmp_workspace/etl /tmp_workspace/gt 2>/dev/null || true\nchown -R user:user /tmp_workspace/results /tmp_workspace/state /tmp_workspace/data /tmp_workspace/etl /tmp_workspace/gt 2>/dev/null || true\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-pip tesseract-ocr poppler-utils curl)\npip3 install --break-system-packages --ignore-installed --quiet blinker 2>/dev/null || pip3 install --ignore-installed --quiet blinker || true\npip3 install --break-system-packages --quiet 'polars>=0.20,<1.5' 'streamlit>=1.30' 'altair>=5' pandas numpy faker pyarrow pytesseract pillow 2>/dev/null || pip3 install --quiet 'polars>=0.20,<1.5' 'streamlit>=1.30' 'altair>=5' pandas numpy faker pyarrow pytesseract pillow\ncp -r /tmp_workspace/exec/* /tmp_workspace/etl/ 2>/dev/null || true\nfor f in gen_data.py query.py streamlit_app.py requirements.txt README.md; do [ -f /tmp_workspace/$f ] && cp /tmp_workspace/$f /tmp_workspace/etl/ 2>/dev/null; done\nmv /tmp_workspace/etl/gen_data.py /opt/dav10_priv/gen_data.py 2>/dev/null || true\nchmod 700 /opt/dav10_priv && chown -R root:root /opt/dav10_priv\ntest -f /tmp_workspace/data/flights.parquet || python3 /opt/dav10_priv/gen_data.py --out /tmp_workspace/data/flights.parquet --rows 600000 --seed 17 >/tmp/gen_data.log 2>&1 || true\nrm -f /opt/dav10_priv/gen_data.py\nnohup streamlit run /tmp_workspace/etl/streamlit_app.py --server.port=8501 --server.headless=true --browser.gatherUsageStats=false >/tmp/streamlit.log 2>&1 &\nsleep 3\nfor i in $(seq 1 30); do curl -sf http://localhost:8501/_stcore/health >/dev/null && break; sleep 1; done\n# Move expected.json (contains skew_carriers + notes solution sketch) to\n# root-only /opt/dav10_gt so the agent cannot grep the answer.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/dav10_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/dav10_gt 2>/dev/null || true\n  chmod 700 /opt/dav10_gt 2>/dev/null || true\n  chmod 600 /opt/dav10_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_10_polars_streamlit_xfilter/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_10_polars_streamlit_xfilter /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_10_polars_streamlit_xfilter/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_10_polars_streamlit_xfilter/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_10_polars_streamlit_xfilter/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_10_polars_streamlit_xfilter/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_10_polars_streamlit_xfilter/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_10_polars_streamlit_xfilter.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_10_polars_streamlit_xfilter",
+    "workspace_relative": "DAV/task_10_polars_streamlit_xfilter",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

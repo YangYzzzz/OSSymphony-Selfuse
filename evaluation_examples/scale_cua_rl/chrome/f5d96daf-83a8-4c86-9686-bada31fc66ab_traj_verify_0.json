@@ -1,0 +1,91 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "f5d96daf-83a8-4c86-9686-bada31fc66ab_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 16 Pro with iPhone 15 Pro and iPhone 14 Pro on Apple's website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "https://.*apple\\.com.*/shop/iphone/compare",
+          ".*iphone-16-pro.*",
+          ".*iphone-15-pro.*",
+          ".*iphone-14-pro.*"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_f5d96daf-83a8-4c86-9686-bada31fc66ab_sid_1488154",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully navigated from apple.com to the iPhone compare page, used dropdown selectors to select iPhone 15 Pro Max, iPhone 14 Pro Max, and iPhone 13 Pro Max, resulting in the correct comparison URL.",
+    "capability_extraction": "Can navigate apple.com, find the iPhone compare page, use dropdown model selectors, select specific iPhone models from the list",
+    "task_rationale": "Variation uses the same compare pattern but with the Pro (non-Max) line across 3 generations, testing the same navigation and selection capability with different model targets.",
+    "explanation": "Task requires navigating to Apple's iPhone comparison page and selecting 3 Pro models. Evaluator uses is_expected_url_pattern_match to verify the URL contains the compare path and all 3 model identifiers as independent regex patterns, making the check order-independent. [Fixed: replaced check_direct_json_object with is_expected_url_pattern_match to avoid ignore_list_order flag bug]",
+    "new_functions_paths": [],
+    "fix_history": [
+      "Fix 1: Replaced check_direct_json_object metric with is_expected_url_pattern_match to resolve ignore_list_order flag not being read from correct nesting level. Each model is now checked as an independent regex pattern against the URL, inherently order-independent."
+    ],
+    "difficulty": "medium",
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses is_expected_url_pattern_match which receives the rules dict (with 'expected' key containing a list of regex patterns) and checks each pattern independently against the active tab URL via re.search. All 4 patterns must match for score 1.0.",
+        "Getter active_url_from_accessTree correctly extracts the Chrome address bar URL from the accessibility tree and prepends goto_prefix 'https://www.', returning a string URL compatible with the metric.",
+        "The 4 regex patterns semantically cover all instruction requirements: (1) URL is on Apple's iPhone compare page, (2) iPhone 16 Pro is present, (3) iPhone 15 Pro is present, (4) iPhone 14 Pro is present. Order-independence is inherent since each pattern is checked independently.",
+        "Minor concern: patterns like '.*iphone-16-pro.*' could also match 'iphone-16-pro-max', creating a potential false positive if the agent selects Pro Max models instead of Pro models. However, this is a low-risk issue in practice since distinct URL slugs are used by Apple.",
+        "Previous judge's concerns about check_direct_json_object and ignore_list_order are no longer applicable — the evaluator was already fixed to use is_expected_url_pattern_match."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using more specific regex patterns to avoid Pro vs Pro Max ambiguity, e.g., 'iphone-16-pro([,&]|$)' instead of '.*iphone-16-pro.*' to ensure Pro Max variants don't falsely match."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

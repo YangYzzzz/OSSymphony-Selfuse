@@ -1,0 +1,101 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "Find diesel SUVs priced under $65,000 within 80 miles of ZIP code 30301.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]",
+        "body_style_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "65000",
+          "maximum_distance": "80",
+          "zip": "30301",
+          "fuel_slugs[]": "diesel",
+          "body_style_slugs[]": "suv"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task searches for diesel SUVs on cars.com with filters: max price $65,000, within 80 miles of Atlanta (30301). Uses same URL-based evaluation with different filter values.",
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies all instruction requirements",
+        "Getter 'get_active_tab_url_parse' properly extracts URL query parameters from active tab representing search filters",
+        "Metric 'check_direct_json_object' correctly compares extracted parameters against expected values using exact matching",
+        "Complete coverage: all 5 requirements verified (diesel, SUV, price under $65,000, within 80 miles, ZIP 30301)",
+        "Expected values are semantically correct and match instruction requirements precisely",
+        "Data flow is correct: URL parameters -> getter extracts dict -> metric compares -> returns pass/fail",
+        "No postconfig needed as URL state persists after search completion",
+        "Edge case handling is appropriate: getter returns None if required parameters are missing, correctly failing incomplete searches"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

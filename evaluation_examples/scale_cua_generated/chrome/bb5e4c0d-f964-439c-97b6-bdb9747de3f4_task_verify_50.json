@@ -1,0 +1,96 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "I want to use Google for all my search queries. Can you make it the default?",
+  "source": "https://support.google.com/chrome/answer/95426",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Google"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Chrome to use Google as the default search engine. This is a paraphrased instruction with the same evaluator configuration as variation 4.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_default_search_engine() reads Chrome preferences file and extracts the short_name of default_search_provider_data, which is exactly what the instruction requires",
+        "Metric comparison logic is correct: match_in_list() checks if the result string is in the expected list, which correctly verifies if Google is the default search engine",
+        "Expected value is semantically correct: The task requires setting Google as default, and the expected value is ['Google'], which matches what the getter returns",
+        "Postconfig is appropriate: Restarting Chrome ensures the preferences file is flushed to disk and can be read accurately",
+        "Complete coverage: The evaluator checks the only requirement in the instruction - that Google is set as the default search engine",
+        "Data flow is correct: Getter extracts search engine name -> Metric checks if 'Google' is in the list -> Returns 1.0 if match"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

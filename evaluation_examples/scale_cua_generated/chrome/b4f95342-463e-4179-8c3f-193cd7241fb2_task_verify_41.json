@@ -1,0 +1,96 @@
+{
+  "id": "b4f95342-463e-4179-8c3f-193cd7241fb2",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "Look up the reservation status for Albion Basin campground.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.recreation.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class",
+      "class_singleObject": {},
+      "class_multiObject": {
+        "reservation-status-label": {
+          "0": "reservation-status-label"
+        }
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "reservation-status-label": "Reservations Required"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Variation 3: Task checks reservation status for Albion Basin. Similar complexity to original, checks standard recreation.gov reservation status labels.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Uses existing check_direct_json_object metric and active_tab_html_parse getter. Checks reservation status indicator common on recreation.gov.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic is correct: active_tab_html_parse correctly extracts text content from HTML elements with class 'reservation-status-label' using Playwright",
+        "Metric comparison is correct: check_direct_json_object performs exact string matching between extracted value and expected 'Reservations Required'",
+        "Expected value is semantically appropriate: 'Reservations Required' is a valid reservation status for recreation.gov campgrounds",
+        "Coverage is complete: The evaluator verifies the reservation status as requested in the instruction",
+        "Data flow is correct: Getter extracts the reservation status label from the active tab, metric compares it to the expected value"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a postconfig step to ensure the correct campground page (Albion Basin) is loaded and active before evaluation runs, to handle cases where the user may have navigated away or the page changed after task completion",
+        "Consider adding robustness checks: validate that the active tab URL contains 'albion-basin' or similar identifier to ensure we're reading from the correct page",
+        "Minor suggestion: The class name 'reservation-status-label' is hardcoded - if recreation.gov changes their HTML structure, this will break. This is acceptable for a specific task but worth noting for maintenance"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

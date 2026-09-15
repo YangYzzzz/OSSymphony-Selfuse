@@ -1,0 +1,82 @@
+{
+  "id": "da922383-bfa4-4cd3-bbad-6bebab3d7742",
+  "new_id": "da922383-bfa4-4cd3-bbad-6bebab3d7742_traj_verify_0",
+  "snapshot": "multiapps",
+  "instruction": "Create a folder named 'Blog' inside /home/user/Documents/.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://lilianweng.github.io/posts/2023-06-23-agent/",
+          "https://lilianweng.github.io/posts/2024-02-05-human-data-quality/"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "test -d /home/user/Documents/Blog && echo exists || echo missing",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "exists\n"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_da922383-bfa4-4cd3-bbad-6bebab3d7742_sid_1488276",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to download 2 blog articles as PDFs to /home/user/Documents/Blog. Successfully created the Blog directory, used Ctrl+P print dialog, navigated save dialogs, saved both PDFs, and switched between Chrome tabs. Failed because PDF filenames included Chrome's default suffix (' _ Lil'Log') instead of just the article titles.",
+    "capability_extraction": "Can use terminal to create directories (mkdir), navigate Chrome tabs, use Ctrl+P print dialog, interact with file save dialogs, switch between browser tabs",
+    "failure_analysis": "Model saved PDFs with Chrome's default title format including ' _ Lil'Log' suffix. The evaluator script likely expected filenames matching just the article titles without the blog name suffix. Model did not rename files after saving.",
+    "task_rationale": "Decomposed original task into its simplest sub-task: creating the target directory. The model demonstrated this capability successfully in the trajectory.",
+    "explanation": "Task requires creating a directory at /home/user/Documents/Blog. Evaluator checks directory existence using shell test command via vm_command_line getter and exact_match metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "scoring_breakdown": {
+      "directory_exists": "1.0 - Blog directory exists at /home/user/Documents/Blog"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Instruction requires creating a single folder 'Blog' at /home/user/Documents/Blog. Evaluator checks exactly this requirement.",
+        "Getter (vm_command_line) runs 'test -d /home/user/Documents/Blog && echo exists || echo missing' which correctly tests directory existence at the exact path.",
+        "Metric (exact_match) correctly compares getter output against expected value 'exists\\n', which matches the shell echo output including trailing newline.",
+        "Complete coverage: the single instruction requirement (directory creation) is fully verified by the evaluator.",
+        "Expected value 'exists\\n' is semantically correct for the shell test command output."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

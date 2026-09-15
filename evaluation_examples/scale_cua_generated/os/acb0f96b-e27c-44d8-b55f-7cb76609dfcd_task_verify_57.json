@@ -1,0 +1,74 @@
+{
+  "id": "acb0f96b-e27c-44d8-b55f-7cb76609dfcd",
+  "new_id": "task_verify_57",
+  "snapshot": "os",
+  "instruction": "Add /home/user/bin to the PATH environment variable in the ~/.bashrc file.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_bashrc_path_modification__c0107678",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "path_entry": "/home/user/bin"
+      }
+    },
+    "result": {
+      "type": "bashrc_path_check__c0107678"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires modifying .bashrc to add a directory to PATH. Evaluator sources the .bashrc file and checks if PATH contains the expected directory.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/acb0f96b-e27c-44d8-b55f-7cb76609dfcd_task_verify_7/getters/file_ops.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/acb0f96b-e27c-44d8-b55f-7cb76609dfcd_task_verify_7/metrics/file_ops.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies both file modification and functional effect. The getter reads .bashrc content AND sources it to check PATH in the same command ('bash -c \"source /home/user/.bashrc && echo $PATH\"'), which resolves the previous process isolation issue.",
+        "Complete verification coverage: Metric checks both (1) .bashrc file contains PATH modification using regex pattern, and (2) PATH actually contains the directory after sourcing. This prevents false positives from temporary PATH exports.",
+        "Regex pattern is correct: '(export\\s+)?PATH\\s*=.*{path_entry}' matches common PATH modification patterns including 'export PATH=$PATH:/home/user/bin', 'PATH=/home/user/bin:$PATH', etc.",
+        "Minor edge case: Regex could match commented lines (e.g., '# export PATH=...'), but this is unlikely in practice and would not cause functional issues."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Optional enhancement: Consider adding multiline regex flag or explicitly excluding commented lines by checking line doesn't start with '#' (after whitespace). Pattern could be: '^\\s*(?!#)(export\\s+)?PATH\\s*=.*{path_entry}'."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

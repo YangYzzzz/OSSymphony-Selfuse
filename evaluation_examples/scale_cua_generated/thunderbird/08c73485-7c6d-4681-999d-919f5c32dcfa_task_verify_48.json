@@ -1,0 +1,126 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_48",
+  "snapshot": "thunderbird",
+  "instruction": "I want to keep emails on the server for backup purposes. Could you configure Thunderbird to not delete messages from the server when I delete them locally, and also keep them on the server when I move them to local folders?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.server.server1.delete_model": {
+            "method": "eq",
+            "ref": 1
+          },
+          "mail.server.server1.delete_by_age_from_server": {
+            "method": "eq",
+            "ref": false
+          }
+        },
+        "unexpect": {
+          "mail.server.server1.delete_model": {
+            "method": "eq",
+            "ref": 0
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires configuring Thunderbird to keep messages on the server even after local deletion or moving. The evaluator checks that mail.server.server1.delete_model is set to 1 (move to trash but keep on server) and mail.server.server1.delete_by_age_from_server is false (don't auto-delete old messages). Also verifies delete_model is not 0 (which would delete from server). Uses existing check_thunderbird_prefs metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same application, similar configuration complexity with multiple related settings",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter correctly fetches Thunderbird prefs.js file from VM using get_vm_file",
+        "Postconfig appropriately closes Thunderbird to ensure preferences are flushed to disk before verification",
+        "Metric check_thunderbird_prefs correctly parses prefs.js and validates expect/unexpect rules",
+        "Expected values semantically correct: delete_model=1 (keep on server when deleting locally) and delete_by_age_from_server=false (don't auto-delete)",
+        "Unexpect rule correctly prevents delete_model=0 (which would delete from server immediately)",
+        "Type compatibility: get_vm_file returns Union[Optional[str], List[Optional[str]]], metric handles None case correctly (returns 0.0)",
+        "Minor semantic concern: Instruction mentions 'keep them on the server when I move them to local folders' - the checked settings (delete_model, delete_by_age_from_server) primarily control deletion behavior, though in Thunderbird they may also affect move behavior. The evaluator assumes delete_model settings apply to both delete and move operations."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider verifying if additional Thunderbird preferences like 'mail.server.server1.leave_on_server' exist and should be checked to explicitly cover the 'move to local folders' scenario mentioned in the instruction"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

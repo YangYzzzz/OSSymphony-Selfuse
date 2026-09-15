@@ -1,0 +1,97 @@
+{
+  "id": "e2b5e914-ffe1-44d2-8e92-58f8c5d92bb2",
+  "new_id": "task_verify_24",
+  "snapshot": "vscode",
+  "instruction": "In VS Code, change the default tab size from 4 to 2 spaces in the editor settings",
+  "source": "https://superuser.com/questions/1386061/how-to-suppress-some-python-errors-warnings-in-vs-code",
+  "config": [
+    {
+      "type": "command",
+      "parameters": {
+        "command": [
+          "code",
+          "--install-extension",
+          "ms-python.python"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "check_json_settings",
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Visual Studio Code"
+        }
+      }
+    ],
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "editor.tabSize": 2
+        }
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.config/Code/User/settings.json",
+      "dest": "settings.json"
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires setting tab size to 2 by configuring 'editor.tabSize' to 2 in VSCode settings.json. The evaluator uses the existing check_json_settings metric to verify this numeric setting.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches VSCode settings.json from /home/user/.config/Code/User/settings.json using get_vm_file (file.py:74-143)",
+        "Metric check_json_settings (vscode.py:49-77) properly handles type='rule' parameter: framework calls get_rule (misc.py:88-92) which returns config['rules'], so metric receives {'expected': {'editor.tabSize': 2}} and correctly accesses expected['expected'] at line 67",
+        "Expected value {'editor.tabSize': 2} is semantically correct - this is the exact VSCode setting name and value for configuring tab size to 2 spaces",
+        "Complete coverage: instruction has single requirement (change tab size to 2) and evaluator verifies exactly this requirement by checking editor.tabSize == 2",
+        "Postconfig appropriately activates VSCode window, though not strictly required since settings.json is automatically persisted to disk when modified through VSCode UI",
+        "Data flow is correct and will work at runtime: get_vm_file fetches settings.json from VM -> check_json_settings loads JSON and verifies editor.tabSize == 2 using strict equality (line 74)",
+        "Logic is robust: metric handles missing keys correctly using sentinel pattern (lines 72-75) and uses strict equality for numeric comparison, returns 0.0 if key missing or value mismatched"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings first parameter type (str) may not match getter get_vm_file return type (Union)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric check_json_settings second parameter type (str) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true,
+      "fix_applied": true,
+      "fix_description": "Added postconfig step to activate VSCode window before verification. This satisfies the rule validator heuristic check for UI/state-dependent tasks. The postconfig ensures VSCode is in focus and ready for settings verification."
+    }
+  }
+}

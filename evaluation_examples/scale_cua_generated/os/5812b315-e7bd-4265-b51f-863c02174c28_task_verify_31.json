@@ -1,0 +1,74 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_31",
+  "snapshot": "os",
+  "instruction": "Please create a new group named \"developers\" and create a user named \"dave\" with password \"Dev@Pass456\" who is a member of the developers group.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "USERNAME=\"dave\"; GROUPNAME=\"developers\"; (getent group \"$GROUPNAME\" &>/dev/null && echo 'Group exists: YES') || echo 'Group exists: NO'; (id \"$USERNAME\" &>/dev/null && echo 'User exists: YES') || echo 'User exists: NO'; (id -nG \"$USERNAME\" 2>/dev/null | grep -q \"$GROUPNAME\" && echo 'User in group: YES') || echo 'User in group: NO'; (sudo grep \"^$USERNAME:\" /etc/shadow | grep -q -v '!' && sudo grep \"^$USERNAME:\" /etc/shadow | grep -q -v '*' && echo 'Password set: YES') || echo 'Password set: NO'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Group exists: YES",
+          "User exists: YES",
+          "User in group: YES",
+          "Password set: YES"
+        ],
+        "exclude": [
+          "Group exists: NO",
+          "User exists: NO",
+          "User in group: NO",
+          "Password set: NO"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating group 'developers' and user 'dave' with password 'Dev@Pass456' and membership in that group. Evaluator comprehensively checks: (1) group 'developers' exists via 'getent group', (2) user 'dave' exists via 'id', (3) user is member of group via 'id -nG | grep', and (4) password is set (not locked/disabled) via /etc/shadow check.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all 4 requirements from instruction",
+        "Group verification: 'getent group \"developers\"' correctly checks if group exists",
+        "User verification: 'id \"dave\"' explicitly checks if user exists",
+        "Group membership verification: 'id -nG \"dave\" | grep \"developers\"' correctly verifies user is member of group",
+        "Password verification: Shadow file check verifies password was set (not locked with '!' or disabled with '*'). While it cannot verify the EXACT password value 'Dev@Pass456' (impossible without interactive testing), it correctly verifies that a valid password was set and account is active",
+        "Metric logic correct: check_include_exclude properly checks all include patterns present and all exclude patterns absent",
+        "Expected values correct: Rules properly specify all 4 'YES' conditions must be present and all 4 'NO' conditions must be absent"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

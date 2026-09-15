@@ -1,0 +1,84 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_11",
+  "snapshot": "os",
+  "instruction": "Adjust the terminal settings to ensure it starts with dimensions of 110 columns and 45 rows.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5); pyautogui.write('stty size'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "45 110"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires setting terminal default window size to 110x45. Evaluator opens a new terminal and checks that 'stty size' outputs '45 110' (rows columns). Uses existing check_include_exclude metric and get_vm_terminal_output getter. This is a similar terminal configuration task with different dimension values.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies terminal dimensions using 'stty size' command",
+        "Expected value '45 110' correctly matches 'stty size' output format (rows columns)",
+        "Metric function check_include_exclude correctly handles expected parameter - receives rules dict directly as second parameter and accesses 'include'/'exclude' keys appropriately",
+        "Postconfig appropriately opens new terminal to verify default configuration is applied",
+        "Potential timing issue: postconfig executes 'stty size' command but may not wait long enough for output to be fully captured before get_vm_terminal_output is called (has 0.5s sleep after pressing enter, which may be insufficient on slower systems)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a longer sleep (1-2 seconds) in the postconfig after pressing 'enter' to ensure the 'stty size' command output is fully captured before get_vm_terminal_output() is called",
+        "Consider adding a cleanup step to close the terminal window after verification to avoid leaving the system in an inconsistent state"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "13584542-872b-42d8-b299-866967b5c3ef_aug_3_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "id": "74d5859f-ed66-4d3e-aa0e-93d7a592ce41",
+  "new_id": "task_verify_60",
+  "snapshot": "chrome",
+  "instruction": "Create a browser extension project called \"todo-tracker v1.0.0\" using the web extension generator tool. Set the description to \"Track your daily tasks\". Enable background script and browser action features, but skip content scripts and options page. Extract the generated folder to \"~/Projects\".",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://webext.eu"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Projects"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Projects"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/74d5859f-ed66-4d3e-aa0e-93d7a592ce41_task_verify_0",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_json",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Projects/todo-tracker/manifest.json",
+      "dest": "manifest.json"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "key": [
+              "name"
+            ],
+            "method": "eq",
+            "ref": "todo-tracker"
+          },
+          {
+            "key": [
+              "version"
+            ],
+            "method": "eq",
+            "ref": "1.0.0"
+          },
+          {
+            "key": [
+              "description"
+            ],
+            "method": "eq",
+            "ref": "Track your daily tasks"
+          },
+          {
+            "key": [
+              "background",
+              "scripts"
+            ],
+            "method": "exist",
+            "ref": null
+          },
+          {
+            "key": [
+              "browser_action"
+            ],
+            "method": "exist",
+            "ref": null
+          }
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "explanation": "This variation creates a todo-tracker extension with version 1.0.0 and a custom description. The evaluator checks the manifest.json for correct name, version, description, and presence of background scripts and browser_action keys. Uses existing check_json metric.",
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.7,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all positive requirements: extension name, version, description, background script presence, and browser_action presence",
+        "Complete semantic coverage for what should be PRESENT in the manifest.json",
+        "Getter (get_vm_file) correctly fetches the manifest.json from the expected location",
+        "Metric (check_json) uses appropriate comparison methods (exact match for strings, existence check for objects)",
+        "CRITICAL ISSUE: Incomplete verification of negative requirements - instruction explicitly says 'skip content scripts and options page' but evaluator does not verify their absence",
+        "A user could add content_scripts or options_page to manifest.json and still pass evaluation, despite violating the instruction"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add unexpect rules to check_json to verify content_scripts and options_page are NOT present in manifest.json",
+        "Example fix: Add to evaluator.expected.rules.unexpect: [{\"key\": [\"content_scripts\"], \"method\": \"not_exist\"}, {\"key\": [\"options_page\"], \"method\": \"not_exist\"}]",
+        "Alternative: Simplify the instruction to remove the 'skip' requirements if only positive verification is desired"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_json first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

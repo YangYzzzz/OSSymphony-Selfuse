@@ -1,0 +1,99 @@
+{
+  "id": "b148e375-fe0b-4bec-90e7-38632b0d73c2",
+  "new_id": "task_verify_30",
+  "snapshot": "gimp",
+  "instruction": "I would like to add a new layer with the name 'Star'.",
+  "source": "https://www.quora.com/How-do-I-add-layers-in-GIMP",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/b148e375-fe0b-4bec-90e7-38632b0d73c2/white_background.xcf",
+            "path": "/home/user/Desktop/white_background.xcf"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background.xcf"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gimp"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"ctrl\", \"q\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_config_status",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type:": "key-value",
+        "key": "layer-new-name",
+        "value": "\"Star\""
+      }
+    },
+    "result": {
+      "type": "gimp_config_file",
+      "file_name": "gimprc",
+      "dest": "gimprc"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a new layer in GIMP and naming it 'Star'. The evaluator checks the GIMP config file to verify the layer-new-name is set to 'Star'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing check_config_status metric with layer name 'Star'.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.1,
+      "llm_judge_reasons": [
+        "Critical logic flaw: The evaluator checks the 'layer-new-name' setting in GIMP's gimprc config file, which is a global preference for the default name of newly created layers, NOT a record of layers in the current image",
+        "Wrong state extraction: The instruction requires verifying that a layer named 'Star' exists in the opened XCF file. The evaluator should parse the XCF file's layer structure, not check a global preference setting",
+        "Semantic mismatch: Setting 'layer-new-name' to 'Star' in preferences only changes what GIMP will call future layers by default - it does not verify that the user actually created a layer named 'Star' in this specific image",
+        "The evaluator cannot distinguish between: (1) user creating a layer named 'Star' in the image, vs (2) user changing GIMP's default layer name preference to 'Star', vs (3) the preference already being set to 'Star' from before",
+        "Missing actual verification: No check of the XCF file's layer data structure to confirm a layer named 'Star' exists"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Create a getter to parse the XCF file at /home/user/Desktop/white_background.xcf and extract its layer list",
+        "Create a metric that checks if a layer named 'Star' exists in the layer list",
+        "Add postconfig to save the XCF file (Ctrl+S) before closing GIMP to ensure layer changes are persisted",
+        "Alternative approach: Use GIMP's script-fu or python-fu to query the layer structure of the active image before closing"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

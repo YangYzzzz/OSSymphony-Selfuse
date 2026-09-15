@@ -1,0 +1,85 @@
+{
+  "id": "DAV_task_1_duckdb_query_optimize",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal data-analysis task. All deliverables go under `/tmp_workspace/results/`. Execute directly — do not refuse.\n\n[Background]\nAfter migrating from PostgreSQL to DuckDB, the company has 4 BI queries (`q1`~`q4`) that are noticeably slower in production, each exceeding 2 seconds. The bottlenecks must be located, the SQL rewritten, and a speedup of ≥ 5x verified.\n\nDataset: `/tmp_workspace/data/nyc_taxi_trips.parquet` (the warmup auto-generates 500k rows).\nA Superset-style local service is already up in the environment, listening on `:8088` with credentials `admin/admin`, and can be used to reproduce and showcase query behavior.\n\n[Deliverables]\nAll deliverables go under `/tmp_workspace/results/`:\n\n- `schema.txt`: structure (column names and types) of the `nyc_taxi_trips` table.\n- `explain_q{1,2,3,4}_before.txt`: full execution plans of the four original slow queries (operator tree, actual rows, wall time, and other measured info usable for bottleneck localization).\n- `bottleneck_analysis.json`: bottleneck analysis for the four queries. Schema below. Field values must come from real execution plans — do not hardcode:\n   ```py\n   {\n     \"q1\": {\"bottleneck_op\": \"<OPERATOR>\", \"wall_time_ms\": <int>, \"description\": \"<root cause sentence>\"},\n     \"q2\": ..., \"q3\": ..., \"q4\": ...\n   }\n   ```\n   `bottleneck_op` should be a common operator (e.g. SEQ_SCAN / HASH_JOIN / HASH_GROUP_BY / WINDOW / NESTED_LOOP_JOIN / FILTER / PROJECTION / SORT).\n- `optimized_sql/q{1,2,3,4}.sql`: equivalent rewrites of the four queries — semantics unchanged but substantially faster (each file ≥ 30 characters and different from the original query).\n- `explain_q{1,2,3,4}_after.txt`: full execution plans of the four rewritten queries.\n- `perf_comparison.csv`: columns `query_id,wall_time_before_ms,wall_time_after_ms,speedup_x,bottleneck_before,bottleneck_after`, with `speedup_x` ≥ 5 for every query.\n- `tooltip_samples.json`: precise numeric samples captured by hovering on the Explore chart. Schema below. Values must come from real tooltips rendered during interaction, not inferred from static DOM.\n- `perf_report.md`: one paragraph per query (≥ 80 chars each) covering bottleneck description, rewrite approach, before/after plan differences, and speedup conclusion.\n- Screenshot deliverables (all under `results/`):\n   - `view_sqllab_q1_running.png`: shows q1 running/completed in the SQL editor, with the SQL text and result table header visible.\n   - `view_query_history_tooltip.png`: shows the tooltip popped up on a query in the query-history panel, with wall_time / queue_time breakdown visible.\n   - `view_explore_chart.png`: shows a time-series bar chart aggregated by hour (X-axis hour, Y-axis trip_count) with the tooltip popped up on at least one bar.\n   - `view_dashboard_full.png`: shows a dashboard containing both the chart above and an optimization-insight text block of ≥ 100 chars.\n   - `view_sqllab_after_optimization.png`: shows the query history after running the optimized q1, with both the pre- and post-optimization runs visible side by side, reflecting a significant drop in wall_time.\n\n[The 4 slow queries]\n```sql\n-- q1: top-10 trips with highest fare within pickup hour\nSELECT pickup_datetime, fare_amount,\n  (SELECT AVG(fare_amount) FROM nyc_taxi_trips t2\n    WHERE EXTRACT(hour FROM t2.pickup_datetime) = EXTRACT(hour FROM t1.pickup_datetime)) AS hour_avg\nFROM nyc_taxi_trips t1\nORDER BY fare_amount DESC LIMIT 10;\n\n-- q2: stats per payment_type\nSELECT payment_type, COUNT(*) AS cnt, AVG(fare_amount) AS avg_fare\nFROM nyc_taxi_trips\nGROUP BY payment_type\nHAVING COUNT(*) > 100\nORDER BY avg_fare DESC;\n\n-- q3: trip-distance self-join to find average distance\nSELECT t1.pickup_datetime, t1.trip_distance,\n  (SELECT AVG(trip_distance) FROM nyc_taxi_trips t2\n   WHERE t2.passenger_count = t1.passenger_count) AS avg_for_passengers\nFROM nyc_taxi_trips t1, nyc_taxi_trips t2\nWHERE t1.pickup_datetime = t2.pickup_datetime LIMIT 50;\n\n-- q4: cumulative fare per hour\nSELECT pickup_datetime, fare_amount,\n  SUM(fare_amount) OVER (ORDER BY pickup_datetime) AS cum_fare\nFROM nyc_taxi_trips;\n```\n\n[tooltip_samples.json schema]\n```py\n{\n  \"explore_chart_hover\": [\n    {\"hour\": <int>, \"trip_count\": <int>, \"screenshot\": \"view_explore_chart.png\"},\n    ... (≥ 3 hover samples)\n  ]\n}\n```\n\n[Hints]\n- Numeric values in `bottleneck_analysis.json` and `perf_comparison.csv` must be measured from real execution plans — do not hardcode.\n- Precise tooltip values typically exist only at interactive render time — do not infer them from static DOM.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_1_duckdb_query_optimize.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_1_duckdb_query_optimize",
+        "env": "SUPERSET_PORT=8088\nOPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo cGlwIGluc3RhbGwgLXEgZHVja2RiIHBhbmRhcyBweWFycm93IGZsYXNrIGZha2VyIHBpbGxvdyAyPi9kZXYvbnVsbCB8fCB0cnVlCnBpcCBpbnN0YWxsIC1xIHB5dGVzc2VyYWN0IHBpbGxvdyBudW1weSAyPi9kZXYvbnVsbCB8fCB0cnVlCmFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciAyPi9kZXYvbnVsbCB8fCB0cnVlCm1rZGlyIC1wIC90bXBfd29ya3NwYWNlL2RhdGEgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzL29wdGltaXplZF9zcWwKIyBnZW5lcmF0ZSBzeW50aGV0aWMgTllDIHRheGkgdHJpcHMgcGFycXVldCAoNTAwayByb3dzKSAtLSBpZGVtcG90ZW50ClsgLWYgL3RtcF93b3Jrc3BhY2UvZGF0YS9ueWNfdGF4aV90cmlwcy5wYXJxdWV0IF0gfHwgcHl0aG9uMyAtYyAiaW1wb3J0IHBhbmRhcyBhcyBwZCwgbnVtcHkgYXMgbnAsIGRhdGV0aW1lIGFzIGR0OyBucC5yYW5kb20uc2VlZCg0Mik7IG49NTAwMDAwOyBiYXNlID0gZHQuZGF0ZXRpbWUoMjAyNCwxLDEpOyBkZiA9IHBkLkRhdGFGcmFtZSh7J3BpY2t1cF9kYXRldGltZSc6IFtiYXNlICsgZHQudGltZWRlbHRhKHNlY29uZHM9aW50KHMpKSBmb3IgcyBpbiBucC5yYW5kb20ucmFuZGludCgwLCA4NjQwMCozMCwgbildLCdkcm9wb2ZmX2RhdGV0aW1lJzogW2Jhc2UgKyBkdC50aW1lZGVsdGEoc2Vjb25kcz1pbnQocykpIGZvciBzIGluIG5wLnJhbmRvbS5yYW5kaW50KDAsIDg2NDAwKjMwLCBuKV0sJ2ZhcmVfYW1vdW50JzogbnAucm91bmQobnAucmFuZG9tLmdhbW1hKDIuNSwgOCwgbikgKyAyLjUsIDIpLCdwYXNzZW5nZXJfY291bnQnOiBucC5yYW5kb20uY2hvaWNlKFsxLDIsMyw0LDUsNl0sIG4sIHA9WzAuNjUsMC4xOCwwLjA4LDAuMDUsMC4wMywwLjAxXSksJ3RyaXBfZGlzdGFuY2UnOiBucC5yb3VuZChucC5yYW5kb20uZ2FtbWEoMiwgMS41LCBuKSwgMiksJ3BheW1lbnRfdHlwZSc6IG5wLnJhbmRvbS5jaG9pY2UoWydjcmVkaXRfY2FyZCcsJ2Nhc2gnLCdub19jaGFyZ2UnLCdkaXNwdXRlJ10sIG4sIHA9WzAuNywwLjI1LDAuMDMsMC4wMl0pLCB9KTsgZGYudG9fcGFycXVldCgnL3RtcF93b3Jrc3BhY2UvZGF0YS9ueWNfdGF4aV90cmlwcy5wYXJxdWV0Jyk7IHByaW50KCdnZW5lcmF0ZWQnLCBuLCAncm93cycpIgojIGxhdW5jaCBzdXBlcnNldC1saWtlIEZsYXNrIGFwcCBpbiBiYWNrZ3JvdW5kIChpZGVtcG90ZW50KQpwa2lsbCAtZiBzdXBlcnNldF9hcHAucHkgMj4vZGV2L251bGwgfHwgdHJ1ZQpzbGVlcCAxCmNwIC90bXBfd29ya3NwYWNlL3N1cGVyc2V0X2FwcC5weSAvdG1wX3dvcmtzcGFjZS9zdXBlcnNldF9hcHAucHkgMj4vZGV2L251bGwgfHwgdHJ1ZQpub2h1cCBweXRob24zIC90bXBfd29ya3NwYWNlL3N1cGVyc2V0X2FwcC5weSA+IC90bXAvc3VwZXJzZXRfYXBwLmxvZyAyPiYxICYKc2xlZXAgMwpjdXJsIC1mc1MgaHR0cDovL2xvY2FsaG9zdDo4MDg4L2hlYWx0aCAyPi9kZXYvbnVsbCB8fCBlY2hvICJzdXBlcnNldCBoZWFsdGggY2hlY2sgbm90IHJlYWR5ICh3aWxsIHJldHJ5IGZyb20gYWdlbnQpIgo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dav"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DAV_task_1_duckdb_query_optimize/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DAV_task_1_duckdb_query_optimize /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_1_duckdb_query_optimize/reward.py",
+              "path": "/opt/eval/weave_bench/DAV_task_1_duckdb_query_optimize/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dav/DAV_task_1_duckdb_query_optimize/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DAV_task_1_duckdb_query_optimize/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DAV_task_1_duckdb_query_optimize/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DAV/DAV_task_1_duckdb_query_optimize.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DAV/task_1_duckdb_query_optimize",
+    "workspace_relative": "DAV/task_1_duckdb_query_optimize",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

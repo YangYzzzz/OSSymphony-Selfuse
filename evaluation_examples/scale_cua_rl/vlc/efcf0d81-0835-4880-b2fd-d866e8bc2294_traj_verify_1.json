@@ -1,0 +1,107 @@
+{
+  "id": "efcf0d81-0835-4880-b2fd-d866e8bc2294",
+  "new_id": "efcf0d81-0835-4880-b2fd-d866e8bc2294_traj_verify_1",
+  "snapshot": "base_setup",
+  "instruction": "Change VLC's default recording folder to the Desktop directory.",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s, https://help.ubuntu.com/stable/ubuntu-help/look-background.html.en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/efcf0d81-0835-4880-b2fd-d866e8bc2294/Interstellar%20Movie%20-%20Official%20Trailer.mp4",
+            "path": "/home/user/Desktop/Interstellar Movie - Official Trailer.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "func": "is_vlc_recordings_folder",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlcrc_traj_verify_1.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Desktop"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import subprocess; subprocess.run(['pkill', '-f', 'vlc'], timeout=5)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_vlc_efcf0d81-0835-4880-b2fd-d866e8bc2294_sid_1488257",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully took a VLC snapshot of the Interstellar trailer frame, then navigated to Settings > Background to set it as desktop wallpaper. Completed in 25 turns.",
+    "capability_extraction": "Can use VLC menus (Video > Take Snapshot), navigate Ubuntu Settings, set desktop wallpaper, interact with system tray",
+    "task_rationale": "Tests VLC preferences/settings navigation. Agent proved it can access VLC menus; now test deeper settings access (Tools > Preferences > Input/Codecs).",
+    "explanation": "Task requires changing VLC's recording directory via Tools > Preferences. Evaluator reads vlcrc config file and checks if input-record-path is set to /home/user/Desktop. Postconfig kills VLC to ensure config is saved.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "recording_folder": "1.0 - VLC recording folder set to /home/user/Desktop"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vlc_config/get_vlc_config) correctly reads the VLC configuration file (~/.config/vlc/vlcrc) from the VM, which is the right source for VLC settings.",
+        "Metric (is_vlc_recordings_folder) correctly parses vlcrc line by line, finds the 'input-record-path' key, and compares its value to the expected '/home/user/Desktop'. This is the correct VLC config key for the recording folder.",
+        "Expected value '/home/user/Desktop' is semantically correct for the Ubuntu Desktop directory.",
+        "Parameter handling is correct: with expected.type='rule', get_rule returns {'recording_file_path': '/home/user/Desktop'} directly, and the metric accesses rule['recording_file_path'] without unwrapping.",
+        "Postconfig correctly kills VLC before the getter reads the config, ensuring VLC saves its settings to vlcrc on exit. The 2-second sleep provides adequate time for the config file to be written.",
+        "Complete coverage: the single instruction requirement (change recording folder to Desktop) is fully verified by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

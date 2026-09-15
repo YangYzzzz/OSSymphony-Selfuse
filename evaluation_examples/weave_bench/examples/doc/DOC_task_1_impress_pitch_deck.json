@@ -1,0 +1,71 @@
+{
+  "id": "DOC_task_1_impress_pitch_deck",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution contract**: this task is graded by the produced files — **no human is in the approval loop**. Execute commands and emit files directly; do not write \"let me know if you'd like me to continue\" or wait for approval. All final deliverables must land at the **`/tmp_workspace/` root** (the grader only looks under that directory for `pitch.pdf` / `slides/slide_<n>.png` / `actions.log` / `draft.odp`; allowed subdirectories are `slides/` and `results/`, anything else does not count). When done, run `ls -la /tmp_workspace/` as a self-check before exiting.\n\nBackground: `/tmp_workspace/draft.odp` is a 14-page startup fundraising pitch deck, but everything is default white-background black-text Liberation Sans. It needs a \"polish + content reflow\" pass. Reference assets are available under `/tmp_workspace/inputs/` (including `logo.png` / `team_photo.jpg`).\n\nGoal: transform `draft.odp` into a deck with visual hierarchy, a master template, animation, and speaker notes, then export PDF / per-page PNGs / process screenshots.\n\n### Hard constraints on `draft.odp`\n\nThe packaged `content.xml` and `styles.xml` (an odp is a zip) must satisfy:\n\n- `styles.xml` `<style:master-page>` content contains `Montserrat` (master template uses the Montserrat font)\n- `styles.xml` contains `<draw:image` or the literal string `logo` (master has a logo image)\n- `content.xml` contains `Montserrat` or `Inter` (body font is also set)\n- `content.xml` contains `presentation:animation` or `presentation:path` (at least one custom animation / motion path)\n- `content.xml` contains ≥ 5 `<draw:circle>` elements (shape-drawn dots on pages, e.g. timeline nodes)\n- `content.xml` contains `<presentation:notes` ≥ 14 times (every slide has speaker notes)\n\n### Per-slide content requirements (by design intent)\n\n| Slide | Content |\n|---|---|\n| Slide 2 | Insert `inputs/team_photo.jpg`, centered, ~60% width, with rounded-corner crop |\n| Slide 5 | Convert the financials table into a 3-column card layout, with an emoji icon above each column |\n| Slide 9 | Timeline: 5 dots + a horizontal line + labels, **drawn with shapes** (cannot fake it with an image) |\n| Slide 11 | Add a Custom Animation Motion Path to an illustrative arrow shape; the path must be a **curve** (not a straight line) |\n| All slides | Add a page number in the bottom-right corner (digits must be OCR-readable) and write ≥ 30 characters of speaker notes in the Slide Notes area |\n\n### Master Slide requirements\n\n- Set fonts via the master / template mechanism (titles Montserrat 32 pt bold, body Inter 18 pt)\n- Place `inputs/logo.png` in the bottom-left of the master (auto-appearing on every slide)\n- Font settings must live on `<style:master-page>` — **setting fonts per slide individually does not count** (that breaks master replacement / reuse)\n\n### Companion deliverables\n\n| Path | Requirement |\n|---|---|\n| `/tmp_workspace/pitch.pdf` | 14-page PDF with PDF outline / bookmarks (≥ 1 entry, ≥ 14 preferred); each page has a bottom-right page number and includes notes |\n| `/tmp_workspace/slides/slide_<n>.png` | 14 per-slide PNGs (n = 1..14) |\n| `/tmp_workspace/actions.log` | Action log (any text). **Must NOT contain the literal `python-uno`** — you may not cheat by scripting odp through python-uno |\n\n### 4 process screenshots (under `/tmp_workspace/results/` or root)\n\nFixed filenames:\n\n| # | Filename | Content |\n|---|---|---|\n| 1 | `view_01_master_slide_edit.png` | Master Slide / template edit mode |\n| 2 | `view_02_animation_dialog.png` | Custom Animation panel + Motion Path selection |\n| 3 | `view_03_smart_alignment.png` | Object alignment / anchor settings popover |\n| 4 | `view_04_export_pdf_dialog.png` | Export PDF dialog (with bookmarks / notes options visible) |",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_1_impress_pitch_deck.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_1_impress_pitch_deck",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "# 镜像 v3_eyeson_apps 已 baked: libreoffice-impress, poppler-utils, tesseract-ocr,\n# fonts-liberation, python pdf2image/pytesseract/pikepdf/opencv-python-headless/Pillow/numpy\n# 仅在 Montserrat / Inter 缺失时按需补字体（apt 行整体 || true，不阻塞 Warmup）\nfc-list | grep -qi Montserrat || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq fonts-montserrat || true\nfc-list | grep -qi Inter || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq fonts-inter || true\nfc-cache -f >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_1_impress_pitch_deck/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_1_impress_pitch_deck /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_1_impress_pitch_deck/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_1_impress_pitch_deck/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_1_impress_pitch_deck.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_1_impress_pitch_deck",
+    "workspace_relative": "DOC/task_1_impress_pitch_deck",
+    "uses_vlm_helper": true,
+    "has_gt": false
+  }
+}

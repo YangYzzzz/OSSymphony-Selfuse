@@ -1,0 +1,108 @@
+{
+  "id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3",
+  "new_id": "9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Delete the test email from the inbox and then empty the Trash folder.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import subprocess; subprocess.run(['pkill', '-f', 'thunderbird'], timeout=5); import time; time.sleep(2)"
+          ]
+        }
+      }
+    ],
+    "func": "check_inbox_state__8e4a0a40e4d045486197a43a70e9b321",
+    "result": {
+      "type": "thunderbird_inbox_state__8e4a0a40e4d045486197a43a70e9b321",
+      "profile_path": "/home/user/.thunderbird"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_inbox_count": 1,
+        "expected_trash_empty": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_sid_1488376",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully backed up 2 inbox emails to ~/emails.bak as EML files. Navigated Thunderbird menus (File > Save As), opened terminal to create directory, saved both emails individually.",
+    "capability_extraction": "Can navigate Thunderbird UI, select emails, use File > Save As for EML export, open terminal, create directories, navigate file chooser dialogs",
+    "task_rationale": "Tests email deletion and trash management. The agent demonstrated ability to select and manipulate individual emails. This task requires identifying the test email, deleting it, and emptying trash — a multi-step Thunderbird operation.",
+    "explanation": "Task requires deleting the 'A Test E-mail' from inbox (keeping the Outlook welcome email) and then emptying the Trash. Postconfig closes Thunderbird to flush mbox files. Getter counts messages in INBOX and Trash mbox files using 'From ' line counting. Metric awards 0.6 for correct inbox count (1 remaining) and 0.4 for empty trash. [Fixed: corrected MD5 hash suffix from truncated 8-char '1b116d4f' to full 32-char hash; removed stale function definitions from old files]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_sid_1488376_traj_verify_2/getters/thunderbird_inbox_state__8e4a0a40e4d045486197a43a70e9b321.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_thunderbird_9bc3cc16-074a-45ac-9bdc-b2a362e1daf3_sid_1488376_traj_verify_2/metrics/check_inbox_state__8e4a0a40e4d045486197a43a70e9b321.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "inbox_count": "0.6 - Inbox has exactly 1 message remaining (the welcome email)",
+      "trash_empty": "0.4 - Trash folder is empty after emptying"
+    },
+    "variation_index": 2,
+    "fix_history": [
+      "Fix 1: Corrected MD5 hash suffix from truncated '1b116d4f' (8 chars) to full 32-char hash '8e4a0a40e4d045486197a43a70e9b321' computed from hashlib.md5('9bc3cc16-074a-45ac-9bdc-b2a362e1daf3|2'). Updated getter function name, metric function name, evaluator func/result.type references, and new_functions_paths.",
+      "Fix 2: Removed stale function definitions from old files thunderbird_inbox_state__1b116d4f.py and check_inbox_state__1b116d4f.py that still contained functions with invalid 8-char MD5 suffixes. These files now only contain deprecation comments pointing to the correct 32-char hash versions."
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly extracts both inbox and trash message counts from Thunderbird mbox files using standard 'From ' line counting after postconfig kills Thunderbird to flush state to disk.",
+        "Metric correctly handles expected parameter for type='rule' — directly accesses expected.get('expected_inbox_count') and expected.get('expected_trash_empty') without wrapping in rules/type.",
+        "Both instruction requirements are fully covered: (1) inbox count == 1 verifies test email was deleted while welcome email remains, (2) trash count == 0 verifies trash was emptied.",
+        "Partial credit scoring (0.6 inbox + 0.4 trash) is reasonable for a two-step task where deletion is the primary action.",
+        "Postconfig correctly kills Thunderbird before getter runs, ensuring mbox files are flushed and readable."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The instruction says 'the test email' which assumes exactly one test email exists. If the profile has a different number of test emails, the expected_inbox_count of 1 could be wrong. Consider documenting or verifying the initial inbox state (2 emails: 1 test + 1 welcome)."
+      ]
+    }
+  }
+}

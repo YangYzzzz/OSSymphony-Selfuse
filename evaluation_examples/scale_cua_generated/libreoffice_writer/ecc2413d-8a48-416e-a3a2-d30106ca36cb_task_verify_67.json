@@ -1,0 +1,101 @@
+{
+  "id": "ecc2413d-8a48-416e-a3a2-d30106ca36cb",
+  "new_id": "task_verify_67",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Could you remove all page breaks from this document?",
+  "source": "https://www.quora.com/How-can-I-insert-a-blank-page-on-libreoffice",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/ecc2413d-8a48-416e-a3a2-d30106ca36cb/Sample_Statutory_Declaration.docx",
+            "path": "/home/user/Desktop/Sample_Statutory_Declaration.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Sample_Statutory_Declaration.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Sample_Statutory_Declaration.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "contains_page_break",
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "page_break_count": 0
+      }
+    },
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Sample_Statutory_Declaration.docx",
+      "dest": "Sample_Statutory_Declaration.docx"
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires removing all page breaks from the document. Original document has 4 page breaks. After removal, page_break_count should be 0. Uses existing contains_page_break metric with expected count of 0.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if all page breaks removed, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "Critical logic error in contains_page_break metric (docs.py:125-157): The function's return logic is inverted when expected_page_break_count is specified",
+        "When expected_page_break_count=0 and actual page_break_count=0 (task completed correctly), the function returns 0 (FAIL) instead of 1 (PASS)",
+        "The final return logic (lines 154-157) checks 'if page_break_count > 0: return 1; else: return 0', which means it returns PASS when page breaks exist and FAIL when they don't exist",
+        "This contradicts the expected behavior when the task requires removing all page breaks (expecting count=0)",
+        "The evaluator will always fail when the task is completed correctly, making it impossible to verify successful completion"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix contains_page_break function logic: After checking expected_page_break_count match at line 151-152, it should return 1 (PASS) if counts match, not fall through to the inverted logic",
+        "Suggested fix: Replace lines 151-157 with: 'if expected_page_break_count is not None: return 1 if page_break_count == expected_page_break_count else 0'",
+        "Alternative: Change final logic to 'return 1 if page_break_count == expected_page_break_count else 0' when expected_page_break_count is specified",
+        "The current logic appears designed for checking if page breaks exist (return 1 if found), but doesn't properly handle the case where we want to verify a specific count, especially count=0"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

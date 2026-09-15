@@ -1,0 +1,108 @@
+{
+  "id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a",
+  "new_id": "task_verify_8",
+  "snapshot": "chrome",
+  "instruction": "Locate a flight from Singapore to Tokyo scheduled for next Monday.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.qatarairways.com/en-hk/homepage.html"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "fromStation",
+        "toStation",
+        "departing"
+      ],
+      "replace": {
+        "departing": "time"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relativeTime": {
+          "from": "next Monday"
+        },
+        "expected": {
+          "fromStation": "SIN",
+          "toStation": "TYO",
+          "time": "{Year}-{Month0D}-{Day0D}"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation 1: Flight search from Singapore (SIN) to Tokyo (TYO) on next Monday. Uses the same URL parsing evaluation pattern to verify correct origin/destination airports and departure date. Reuses existing framework functions without requiring custom implementations.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "variation_index": 1,
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter logic is correct: get_active_tab_url_parse can extract fromStation, toStation, and departing (renamed to time) from URL query parameters",
+        "Rule processing is correct: get_rule_relativeTime converts 'next Monday' to absolute date format {Year}-{Month0D}-{Day0D}",
+        "Metric logic is correct: check_direct_json_object compares extracted parameters against expected values",
+        "Coverage is complete: All instruction requirements verified (origin=SIN, destination=TYO, date=next Monday)",
+        "Minor issue: Airport code 'TYO' is a city code - Tokyo has multiple airports (NRT, HND). Some airlines may use specific airport codes instead of TYO, which could cause false negatives",
+        "Minor issue: The evaluator only checks URL parameters, not actual page content, but this is acceptable for URL-based verification pattern"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider accepting multiple Tokyo airport codes: Allow 'TYO' OR 'NRT' OR 'HND' for toStation to handle different airline website implementations",
+        "Consider case-insensitive matching for airport codes to improve robustness",
+        "The rule_validation_issues error appears to be a false positive - the actual JSON correctly uses type='rule' (line 61), not 'rule_relativeTime'"
+      ]
+    },
+    "augmented_from": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

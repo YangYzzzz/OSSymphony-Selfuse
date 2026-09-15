@@ -1,0 +1,102 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_32",
+  "snapshot": "chrome",
+  "instruction": "Contrast Apple Watch Ultra 2, Apple Watch Series 9, and Apple Watch SE.",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "apple-watch-ultra-2",
+            "apple-watch-series-9",
+            "apple-watch-se"
+          ],
+          "ignore_list_order": true
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "This variation targets Apple Watch comparisons, requiring the agent to compare three different Apple Watch models (Ultra 2, Series 9, and SE). The task complexity remains consistent with the original - a 3-model comparison using Apple's comparison tool. The evaluator reuses existing infrastructure to verify the comparison URL contains all three watch models.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "very_high",
+    "verification_notes": "Reuses existing getter (get_active_tab_url_parse) and metric (check_direct_json_object) functions. No custom functions needed. The expected model identifiers follow Apple's URL naming convention for Apple Watch models.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct and can properly verify the instruction.",
+        "Getter logic (get_active_tab_url_parse): Correctly extracts modelList from URL query parameters and splits by comma into a list. The function parses the active tab URL using urlparse and parse_qs, extracts specified keys, and returns a dict like {\"modelList\": [\"model1\", \"model2\", \"model3\"]}.",
+        "Metric logic (check_direct_json_object): Correctly compares result dict with expected dict key by key. The ignore_list_order flag is properly placed within rules.expected and is correctly accessed by the metric at line 428: expected_json.get('ignore_list_order', False).",
+        "Data flow verification: When expected.type='rule', framework calls get_rule which returns config['rules']. This dict is passed to the metric as 'rules' parameter. The metric extracts expected_json = rules['expected'], which contains both modelList and ignore_list_order flag at the correct level.",
+        "Expected values are semantically correct: Apple Watch model identifiers (apple-watch-ultra-2, apple-watch-series-9, apple-watch-se) follow Apple's URL naming conventions for their comparison tool.",
+        "Coverage is complete: All three required Apple Watch models from the instruction are specified in the expected values.",
+        "Order independence: The ignore_list_order flag ensures verification passes regardless of the order models appear in the comparison URL, which is appropriate since the instruction doesn't specify an order requirement."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f5d96daf-83a8-4c86-9686-bada31fc66ab_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

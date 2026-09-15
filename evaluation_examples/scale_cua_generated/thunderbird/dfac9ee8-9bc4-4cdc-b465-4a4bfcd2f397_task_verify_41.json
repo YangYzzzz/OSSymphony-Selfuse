@@ -1,0 +1,125 @@
+{
+  "id": "dfac9ee8-9bc4-4cdc-b465-4a4bfcd2f397",
+  "new_id": "task_verify_41",
+  "snapshot": "thunderbird",
+  "instruction": "Remove the account \"anonym-x2024@outlook.com\" and add a new account with the same email address using POP3 protocol instead of IMAP.",
+  "source": "https://support.mozilla.org/en-US/kb/manual-account-configuration",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/Desktop/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "-f",
+          "/home/user/Desktop/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://raw.githubusercontent.com/unode/firefox_decrypt/3f1a6dce63056c1f64d845ff077fc1e653e757c6/firefox_decrypt.py",
+              "path": "/home/user/Desktop/firefox_decrypt.py"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "/home/user/Desktop/firefox_decrypt.py",
+            "/home/user/.thunderbird",
+            "-n",
+            "-c",
+            "2",
+            "-f",
+            "csv",
+            "-d",
+            ","
+          ],
+          "stdout": "thunderbird-accounts.csv"
+        }
+      }
+    ],
+    "func": "check_csv",
+    "result": {
+      "type": "cache_file",
+      "path": "thunderbird-accounts.csv"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "user": "anonym-x2024@outlook.com",
+            "url": "pop://outlook.office365.com"
+          }
+        ],
+        "unexpect": [
+          {
+            "user": "anonym-x2024@outlook.com",
+            "url": "imap://outlook.office365.com"
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing the protocol for an existing account from IMAP to POP3. Evaluator uses existing check_csv metric to verify the account now uses POP3 protocol (pop://) and no longer uses IMAP protocol (imap://). No custom functions needed - reuses existing check_csv from general.py.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 6,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts Thunderbird account configurations using firefox_decrypt.py tool",
+        "check_csv metric appropriately verifies both requirements: POP3 account exists AND IMAP account does not exist",
+        "Expected values are semantically correct: 'pop://outlook.office365.com' for POP3 and 'imap://outlook.office365.com' for IMAP",
+        "Complete coverage: Both removal of IMAP and addition of POP3 are verified through expect/unexpect rules",
+        "Metric function parameter handling is correct: check_csv receives rules dict directly when expected.type='rule'",
+        "State accessibility is sound: firefox_decrypt.py reliably extracts account data from Thunderbird profile",
+        "Logic flow is correct: CSV record matching ensures exact email and protocol verification"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

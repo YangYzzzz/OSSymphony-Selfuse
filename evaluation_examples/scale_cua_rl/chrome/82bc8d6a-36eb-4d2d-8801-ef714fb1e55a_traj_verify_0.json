@@ -1,0 +1,96 @@
+{
+  "id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a",
+  "new_id": "82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Search for a one-way flight from Mumbai to Doha on the Qatar Airways website.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.qatarairways.com/en-hk/homepage.html"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_flight_params__15e6e06fadd423d4e6a279cca6f8914d",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "fromStation",
+        "toStation"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "fromStation": "BOM",
+        "toStation": "DOH"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_sid_1488147",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent navigated Qatar Airways booking form: dismissed cookies, switched to One way, entered Mumbai (BOM) and Stockholm, selected ARN (Arlanda) instead of STO (general Stockholm code), picked correct next Monday date (Feb 16), clicked Search flights, reached flight results page.",
+    "capability_extraction": "Can dismiss cookie popups, interact with airline booking forms, type city names and select from dropdowns, switch trip types (Return/One way), navigate date calendar and select dates, click Search flights button",
+    "failure_analysis": "Model selected Stockholm Arlanda Airport (ARN) instead of general Stockholm city code (STO). The evaluator expected toStation=STO but got toStation=ARN. The model completed the task functionally but chose a specific airport instead of the city-level code.",
+    "task_rationale": "Simplified flight search with unambiguous destination (Doha has single airport code DOH as Qatar Airways hub). Removes date complexity and airport code ambiguity that caused original failure.",
+    "explanation": "Task requires searching a one-way flight from Mumbai to Doha on Qatar Airways. Evaluator parses URL query parameters fromStation and toStation from the flight search results page. Partial credit: 0.5 for correct origin (BOM), 0.5 for correct destination (DOH).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_chrome_82bc8d6a-36eb-4d2d-8801-ef714fb1e55a_sid_1488147_traj_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "fromStation": "0.5 - Correct departure airport (BOM)",
+      "toStation": "0.5 - Correct destination airport (DOH)"
+    },
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter (active_tab_url_parse) correctly extracts fromStation and toStation URL query parameters from the Qatar Airways flight search results page",
+        "Metric function correctly handles expected parameter as direct rules dict (no incorrect nested access pattern)",
+        "Expected values BOM (Mumbai) and DOH (Doha) are correct IATA airport codes",
+        "Partial credit scoring (0.5 per correct parameter) is reasonable for a two-parameter check",
+        "Minor coverage gap: instruction specifies 'one-way' flight but evaluator does not verify trip type - a round-trip search with correct cities would also score 1.0"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a check for the trip type parameter (e.g., 'tripType' or similar URL parameter) to verify the one-way requirement, or remove 'one-way' from the instruction if it cannot be reliably verified from URL parameters"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

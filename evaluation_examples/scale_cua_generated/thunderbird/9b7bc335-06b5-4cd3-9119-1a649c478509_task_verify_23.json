@@ -1,0 +1,116 @@
+{
+  "id": "9b7bc335-06b5-4cd3-9119-1a649c478509",
+  "new_id": "task_verify_23",
+  "snapshot": "thunderbird",
+  "instruction": "Configure Thunderbird to automatically sort any new emails from no-reply@microsoft.com into the Bills folder on your local system.",
+  "source": "https://support.mozilla.org/en-US/questions/1259354",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Message Filters",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_filter",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/ImapMail/outlook.office365.com/msgFilterRules.dat",
+      "dest": "msgFilterRules.dat"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          {
+            "enabled": "yes",
+            "action": "Move to folder",
+            "actionValue": "mailbox://nobody@Local%20Folders/Bills",
+            "condition": [
+              "AND (from,is,no-reply@microsoft.com)"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires creating a message filter to move all emails from no-reply@microsoft.com to the Bills folder. The evaluator checks the msgFilterRules.dat file for a filter with enabled='yes', action='Move to folder', actionValue pointing to the Bills folder, and condition checking sender email. Uses existing check_thunderbird_filter metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator verifies all instruction requirements - filter enabled, sender condition (from=no-reply@microsoft.com), move action, Bills folder destination, and local folder level",
+        "Correct state extraction: Getter reads the canonical Thunderbird filter configuration file (msgFilterRules.dat) which contains all filter definitions",
+        "Proper verification logic: Metric correctly parses Thunderbird filter file format and uses _match_record to verify all expected fields (enabled, action, actionValue, condition)",
+        "Appropriate postconfig: Closes Message Filters window before evaluation to ensure filter configuration is saved to disk",
+        "Robust error handling: Metric correctly handles None case when file doesn't exist (returns 0.0)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Static type checker warns about type mismatch (get_vm_file returns Union but metric expects str), however in practice this works correctly because config has multi=false (default), so get_vm_file returns single str/None, not List. The metric handles None correctly at line 90-91."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_filter first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "9b7bc335-06b5-4cd3-9119-1a649c478509_aug_15_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

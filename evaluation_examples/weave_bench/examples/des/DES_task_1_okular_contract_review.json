@@ -1,0 +1,85 @@
+{
+  "id": "DES_task_1_okular_contract_review",
+  "snapshot": "weave_bench",
+  "instruction": "Background: `/tmp_workspace/contract_v1.pdf` and `/tmp_workspace/contract_v2.pdf` are two versions of the same synthetic regulation/contract corpus (30 pages, each with several numbered paragraphs). v2 has gone through a \"print → scan\" flow and is rasterised into an **image-only PDF with no text layer** (direct `pdftotext` extraction returns empty). Note: the literal `MODIFIED CLAUSE` marker in v2 is a synthesizer artefact and **appears on every one of the 30 pages**, but only a subset of those pages correspond to genuine substantive clause changes — the rest are clerical / non-substantive distractors. You must make a semantic judgement before tagging; mechanically annotating every page that carries the marker is not allowed.\n\nGoal: produce a \"second-pass redline\" work product — annotate v2 as a PDF, export those annotations into structured data, write a redline analysis report, and capture 4 working screenshots. All final outputs **must** be placed under `/tmp_workspace/results/<filename>`; anything outside that directory does not count.\n\n### Hard constraints on the main deliverable `contract_v2_annotated.pdf`\n\n- Annotations must be **truly embedded in the PDF file** (visible in the page's `/Annots` dict when read with pypdf or similar)\n- Total annotations ≥ 12, spread across ≥ 8 distinct pages\n- Each of the three PDF annotation subtypes meets its quota:\n  - `/Highlight` ≥ 6\n  - `/StrikeOut` ≥ 4\n  - `/Text` or `/FreeText` (pop-up note / text annotation) ≥ 8\n- Each pop-up note ≤ 80 characters and must start with a risk-level prefix (`[HIGH]` / `[MED]` / `[LOW]`); all three levels must appear at least once\n\n### Companion deliverables (all under `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `annotations_export.md` | Markdown annotation listing with ≥ 12 `Page <N>` entries, each carrying page number + type + text |\n| `annotations.json` | Valid JSON array of length ≥ 12; each entry contains at least a `subtype` (or `type`) field plus a `page` (or `page_no` / `page_index`) field |\n| `changes.md` | ≥ 12 change records, each containing `Page <N>` / `Type: substantive\\|clerical` / `Old:` ≤ 30 chars / `New:` ≤ 30 chars / `Risk: HIGH\\|MED\\|LOW`; covers at least 12 distinct `Page N` values |\n| `redline_summary.md` | Must contain 3 sections: `## 高风险变更` (≥ 4 entries, each with a reject-or-revise rationale), `## 中性变更` (≥ 1 entry), `## 利好变更` (≥ 1 entry) |\n\n### Four working screenshots (under `/tmp_workspace/results/`)\n\nFixed filenames:\n\n| # | Filename | Content |\n|---|---|---|\n| 1 | `okular_01_two_pane.png` | Two-pane layout / thumbnail navigation + main document area |\n| 2 | `okular_02_annotation_panel.png` | Annotation list panel (showing types and entries) |\n| 3 | `okular_03_highlight_inline.png` | Zoomed in on a highlighted passage + readable pop-up note text |\n| 4 | `okular_04_strikeout_inline.png` | Zoomed in on a struck-out passage |\n\nPer-screenshot requirements:\n- File size ≥ 50 KB, shortest side ≥ 720 px\n- All 4 screenshots must have distinct md5 hashes (no reusing the same image / thumbnail snap / all-black screen)\n- Each screenshot must show real, legible PDF reader panels or toolbar text (evaluation runs OCR on the screenshots)",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_1_okular_contract_review.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_1_okular_contract_review",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which okular >/dev/null 2>&1 || (apt-get update -qq || true && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq okular okular-extra-backends || true)\nwhich pdftotext >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils || true\nwhich tesseract >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tesseract-ocr || true\npip install -q pypdf pdfplumber pdfannots 2>/dev/null || pip install -q --break-system-packages pypdf pdfplumber pdfannots 2>/dev/null || true\npip install -q pytesseract pillow numpy 2>/dev/null || pip install -q --break-system-packages pytesseract pillow numpy 2>/dev/null || true\nmkdir -p /tmp_workspace/results || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "des"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DES_task_1_okular_contract_review/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DES_task_1_okular_contract_review /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_1_okular_contract_review/reward.py",
+              "path": "/opt/eval/weave_bench/DES_task_1_okular_contract_review/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/des/DES_task_1_okular_contract_review/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DES_task_1_okular_contract_review/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DES_task_1_okular_contract_review/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DES/DES_task_1_okular_contract_review.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DES/task_1_okular_contract_review",
+    "workspace_relative": "DES/task_1_okular_contract_review",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

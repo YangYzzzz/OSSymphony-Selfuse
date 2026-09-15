@@ -1,0 +1,115 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_26",
+  "snapshot": "chrome",
+  "instruction": "I accidentally turned off Safe Browsing in Chrome and now I'm worried about security. Can you help me turn it back on?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"safebrowsing\":{\"enabled\": false}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "pkill -f chrome",
+        "shell": true
+      }
+    },
+    {
+      "type": "sleep",
+      "parameters": {
+        "seconds": 2
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_safe_browsing_enabled__2b56847e",
+    "result": {
+      "type": "chrome_safe_browsing__2b56847e"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires user to enable Safe Browsing feature in Chrome security settings. The evaluator checks that safebrowsing.enabled is set to true. Verified by analyzing Chrome preferences safebrowsing settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_8/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_8/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement: Safe Browsing enabled in Chrome",
+        "Getter logic is correct: reads Chrome Preferences file and checks both safebrowsing.enabled and safebrowsing.enhanced fields",
+        "Metric comparison is correct: compares boolean result against expected boolean value (true)",
+        "Expected value is semantically correct: expects true for enabled Safe Browsing",
+        "Complete coverage: instruction has one requirement (enable Safe Browsing) and evaluator verifies it",
+        "State accessibility is correct: getter reads persisted Chrome preferences file, not UI-dependent state",
+        "Cross-platform support: handles Windows, macOS, and Linux paths correctly",
+        "Logical OR handling: correctly treats either standard or enhanced mode as 'enabled'",
+        "No postconfig needed: static validation warning is false positive - Safe Browsing settings are persisted in preferences file and don't require UI inspection"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

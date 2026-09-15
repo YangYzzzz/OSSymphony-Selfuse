@@ -1,0 +1,106 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "task_verify_12",
+  "snapshot": "thunderbird",
+  "instruction": "Include ~/.aws-bill-mail-body.html as an attachment in the email draft without sending the message.",
+  "source": "https://support.mozilla.org/en-US/kb/how-use-attachments",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/aws-bill.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/d088f539-cab4-4f9a-ac92-9999fc3a656e",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_draft_attachment__d38192b0_aug9",
+    "result": {
+      "type": "thunderbird_draft_attachment__d38192b0_aug9",
+      "subject": "New-month AWS Bill",
+      "attachment_name": ".aws-bill-mail-body.html",
+      "attachment_file_path": "/home/user/.aws-bill-mail-body.html",
+      "thunderbird_profile": "/home/user/.thunderbird/t5q2a5hp.default-release"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "draft_exists": true,
+        "not_sent": true,
+        "has_attachment": true,
+        "min_attachment_size": 500
+      }
+    },
+    "options": {
+      "partial_credit": true
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation 1: Attach HTML file instead of PDF. Same difficulty and pattern as original, just different file type. The verification script checks for .aws-bill-mail-body.html attachment.",
+    "new_functions_paths": [
+      "tmp_funcs/d38192b0-17dc-4e1d-99c3-786d0117de77_aug_9_task_verify_1/getters/get_thunderbird_draft_attachment__d38192b0_aug9.py",
+      "tmp_funcs/d38192b0-17dc-4e1d-99c3-786d0117de77_aug_9_task_verify_1/metrics/check_thunderbird_draft_attachment__d38192b0_aug9.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Complete instruction coverage: Evaluator correctly verifies BOTH requirements - (1) HTML file attachment via has_attachment check and attachment filename matching, (2) 'do not send' via not_sent check (getter explicitly checks Drafts folder AND Sent folder absence at lines 100-119)",
+        "Correct semantic logic: Getter directly reads Thunderbird mbox files (Drafts and Sent folders), parses email content using proper mbox format, searches for attachment headers using correct regex pattern (Content-Disposition), and verifies attachment name matches .aws-bill-mail-body.html",
+        "Proper data flow: Getter returns dict with draft_exists, not_sent, has_attachment, attachment_size fields. Metric correctly compares each field against expected rules. Expected parameter handling is correct (metric receives rules dict directly from get_rule, no incorrect access patterns)",
+        "Appropriate partial credit logic: 4 requirements weighted at 25% each (draft exists, not sent, has attachment, attachment size >= 500 bytes) aligns well with instruction verification needs",
+        "Robust edge case handling: Getter handles missing/unreadable files gracefully, empty Sent folder (assumes not sent if Sent is empty), and falls back to assuming not sent if Sent check fails but email is in Drafts"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Could add verification that attachment file content hash matches expected file to ensure EXACT file was attached (not just correct filename). Current size check (>500 bytes) provides basic content verification but not byte-for-byte accuracy",
+        "Minor robustness: Consider adding explicit check for Thunderbird profile path existence before attempting to read mbox files, with clear error message if profile not found"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "d38192b0-17dc-4e1d-99c3-786d0117de77_aug_9_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

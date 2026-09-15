@@ -1,0 +1,148 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_47",
+  "snapshot": "chrome",
+  "instruction": "In my movie database in the opened Excel file, I've noticed many films start with 'The' in their titles. Help me extract all movies that have the word 'The' anywhere in their title and create a new sheet named 'the_movies'. Keep the same headers and sort the results alphabetically by movie title.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_sorted__bcc8f272",
+    "result": {
+      "type": "xlsx_sheet_data__bcc8f272",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "the_movies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "exact_rows": 31,
+        "min_rows": 30,
+        "sort_column_idx": 0,
+        "descending": false,
+        "required_substring": "The"
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires filtering movies with 'The' in title and sorting alphabetically by title. Verified with Python: 31 movies contain 'The' (Pirates of the Caribbean: The Curse of the Black Pearl, Star Wars: Episode V - The Empire Strikes Back, The 400 Blows, The Deer Hunter, The Elephant Man, The Exorcist, The General, The Godfather, The Godfather Part II, The Gold Rush, etc.). Expected sheet has 31 rows sorted by title column (index 0) ascending alphabetically.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_4/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_4/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "headers_match": 0.2,
+      "min_rows_present": 0.2,
+      "exact_row_count": 0.2,
+      "sorted_correctly": 0.4
+    },
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: (1) extracts movies with 'The' in title, (2) creates 'the_movies' sheet, (3) preserves headers, (4) sorts alphabetically by title",
+        "Metric parameter handling is correct (lines 50-56): directly accesses expected keys without intermediate 'rules' variable",
+        "Content validation implemented (lines 89-104): verifies ALL titles contain required_substring 'The' (case-insensitive), with critical failure penalty if validation fails",
+        "Comprehensive verification coverage: headers match (0.2), min rows (0.2), exact row count of 31 (0.2), alphabetical sorting (0.4), plus content filtering validation",
+        "Postconfig properly saves file with Ctrl+S before verification, ensuring getter reads fresh state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The evaluator verifies count (31) + content (all contain 'The') + sorting, but cannot verify these are the EXACT 31 movies from original dataset. This is acceptable for practical verification but could theoretically allow wrong movies if they also contain 'The' and match the count.",
+        "Consider: Could add spot-check validation for a few known movie titles from metadata explanation to increase confidence, though current approach is pragmatically sufficient."
+      ]
+    }
+  }
+}

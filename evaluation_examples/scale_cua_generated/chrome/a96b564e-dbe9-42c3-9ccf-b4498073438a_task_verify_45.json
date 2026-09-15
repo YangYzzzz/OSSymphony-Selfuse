@@ -1,0 +1,86 @@
+{
+  "id": "a96b564e-dbe9-42c3-9ccf-b4498073438a",
+  "new_id": "task_verify_45",
+  "snapshot": "chrome",
+  "instruction": "Access the FlightAware flight statistics page.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.flightaware.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_active_tab",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "url",
+        "url": "https://www.flightaware.com/live/stats"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires navigating to the flight statistics page on FlightAware. Simple navigation task with similar complexity to original. Uses existing is_expected_active_tab metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses active_url_from_accessTree getter to extract the current active tab URL without page reload - this is the appropriate approach for simple URL verification tasks.",
+        "Complete instruction coverage: The instruction 'Access the FlightAware flight statistics page' requires verifying the user navigated to https://www.flightaware.com/live/stats. The evaluator checks exactly this via URL comparison.",
+        "Correct data flow: Getter extracts URL string from accessibility tree -> metric is_expected_active_tab receives URL string and compares it using compare_urls() function (chrome.py:35) which handles URL normalization.",
+        "Metric parameter handling is correct: When expected.type='rule', framework calls get_rule (misc.py:88-92) which returns config['rules'] = {type: 'url', url: '...'} directly. The metric is_expected_active_tab receives this as the 'rule' parameter (not 'expected'), which is semantically correct (chrome.py:18-38).",
+        "Minor uncertainty: The goto_prefix parameter may be unused or may be handled by framework middleware. Without seeing the full getter implementation, cannot confirm if this parameter causes issues, but it should not affect URL extraction logic. If ignored, evaluation will work correctly."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider removing the goto_prefix parameter if it is not needed by active_url_from_accessTree getter - this parameter may be a remnant from a previous configuration and could be unnecessary.",
+        "Alternative (optional): Could use is_expected_url_pattern_match metric instead, which is explicitly designed for URL string comparisons, though is_expected_active_tab works correctly for this use case."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

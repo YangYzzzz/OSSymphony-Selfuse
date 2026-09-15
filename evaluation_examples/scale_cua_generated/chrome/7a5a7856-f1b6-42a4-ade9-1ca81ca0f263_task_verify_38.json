@@ -1,0 +1,113 @@
+{
+  "id": "7a5a7856-f1b6-42a4-ade9-1ca81ca0f263",
+  "new_id": "task_verify_38",
+  "snapshot": "chrome",
+  "instruction": "Create a bookmark for this page in the bookmarks bar.",
+  "source": "https://www.youtube.com/watch?v=ZaZ8GcTxjXA",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://blog.eleuther.ai/rotary-embeddings/",
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_expected_bookmarks",
+    "result": {
+      "type": "bookmarks"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "bookmark_bar_websites_urls",
+        "urls": [
+          "https://jalammar.github.io/illustrated-transformer/"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating a bookmark for the current page (Illustrated Transformer) in the bookmarks bar. Uses existing is_expected_bookmarks metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator logic is semantically correct for verifying bookmark creation",
+        "Postconfig correctly restarts Chrome to ensure bookmark persistence to disk",
+        "Getter (get_bookmarks) correctly reads Chrome's Bookmarks JSON file",
+        "Metric (is_expected_bookmarks with type bookmark_bar_websites_urls) correctly checks if expected URL exists in bookmark bar",
+        "Uses subset matching which allows other bookmarks to exist (correct behavior)",
+        "Expected URL matches one of the two tabs opened in config, indicating clear intent",
+        "Minor issue: instruction says 'this page' which is slightly ambiguous with two tabs open, but metadata clarifies it refers to Illustrated Transformer page"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider clarifying instruction to specify 'the current active tab' or 'the Illustrated Transformer page' to remove ambiguity",
+        "The source field points to a YouTube URL that doesn't match any opened tabs or expected bookmark - consider aligning source with actual task context"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

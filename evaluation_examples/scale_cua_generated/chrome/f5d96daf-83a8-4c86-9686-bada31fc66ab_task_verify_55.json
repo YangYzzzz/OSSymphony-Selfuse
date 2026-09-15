@@ -1,0 +1,102 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "Compare MacBook Pro 16-inch with MacBook Pro 14-inch and MacBook Air",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "macbook-pro-16",
+            "macbook-pro-14",
+            "macbook-air"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "proxy": true,
+  "possibility_of_env_change": "medium",
+  "fixed_ip": false,
+  "metadata": {
+    "explanation": "Task requires comparing 3 MacBook models on Apple's website. Evaluator checks that the active tab URL contains the modelList parameter with the 3 specified MacBook models (order-independent). Similar complexity to original task, just different product category.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Unverified assumption: Evaluator assumes Apple's comparison URL uses 'modelList' query parameter, but this URL structure is not validated against actual Apple website behavior",
+        "Unverified model slugs: Expected values use 'macbook-pro-16', 'macbook-pro-14', 'macbook-air' but Apple's actual URL format is unknown (could be 'macbook-pro-16-inch', 'mbp16', etc.)",
+        "Missing postconfig: No postconfig to ensure Chrome remains open or comparison page remains active after task completion - getter will fail if browser closed",
+        "Weak verification logic: Only checks URL contains models, doesn't verify user actually used comparison feature or viewed comparison results",
+        "State accessibility risk: If agent navigates away from comparison page or closes browser, getter cannot retrieve URL state"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig to reopen/navigate to comparison page to ensure state accessibility at evaluation time",
+        "Validate Apple's actual comparison URL structure and update expected model slugs accordingly (test manually on apple.com)",
+        "Consider using a getter that checks page content (HTML) in addition to URL to verify comparison was actually displayed",
+        "Add fallback verification: if URL parameter check fails, check page title/content for comparison confirmation",
+        "Document the tested URL format as metadata to make assumptions explicit"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

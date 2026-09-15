@@ -1,0 +1,98 @@
+{
+  "id": "efcf0d81-0835-4880-b2fd-d866e8bc2294",
+  "new_id": "task_verify_36",
+  "snapshot": "base_setup",
+  "instruction": "Change the VLC recording folder to save to the Videos directory",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s, https://wiki.videolan.org/Documentation:Streaming_HowTo/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/efcf0d81-0835-4880-b2fd-d866e8bc2294/Interstellar%20Movie%20-%20Official%20Trailer.mp4",
+            "path": "/home/user/Desktop/Interstellar Movie - Official Trailer.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=120.5 --stop-time=121 --play-and-pause '/home/user/Desktop/Interstellar Movie - Official Trailer.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "bash",
+            "-c",
+            "killall vlc 2>/dev/null || true"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "is_vlc_recordings_folder",
+    "result": {
+      "type": "vlc_config",
+      "dest": "vlc_config.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "recording_file_path": "/home/user/Videos"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires navigating to VLC preferences and changing the recording folder from default to /home/user/Videos. Uses existing is_vlc_recordings_folder metric to verify the VLC config file has been updated with the correct recording path. Added postconfig to close VLC so config is saved before evaluation.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts VLC config file from platform-specific location (~/.config/vlc/vlcrc on Linux)",
+        "Metric logic correctly parses VLC config file and checks input-record-path setting against expected value",
+        "Metric function correctly handles expected parameter - directly accesses rule['recording_file_path'] which is correct for expected.type='rule'",
+        "Postconfig appropriately kills VLC and waits to ensure config is saved before evaluation",
+        "Complete coverage: evaluator checks exactly what instruction requires (VLC recording folder path)",
+        "Expected value /home/user/Videos is semantically correct for 'Videos directory' on Linux",
+        "Robust error handling for missing files, parse errors, and missing config keys",
+        "Data flow is correct: config extraction -> file parsing -> path comparison -> match result"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

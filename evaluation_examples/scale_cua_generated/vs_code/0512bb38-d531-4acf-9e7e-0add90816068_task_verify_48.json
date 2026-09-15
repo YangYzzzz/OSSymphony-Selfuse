@@ -1,0 +1,87 @@
+{
+  "id": "0512bb38-d531-4acf-9e7e-0add90816068",
+  "new_id": "task_verify_48",
+  "snapshot": "vscode",
+  "instruction": "Integrate the extension package '/home/user/test.vsix' into Visual Studio Code.",
+  "source": "https://download.microsoft.com/download/8/A/4/8A48E46A-C355-4E5C-8417-E6ACD8A207D4/VisualStudioCode-TipsAndTricks-Vol.1.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vs_code/0512bb38-d531-4acf-9e7e-0add90816068/test.vsix",
+            "path": "/home/user/test.vsix"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Visual Studio Code"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vscode"
+  ],
+  "evaluator": {
+    "func": "is_extension_installed",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "code",
+        "--list-extensions",
+        "|",
+        "grep",
+        "undefined_publisher.test"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "contain",
+        "expected": "undefined_publisher.test"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Using 'integrate' as action verb. Same verification approach as original.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Critical logical issue: The command uses pipe operator '|' in an array format without 'shell: true' parameter",
+        "The vm_command_line getter defaults to shell=False (general.py:12), which means the pipe will be treated as a literal argument, not a shell pipe operator",
+        "This will cause the command to fail at runtime - it will try to execute 'code --list-extensions' with literal arguments '|', 'grep', 'undefined_publisher.test' instead of piping the output to grep",
+        "The evaluator logic is otherwise correct - checking if 'undefined_publisher.test' is in the list of installed extensions is the right approach for verifying VSCode extension installation",
+        "The expected value 'undefined_publisher.test' appears semantically correct for a .vsix file named 'test.vsix' with undefined publisher"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add 'shell': true to the result config in the evaluator: {\"type\": \"vm_command_line\", \"command\": [...], \"shell\": true}",
+        "Alternatively, simplify the command to just [\"code\", \"--list-extensions\"] without the grep, and let the metric check if the extension ID is contained in the full output (which already happens with the 'contain' rule type)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

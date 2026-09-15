@@ -1,0 +1,150 @@
+{
+  "id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb",
+  "new_id": "task_verify_37",
+  "snapshot": "chrome",
+  "instruction": "Export every email from Thunderbird's 'Bills' folder as individual .eml files, then place them in the 'emails' folder in Google Drive.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'emails' and 'root' in parents",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://arxiv.org/",
+          "https://github.com/ohmyzsh/ohmyzsh/wiki/themes",
+          "https://releases.ubuntu.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_gdrive_eml_count__26d2516b888edf7c1b328cca7acaf9b7",
+    "result": {
+      "type": "gdrive_eml_files__26d2516b888edf7c1b328cca7acaf9b7",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_name": "emails"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_count": 2,
+        "required_extension": ".eml"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "source_task_id": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1",
+    "variation_index": 0,
+    "explanation": "This task requires exporting emails from Thunderbird's Bills folder and uploading them to Google Drive. The evaluator verifies that exactly 2 .eml files exist in the 'emails' folder on Google Drive. Based on the cache files (gold1.eml and gold2.eml), the Bills folder contains 2 emails: one from AWS and one from X (Twitter). The getter function lists all .eml files in the Drive folder, and the metric checks that the count matches the expected value of 2.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_0/getters/gdrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_0/metrics/gdrive.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter correctly accesses Google Drive and extracts .eml files from the 'emails' folder",
+        "Metric properly validates file extension (.eml) before counting",
+        "Expected count (2) is semantically correct based on task metadata (gold1.eml and gold2.eml from Bills folder)",
+        "Data flow is logically sound: getter extracts file list -> metric counts .eml files -> compares with expected",
+        "Both functions handle edge cases (missing folder, empty results) appropriately",
+        "Evaluator only verifies QUANTITY (2 .eml files) but not QUALITY (whether these are the correct Bills folder emails)",
+        "No verification of file content, email headers, or metadata - any 2 .eml files would pass",
+        "No partial credit for partial completion (e.g., if only 1 of 2 emails uploaded)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding file content verification (e.g., check email headers, sender addresses) to ensure correct emails were exported",
+        "Consider implementing partial credit scoring (e.g., 0.5 if 1 out of 2 files uploaded)",
+        "Could verify filenames match expected patterns or contain identifying information from source emails"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "a0b9dc9c-fc07-4a88-8c5d-5e3ecad91bcb_xhaug_1_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

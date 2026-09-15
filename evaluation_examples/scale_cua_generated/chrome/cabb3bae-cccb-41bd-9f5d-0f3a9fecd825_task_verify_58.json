@@ -1,0 +1,109 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_58",
+  "snapshot": "chrome",
+  "instruction": "Find LEGO sets for kids and arrange them starting with the most expensive.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "LEGO",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price High-Low"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "LEGO": "LEGO",
+        "lego": "LEGO",
+        "Kids": "Kids",
+        "S=5": "Price High-Low"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "lego": true,
+          "kids": true,
+          "price high-low": true,
+          "is_other_exist": false
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for LEGO sets for kids on kohls.com and sorting by price high-low. Similar pattern to original with different product. Evaluator checks breadcrumbs and sort order using existing check_direct_json_object function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks for LEGO filter/breadcrumb in both CSS classes and URL parameters",
+        "Evaluator correctly checks for Kids filter/breadcrumb in both CSS classes and URL parameters",
+        "Evaluator correctly checks for Price High-Low sort selection via breadcrumb ('Price High-Low') and URL parameter ('S=5')",
+        "Evaluator correctly checks that no unexpected filters are present (is_other_exist: false)",
+        "Getter uses active_tab_html_parse with category='class&url' which can extract both CSS class elements and URL parameters",
+        "Metric uses check_direct_json_object which performs exact key-value comparison",
+        "Minor issue: Evaluator only verifies sort option is SELECTED but does not verify products are actually DISPLAYED in price high-low order - assumes UI state matches sort selection",
+        "Case sensitivity handling is correct: getter normalizes to lowercase, expected values already use lowercase"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding verification that actual product prices on the page are in descending order to fully verify 'arrange them starting with the most expensive'",
+        "Could add extraction of first few product prices and verify price[0] >= price[1] >= price[2] to confirm sort worked"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

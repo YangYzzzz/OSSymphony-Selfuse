@@ -1,0 +1,114 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_13",
+  "snapshot": "chrome",
+  "instruction": "I want to protect my browsing privacy by enabling 'Do Not Track' requests in Chrome. Can you turn this feature on for me?",
+  "source": "https://support.google.com/chrome/answer/2790761",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"enable_do_not_track\":false}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_do_not_track__daf0df3998e3903555e9d178c5d32cd7",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires enabling 'Do Not Track' in Chrome privacy settings. The evaluator uses the existing get_enable_do_not_track getter to check the Preferences file and verify that enable_do_not_track is set to true. Custom metric function check_do_not_track__daf0df3998e3903555e9d178c5d32cd7 compares the result against expected value 'true'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_0/metrics/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts enable_do_not_track from Chrome Preferences file and converts boolean to string ('true'/'false')",
+        "Metric function correctly handles expected parameter - uses expected.get('expected', 'true') to access rules dict directly (proper handling of type='rule')",
+        "Data flow is semantically correct: getter returns 'true'/'false' string, metric compares string with expected['expected']",
+        "Instruction coverage is complete: task asks to enable Do Not Track, evaluator verifies enable_do_not_track is set to true",
+        "Postconfig appropriately restarts Chrome to ensure fresh state for verification",
+        "Expected value is semantically correct: 'true' matches the requirement to enable the feature",
+        "Error handling is reasonable with fallback to 'false' on exceptions"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

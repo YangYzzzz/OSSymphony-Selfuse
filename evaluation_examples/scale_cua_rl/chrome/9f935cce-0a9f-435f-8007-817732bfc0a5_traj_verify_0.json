@@ -1,0 +1,87 @@
+{
+  "id": "9f935cce-0a9f-435f-8007-817732bfc0a5",
+  "new_id": "9f935cce-0a9f-435f-8007-817732bfc0a5_traj_verify_0",
+  "snapshot": "chrome",
+  "instruction": "Find the federal court forms listing page on the U.S. Courts website (uscourts.gov).",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.justice.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "uscourts\\.gov/forms-rules/forms"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_9f935cce-0a9f-435f-8007-817732bfc0a5_sid_1488046",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent attempted to browse Civil Division forms on justice.gov but encountered Access Denied. Tried direct URL paths and Google search, all blocked. Eventually navigated to uscourts.gov, found Forms & Rules menu, clicked Forms, then Civil Forms sidebar link successfully.",
+    "capability_extraction": "Can type URLs in address bar, navigate Chrome dropdown menus, click sidebar navigation links, scroll pages, handle Access Denied by trying alternative websites",
+    "failure_analysis": "justice.gov blocked VM access entirely (Access Denied). Model could not reach the expected URL pattern on justice.gov. Successfully found an alternative path on uscourts.gov but that didn't match the expected URL.",
+    "task_rationale": "Simplified to navigating to the Forms page on uscourts.gov, which the model demonstrated it can reach. Tests URL navigation and menu interaction.",
+    "explanation": "Task requires navigating to uscourts.gov Forms page. Evaluator checks active tab URL matches uscourts.gov/forms-rules/forms pattern using is_expected_url_pattern_match.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter (active_url_from_accessTree) correctly extracts the active browser tab URL from the accessibility tree, which is the right state to check for a navigation task.",
+        "Metric (is_expected_url_pattern_match) correctly uses regex search to match the URL pattern 'uscourts\\.gov/forms-rules/forms', which accurately identifies the U.S. Courts forms listing page.",
+        "Expected value pattern 'uscourts\\.gov/forms-rules/forms' correctly matches the target page URL (https://www.uscourts.gov/forms-rules/forms).",
+        "Instruction coverage is complete: the single requirement (navigate to the forms listing page) is fully verified by checking the URL.",
+        "Metric parameter handling is correct: with expected.type='rule', get_rule returns the rules dict, and the metric accesses rules['expected'] to get the patterns list."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: goto_prefix 'https://www.' assumes the address bar text does not include 'www.'. If the browser shows 'www.uscourts.gov/...' in the address bar, the constructed URL would be 'https://www.www.uscourts.gov/...' — however, the regex pattern still matches via search, so this is not a functional issue."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

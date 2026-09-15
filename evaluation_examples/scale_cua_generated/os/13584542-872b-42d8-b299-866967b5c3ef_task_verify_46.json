@@ -1,0 +1,86 @@
+{
+  "id": "13584542-872b-42d8-b299-866967b5c3ef",
+  "new_id": "task_verify_46",
+  "snapshot": "os",
+  "instruction": "I want to use a dark color scheme in my terminal. Set the terminal to use the 'Tango dark' built-in color scheme permanently so it persists after reboot.",
+  "source": "https://superuser.com/questions/72176/linux-set-default-terminal-size-and-screen-position",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(1); pyautogui.write('gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ use-theme-colors'); time.sleep(0.5); pyautogui.press('enter')"
+          ]
+        }
+      }
+    ],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "false"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires permanently setting terminal to use custom color scheme (not theme colors). Evaluator opens new terminal and checks use-theme-colors setting using gsettings, expecting 'false' which indicates custom colors are being used. Uses existing check_include_exclude metric with vm_terminal_output getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same pattern of OS terminal configuration that persists across reboots",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Incomplete verification: Instruction requires setting 'Tango dark' color scheme specifically, but evaluator only checks if use-theme-colors is false",
+        "Missing critical check: Evaluator does not verify which color scheme/profile is actually active - use-theme-colors=false only means custom colors are enabled, not that 'Tango dark' is selected",
+        "Coverage gap: The setting could pass with ANY custom color scheme configured, not necessarily 'Tango dark' as required by instruction",
+        "Logical flaw: Checking use-theme-colors=false is a necessary but insufficient condition - it's a prerequisite for custom schemes but doesn't verify the specific scheme name"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for the actual color scheme name/profile - check visible-name or palette settings to confirm 'Tango dark' is active",
+        "Could use: gsettings get org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \"'\")/ visible-name and check for 'Tango dark'",
+        "Alternative: Check palette colors to verify they match Tango dark palette values",
+        "Consider multi-step verification: (1) use-theme-colors=false AND (2) visible-name contains 'Tango dark' OR palette matches expected values"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "id": "4e6fcf72-daf3-439f-a232-c434ce416af6",
+  "new_id": "task_verify_18",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Calculate the precise ages of all employees based on their birthdates, including fractional years with at least 2 decimal places to show months and days.",
+  "source": "https://www.youtube.com/shorts/0uxJccNCKcE",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/4e6fcf72-daf3-439f-a232-c434ce416af6/Employee_Age_By_Birthday.xlsx",
+            "path": "/home/user/Employee_Age_By_Birthday.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Employee_Age_By_Birthday.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Employee_Age_By_Birthday.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_xlsx_age_format__af4c468f",
+    "result": {
+      "type": "xlsx_first_age_format__af4c468f",
+      "path": "/home/user/Employee_Age_By_Birthday.xlsx",
+      "sheet": 0
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "decimal_places": 2,
+        "min_decimal_places": 2
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires calculating ages with decimal precision (e.g., 56.73 years instead of 56). The evaluator checks if the first age value in column D has at least 2 decimal places, confirming proper formatting was applied.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e6fcf72-daf3-439f-a232-c434ce416af6_task_verify_5/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e6fcf72-daf3-439f-a232-c434ce416af6_task_verify_5/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "CRITICAL: Decimal counting logic will fail for trailing zeros (getters/xlsx.py:69-76). When openpyxl reads with data_only=True, it returns numeric values (56.73, 56.70). Python's str(56.70) normalizes to '56.7' (1 decimal), not '56.70' (2 decimals). The instruction requires 'at least 2 decimal places to show months and days' - this is about Excel display formatting. Current logic will incorrectly count ages like 56.70 as having 1 decimal place. Must use cell.number_format property to check Excel formatting pattern (e.g., '0.00' indicates 2 decimals), or format the float with explicit precision",
+        "Missing verification of calculation correctness: Expected rules only check decimal formatting, not whether ages were actually calculated from birthdates. No way to verify calculated values are correct. An agent could fill column D with random 2-decimal numbers and pass. This is a significant gap - while formatting is the primary requirement, there's no semantic link between the birthdates (column B presumably) and the calculated ages (column D). Should validate at least one sample calculation or check that values are plausible ages (e.g., 0-120 range)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Fix decimal place verification using Excel formatting: In getters/xlsx.py, when reading cells, also capture the number_format property: 'cell_obj = sheet.cell(row=row, column=4); age_value = cell_obj.value; age_format = cell_obj.number_format'. Then check if format contains decimal places (e.g., check if '.00' or similar pattern exists in number_format). Alternatively, format the float explicitly: 'decimal_part = format(age, '.10f').rstrip('0').rstrip('.').split('.')[1] if '.' in str(age) else ''",
+        "Add plausibility check or sample validation: Either (a) add range validation to ensure ages are plausible (0-120 years), or (b) include one sample expected value in rules (e.g., {'min_decimal_places': 2, 'sample_row': 2, 'expected_age_min': 56.0, 'expected_age_max': 57.0}) to verify at least one calculation is correct, or (c) add logic to verify the age values are decreasing/consistent with typical employee age distributions"
+      ]
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

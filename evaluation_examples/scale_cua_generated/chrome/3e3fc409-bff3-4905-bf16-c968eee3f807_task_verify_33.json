@@ -1,0 +1,151 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_33",
+  "snapshot": "chrome",
+  "instruction": "I've been maintaining a collection of movies I've watched in the opened Excel file. I want to identify all the top-rated films from my collection. Please create a new sheet called 'top_rated' in the Excel file containing only movies with a rating of 9.0 or higher. The new sheet should have the same column headers as the original, and sort the movies by rating from highest to lowest.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_sorted__e05342d5",
+    "result": {
+      "type": "xlsx_sheet_data__e05342d5",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "sheet_name": "top_rated"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "headers": [
+          "title",
+          "release year",
+          "ratings",
+          "description"
+        ],
+        "exact_rows": 7,
+        "min_rows": 7,
+        "sort_column_idx": 2,
+        "descending": true,
+        "min_rating": 9.0
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires filtering movies with rating >= 9.0 and creating a new sheet sorted by rating descending. Verified with Python: 7 movies have rating >= 9.0 (The Shawshank Redemption 9.3, The Godfather 9.2, 12th Fail 9.1, Schindler's List 9.0, LOTR Return of the King 9.0, Dune Part Two 9.0, The Godfather Part II 9.0). Expected sheet has exactly 7 rows sorted by rating column (index 2) in descending order.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_0/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_0/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "headers_match": 0.15,
+      "min_rows_present": 0.15,
+      "exact_row_count": 0.15,
+      "rating_filter_correct": 0.25,
+      "sorted_correctly": 0.3
+    },
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies ALL instruction requirements",
+        "Headers verification (lines 48-50): Correctly checks case-insensitive header match for ['title', 'release year', 'ratings', 'description']",
+        "Row count verification (lines 52-58): Validates both minimum rows (7) and exact row count (7)",
+        "Rating filter verification (lines 60-81): Correctly validates that ALL rows have rating >= 9.0 by iterating through actual_rows and checking rating_float >= min_rating. Properly handles type conversion errors and edge cases",
+        "Sorting verification (lines 84-119): Properly checks descending order on column index 2 (ratings column) with appropriate numeric/string comparison and None value handling",
+        "Scoring breakdown is appropriate: headers (0.15) + min_rows (0.15) + exact_rows (0.15) + rating_filter (0.25) + sorting (0.30) = 1.0",
+        "Postconfig is appropriate: Ctrl+S ensures file is saved before verification",
+        "Getter logic is sound: correctly extracts sheet data from the specified sheet with proper header normalization and row extraction",
+        "Expected parameter handling is correct: metric correctly accesses rules dict directly as 'expected' without attempting to access 'expected.rules' (lines 34-40)",
+        "Edge case handling is robust: handles None values, type conversion errors, missing columns, and empty data"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  }
+}

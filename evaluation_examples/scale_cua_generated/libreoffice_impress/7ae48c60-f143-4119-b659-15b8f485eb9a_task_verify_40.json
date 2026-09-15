@@ -1,0 +1,119 @@
+{
+  "id": "7ae48c60-f143-4119-b659-15b8f485eb9a",
+  "new_id": "task_verify_40",
+  "snapshot": "libreoffice_impress",
+  "instruction": "On slides 3, 4, and 5, set the first picture's width to 15cm, 25cm, and 10cm respectively.",
+  "hint": "The input unit is cm",
+  "source": "https://arxiv.org/pdf/2311.01767.pdf",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/7ae48c60-f143-4119-b659-15b8f485eb9a/30_1.pptx",
+            "path": "/home/user/Desktop/30_1.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/30_1.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "30_1.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_pptx_picture_widths__bcfabaf7",
+    "result": {
+      "type": "pptx_picture_widths__bcfabaf7",
+      "path": "/home/user/Desktop/30_1.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "widths": {
+          "3": 15,
+          "4": 25,
+          "5": 10
+        }
+      }
+    },
+    "options": {
+      "tolerance": 0.1
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "hard",
+    "estimated_steps": 4,
+    "explanation": "Task modifies picture widths across 3 slides. Verified: Slide 3 shape 5 is first picture (orig 1.14cm width), slide 4 shape 3 is the picture (orig 27.8cm width). Slide 5 has no pictures - agent must realize slide 5 cannot complete the task, making this challenging. Partial credit: 1/3 for each correct slide.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/7ae48c60-f143-4119-b659-15b8f485eb9a_task_verify_0/getters/impress.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/7ae48c60-f143-4119-b659-15b8f485eb9a_task_verify_0/metrics/impress.py"
+    ],
+    "scoring_breakdown": "0.33 per slide: Slide 3 width=15cm, Slide 4 width=25cm, Slide 5 width=10cm (but no pictures exist)",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Expected value for slide 5 is semantically incorrect - expects width=10cm but slide 5 has no pictures (as confirmed in metadata explanation)",
+        "CRITICAL: Instruction requires setting picture width on slide 5 which is impossible - cannot modify non-existent picture",
+        "CRITICAL: Task design is contradictory - instruction asks for all 3 slides but slide 5 cannot be completed, making max achievable score 0.66 not 1.0",
+        "MAJOR: Getter hardcodes shape indices (shape 5 for slide 3, shape 3 for slide 4) instead of finding 'first picture' dynamically - brittle to shape reordering",
+        "MAJOR: Verification logic cannot correctly determine task completion because expected values don't match actual file state (slide 5 has no pictures to modify)",
+        "The evaluator will always fail on slide 5 even if agent correctly identifies the impossibility, since expected still requires width=10cm"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Either remove slide 5 from instruction and expected values (only verify slides 3 and 4 which have pictures), OR",
+        "Change expected for slide 5 to explicitly expect None/null to verify agent correctly identifies impossibility, OR",
+        "Modify instruction to say 'set picture width on slides 3 and 4, and verify slide 5 has no pictures' with appropriate expected values",
+        "Fix getter to dynamically find 'first picture' by iterating shapes and checking shape_type==13, not hardcoding shape indices",
+        "Update scoring breakdown to reflect that only 2/3 slides can actually be completed (adjust partial credit accordingly)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "id": "7b6c7e24-c58a-49fc-a5bb-d57b80e5b4c3",
+  "new_id": "task_verify_29",
+  "snapshot": "chrome",
+  "instruction": "Purge all cookies saved by Amazon so that the website won't remember my previous visits.",
+  "source": "https://support.google.com/chrome/answer/95647?hl=en&ref_topic=7438325&sjid=16867045591165135686-AP#zippy=%2Cdelete-cookies-from-a-site",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.amazon.com",
+          "https://www.amazon.com/s?k=huggingface+transformers+book"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "is_cookie_deleted",
+    "result": {
+      "type": "cookie_data",
+      "dest": "Cookies"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "domains",
+        "domains": [
+          ".amazon.com"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires purging Amazon cookies to prevent website from remembering visits. Uses existing is_cookie_deleted metric to verify .amazon.com cookies are removed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "The is_cookie_deleted function checks if any cookie domain matches .amazon.com. Returns 1.0 if no Amazon cookies found, 0.0 otherwise.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts all cookies from Chrome's SQLite database across different OS platforms",
+        "Metric logic properly checks if any Amazon domain cookies remain, returning 1.0 if none found and 0.0 if any found",
+        "Postconfig appropriately restarts Chrome to ensure fresh cookie state verification, which is necessary for accurate checking",
+        "Expected domain '.amazon.com' is semantically correct for matching Amazon cookies including subdomains",
+        "Evaluator can successfully verify whether Amazon cookies have been purged from the browser"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding 'amazon.com' (without leading dot) to the domains list to cover edge cases where cookies might be stored with exact domain match instead of subdomain wildcard",
+        "The compare_urls function at chrome.py:438 is being used for domain comparison - verify this function handles domain-only strings correctly (not just full URLs with protocols/paths)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

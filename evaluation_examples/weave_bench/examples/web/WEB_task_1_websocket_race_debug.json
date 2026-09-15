@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_1_websocket_race_debug",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution agreement**: This is a legitimate desktop + terminal testing task. All deliverables go under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nTask background: `/tmp_workspace/ws_chat/` contains a multi-client broadcast chat server built on the Node.js `ws` library (`server.js`) plus a frontend page (`index.html`). The service listens on `http://localhost:9800` and the WebSocket endpoint is `ws://localhost:9800/ws`. User report: when multiple clients chat concurrently, messages get **dropped** or arrive **out of order** — some clients see 10 messages but miss a few, and the receive order does not match the send order.\n\nDomain background: broadcast implementations based on the `ws` library frequently exhibit frame loss or reordering under concurrent clients due to concurrent broadcast, mishandled connection lifecycle, and unnecessary non-determinism in the send path.\n\nYour goal is to locate the root cause of the race, fix the server-side code, and prove the fix is effective with a before/after comparison.\n\n[Deliverables] (all go under `/tmp_workspace/results/` unless an alternate path is noted)\n\n- `view_chat_connected.png`: screenshot must show the chat page successfully connected to the server (with the \"WS Chat\" title and \"Connected\" indicator, message area, and input box).\n- `view_devtools_ws_headers.png`: screenshot must show handshake header evidence for this WebSocket connection, with `Upgrade: websocket`, `101` switching protocols, `Sec-WebSocket-Key`, etc. recognizable.\n- `view_devtools_ws_frames.png`: screenshot must show the **pre-fix** multi-frame message stream, where message id reordering or loss is visible (frames contain id fields with the `msg_` prefix).\n- `replay_client_a.log` and `replay_client_b.log`: send/receive logs for two concurrent clients each sending 5 messages (10 total, with ids like `msg_A_1..msg_A_5` and `msg_B_1..msg_B_5`); each file has ≥ 5 lines and the actual message ids received plus arrival order must be parseable.\n- `message_order_analysis.json`: comparative analysis derived from the two logs above. Schema:\n  ```json\n  {\n    \"total_sent\": 10,\n    \"client_a_received\": \"<count>\",\n    \"client_b_received\": \"<count>\",\n    \"client_a_missing\": [\"<missing msg id>\"],\n    \"client_b_missing\": [\"<missing msg id>\"],\n    \"client_a_out_of_order\": \"<count>\",\n    \"client_b_out_of_order\": \"<count>\"\n  }\n  ```\n- `server_race_evidence.txt`: lines extracted from the server runtime log (`/tmp_workspace/ws_chat/server.log`) that evidence the race / send failure. Length > 20 characters, containing keywords such as `race` / `send failed` / `error` / `condition`.\n- `/tmp_workspace/ws_chat/server_fixed.js`: the fixed server-side code. It must achieve the following behavioral targets: stay stable under concurrent broadcast of 2 clients × 5 messages (zero loss), deliver messages in send order (zero reordering), and no longer introduce artificial delay on the send path.\n- `before_after_comparison.json`: before vs. after the fix. Schema:\n  ```json\n  {\n    \"before\": {\"total_sent\": 10, \"missing\": \"<pre-fix loss count>\", \"out_of_order\": \"<pre-fix reorder count>\"},\n    \"after\":  {\"total_sent\": 10, \"missing\": 0, \"out_of_order\": 0}\n  }\n  ```\n- `view_devtools_ws_frames_fixed.png`: screenshot must show, under the fixed server, message frames in monotonically increasing id order with no loss.\n- `view_devtools_console_ws_perf.png`: screenshot must show performance measurement results from one end-to-end test, with keywords like `performance` / `measure` / `mark` / `duration` recognizable.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_1_websocket_race_debug.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_1_websocket_race_debug",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo ZWNobyAnQWNxdWlyZTo6aHR0cDo6UHJveHkgImh0dHA6Ly8xMC4xNjAuMTk5LjIzMDoxNzg5MCI7IEFjcXVpcmU6Omh0dHBzOjpQcm94eSAiaHR0cDovLzEwLjE2MC4xOTkuMjMwOjE3ODkwIjsnIHwgdGVlIC9ldGMvYXB0L2FwdC5jb25mLmQvOTlwcm94eSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBub2RlIHx8IChhcHQtZ2V0IHVwZGF0ZSAtcXEgJiYgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgbm9kZWpzIG5wbSA+L2Rldi9udWxsIDI+JjEpIHx8IHRydWUKcGlwIGluc3RhbGwgd2Vic29ja2V0cyAyPi9kZXYvbnVsbCB8fCB0cnVlCmNkIC90bXBfd29ya3NwYWNlL3dzX2NoYXQgJiYgbnBtIGluc3RhbGwgLS1uby1hdWRpdCAtLW5vLWZ1bmQgLS1zaWxlbnQgMj4vZGV2L251bGwgfHwgdHJ1ZQpta2RpciAtcCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIHx8IHRydWUKYXB0LWdldCB1cGRhdGUgLXFxID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCkRFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIHhkb3Rvb2wgd21jdHJsIHNjcm90IGdub21lLXNjcmVlbnNob3QgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKd2hpY2ggY2hyb21pdW0tYnJvd3NlciA+L2Rldi9udWxsIDI+JjEgfHwgd2hpY2ggY2hyb21pdW0gPi9kZXYvbnVsbCAyPiYxIHx8IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGNocm9taXVtLWJyb3dzZXIgPi9kZXYvbnVsbCAyPiYxIHx8IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGNocm9taXVtID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCkRFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIHRlc3NlcmFjdC1vY3IgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKcGlwIGluc3RhbGwgLXEgcHl0ZXNzZXJhY3QgcGlsbG93IG51bXB5IDI+L2Rldi9udWxsIHx8IHRydWUK | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_1_websocket_race_debug/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_1_websocket_race_debug /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_1_websocket_race_debug/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_1_websocket_race_debug/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_1_websocket_race_debug/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_1_websocket_race_debug/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_1_websocket_race_debug/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_1_websocket_race_debug.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_1_websocket_race_debug",
+    "workspace_relative": "WEB/task_1_websocket_race_debug",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

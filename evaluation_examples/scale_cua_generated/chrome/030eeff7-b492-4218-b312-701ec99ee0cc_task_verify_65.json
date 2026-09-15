@@ -1,0 +1,105 @@
+{
+  "id": "030eeff7-b492-4218-b312-701ec99ee0cc",
+  "new_id": "task_verify_65",
+  "snapshot": "chrome",
+  "instruction": "Please configure Chrome to ask before sites can send notifications instead of allowing them automatically.",
+  "source": "https://support.google.com/chrome/answer/3220216",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "notifications_ask_permission__b9320e63"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires agent to set notification permission to 'Ask'. The getter reads Chrome Preferences to verify profile.default_content_setting_values.notifications is 3 (ASK) or not set to 1 (ALLOW).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/030eeff7-b492-4218-b312-701ec99ee0cc_task_verify_9/getters/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "task_category": "chrome_permission_settings",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Getter logic contains questionable value check: checks for notification_setting in [0, 3], but Chrome's standard notification values are 0 (ask/default), 1 (allow), 2 (block). Value 3 is not documented as a standard Chrome notification setting.",
+        "The metadata explanation mentions '3 (ASK)' which conflicts with Chrome's documented behavior where 0 or unset represents ASK.",
+        "Core verification logic is semantically correct (checking that notifications are set to ask mode), but the specific value checks may be incorrect.",
+        "Postconfig is appropriate - restarts Chrome to ensure settings persistence and allows time for initialization.",
+        "Metric comparison (exact_match with 'true') is correct for the getter's return values.",
+        "Coverage is complete - single requirement (set to ask) with single check."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify Chrome's actual notification permission values in the Preferences file. Standard Chrome values should be: 0 or unset = ask (default), 1 = allow, 2 = block.",
+        "If value 3 is specific to certain Chrome versions or configurations, add documentation explaining this.",
+        "Consider simplifying the logic to: return 'true' if notification_setting != 1 (not ALLOW), which would catch both default (0/unset) and explicit ask settings.",
+        "Update the metadata explanation to accurately reflect Chrome's notification permission model.",
+        "Test the getter against actual Chrome Preferences to confirm the correct values for 'ask' mode."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

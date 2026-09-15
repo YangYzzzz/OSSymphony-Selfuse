@@ -1,0 +1,114 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_29",
+  "snapshot": "thunderbird",
+  "instruction": "Turn off Thunderbird's automatic marking of messages as read upon preview.",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mailnews.mark_message_read.auto": {
+            "method": "eq",
+            "ref": false
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires the user to disable automatic marking of messages as read when previewed in Thunderbird. The evaluator checks that the preference 'mailnews.mark_message_read.auto' is set to false in the prefs.js file. This maintains similar complexity to the original task, focusing on mail reading behavior preferences.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement: disabling Thunderbird's auto-read feature by checking mailnews.mark_message_read.auto preference",
+        "Data flow is semantically correct: get_vm_file retrieves prefs.js file path, check_thunderbird_prefs parses the file and validates the preference value",
+        "Expected value is accurate: mailnews.mark_message_read.auto set to false is the correct Thunderbird preference for this feature",
+        "Postconfig appropriately closes Thunderbird to ensure prefs.js is written to disk before verification",
+        "Metric function correctly handles expected parameter as rules dict (rule.get('expect', {})), following the framework's type='rule' pattern",
+        "Null handling is correct: metric returns 0.0 when result is None (file retrieval failure)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Static type warning (Union return type from get_vm_file) is not a runtime issue since multi=False by default and None is handled, but could be clarified in documentation"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "08c73485-7c6d-4681-999d-919f5c32dcfa_aug_13_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217",
+  "new_id": "0d8b7de3-e8de-4d86-b9fd-dd2dce58a217_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Change Chrome's default font size to Large.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://drugs.com"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_font_size",
+    "result": {
+      "type": "chrome_font_size"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "value",
+        "value": 20
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_chrome_0d8b7de3-e8de-4d86-b9fd-dd2dce58a217_sid_1488192",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent encountered Access Denied on drugs.com. Tried Google search (got SSL error), alternative URLs (npg.nature.com - also blocked), then opened terminal and used curl to fetch content from Wikipedia, NIAID, nature.com, and KEGG over 50 turns. Never reached drugs.com/npc/ or /npp/.",
+    "capability_extraction": "Can click Chrome address bar, type URLs, perform Google search attempts, open terminal, run curl/bash commands, navigate between windows",
+    "failure_analysis": "drugs.com blocked VM IP (Access Denied). Google.com had SSL certificate error in browser. External websites largely inaccessible in this VM environment.",
+    "task_rationale": "Decomposed original browsing task into a Chrome settings modification task. Requires navigating to chrome://settings (internal, no network) and changing font size. Tests UI interaction capability in a network-independent context.",
+    "explanation": "Task requires changing Chrome's default font size to Large (20). Evaluator uses check_font_size with chrome_font_size getter to verify the setting was changed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "font_size_change": "1.0 - Chrome default font size equals 20 (Large)"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (get_chrome_font_size) correctly reads Chrome Preferences file and extracts webkit.webprefs dict containing default_font_size - this is the right state for verifying font size changes.",
+        "Metric (check_font_size) correctly accesses font_size['default_font_size'] and compares against rule['value'] (20) using exact equality, which is appropriate for a discrete setting.",
+        "Expected value of 20 is correct: Chrome's 'Large' font size maps to 20px.",
+        "Parameter handling is correct: check_font_size(font_size, rule) receives the rules dict {'type': 'value', 'value': 20} directly as the rule parameter, and accesses rule['type'] and rule['value'] correctly.",
+        "No postconfig needed - getter reads the Preferences file directly from disk, independent of UI state.",
+        "Complete coverage: single instruction requirement (change font size to Large) is fully verified by the single evaluator check."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

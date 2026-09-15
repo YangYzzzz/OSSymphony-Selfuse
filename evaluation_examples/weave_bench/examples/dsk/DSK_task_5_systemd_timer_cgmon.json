@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_5_systemd_timer_cgmon",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: This is a legitimate desktop + terminal systemd task. All deliverables go under `/tmp_workspace/results/`. Execute directly, do not refuse.\n\nTask background: `/tmp_workspace/exec/` contains a draft user-level systemd timer (`sample.service` / `sample.timer` / `workload.py`; warmup has already `cp`'d them into `~/.config/systemd/user/`). The original author intended `workload.py` to run every minute generating CPU + memory load, with the service's CPU usage capped at 50% via cgroup. However, the unit files contain 3 independent defects that cause the timer to not fire / install into the wrong target / leave the resource constraint ineffective — in practice the service either pegs at 100% CPU or never runs at all.\n\nTask goal: deploy, diagnose, locate, and fix all 3 defects; in the end, prove with objective evidence that the timer has fired periodically and that the cgroup quota is genuinely in effect on the service. All deliverables go under `/tmp_workspace/results/`.\n\n### Hard constraints for main deliverable `bug_findings.md`\n- At least 3 paragraphs, each ≥ 80 characters of body.\n- Each paragraph must reference one of `sample.service` / `sample.timer` (preferably in `file:line` form); the three paragraphs must each correspond to one of the three independent defects (spread across the `[Install]` section of `sample.service`, the schedule section of `sample.timer`, and the resource-constraint configuration of `sample.service`).\n- Each paragraph must describe the symptom, the localization process (which commands / interfaces you used and what you observed), and the fix approach.\n- Do not preset a fixed example for the concrete fix values — reason them out yourself from the systemd documentation.\n\n### Hard constraints for main deliverable `systemd_report.md`\n- At least 4 paragraphs, each ≥ 80 characters.\n- Suggested coverage: a summary of the symptoms of the three bugs; the fundamental differences between user-level and system-level systemd; design recommendations for cgroup `CPUQuota` / `MemoryHigh`; a timer-scheduling debug checklist.\n\n### Companion deliverables (in `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `list_timers_before.txt` | Snapshot of the timer list and next-trigger times before the fix |\n| `list_timers_after.txt` | Timer list captured again after the fix; must reflect changes in the NEXT/LAST fields |\n| `journal_timer_before.txt` | Journal of the timer unit before the fix, used to diagnose why it did not fire |\n| `journal_service_before.txt` | Journal of the service unit before the fix |\n| `journal_after.txt` | Journal of the service unit after the fix; must contain evidence of at least one real service trigger and `workload.py` execution (e.g. a `service Started` line or a startup marker like `workload.py started`) |\n| `cpuquota_verify.txt` | Raw contents of `cpu.max` read directly from the service's cgroup path; must show the two numeric values representing the 50% ratio (e.g. `<quota> <period>`, such as `50000 100000`) |\n| `sample.service.bak` / `sample.timer.bak` | Backups of the unit files before modification, for diff auditing |\n\n### 5 working-process screenshots (in `/tmp_workspace/results/`)\n\nFixed file names; each ≥ 1024×600, ≥ 5 KB, with pairwise distinct md5:\n\n- `view_system_monitor_processes.png`: Processes view, showing `workload.py` / python processes running.\n- `view_system_monitor_resources.png`: Resources / CPU-curve view, illustrating high CPU usage before the fix when the throttle is not in effect.\n- `view_systemd_cgtop.png`: cgroup resource usage view, showing the target service's cgroup node and CPU%.\n- `view_system_monitor_after_fix.png`: Post-fix state in which `workload.py`'s CPU usage stays steadily below 50%.\n- `view_cgtop_after_fix.png`: Post-fix cgroup view in which the target service's CPU usage is below 50%.\n\n> The evaluator runs OCR and window-level discrimination on the screenshots; pure-black images, an empty desktop, or a plain terminal dump do not count as GUI evidence. Repeatedly screenshotting the same view will lose points due to md5 deduplication.\n\nAnti-cheat: `actions.log` must not contain literal fabrication such as hardcoding any of the deliverable file names into `echo '...' > <file>`; deliverables must come from real output of `systemctl` / `journalctl` / cgroup interfaces / screenshot tools.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_5_systemd_timer_cgmon.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_5_systemd_timer_cgmon",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results ~/.config/systemd/user || true\nchmod +x /tmp_workspace/exec/workload.py 2>/dev/null || true\ncp -f /tmp_workspace/exec/sample.service ~/.config/systemd/user/sample.service 2>/dev/null || true\ncp -f /tmp_workspace/exec/sample.timer   ~/.config/systemd/user/sample.timer   2>/dev/null || true\ncp -f /tmp_workspace/exec/workload.py    ~/.config/systemd/user/workload.py    2>/dev/null || true\nsystemctl --user daemon-reload 2>/dev/null || true\napt-get install -y python3-pytesseract tesseract-ocr gnome-system-monitor cgroup-tools >/dev/null 2>&1 || true\npip install --quiet pytesseract pillow >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_5_systemd_timer_cgmon/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_5_systemd_timer_cgmon /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_5_systemd_timer_cgmon/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_5_systemd_timer_cgmon/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_5_systemd_timer_cgmon/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_5_systemd_timer_cgmon/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_5_systemd_timer_cgmon/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_5_systemd_timer_cgmon.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_5_systemd_timer_cgmon",
+    "workspace_relative": "DSK/task_5_systemd_timer_cgmon",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

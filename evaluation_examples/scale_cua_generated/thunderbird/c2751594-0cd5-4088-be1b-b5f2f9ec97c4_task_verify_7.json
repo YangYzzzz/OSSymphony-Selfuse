@@ -1,0 +1,98 @@
+{
+  "id": "c2751594-0cd5-4088-be1b-b5f2f9ec97c4",
+  "new_id": "task_verify_7",
+  "snapshot": "thunderbird",
+  "instruction": "Find the latest Notes folder email, open its Word document attachment, pull out the third image, and save it as 'extracted.png' to the Pictures folder.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/c2751594-0cd5-4088-be1b-b5f2f9ec97c4/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "--recursive-unlink",
+          "-xz",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_third_image__9a3feca86555f3c82732707871883142",
+    "result": {
+      "type": "third_image__9a3feca86555f3c82732707871883142",
+      "path": "/home/user/Pictures/extracted.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires opening the latest email in Notes folder, accessing the Word attachment 'lecture-notes.docx' which contains 3 images (rId4: media/image1.png, rId5: media/image2.png, rId6: media/image3.png as verified from cache extraction), extracting the third image, and saving it to Pictures folder as 'extracted.png'. Evaluator checks: (1) file exists at /home/user/Pictures/extracted.png (30%), (2) file is valid PNG format via signature (20%), (3) file size >= 5KB indicating valid image (10%), (4) CRITICAL: SHA256 hash of extracted file matches the third image (image3.png) from the Word document (40%). The getter extracts the reference third image from the Word document and computes hashes for both files to ensure the correct image was extracted.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/c2751594-0cd5-4088-be1b-b5f2f9ec97c4_aug_8_task_verify_3/getters/image.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/c2751594-0cd5-4088-be1b-b5f2f9ec97c4_aug_8_task_verify_3/metrics/image.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "file_exists": 0.3,
+      "valid_png_format": 0.2,
+      "size_valid": 0.1,
+      "correct_image_hash": 0.4
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator DOES verify the third image was extracted via SHA256 hash comparison (image.py:38-52, image.py:74)",
+        "Getter extracts reference third image from Word document (tries 'word/media/image3.png' or 3rd by index) and computes SHA256 hash (image.py:59-74)",
+        "Metric correctly compares saved file hash vs reference hash - matches get +0.4, mismatches reduce score to 30% (image.py:36-52)",
+        "All instruction requirements verified: file path/name (30%), PNG format (20%), size validity (10%), correct image content via hash (40%)",
+        "Graceful degradation: if reference hash unavailable, gives partial credit (+0.2) instead of failing completely (image.py:49-52)",
+        "PRACTICAL CONCERN: Reference image extraction may fail if Word document is not accessible as a file at evaluation time - getter tries multiple paths (Downloads, /tmp, email folder) but email attachments in Thunderbird may not be readily accessible as standalone files",
+        "MINOR ISSUE: Getter attempts to read mbox email file directly (image.py:32) which won't work, but fallback paths may succeed if user opened/saved the attachment"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add postconfig to ensure Word document is saved/accessible: e.g., copy attachment to /tmp before evaluation or ensure document remains in Downloads folder",
+        "Consider adding image metadata verification as fallback if hash comparison fails (dimensions, file size ranges specific to third image)",
+        "Document assumption that Word document must be accessible at evaluation time, or provide more robust attachment extraction from Thunderbird's email storage"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "c2751594-0cd5-4088-be1b-b5f2f9ec97c4_aug_8_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

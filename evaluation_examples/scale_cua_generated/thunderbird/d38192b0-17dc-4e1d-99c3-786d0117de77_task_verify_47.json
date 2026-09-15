@@ -1,0 +1,125 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "task_verify_47",
+  "snapshot": "thunderbird",
+  "instruction": "Change the recipient of the email draft from 'assistant@outlook.com' to 'treasurer@outlook.com', but keep the compose window open.",
+  "source": "https://support.mozilla.org/en-US/kb/compose-new-messages",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/aws-bill.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/d088f539-cab4-4f9a-ac92-9999fc3a656e",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://files.pythonhosted.org/packages/ee/58/257350f7db99b4ae12b614a36256d9cc870d71d9e451e79c2dc3b23d7c3c/cssselect-1.3.0-py3-none-any.whl",
+              "path": "/home/user/cssselect-1.3.0-py3-none-any.whl"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pip",
+            "install",
+            "/home/user/cssselect-1.3.0-py3-none-any.whl"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import os; import re; import subprocess; profile_dir = os.path.expanduser('~/.thunderbird'); profiles = [d for d in os.listdir(profile_dir) if d.endswith('.default')]; draft_file = os.path.join(profile_dir, profiles[0], 'ImapMail/outlook.office365.com/Drafts') if profiles else None; content = open(draft_file, 'r', errors='ignore').read() if draft_file and os.path.exists(draft_file) else ''; drafts = content.split('From - '); target_draft = None;\nfor draft in drafts:\n    if 'Subject: New-month AWS Bill' in draft:\n        target_draft = draft; break\nif target_draft is None:\n    print('Draft not found'); exit()\nto_match = re.search(r'^To: (.+)$', target_draft, re.MULTILINE); to_field = to_match.group(1) if to_match else '';\nhas_treasurer = 'treasurer@outlook.com' in to_field; has_assistant = 'assistant@outlook.com' in to_field;\nwindow_check = subprocess.run(['wmctrl', '-l'], capture_output=True, text=True); compose_open = 'Compose:' in window_check.stdout or 'New-month AWS Bill' in window_check.stdout;\nif has_treasurer and not has_assistant and compose_open:\n    print('Recipient updated!')\nelif not has_treasurer:\n    print('Recipient not updated: treasurer@outlook.com not found')\nelif has_assistant:\n    print('Recipient not updated: assistant@outlook.com still present')\nelif not compose_open:\n    print('Recipient updated but compose window not open')\nelse:\n    print('Recipient not updated')"
+          ],
+          "stdout": "recipient-check.output"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "recipient-check.output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "Recipient updated!"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires changing the To field from 'assistant@outlook.com' to 'treasurer@outlook.com' while keeping the compose window open. Evaluator identifies the specific draft by subject line, verifies both that treasurer@outlook.com is present AND assistant@outlook.com is removed, and confirms the compose window remains open. Similar difficulty to original task (single field modification).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Complete coverage: Evaluator correctly verifies all requirements from the instruction - (1) recipient changed from assistant@outlook.com to treasurer@outlook.com, AND (2) compose window remains open",
+        "Correct state extraction: Postconfig script identifies the specific draft by subject line 'New-month AWS Bill', extracts its To field, and verifies both that treasurer@outlook.com is present AND assistant@outlook.com is absent",
+        "Proper window state verification: Script uses wmctrl to check if compose window is still open by looking for 'Compose:' or 'New-month AWS Bill' in window list",
+        "Logical correctness: Success condition 'has_treasurer and not has_assistant and compose_open' ensures all three requirements are met before outputting success message",
+        "Appropriate verification approach: Using file-based draft inspection combined with window state check is suitable for this Thunderbird email task"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

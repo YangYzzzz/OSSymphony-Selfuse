@@ -1,0 +1,111 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_18",
+  "snapshot": "chrome",
+  "instruction": "Find a one-way flight for one adult from Milan to Lisbon departing on the 12th of next month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "12th next month"
+        },
+        "expected": {
+          "originIata": "BGY",
+          "destinationIata": "LIS",
+          "tpAdults": "1",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation 3: Search for one-way flight from Milan Bergamo (BGY) to Lisbon (LIS) for 1 adult on 12th of next month. Uses existing evaluator functions to verify URL parameters. Maintains same complexity and interaction pattern as original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts URL parameters from active Chrome tab to verify flight search",
+        "Complete coverage: checks all instruction requirements (origin BGY, destination LIS, 1 adult, 0 teens/children, one-way, date 12th next month)",
+        "Correct semantic mapping: BGY is Milan Bergamo (Ryanair's main Milan airport), LIS is Lisbon airport code",
+        "Relative time handling is correct: 'rule_relativeTime' properly converts '12th next month' to absolute date format at evaluation time",
+        "Data flow is sound: getter extracts URL params → metric compares exact match → expected values are semantically correct",
+        "Minor issue: no postconfig to ensure browser stays on search results page, but acceptable for snapshot-based evaluation"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding postconfig to ensure Chrome remains on the search results page after agent completes task",
+        "Consider adding tolerance for URL parameter variations (e.g., if Ryanair omits tpTeens/tpChildren when zero rather than explicitly setting them to '0')"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_aug_14_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

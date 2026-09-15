@@ -1,0 +1,111 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_38",
+  "snapshot": "multiapps",
+  "instruction": "Use speedtest.net to measure Ping, Download, Upload, and Server location, then store these results in ~/Network/speedtest_data.txt, making the directory if missing. Format each entry as 'Metric Name: Value' on its own line.",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "file_contains",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Network/speedtest_data.txt",
+      "dest": "speedtest_data.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Ping",
+          "Download",
+          "Upload",
+          "Server"
+        ]
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This variation changes the output directory from ~/Test/Speed/ to ~/Network/, changes the filename from results.txt to speedtest_data.txt, modifies the format description (colon+space instead of single space), and adds 'Server' to the expected keywords. The task maintains similar complexity - running speedtest.net and saving results to a text file, but with a slightly different requirement set. Uses existing file_contains metric since it only needs to verify keyword presence.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "Binary: 1.0 if all keywords (Ping, Download, Upload, Server) are present in the file, 0.0 otherwise",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses file_contains metric with proper parameter handling - config['expected'] is accessed correctly when expected.type='rule'",
+        "Coverage is complete - all 4 required metrics (Ping, Download, Upload, Server) from the instruction are verified",
+        "Logic flow is correct: get_vm_file fetches the file from VM, file_contains checks keyword presence",
+        "Runtime feasibility confirmed - no state timing issues, file persists after task completion",
+        "Weakness: Verification is lenient - only checks keyword presence, not format or value validity. A file with just 'Ping Download Upload Server' would pass without actual metric values",
+        "Weakness: Instruction specifies 'metric name: value' format on separate lines, but evaluator doesn't verify this format structure",
+        "This is a design trade-off rather than a logic error - keyword-based verification is intentionally simplified for medium difficulty task"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider using regex patterns in file_contains or a custom metric to verify format: 'Ping: <value>', 'Download: <value>', etc. on separate lines",
+        "Consider adding validation that numeric values exist for Ping/Download/Upload metrics",
+        "Current approach is acceptable for lenient verification but may pass incomplete outputs"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

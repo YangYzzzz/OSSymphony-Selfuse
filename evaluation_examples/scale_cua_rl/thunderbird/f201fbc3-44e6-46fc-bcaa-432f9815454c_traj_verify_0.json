@@ -1,0 +1,110 @@
+{
+  "id": "f201fbc3-44e6-46fc-bcaa-432f9815454c",
+  "new_id": "f201fbc3-44e6-46fc-bcaa-432f9815454c_traj_verify_0",
+  "snapshot": "thunderbird",
+  "instruction": "Disable smooth scrolling in Thunderbird.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "general.smoothScroll": {
+            "method": "eq",
+            "ref": false
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_f201fbc3-44e6-46fc-bcaa-432f9815454c_sid_1488402",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened Thunderbird hamburger menu, navigated to Settings > Composition, then Account Settings > Composition & Addressing, then Config Editor. Searched 'mail.quote' and toggled mail.quoteasblock to true, but needed to set mail.identity.id1.auto_quote to false.",
+    "capability_extraction": "Can open Thunderbird menus, navigate Settings sections (General, Composition), open Account Settings, open Config Editor, search preferences, toggle boolean values",
+    "failure_analysis": "Model found Config Editor and searched for related preferences but modified the wrong one (mail.quoteasblock instead of mail.identity.id1.auto_quote). The correct preference was not discoverable via the 'mail.quote' search term.",
+    "task_rationale": "Simplified to toggling a visible checkbox in General settings. Smooth scrolling checkbox is directly visible without needing Config Editor, matching model's ability to navigate Settings UI.",
+    "explanation": "Task requires unchecking 'Use smooth scrolling' in Settings > General. Evaluator checks general.smoothScroll is false in prefs.js after closing Thunderbird.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly fetches prefs.js from the Thunderbird profile directory, which stores user preferences including smooth scrolling setting.",
+        "Postconfig correctly closes Thunderbird before reading prefs.js, ensuring preferences are flushed to disk.",
+        "Metric check_thunderbird_prefs correctly parses prefs.js and checks that general.smoothScroll equals false, which is the correct preference key for smooth scrolling in Thunderbird.",
+        "Expected value handling is correct: get_rule returns the rules dict directly, and the metric accesses it via rule.get('expect', {}), properly matching the expected parameter format.",
+        "Complete coverage: the single instruction requirement (disable smooth scrolling) is fully verified by checking the single relevant preference."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

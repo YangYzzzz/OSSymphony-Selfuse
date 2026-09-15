@@ -1,0 +1,102 @@
+{
+  "id": "0e763496-b6bb-4508-a427-fad0b6c3e195",
+  "new_id": "0e763496-b6bb-4508-a427-fad0b6c3e195_traj_verify_1",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Change the font to Arial throughout the document.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/0e763496-b6bb-4508-a427-fad0b6c3e195/Dublin_Zoo_Intro.docx",
+            "path": "/home/user/Desktop/Dublin_Zoo_Intro.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Dublin_Zoo_Intro.docx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Dublin_Zoo_Intro.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "compare_font_names",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Dublin_Zoo_Intro.docx",
+      "dest": "Dublin_Zoo_Intro.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "font_name": "Arial"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_libreoffice_writer_0e763496-b6bb-4508-a427-fad0b6c3e195_sid_1488255",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully changed font to Times New Roman by selecting all text (Ctrl+A) and changing font via toolbar dropdown in 8 turns.",
+    "capability_extraction": "Can select all text, change formatting via toolbar, navigate LibreOffice Writer UI",
+    "task_rationale": "Same font-change pattern as original but with different target font (Arial instead of Times New Roman), reuses existing compare_font_names metric",
+    "explanation": "Task requires changing all text font from Georgia to Arial. Reuses existing compare_font_names metric and vm_file getter from the original task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "font_names": "1.0 - All runs have font name Arial"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter (vm_file) correctly downloads the target .docx file from the VM after postconfig saves it with Ctrl+S",
+        "Metric (compare_font_names) correctly iterates all paragraphs and runs, checking each run.font.name against expected 'Arial' - this semantically matches 'change font throughout the document'",
+        "Expected value {'font_name': 'Arial'} is correct for the instruction and is properly passed as the rules dict via get_rule",
+        "Postconfig appropriately activates the writer window and saves the file before evaluation",
+        "Minor concern: run.font.name can be None for runs inheriting font from paragraph/document style rather than having it explicitly set, which would cause a false negative. In practice, Ctrl+A + font change in LibreOffice Writer sets font explicitly on each run, so this is unlikely to trigger for this task"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider handling inherited fonts: the metric could resolve None font names by checking paragraph style or document default font before comparing, to avoid false negatives on runs with inherited fonts"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric compare_font_names second parameter type (List) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

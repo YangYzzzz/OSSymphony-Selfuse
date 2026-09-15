@@ -1,0 +1,141 @@
+{
+  "id": "68a25bd4-59c7-4f4d-975e-da0c8509c848",
+  "new_id": "68a25bd4-59c7-4f4d-975e-da0c8509c848_traj_verify_1",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Add a column E with header 'Year' and fill in the publication year for each paper from the Pub Date column.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/68a25bd4-59c7-4f4d-975e-da0c8509c848/rsc-ebook-collection-2023.xlsx",
+            "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "rsc-ebook-collection-2023.xlsx",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.hotkey('ctrl', 's');"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      }
+    ],
+    "func": "check_year_values__5d33fe5f963081b2f481ac5f73c3ccbc",
+    "result": {
+      "type": "xlsx_year_column__5d33fe5f963081b2f481ac5f73c3ccbc",
+      "path": "/home/user/Desktop/rsc-ebook-collection-2023.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "header": "Year",
+        "years": [
+          "2018",
+          "2019",
+          "2017",
+          "2018",
+          "2018"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent read the spreadsheet, attempted to download PDFs via curl (got HTML instead), tried pdftotext extraction, eventually opened BERT PDF in Chrome and saved it via save dialog. Never completed the citation analysis or ans.docx creation. Ran out of 50 turns.",
+    "capability_extraction": "Can read/interact with LibreOffice Calc cells, use terminal commands (curl, apt-get, grep, ls), navigate Chrome, open URLs, use Chrome save dialog",
+    "failure_analysis": "Model failed due to multi-app complexity: curl downloaded HTML instead of PDF from arxiv, spent many turns troubleshooting PDF extraction, eventually succeeded downloading via Chrome but ran out of turns before citation analysis and docx creation.",
+    "task_rationale": "Decomposed original task into a simple data extraction task: extracting year from date column. Tests model's ability to edit spreadsheet cells with derived data.",
+    "explanation": "Task requires adding column E with 'Year' header and the publication year extracted from column C. Getter reads E1:E6. Metric checks header (0.16) and each year value (0.168 each) with partial credit. [Fixed: corrected MD5 hash suffix from truncated 12-char to full 32-char hash]",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344_traj_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_68a25bd4-59c7-4f4d-975e-da0c8509c848_sid_1488344_traj_verify_1/metrics/xlsx.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "header": "0.16 - 'Year' in E1",
+      "year_row2": "0.168 - '2018' in E2 (BERT)",
+      "year_row3": "0.168 - '2019' in E3 (TinyBERT)",
+      "year_row4": "0.168 - '2017' in E4 (Attention)",
+      "year_row5": "0.168 - '2018' in E5 (GLUE)",
+      "year_row6": "0.168 - '2018' in E6 (Deep Contextualized)"
+    },
+    "variation_index": 1,
+    "fix_history": [
+      "Fix 1: Replaced truncated 12-char MD5 suffix '92e37563d0cd' with correct 32-char MD5 hash '5d33fe5f963081b2f481ac5f73c3ccbc' computed from '68a25bd4-59c7-4f4d-975e-da0c8509c848|1' in getter, metric, and evaluator config"
+    ],
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.92,
+      "llm_judge_reasons": [
+        "Getter correctly reads column E rows 1-6 from the xlsx file using openpyxl, targeting the exact cells needed to verify the instruction.",
+        "Metric correctly checks header 'Year' in E1 (case-insensitive) and 5 year values in E2-E6 with appropriate partial credit scoring (0.16 + 5*0.168 = 1.0).",
+        "Expected parameter handling is correct: expected.type='rule' means metric receives the rules dict directly, and metric accesses expected.get('header') and expected.get('years') correctly.",
+        "Postconfig properly activates the window and saves the file (Ctrl+S) before reading, ensuring fresh state.",
+        "Expected year values (2018, 2019, 2017, 2018, 2018) match well-known publication years for BERT, TinyBERT, Attention Is All You Need, GLUE, and Deep Contextualized Word Representations.",
+        "Metric handles float-to-string conversion via .rstrip('.0') for numeric cell values returned by openpyxl."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: The getter hardcodes reading exactly 6 rows. If the spreadsheet has more data rows, those would be missed. Consider making the row count dynamic or documenting the assumption."
+      ]
+    }
+  }
+}

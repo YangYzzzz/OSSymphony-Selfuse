@@ -1,0 +1,108 @@
+{
+  "id": "f79439ad-3ee8-4f99-a518-0eb60e5652b0",
+  "new_id": "task_verify_1",
+  "snapshot": "chrome",
+  "instruction": "Find a one-way flight from Madrid to Berlin for one adult departing on the 5th of next month.",
+  "source": "test_task_2",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.ryanair.com/gb/en"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "originIata",
+        "destinationIata",
+        "tpAdults",
+        "tpTeens",
+        "tpChildren",
+        "tpStartDate",
+        "isReturn"
+      ],
+      "replace": {
+        "tpStartDate": "time"
+      }
+    },
+    "expected": {
+      "type": "rule_relativeTime",
+      "rules": {
+        "relativeTime": {
+          "from": "5th next month"
+        },
+        "expected": {
+          "originIata": "MAD",
+          "destinationIata": "BER",
+          "tpAdults": "1",
+          "tpTeens": "0",
+          "tpChildren": "0",
+          "time": "{Year}-{Month0D}-{DayD}",
+          "isReturn": "false"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task variation: One way flight search from Madrid (MAD) to Berlin (BER) for 1 adult departing on 5th of next month. Uses same evaluator pattern as original - parses URL parameters to verify search criteria. No custom functions needed.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts URL parameters from active tab to verify flight search criteria",
+        "Complete coverage: checks all instruction requirements (origin MAD, destination BER, 1 adult, 0 teens/children, one-way flight, departure date)",
+        "Proper use of rule_relativeTime for dynamic date calculation ('5th next month' converts to absolute date at runtime)",
+        "Correct metric logic: check_direct_json_object performs exact matching of extracted URL params against expected values",
+        "Data flow is semantically correct: getter extracts URL params -> replace config maps tpStartDate to time -> metric compares all fields",
+        "Time format template {Year}-{Month0D}-{DayD} appropriately handles date formatting with zero-padding"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "f79439ad-3ee8-4f99-a518-0eb60e5652b0_aug_9_task_verify_2.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

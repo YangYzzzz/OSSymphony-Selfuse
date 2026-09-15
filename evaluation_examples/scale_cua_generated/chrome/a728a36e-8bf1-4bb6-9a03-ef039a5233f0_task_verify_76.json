@@ -1,0 +1,92 @@
+{
+  "id": "a728a36e-8bf1-4bb6-9a03-ef039a5233f0",
+  "new_id": "task_verify_76",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the page showing driver's license fees and payment methods",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.dmv.virginia.gov/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_url_from_accessTree",
+      "goto_prefix": "https://www."
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "^https://(www\\.)?dmv\\.virginia\\.gov/(licenses-ids|services|general)/(fees|payment|costs)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires navigating from Virginia DMV homepage to the fees/payment page. Uses the same evaluator pattern as original (URL regex match via accessibility tree). Similar complexity - requires 1-2 navigation clicks. Regex allows for path variations.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Getter logic is correct: active_url_from_accessTree can extract the current URL from Chrome's accessibility tree",
+        "Metric logic is correct: is_expected_url_pattern_match properly uses regex matching to verify URL patterns",
+        "Data flow is correct: URL string flows from getter to metric for pattern matching",
+        "Semantic limitation: URL-based verification cannot confirm the page actually contains BOTH 'fees' AND 'payment methods' - only verifies the URL pattern",
+        "Regex pattern is somewhat broad: allows multiple path combinations (licenses-ids|services|general)/(fees|payment|costs) that might match pages with only partial information",
+        "For a navigation task from Mind2Web, URL verification is the standard approach and is acceptable for this use case"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider making the regex pattern more specific if there's a known canonical URL for the fees/payment page (e.g., if it's always at /licenses-ids/fees-and-payment)",
+        "For stricter verification, could add a content-based getter to verify page contains both 'fees' and 'payment' keywords in the page content",
+        "Alternative: Use a combination of URL pattern matching AND page title/heading verification to ensure the page is about both topics"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "id": "78aed49a-a710-4321-a793-b611a7c5b56b",
+  "new_id": "task_verify_16",
+  "snapshot": "chrome",
+  "instruction": "Create a new folder called 'Important' under Local Folders in Thunderbird, then mark the oldest email in the Bills folder as starred.",
+  "source": "https://marketplace.uipath.com/listings/upload-email-attachments-from-gmail-to-google-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'attachment' and 'root' in parents and trashed = false",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://stackoverflow.com/",
+          "https://paperswithcode.com/"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/78aed49a-a710-4321-a793-b611a7c5b56b/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_thunderbird_folder_exists_and_email_starred__7e32e736",
+    "result": {
+      "type": "thunderbird_folder_and_star_check__7e32e736",
+      "profile_path": "/home/user/.thunderbird/t5q2a5hp.default-release",
+      "folder_to_check": "Important",
+      "bills_folder_path": "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders/Bills"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "folder_exists": true,
+        "has_starred_email": true
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "explanation": "Task requires creating a new folder 'Important' in Thunderbird Local Folders AND marking the oldest email in Bills folder as starred. Evaluator checks folder existence and star status using custom getter and metric functions.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_task_verify_0/getters/thunderbird.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/78aed49a-a710-4321-a793-b611a7c5b56b_task_verify_0/metrics/thunderbird.py"
+    ],
+    "estimated_steps": 5,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.5,
+      "llm_judge_reasons": [
+        "CRITICAL: Evaluator does not verify that the OLDEST email is starred - it only checks if ANY email in the Bills folder has a star",
+        "Getter logic searches for any starred email pattern (X-Mozilla-Status: 000[23]) in the entire Bills folder file, but cannot identify which specific email is starred",
+        "Instruction explicitly requires 'mark the oldest email' but the evaluator cannot distinguish between different emails or verify their relative ages",
+        "The evaluator would incorrectly pass if any non-oldest email is starred while the oldest remains unstarred",
+        "Folder existence check is implemented correctly and will work as intended (positive aspect)",
+        "Partial scoring (50/50) is semantically appropriate for the two-step task structure"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Getter should parse the Bills folder mbox file to extract individual email messages with their Date headers",
+        "Implement logic to identify the oldest email by parsing and comparing Date headers across all emails",
+        "Check if the specific oldest email (identified by position or unique ID) has the starred flag (X-Mozilla-Status: 000[23])",
+        "Alternative: Store expected metadata about the oldest email (e.g., subject, date, position) and verify that specific email is starred",
+        "Consider edge cases: empty Bills folder, malformed date headers, multiple emails with same timestamp"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_folder_exists_and_email_starred__7e32e736 second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,109 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_50",
+  "snapshot": "thunderbird",
+  "instruction": "Add local folders named NEWSLETTER and PROMOTIONS to Thunderbird.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bNEWSLETTER\\.msf\\b",
+          "\\bNEWSLETTER/?(?!\\.msf)",
+          "\\bPROMOTIONS\\.msf\\b",
+          "\\bPROMOTIONS/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating two local folders in Thunderbird (NEWSLETTER and PROMOTIONS). Evaluator checks for both folder files and .msf metadata files. Same complexity as original task with different folder names.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified evaluator checks for NEWSLETTER and PROMOTIONS folders and their .msf files using regex patterns.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses postconfig to recursively list Thunderbird Local Folders directory with 'ls -R', ensuring fresh state capture",
+        "Getter logic correctly reads the cached file output using get_cache_file",
+        "Metric check_list correctly compiles regex patterns and searches line-by-line for all expected patterns",
+        "Complete coverage: Evaluator verifies both NEWSLETTER and PROMOTIONS folders plus their associated .msf metadata files (4 patterns total)",
+        "Expected regex patterns are semantically correct: \\bNEWSLETTER\\.msf\\b and \\bNEWSLETTER/?(?!\\.msf) properly match folder and metadata file separately",
+        "Same logic applies correctly for PROMOTIONS folder",
+        "The negative lookahead (?!\\.msf) in folder patterns ensures the folder itself is matched, not just the .msf file",
+        "Evaluator will return 1.0 only if all 4 patterns are found, 0.0 otherwise - correct verification logic",
+        "State accessibility is guaranteed: postconfig executes after task completion, ls -R captures current directory state",
+        "No edge case issues: check_list handles file reading errors, returns 0.0 if file is None"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

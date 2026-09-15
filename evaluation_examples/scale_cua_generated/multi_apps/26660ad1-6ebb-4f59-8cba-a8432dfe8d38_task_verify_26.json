@@ -1,0 +1,105 @@
+{
+  "id": "26660ad1-6ebb-4f59-8cba-a8432dfe8d38",
+  "new_id": "task_verify_26",
+  "snapshot": "multiapps",
+  "instruction": "Test your internet connection speed using speedtest.net and record the complete results including server information to ~/Test/Speed/connection_report.txt (create the directory if missing).",
+  "source": "https://www.speedtest.net/",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.speedtest.net/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os",
+    "browser"
+  ],
+  "evaluator": {
+    "func": "check_lines_contain_keywords__bf9ee805c777733e26c14d1927c30b1a",
+    "result": {
+      "type": "text_file_lines__bf9ee805c777733e26c14d1927c30b1a",
+      "path": "/home/user/Test/Speed/connection_report.txt"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "keywords": [
+          "Server",
+          "Ping",
+          "Download",
+          "Upload"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires running speedtest.net and saving complete results including server information to a text file at ~/Test/Speed/connection_report.txt. The evaluator checks if the file contains all standard speedtest keywords (Server, Ping, Download, Upload). Custom getter reads the text file and returns lines as a list, custom metric verifies all expected keywords are present in the content.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_aug_18_task_verify_3/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/26660ad1-6ebb-4f59-8cba-a8432dfe8d38_aug_18_task_verify_3/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all key requirements: file exists at correct path, contains server information ('Server' keyword), and contains speed test metrics ('Ping', 'Download', 'Upload' keywords)",
+        "Getter logic is correct - reads text file from specified path and returns lines as a list",
+        "Metric logic is correct - receives list of lines from getter, checks for presence of all expected keywords with case-insensitive matching, returns partial credit based on keywords found",
+        "Parameter handling is correct - metric function directly accesses 'expected.get(\"keywords\")' which is appropriate for type='rule'",
+        "Data flow is semantically correct - getter extracts text content, metric verifies keyword presence in that content",
+        "Partial credit logic makes sense - awards proportional score based on how many keywords are found (found_count / total_keywords)",
+        "State accessibility is appropriate - file should be saved by the time evaluation runs, no postconfig needed"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor robustness consideration: The keyword-based verification only checks if keywords exist in the file, not whether the file contains meaningful/complete speedtest results. A file with just the keywords alone would pass. However, this is a reasonable trade-off for simplicity and the instruction context makes it unlikely that users would create such files intentionally.",
+        "Consider edge case: If speedtest.net changes its output format and uses different keywords, the evaluator might fail. However, the current keywords (Server, Ping, Download, Upload) are standard and unlikely to change."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

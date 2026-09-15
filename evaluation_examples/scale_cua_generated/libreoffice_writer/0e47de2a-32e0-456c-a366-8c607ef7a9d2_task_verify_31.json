@@ -1,0 +1,109 @@
+{
+  "id": "0e47de2a-32e0-456c-a366-8c607ef7a9d2",
+  "new_id": "task_verify_31",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Add the page number and the document filename to the footer of every page in the current document.",
+  "source": "https://ask.libreoffice.org/t/how-to-start-page-numbering-on-a-certain-page/39931/4",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/0e47de2a-32e0-456c-a366-8c607ef7a9d2/LibreOffice_Open_Source_Word_Processing.docx",
+            "path": "/home/user/Desktop/LibreOffice_Open_Source_Word_Processing.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/LibreOffice_Open_Source_Word_Processing.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "LibreOffice_Open_Source_Word_Processing.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_footer_has_page_and_filename__aac82fb893db44f74dfc3c4f83b7b05e",
+    "result": {
+      "type": "footer_has_page_and_filename__aac82fb893db44f74dfc3c4f83b7b05e",
+      "path": "/home/user/Desktop/LibreOffice_Open_Source_Word_Processing.docx",
+      "filename": "LibreOffice_Open_Source_Word_Processing"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "require_page_number": true,
+        "require_filename": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task requires the user to insert both page number and document filename in the footer. The evaluator checks if the footer contains both elements with partial credit: 0.5 for page number, 0.5 for filename. The custom getter extracts footer content and checks for both digit (page number) and filename presence, and the custom metric awards partial credit for each element found.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/0e47de2a-32e0-456c-a366-8c607ef7a9d2_6_task_verify_4/getters/docs.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/0e47de2a-32e0-456c-a366-8c607ef7a9d2_6_task_verify_4/metrics/docs.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.5": "Page number present in footer",
+      "1.0": "Both page number and filename present in footer"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Page number detection uses dual-check approach: (1) checks XML for field codes ('PAGE', 'NUMPAGES', 'w:fldChar', '<w:instrText'), and (2) checks for common page number patterns using regex (e.g., 'Page 1', '1 of 2', standalone numbers, '#' symbol)",
+        "The dual-check logic (has_field_code OR has_page_pattern) provides good coverage and avoids false positives from random digits like 'Version 2.0' by using specific patterns",
+        "Filename detection logic is sound: case-insensitive substring match correctly identifies the document filename in footer text",
+        "Metric function correctly handles 'expected' parameter: directly accesses expected.get('require_page_number') without nesting under 'rules' key, which is the correct pattern for type='rule'",
+        "Partial credit logic is semantically correct: 0.5 for page number presence + 0.5 for filename presence = 1.0 total, matching the instruction's two requirements",
+        "Complete coverage: evaluator checks both requirements from the instruction (page number AND filename)",
+        "Postconfig appropriately saves document with Ctrl+S to persist footer changes before verification",
+        "Minor limitation: only checks first section (doc.sections[0]), but this is typically sufficient as LibreOffice Writer applies footer settings to all pages by default"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider checking all sections instead of just sections[0] to handle edge cases where different sections have different footer settings (though rare in typical LibreOffice documents)",
+        "The pattern r'^\\s*\\d+\\s*$' (standalone number) might still match unintended text like '2024' on its own line - consider adding additional context checks or tightening the pattern",
+        "Consider adding fallback verification: if field codes are not found in XML, could also check for specific LibreOffice field placeholder characters in the raw XML structure"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "0e47de2a-32e0-456c-a366-8c607ef7a9d2_6_task_verify_4.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

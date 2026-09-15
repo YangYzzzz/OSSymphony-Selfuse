@@ -1,0 +1,139 @@
+{
+  "id": "3e3fc409-bff3-4905-bf16-c968eee3f807",
+  "new_id": "task_verify_41",
+  "snapshot": "chrome",
+  "instruction": "I'm interested in exploring the best cinema from the 2000s decade. Using the movie data in the opened Excel file, create a new sheet named 'best_2000s' that includes the top 10 highest-rated movies released between 2000 and 2009. Keep the same column structure and sort them by ratings in descending order.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.imdb.com"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/3e3fc409-bff3-4905-bf16-c968eee3f807/movies.xlsx",
+            "path": "/home/user/Desktop/movies.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--calc",
+          "/home/user/Desktop/movies.xlsx"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_sheet_content__1788b3c7",
+    "result": {
+      "type": "xlsx_sheet_data__1788b3c7",
+      "path": "/home/user/Desktop/movies.xlsx",
+      "dest": "movies.xlsx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "sheet_name": "best_2000s",
+        "expected_count": 10,
+        "year_min": 2000,
+        "year_max": 2009,
+        "rating_min": 8.4
+      }
+    }
+  },
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "metadata": {
+    "explanation": "Verified with Python: Top 10 movies from 2000-2009 sorted by rating descending. Highest rated: LOTR: Return of the King (9.0), LOTR: Fellowship (8.9), LOTR: Two Towers (8.8)",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/3e3fc409-bff3-4905-bf16-c968eee3f807_task_verify_1/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": {
+      "0.0": "Sheet does not exist",
+      "0.2": "Sheet exists but headers incorrect",
+      "0.4": "Sheet and headers correct, count correct",
+      "0.7": "All data valid (correct years and ratings)",
+      "1.0": "Perfect - all valid and sorted correctly by rating descending"
+    },
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all instruction requirements: sheet name 'best_2000s', exactly 10 movies, year range 2000-2009, sorted by rating descending, and correct column structure",
+        "Getter logic correctly retrieves Excel file from VM and caches it for evaluation",
+        "Metric logic properly validates sheet existence, headers, row count, data validity (years and ratings), and sorting order",
+        "Partial credit scoring (0.0 -> 0.2 -> 0.4 -> 0.7 -> 1.0) aligns well with scoring_breakdown and provides granular feedback",
+        "Postconfig includes Ctrl+S to ensure file is saved before evaluation, which is appropriate for file-based verification",
+        "Edge case handling: try-except block catches errors and returns 0.0 on failure",
+        "Minor issue: rating_min threshold (8.4) approach doesn't strictly verify 'top 10 highest-rated' - if dataset has >10 movies from 2000-2009 with rating >= 8.4, wrong movies could pass. However, metadata indicates verification was done with actual data, so this is acceptable for practical purposes"
+      ],
+      "llm_judge_fix_suggestions": [
+        "To strictly verify 'top 10 highest-rated', consider: (1) load original movies.xlsx, (2) filter to 2000-2009, (3) sort by rating descending, (4) get top 10, (5) compare against result sheet. This would ensure the exact top 10 are present, not just any 10 movies meeting a threshold",
+        "Alternative: if rating_min=8.4 is known to be the 10th highest rating in the dataset for 2000-2009, document this assumption in the metric function docstring for clarity"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

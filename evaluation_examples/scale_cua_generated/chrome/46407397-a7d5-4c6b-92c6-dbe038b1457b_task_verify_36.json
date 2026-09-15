@@ -1,0 +1,142 @@
+{
+  "id": "46407397-a7d5-4c6b-92c6-dbe038b1457b",
+  "new_id": "task_verify_36",
+  "snapshot": "chrome",
+  "instruction": "Download the docx attachment from the \"Lecture Document\" email in the Notes folder, open it, export all embedded graphics as PNG images, and store them in a Google Drive folder called 'figures'.",
+  "source": "https://marketplace.uipath.com/listings/merge-pdfs-from-gmail-email-attachments-and-upload-to-gogle-drive",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete"
+        ],
+        "args": [
+          {
+            "query": "title = 'figures' and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'",
+            "trash": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/46407397-a7d5-4c6b-92c6-dbe038b1457b/thunderbird.profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xz",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_exact_file_count__1271f790",
+    "result": {
+      "type": "googledrive_folder_file_count__1271f790",
+      "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+      "folder_query": "title = 'figures' and trashed = false and mimeType = 'application/vnd.google-apps.folder'"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "count": 3
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires extracting 3 images from docx and uploading to Google Drive. Evaluator checks if exactly 3 files exist in the figures folder.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_5/getters/googledrive.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/46407397-a7d5-4c6b-92c6-dbe038b1457b_task_verify_5/metrics/googledrive.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 7,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that docx contains 3 images. Simple count-based evaluation.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies ALL instruction requirements: file count (3 files) AND PNG format requirement.",
+        "Getter (googledrive.py:30-37) extracts complete file information including both 'title' and 'mimeType' for each file in the 'figures' folder.",
+        "Metric (googledrive.py:17-27) properly validates PNG format by checking BOTH file extension (.png) and MIME type (image/png), ensuring files are actually PNG images, not just renamed files.",
+        "Expected value (count=3) is semantically correct based on metadata verification that the docx contains exactly 3 embedded images.",
+        "Logic is robust: Returns 0.0 if count doesn't match OR if any file is not PNG format, ensuring complete verification.",
+        "The evaluator can correctly distinguish between correct completion (3 PNG files) and incorrect attempts (wrong count, wrong format, or both)."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

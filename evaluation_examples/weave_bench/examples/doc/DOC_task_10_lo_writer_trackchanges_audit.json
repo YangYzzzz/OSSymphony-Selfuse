@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_10_lo_writer_trackchanges_audit",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: The legal team has delivered a contract draft at `/tmp_workspace/contract_project/contract_v3.docx`, on which 3 reviewers have left a large number of OOXML tracked changes (`<w:ins>` / `<w:del>`). The reviewer identities are fixed:\n- `Senior Partner`\n- `Reviewer B` (business side)\n- `Reviewer C` (compliance side)\n\nDecision policy:\n1. All revisions from `Senior Partner` are **accepted**.\n2. Revisions from `Reviewer B` are split by content: any that touch money (`$` or `USD`, raw numeric amounts, interest rates such as `1.5% per month`) are **rejected**; non-money revisions are accepted.\n3. Revisions from `Reviewer C` are split by section: any that fall inside the `3. Confidentiality` section are **rejected**; revisions in other sections are accepted.\n\nTask goal: enumerate every revision and apply the policy decision → apply the decisions to produce a clean final docx → simultaneously export the PDF / text / XML audit / screenshot evidence / markdown audit report. All deliverables go to `/tmp_workspace/results/`.\n\n### Hard constraints on the primary deliverable `final.docx`\n- After unzipping, `word/document.xml` must not contain any `<w:ins ` or `<w:del ` elements.\n- The body must retain the original amounts: `USD 120,000`, `USD 8,500`, `USD 250 per week`.\n- The body must not contain the money rewrites injected by `Reviewer B`: `150,000`, `12,000`, `1.5% per month`.\n\n### Companion deliverables (located in `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `redlines_raw.json` | `{\"total\":int,\"ins\":int,\"del\":int,\"by_author\":{\"Senior Partner\":int,\"Reviewer B\":int,\"Reviewer C\":int}}`; `total` deviates from the original docx revision count by ≤ 2 (≈ 27–32) |\n| `redlines_full.csv` | ≥ 25 rows; columns `id,kind,author,section,text_preview,is_money_related,planned_decision`; `author` ∈ the three reviewers; `kind` ∈ `ins`/`del`; `section` formatted like `3. Confidentiality` (starts with section number 1–6); `is_money_related` ∈ `true`/`false`; `planned_decision` ∈ `accept`/`reject` |\n| `policy_audit.json` | Each of the three authors contains `{\"accept\":int,\"reject\":int}`, consistent with the actual policy computation |\n| `final.docx` | See the primary deliverable hard constraints above |\n| `final_document_xml.txt` | First 4000 characters of `word/document.xml` from `final.docx` (audits whether ins/del have been cleared) |\n| `final_text.txt` | Plain text extracted from `final.docx` |\n| `final.pdf` | PDF exported from `final.docx`, ≥ 1 page and extractable to ≥ 200 characters |\n| `redline_diff.txt` | One line per revision `id <author> <kind> <decision> <preview>`, ≥ 25 lines |\n| `audit_report.md` | ≥ 400 characters; contains a markdown table (≥ 4 columns) summarizing the decisions for the three reviewers; itemizes ≥ 3 money-related rejections from `Reviewer B` (must include concrete strings like `150,000`/`12,000`/`1.5% per month`); ≥ 2 `Reviewer C` revisions rejected for falling in `Confidentiality` / Section 3; visual sign-off conclusion + process recap |\n| `deliverables.json` | `{\"final_docx_sha256\":\"<hex>\",\"final_pdf_sha256\":\"<hex>\",\"screenshots\":[...],\"files\":[...]}` |\n\n### 6 process screenshots (PNG, resolution ≥ 1280×720, mutually distinct md5)\n| Filename | Content |\n| --- | --- |\n| `view_01_manage_panel_initial.png` | Initial state of the word processor's Manage Track Changes panel, with multiple revision entries from the three authors visible |\n| `view_02_panel_filter_author_a.png` | Panel filtered/highlighted by `Senior Partner`, or the edit view positioned on that author's first revision |\n| `view_03_money_redline_zoom.png` | Close-up of a `Reviewer B` money-related revision with its colored markup in the body |\n| `view_04_section3_redline_zoom.png` | Close-up of a `Reviewer C` revision marked up in the body inside the `3. Confidentiality` section |\n| `view_05_panel_after_apply.png` | After all accept/reject have been applied, the Manage Track Changes panel is essentially empty |\n| `view_06_final_clean_layout.png` | Overall layout preview of the final document, with no remaining redlines / revision marks |\n\nScreenshots must come from real GUI interaction; grading performs OCR + visual inspection, and blank / placeholder images or screenshots that are all identical will score 0. The screenshots should at least let the grader recognize the word processor in use from the window chrome (menu / toolbar / title bar text being visible is enough).\n\nAnti-cheat: do not copy any file from `/tmp_workspace/gt/` (grader-only) into `results/`.\n\nNeutral background: OOXML revision semantics are persisted in `word/document.xml` as `<w:ins>`/`<w:del>` elements. Structured XML parsing and the GUI Manage Track Changes panel corroborate each other.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_10_lo_writer_trackchanges_audit.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_10_lo_writer_trackchanges_audit",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/contract_project /opt/doc10_gt\n# Move expected.json to a root-only path so the agent cannot read the\n# per-author accept/reject counts, money-phrase answers, or policy keys.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/doc10_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/doc10_gt 2>/dev/null || true\n  chmod 700 /opt/doc10_gt 2>/dev/null || true\n  chmod 600 /opt/doc10_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi\nwhich unzip || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq unzip zip)\nwhich xmllint || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libxml2-utils)\nwhich pdftotext || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils)\npip3 install --break-system-packages --quiet pdfminer.six pillow pytesseract python-docx lxml 2>/dev/null || pip3 install --quiet pdfminer.six pillow pytesseract python-docx lxml\n[ -f /tmp_workspace/contract_project/contract_v3.docx ] || python3 /tmp_workspace/contract_project/generate_contract.py /tmp_workspace/contract_project/contract_v3.docx 2>/dev/null || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_10_lo_writer_trackchanges_audit/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_10_lo_writer_trackchanges_audit /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_10_lo_writer_trackchanges_audit/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_10_lo_writer_trackchanges_audit/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_10_lo_writer_trackchanges_audit/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_10_lo_writer_trackchanges_audit/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_10_lo_writer_trackchanges_audit/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_10_lo_writer_trackchanges_audit.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_10_lo_writer_trackchanges_audit",
+    "workspace_relative": "DOC/task_10_lo_writer_trackchanges_audit",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "ac9bb6cb-1888-43ab-81e4-a98a547918cd",
+  "new_id": "task_verify_58",
+  "snapshot": "libreoffice_impress",
+  "instruction": "Open Slide Master mode by selecting View > Master > Slide Master, locate the slide number placeholder, and apply blue font color",
+  "source": "https://superuser.com/questions/1674211/how-to-change-colour-of-slide-number-in-libre-office",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_impress/ac9bb6cb-1888-43ab-81e4-a98a547918cd/saa-format-guide.pptx",
+            "path": "/home/user/Desktop/saa-format-guide.pptx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/saa-format-guide.pptx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_impress"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "saa-format-guide.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_page_number_colors",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/saa-format-guide.pptx",
+      "dest": "saa-format-guide.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "color": "blue"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Paraphrased with blue - uses 'Slide Master mode' terminology. The evaluator uses the existing check_page_number_colors function which parses the slide master XML.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "verification": "The check_page_number_colors function from slides.py (lines 876-920) parses the slide master XML to find the color of the page number placeholder. It checks the second-to-last solidFill/srgbClr element in the slide master and verifies it matches the expected color using threshold-based RGB comparison (red: R > G+50 and R > B+50, blue: B > G+50 and B > R+50, green: G > R+50 and G > B+50, black: R < 50 and G < 50 and B < 50).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "The evaluator can semantically verify the instruction requirement - applying blue font color to the slide number placeholder in Slide Master mode",
+        "The getter logic correctly fetches the PPTX file from VM with proper postconfig (save file before retrieval)",
+        "The metric function check_page_number_colors correctly parses the slide master XML and validates the color using threshold-based RGB comparison (B > G+50 and B > R+50 for blue)",
+        "The expected value 'blue' is semantically correct for the instruction requirement",
+        "Hardcoded element selection using color_elems[-2] (second-to-last element) is brittle - assumes specific XML structure and could fail if there are fewer than 2 solidFill/srgbClr elements or if the page number color is at a different position",
+        "No error handling for cases where color_elems is empty or has only 1 element (would cause IndexError)",
+        "Despite brittleness, the logic is functionally correct for the expected PPTX structure and can verify the task"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add error handling to check if color_elems has at least 2 elements before accessing color_elems[-2]",
+        "Consider a more robust approach to locate the page number placeholder color, such as searching for specific placeholder types or names in the XML rather than relying on element position",
+        "Add fallback logic or explicit validation to ensure the extracted color element actually corresponds to the page number placeholder"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

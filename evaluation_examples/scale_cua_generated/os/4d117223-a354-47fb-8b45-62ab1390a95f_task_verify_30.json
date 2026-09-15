@@ -1,0 +1,107 @@
+{
+  "id": "4d117223-a354-47fb-8b45-62ab1390a95f",
+  "new_id": "task_verify_30",
+  "snapshot": "os",
+  "instruction": "Change the permission of all regular files under current directory tree to 400 (owner read-only)",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4d117223-a354-47fb-8b45-62ab1390a95f/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.write('cd testDir'); time.sleep(0.5); pyautogui.press('enter'); time.sleep(0.5); pyautogui.write('clear'); time.sleep(0.5); pyautogui.press('enter')"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "cd ~/testDir && find . -type f -not -perm 400 | wc -l",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "0"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing all file permissions to 400 (r--------). Evaluator verifies all files in testDir have exactly 400 permissions (owner read-only).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified with direct permission check - evaluator uses 'find testDir -type f -not -perm 400 | wc -l' to count files without 400 permissions. Success when count is 0. Setup creates 3 files: file1.txt (755), file2.txt (644), file3.txt (777).",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Semantic verification is correct: Evaluator uses 'find . -type f -not -perm 400 | wc -l' to count files lacking 400 permissions, then checks if count is 0. This correctly verifies that ALL files have 400 permissions.",
+        "Complete coverage: The instruction requires changing ALL regular files to 400 permissions. The evaluator checks exactly this by finding files WITHOUT 400 permissions and expecting zero results.",
+        "Logic correctness: The inverse check (files not having 400 permissions should be 0) is logically equivalent to the positive requirement (all files should have 400 permissions).",
+        "Working directory handling: The command 'cd ~/testDir && find .' explicitly navigates to the correct directory before searching, making it robust regardless of where evaluation starts.",
+        "Practical feasibility: The 'find -type f -not -perm 400' command is the standard Linux method to check exact file permissions."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -58,6 +58,16 @@ class SetupController:
     def reset_cache_dir(self, cache_dir: str):
         self.cache_dir = cache_dir
 
+    def download(self, files: List[Dict[str, str]]) -> None:
+        self._download_setup(files)
+
+    def execute(self, command: List[str], stdout: str = "", stderr: str = "", shell: bool = False,
+                until: Optional[Dict[str, Any]] = None, quiet: bool = False, timeout: int = 120):
+        return self._execute_setup(command, stdout=stdout, stderr=stderr, shell=shell, until=until, quiet=quiet, timeout=timeout)
+
+    def launch(self, command: Union[str, List[str]], shell: bool = False) -> None:
+        self._launch_setup(command, shell=shell)
+
     def upload_text(self, text: str, path: str) -> None:
         """Upload UTF-8 text to a path inside the VM."""
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as tmp:
@@ -331,7 +341,7 @@ class SetupController:
         bootstrap = (
             "set -e\n"
             f"echo {shlex_quote(password)} | sudo -S -p '' rm -rf {shlex_quote(remote_root)}\n"
-            f"mkdir -p {shlex_quote(remote_root)} {shlex_quote(remote_root + '/tmp')} /opt/eval\n"
+            f"echo {shlex_quote(password)} | sudo -S -p '' mkdir -p {shlex_quote(remote_root)} {shlex_quote(remote_root + '/tmp')} /opt/eval\n"
             f"echo {shlex_quote(password)} | sudo -S -p '' chown -R user:user {shlex_quote(remote_root)} /opt/eval || true\n"
         )
         self.run_bash_script(bootstrap, timeout=120)
@@ -355,18 +365,87 @@ class SetupController:
         self.run_bash_script("chmod +x /tmp/openclaw_task_env.sh", timeout=30)
 
         if warmup and warmup.strip():
-            warmup_inner = f"cd {remote_root}\n{warmup}"
-            warmup_script = (
-                "set -e\n"
-                "if [ -f /tmp/openclaw_task_env.sh ]; then set -a; . /tmp/openclaw_task_env.sh; set +a; fi\n"
-                f"cd {shlex_quote(remote_root)}\n"
+            apt_lock_wait = (
+                "# wait for apt lock release (packagekitd auto-update on fresh boot)\n"
+                "for _i in $(seq 1 60); do\n"
+                "  if ! fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; then\n"
+                "    break\n"
+                "  fi\n"
+                "  if [ \"$_i\" = \"1\" ]; then echo 'WeaveBench: waiting for apt lock (packagekitd)...' >&2; fi\n"
+                "  sleep 2\n"
+                "done\n"
+            )
+            full_script = "#!/bin/bash\nset -e\n" + apt_lock_wait + warmup + "\n"
+            self.upload_text(full_script, "/tmp/_warmup.sh")
+            self.run_bash_script(
+                "rm -f /tmp/_warmup.done /tmp/_warmup.rc /tmp/_warmup.log && chmod +x /tmp/_warmup.sh",
+                timeout=30,
+            )
+
+            # 测试脚本需要显示传递, 因为以 root 权限执行脚本会 reset 所有环境变量
+            proxy_env = " ".join(
+                f"{key}={shlex_quote(os.environ.get(key, ''))}"
+                for key in (
+                    "http_proxy",
+                    "https_proxy",
+                    "HTTP_PROXY",
+                    "HTTPS_PROXY",
+                    "no_proxy",
+                    "NO_PROXY",
+                )
+            )
+            wrapped = (
+                "( "
+                "if [ -f /tmp/openclaw_task_env.sh ]; then set -a; . /tmp/openclaw_task_env.sh; set +a; fi; "
+                f"cd {shlex_quote(remote_root)}; "
                 f"echo {shlex_quote(password)} | sudo -S -p '' "
                 "env DEBIAN_FRONTEND=noninteractive PATH=\"$PATH\" HOME=/root "
-                f"bash -c {shlex_quote(warmup_inner)}\n"
+                f"{proxy_env} "
+                "bash /tmp/_warmup.sh; "
+                "echo $? >/tmp/_warmup.rc "
+                ") >/tmp/_warmup.log 2>&1; touch /tmp/_warmup.done"
             )
-            result = self.run_bash_script(warmup_script, timeout=timeout)
-            if int(result.get("returncode", 1)) != 0:
-                raise RuntimeError(f"WeaveBench warmup failed: {result}")
+            launch = self.run_bash_script(
+                f"nohup bash -c {shlex_quote(wrapped)} > /tmp/_warmup_launcher.log 2>&1 &",
+                timeout=30,
+            )
+            if int(launch.get("returncode", 1)) != 0:
+                raise RuntimeError(f"WeaveBench warmup launch failed: {launch}")
+
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                status = self.run_bash_script(
+                    "test -f /tmp/_warmup.done && echo DONE || true",
+                    timeout=10,
+                )
+                if "DONE" in (status.get("output") or ""):
+                    break
+                time.sleep(5)
+            else:
+                log = self.run_bash_script(
+                    "tail -n 120 /tmp/_warmup.log 2>/dev/null || true",
+                    timeout=15,
+                )
+                raise RuntimeError(
+                    "WeaveBench warmup did not complete within timeout "
+                    f"({timeout}s).\n--- last 120 log lines ---\n{(log.get('output') or '').strip()}"
+                )
+
+            rc_out = self.run_bash_script("cat /tmp/_warmup.rc 2>/dev/null || echo -1", timeout=15)
+            try:
+                rc = int((rc_out.get("output") or "-1").strip().splitlines()[-1])
+            except (ValueError, IndexError):
+                rc = -1
+            if rc != 0:
+                log = self.run_bash_script(
+                    "tail -n 120 /tmp/_warmup.log 2>/dev/null || true",
+                    timeout=15,
+                )
+                snippet = (warmup[:200] + "...") if len(warmup) > 200 else warmup
+                raise RuntimeError(
+                    f"WeaveBench warmup failed (rc={rc}). First 200 chars of script:\n"
+                    f"{snippet}\n--- last 120 log lines ---\n{(log.get('output') or '').strip()}"
+                )
 
     def _change_wallpaper_setup(self, path: str):
         if not path:
@@ -408,7 +487,7 @@ class SetupController:
             logger.info("Command executed successfully: %s", response.text)
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to open file '{path}'. An error occurred while trying to send the request or the server responded with an error: {e}")
-            raise Exception(f"Failed to open file '{path}'. An error occurred while trying to send the request or the server responded with an error: {e}") from e
+            raise Exception(f"Failed to open file '{path}'. An error occurred while trying to _launch_setup the request or the server responded with an error: {e}") from e
 
     def _launch_setup(self, command: Union[str, List[str]], shell: bool = False):
         if not command:
@@ -442,7 +521,9 @@ class SetupController:
             stdout: str = "",
             stderr: str = "",
             shell: bool = False,
-            until: Optional[Dict[str, Any]] = None
+            until: Optional[Dict[str, Any]] = None,
+            quiet: bool = False,
+            timeout: int = 120,
     ):
         if not command:
             raise Exception("Empty command to launch.")
@@ -476,7 +557,7 @@ class SetupController:
                     new_command_list.append(item)
                 return new_command_list
         command = replace_screen_env_in_command(command)
-        payload = json.dumps({"command": command, "shell": shell})
+        payload = json.dumps({"command": command, "shell": shell, "timeout": timeout})
         headers = {"Content-Type": "application/json"}
 
         while not terminates:
@@ -484,6 +565,17 @@ class SetupController:
                 response = requests.post(self.http_server + "/setup" + "/execute", headers=headers, data=payload)
                 if response.status_code == 200:
                     results: Dict[str, str] = response.json()
+                    log_results: Union[str, Dict[str, str]] = response.text
+                    if quiet:
+                        if isinstance(results, dict):
+                            redacted = dict(results)
+                            if "output" in redacted:
+                                redacted["output"] = "<quiet>"
+                            if "error" in redacted:
+                                redacted["error"] = "<quiet>"
+                            log_results = json.dumps(redacted)
+                        else:
+                            log_results = "<quiet>"
                     if stdout:
                         with open(os.path.join(self.cache_dir, stdout), "w") as f:
                             f.write(results["output"])
@@ -492,7 +584,7 @@ class SetupController:
                             f.write(results["error"])
                     logger.info("Command executed successfully: %s -> %s"
                                 , " ".join(command) if isinstance(command, list) else command
-                                , response.text
+                                , log_results
                                 )
                 else:
                     logger.error("Failed to launch application. Status code: %s", response.text)
@@ -514,6 +606,10 @@ class SetupController:
             terminates = terminates or nb_failings >= 5
             if not terminates:
                 time.sleep(0.3)
+
+        if isinstance(results, dict):
+            return results.get("output", "")
+        return ""
 
     def _execute_with_verification_setup(
             self,
@@ -567,7 +663,7 @@ class SetupController:
             raise Exception(f"Request failed: {e}")
 
     def _command_setup(self, command: List[str], **kwargs):
-        self._execute_setup(command, **kwargs)
+        return self._execute_setup(command, **kwargs)
 
     def _sleep_setup(self, seconds: float):
         time.sleep(seconds)

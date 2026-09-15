@@ -1,0 +1,97 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_8",
+  "snapshot": "chrome",
+  "instruction": "Turn off Chrome's password manager so it doesn't offer to save passwords when I log into websites.",
+  "source": "https://support.google.com/chrome/answer/95606",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "password_manager_enabled__439c4a421f0f9be4e958ebfc7f14c17a"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires disabling Chrome's password manager ('Offer to save passwords') setting. This is a similar Chrome privacy/security setting to the original Safe Browsing task. Custom getter get_password_manager_enabled__439c4a421f0f9be4e958ebfc7f14c17a reads Chrome's Preferences file and checks profile.password_manager_enabled and credentials_enable_service fields. Expects 'false' since the task asks to turn OFF the password manager. Verified against Chrome's preferences structure.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_aug_1_task_verify_4/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly reads Chrome's password manager state from Preferences file across multiple OS types",
+        "Getter appropriately checks both relevant fields: profile.password_manager_enabled and credentials_enable_service using AND logic",
+        "Metric function exact_match correctly performs string comparison between result and expected value",
+        "Expected value 'false' is semantically correct for the instruction to turn OFF password manager",
+        "Complete coverage: evaluator verifies the single requirement in the instruction",
+        "Postconfig appropriately kills and relaunches Chrome to ensure settings changes are readable from Preferences file",
+        "Data flow is correct: getter extracts state as string ('true'/'false') -> metric compares with expected 'false'",
+        "Good error handling: getter returns 'true' (fail-safe default) if Preferences file cannot be read"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

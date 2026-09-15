@@ -1,0 +1,105 @@
+{
+  "id": "6f81754e-285d-4ce0-b59e-af7edb02d108",
+  "new_id": "task_verify_52",
+  "snapshot": "libreoffice_writer",
+  "instruction": "I need to analyze train E201's route by keeping only records for this specific train. Please remove all records that do not belong to train E201 from the document and save the filtered file.",
+  "source": "https://superuser.com/questions/789473/remove-duplicate-lines-in-libreoffice-openoffice-writer",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/6f81754e-285d-4ce0-b59e-af7edb02d108/HK_train_record.docx",
+            "path": "/home/user/Desktop/HK_train_record.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/HK_train_record.docx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "HK_train_record.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_docx_filtered_count__3bc293f1",
+    "result": {
+      "type": "docx_filtered_lines__3bc293f1",
+      "path": "/home/user/Desktop/HK_train_record.docx",
+      "filter_train_id": "E201"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "value": 15
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires filtering to keep only train E201 records. Verified with Python: Train E201 appears 15 times in the original 100 records. After filtering, should have exactly 15 lines.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6f81754e-285d-4ce0-b59e-af7edb02d108_task_verify_1/getters/docx__3bc293f1.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6f81754e-285d-4ce0-b59e-af7edb02d108_task_verify_1/metrics/docx__3bc293f1.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Critical semantic logic error: Getter filters lines during extraction instead of verifying user-filtered document",
+        "The getter reads the file and filters to find E201 lines, then counts them. This would pass even if user didn't filter the document at all",
+        "Example failure scenario: If user leaves all 100 records unfiltered, getter would still extract 15 E201 lines and return success",
+        "Getter should verify that ALL lines in the saved document are E201 records (total line count == 15), not filter the file itself",
+        "Current logic defeats the purpose of verification - it does the filtering work instead of checking if user did it",
+        "The evaluator cannot distinguish between a correctly filtered file and an unfiltered file, making verification meaningless"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Modify getter to read ALL paragraphs without filtering, then verify ALL contain E201",
+        "Alternative: Read all paragraphs, count total lines, verify count == 15, then verify each line contains E201",
+        "Remove the filtering logic (lines 38-42 in getter) and instead return all non-empty lines",
+        "Add validation in metric or getter that ALL returned lines contain E201 in the correct position",
+        "Current flow: Read file → Filter to E201 → Count. Should be: Read file → Get all lines → Verify all are E201 → Count total"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,95 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_34",
+  "snapshot": "chrome",
+  "instruction": "Enable the 'Do Not Track' privacy setting in my Chrome browser.",
+  "source": "https://support.google.com/chrome/answer/2790761",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "enable_do_not_track"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "true"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires enabling Do Not Track privacy setting. Uses existing get_enable_do_not_track getter which reads Chrome preferences and returns 'true' or 'false', then exact_match metric to verify it's enabled.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification": "Uses existing Chrome privacy settings getter. Same complexity as original - requires navigating Chrome settings to modify a privacy preference.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: Reads Chrome Preferences file from correct OS-specific path and extracts the enable_do_not_track boolean field",
+        "Metric comparison is correct: exact_match compares the result string (\"true\"/\"false\") against expected value \"true\"",
+        "Data flow is semantically correct: Getter extracts boolean → converts to string → metric compares string values",
+        "Expected value is correct: \"true\" is the correct expected value for enabling Do Not Track",
+        "Postconfig is appropriate: Chrome is restarted to ensure settings are persisted to Preferences file for verification",
+        "Complete coverage: Evaluator checks the exact requirement - whether Do Not Track setting is enabled"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

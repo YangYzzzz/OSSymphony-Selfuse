@@ -1,0 +1,67 @@
+{
+  "id": "5812b315-e7bd-4265-b51f-863c02174c28",
+  "new_id": "task_verify_25",
+  "snapshot": "os",
+  "instruction": "Please create a group named \"projectteam\" and create two users \"user1\" and \"user2\" with passwords \"U5er1@Pass\" and \"U5er2@Pass\" respectively, both belonging to the projectteam group.",
+  "source": "https://superuser.com/questions/149404/create-an-ssh-user-who-only-has-permission-to-access-specific-folders",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo 'Preparation complete'",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "GROUPNAME=\"projectteam\"; if getent group \"$GROUPNAME\" &>/dev/null && id -nG user1 | grep -q \"$GROUPNAME\" && id -nG user2 | grep -q \"$GROUPNAME\"; then USER1_PASS=$(passwd -S user1 2>/dev/null | awk '{print $2}'); USER2_PASS=$(passwd -S user2 2>/dev/null | awk '{print $2}'); if [[ \"$USER1_PASS\" == \"P\" ]] && [[ \"$USER2_PASS\" == \"P\" ]]; then echo 'Group exists with both users as members and passwords are set'; else echo 'Check failed: passwords not set'; fi; else echo 'Check failed: group or membership issue'; fi",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Group exists with both users as members and passwords are set"
+        ],
+        "exclude": [
+          "Check failed"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating group 'projectteam' and two users 'user1' and 'user2' with passwords 'U5er1@Pass' and 'U5er2@Pass' respectively, both as members. Evaluator verifies: (1) group exists, (2) both users are members via 'id -nG', and (3) both users have passwords set via 'passwd -S' (status 'P' = password set).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all core requirements: (1) group 'projectteam' exists via 'getent group', (2) user1 is a member via 'id -nG user1', (3) user2 is a member via 'id -nG user2', (4) user1 has password set via 'passwd -S user1' checking for status 'P', (5) user2 has password set via 'passwd -S user2' checking for status 'P'",
+        "The shell command logic is well-structured with proper error handling and clear success/failure messages",
+        "Verifies passwords are SET (status 'P' = password set), though it does not verify the specific password values ('U5er1@Pass' and 'U5er2@Pass'). This is a reasonable limitation as verifying exact password values would require authentication attempts which are complex and potentially risky in automated evaluation",
+        "The evaluator uses appropriate Linux commands: 'getent group' for group existence, 'id -nG' for group membership, and 'passwd -S' for password status verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor improvement: Could add verification that users actually exist before checking group membership (e.g., 'id user1 &>/dev/null') to provide more specific error messages"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

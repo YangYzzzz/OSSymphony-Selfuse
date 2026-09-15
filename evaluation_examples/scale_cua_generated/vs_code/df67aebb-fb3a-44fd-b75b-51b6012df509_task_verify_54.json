@@ -1,0 +1,149 @@
+{
+  "id": "df67aebb-fb3a-44fd-b75b-51b6012df509",
+  "new_id": "task_verify_54",
+  "snapshot": "vscode",
+  "instruction": "Gather DBLP BibTeX entries for all papers mentioned in references.docx (prefer published over arXiv), and write them to 'references.bib' ensuring all papers are from years 2017-2020.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://dblp.org/"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "touch",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "code",
+          "/home/user/Desktop/references.bib"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/df67aebb-fb3a-44fd-b75b-51b6012df509/references.docx",
+            "path": "/home/user/Desktop/references.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "libreoffice",
+          "--writer",
+          "/home/user/Desktop/references.docx"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "func": "check_bib_years__fb0a8c5b",
+    "result": {
+      "type": "bib_years__fb0a8c5b",
+      "path": "/home/user/Desktop/references.bib"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_year": 2017,
+        "max_year": 2020
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Comprehensive validation: 1) All papers from references.docx are present in references.bib, 2) All years fall in 2017-2020 range, 3) All entries have required BibTeX fields (title, author, year), 4) Entries have proper DBLP structure with venue information (not arXiv preprints). Verified papers: Spider(2018), SParC(2019), CoSQL(2019), Attention(2017), BERT(2019), GPT-3(2020).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_3_task_verify_3/getters/bib_file.py",
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/df67aebb-fb3a-44fd-b75b-51b6012df509_aug_3_task_verify_3/metrics/bib_file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Metric function correctly handles expected parameter - directly accesses expected.get('min_year') and expected.get('max_year') which is correct for type='rule'",
+        "Getter extracts years correctly from BibTeX entries and verifies all are within 2017-2020 range",
+        "Metric properly checks all required BibTeX fields (title, author, year) are present",
+        "Metric validates DBLP structure by checking for venue information (booktitle, journal, doi, url) which helps verify published papers over arXiv",
+        "Minor concern: Paper extraction from references.docx uses heuristic regex patterns (lines 87-116) which may not reliably capture all paper names in all document formats - patterns match common citation styles but may miss papers cited in non-standard ways or capture false positives",
+        "Minor concern: Acronym detection (lines 105-113) captures ANY capitalized 3+ character words which may include non-paper terms, though word boundary checks at line 146 help mitigate false positives",
+        "Minor gap: The 'prefer published over arXiv' requirement is verified indirectly by checking venue info presence, but doesn't strictly verify that published version was chosen when both published and arXiv versions exist for the same paper",
+        "Overall logic is sound and should work correctly for the specific references.docx file with papers Spider, SParC, CoSQL, Attention, BERT, GPT-3 mentioned in metadata"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding validation: if docx_papers list is empty or suspiciously small (e.g., < 3 papers), log a warning or return diagnostic info to help debug extraction failures",
+        "Consider hardening acronym extraction by filtering against a stop-word list or requiring at least one paper-like indicator (e.g., appears near year citations)",
+        "Consider adding case-insensitive exact title matching before falling back to substring/word boundary matching to reduce false positive matches"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_bib_years__fb0a8c5b second parameter type (dict) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true,
+      "fixes_applied": {
+        "timestamp": "2025-12-20",
+        "changes": [
+          "Enhanced getter to parse both references.bib and references.docx files",
+          "Added extraction of paper names from references.docx",
+          "Added verification that all papers from docx are present in bib file",
+          "Changed metric to all-or-nothing scoring (returns 1.0 only if all checks pass)",
+          "Added validation of required BibTeX fields (title, author, year)",
+          "Added DBLP structure validation (venue info check to prefer published over arXiv)",
+          "Changed return type from List[int] to Dict[str, Any] for comprehensive validation",
+          "FIXED: Replaced hardcoded paper list with dynamic extraction using regex patterns",
+          "FIXED: Implemented multiple citation pattern matching (Title (Author, Year), [Num] Title., etc.)",
+          "FIXED: Added acronym detection for paper names like BERT, GPT-3, CoSQL, etc.",
+          "FIXED: Improved matching logic with word boundary checks to avoid false positives",
+          "FIXED: Changed silent failure handling to return all_present=False when no papers extracted"
+        ]
+      }
+    }
+  }
+}

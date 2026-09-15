@@ -1,0 +1,98 @@
+{
+  "id": "6766f2b8-8a72-417f-a9e5-56fcaa735837",
+  "new_id": "task_verify_67",
+  "snapshot": "chrome",
+  "instruction": "Install the unpacked Chrome extension from /home/user/Desktop/. Verify the popup HTML contains the heading 'Hello Extensions'.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/chrome/6766f2b8-8a72-417f-a9e5-56fcaa735837/helloExtension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_html_contains__94d6a0b8",
+    "result": {
+      "type": "popup_html_content__94d6a0b8",
+      "extension_path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_text": "<h1>Hello Extensions</h1>"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task verifies the popup HTML file contains the expected heading '<h1>Hello Extensions</h1>'. Verified from the original hello.html file content.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_8/getters/file.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/6766f2b8-8a72-417f-a9e5-56fcaa735837_task_verify_8/metrics/file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical semantic mismatch: Instruction requires verifying the extension is INSTALLED in Chrome and the popup contains the heading, but the getter only reads the source HTML file from disk (/home/user/Desktop/helloExtension/hello.html)",
+        "No installation verification: The evaluator cannot detect if the extension was actually loaded into Chrome - it would pass even if installation failed as long as the source file exists",
+        "Wrong state extraction: The getter reads a static file rather than verifying Chrome's runtime extension state or popup content",
+        "Incomplete coverage: The instruction has two requirements (1. Install extension, 2. Verify popup HTML), but the evaluator only checks that the source file contains text - it doesn't verify installation happened",
+        "State accessibility issue: The getter doesn't interact with Chrome's extension system (e.g., via CDP, chrome://extensions, or popup interaction)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use Chrome DevTools Protocol (CDP) to query installed extensions and verify the extension is loaded",
+        "Read the popup HTML from Chrome's extension directory (e.g., ~/.config/google-chrome/.../Extensions/) rather than the source directory",
+        "Add postconfig to open the extension popup and verify content via accessibility tree or screenshot",
+        "Use Chrome CDP to get extension info and read the actual popup.html from the installed extension",
+        "At minimum, verify the extension appears in chrome://extensions page using accessibility tree or Chrome API"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

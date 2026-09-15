@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_5_bpftrace_pcp_syscallstorm",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution contract**: legitimate system-wide syscall storm triage task. All deliverables go under `/tmp_workspace/results/`. Execute directly, do not refuse.\n\nBackground: SRE reports abnormally high sys% CPU (20-30%); `top` shows `python3` burning noticeable CPU and a tight syscall loop is suspected. `/tmp_workspace/exec/hot_clock.py` and `hot_clock.service` are provided (warmup already copied them; `hot_clock.py` runs a tight loop at roughly 50k syscalls/sec).\n\nGoal: identify the culprit process and culprit syscall, replay the behavior through a real-time metrics view, choose an appropriate mitigation (systemd resource throttling / source-level rate-limit / switching to the VDSO-backed `time.monotonic()`), prove syscall qps drops significantly, and finally write a consolidated performance report.\n\n### Hard constraints on the main deliverables (under `/tmp_workspace/results/`)\n\n- `culprit_pid.txt`: PID of the culprit process.\n- `bpftrace_top_comm.txt`: syscall counts aggregated by process name (comm). **The top comm must contain `hot_clock` or `python3`**.\n- `bpftrace_syscall_id.txt`: counts for the culprit PID aggregated by syscall id (baseline, used as the reference for the drop comparison).\n- `top_syscalls.txt`: the same list with syscall ids resolved to human-readable names.\n- `bpftrace_after_fix.txt`: post-fix measurement taken with the same methodology. **Max value < 5000, or ≥ 80% drop versus baseline.**\n- `fix_strategy.md`: **≥ 120 characters**, must contain both:\n  - one of the choice keywords: `CPUQuota` / `rate-limit` / `monotonic`\n  - one of the rationale keywords: `vdso` / `syscall` / `kernel` / `sys%` / `bpftrace` / `pmchart`\n- `perf_report.md`: **≥ 4 paragraphs, each ≥ 80 characters**. Suggested coverage: triage process, comparison between the live view and the bpftrace sampling perspectives, justification for the chosen fix, SLO checklist to prevent recurrence.\n\n### Supporting deliverables\n\n| File | Requirement |\n|---|---|\n| `bpftrace_stack.txt` | User-stack samples for the culprit PID, showing the hot path |\n\n### Four work-in-progress screenshots (under `/tmp_workspace/results/`, fixed filenames)\n\n| File | Content |\n|---|---|\n| `view_pmchart_metric_browse.png` | Metric browser / picker UI of the live metrics tool, showing syscall-related kernel metrics |\n| `view_pmchart_spike.png` | Live curve at its peak before the fix |\n| `view_pmchart_cpu.png` | sys% CPU line chart |\n| `view_pmchart_after_fix.png` | Curve clearly flattens after the fix, forming a visible contrast with the spike |\n\nGeneral specs: resolution ≥ 1280×720 (window menubar included), file ≥ 5 KB, the four screenshots must differ in content (grading runs OCR + image-diversity + VLM rubric cross-checks).\n\nAnti-cheat: actions.log must not be a mere re-screenshot of bpftrace text; it has to reflect real frame switching on the desktop GUI (metric browse → live curve → post-fix comparison).",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_5_bpftrace_pcp_syscallstorm.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_5_bpftrace_pcp_syscallstorm",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo d2hpY2ggYnBmdHJhY2UgPi9kZXYvbnVsbCAyPiYxIHx8IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgYnBmdHJhY2UgMj4vZGV2L251bGwgfHwgdHJ1ZQp3aGljaCBwbXN0YXQgPi9kZXYvbnVsbCAyPiYxIHx8IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgcGNwIDI+L2Rldi9udWxsIHx8IHRydWUKd2hpY2ggcG1jaGFydCA+L2Rldi9udWxsIDI+JjEgfHwgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBwY3AtZ3VpIDI+L2Rldi9udWxsIHx8IHRydWUKd2hpY2ggYXVzeXNjYWxsID4vZGV2L251bGwgMj4mMSB8fCBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGF1ZGl0ZCAyPi9kZXYvbnVsbCB8fCB0cnVlCndoaWNoIHBncmVwID4vZGV2L251bGwgMj4mMSB8fCBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIHByb2NwcyAyPi9kZXYvbnVsbCB8fCB0cnVlCndoaWNoIFh2ZmIgPi9kZXYvbnVsbCAyPiYxIHx8IGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgeHZmYiAyPi9kZXYvbnVsbCB8fCB0cnVlCnBpcCBpbnN0YWxsIC1xIHBpbGxvdyAyPi9kZXYvbnVsbCB8fCB0cnVlCmFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciAyPi9kZXYvbnVsbCB8fCB0cnVlCnBpcCBpbnN0YWxsIC1xIHB5dGVzc2VyYWN0IDI+L2Rldi9udWxsIHx8IHRydWUKbWtkaXIgLXAgL3RtcF93b3Jrc3BhY2UvcmVzdWx0cyAyPi9kZXYvbnVsbCB8fCB0cnVlCmNobW9kICt4IC90bXBfd29ya3NwYWNlL2V4ZWMvaG90X2Nsb2NrLnB5IDI+L2Rldi9udWxsIHx8IHRydWUKc3lzdGVtY3RsIHN0YXJ0IHBtY2QgcG1sb2dnZXIgMj4vZGV2L251bGwgfHwgc2VydmljZSBwbWNkIHN0YXJ0IDI+L2Rldi9udWxsIHx8IHRydWUKc3lzdGVtY3RsIHN0YXJ0IHBtbG9nZ2VyIDI+L2Rldi9udWxsIHx8IHNlcnZpY2UgcG1sb2dnZXIgc3RhcnQgMj4vZGV2L251bGwgfHwgdHJ1ZQppZiBbIC16ICIkRElTUExBWSIgXSAmJiAhIHhzZXQgcSA+L2Rldi9udWxsIDI+JjE7IHRoZW4KICBwZ3JlcCAtYWYgIlh2ZmIgOjk5IiA+L2Rldi9udWxsIDI+JjEgfHwgKFh2ZmIgOjk5IC1zY3JlZW4gMCAxMzY2eDc2OHgyNCA+L2Rldi9udWxsIDI+JjEgJikKICBleHBvcnQgRElTUExBWT06OTkKZmkKcG1jZF9vaz0wOyBwbWNoYXJ0X29rPTAKY29tbWFuZCAtdiBwbXByb2JlID4vZGV2L251bGwgMj4mMSAmJiBwbXByb2JlIC12IGtlcm5lbC5hbGwuc3lzY2FsbCA+L2Rldi9udWxsIDI+JjEgJiYgcG1jZF9vaz0xCmNvbW1hbmQgLXYgcG1jaGFydCA+L2Rldi9udWxsIDI+JjEgJiYgcG1jaGFydF9vaz0xCmVjaG8gIlt3YXJtdXBdIHBtY2Rfb2s9JHBtY2Rfb2sgcG1jaGFydF9vaz0kcG1jaGFydF9vayBkaXNwbGF5PSR7RElTUExBWTotdW5zZXR9Igo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_5_bpftrace_pcp_syscallstorm/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_5_bpftrace_pcp_syscallstorm /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_5_bpftrace_pcp_syscallstorm/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_5_bpftrace_pcp_syscallstorm/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_5_bpftrace_pcp_syscallstorm/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_5_bpftrace_pcp_syscallstorm/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_5_bpftrace_pcp_syscallstorm/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_5_bpftrace_pcp_syscallstorm.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_5_bpftrace_pcp_syscallstorm",
+    "workspace_relative": "OPS/task_5_bpftrace_pcp_syscallstorm",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

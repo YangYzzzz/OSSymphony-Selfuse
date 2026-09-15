@@ -1,0 +1,99 @@
+{
+  "id": "c2751594-0cd5-4088-be1b-b5f2f9ec97c4",
+  "new_id": "task_verify_43",
+  "snapshot": "thunderbird",
+  "instruction": "Open the Word attachment from the email in the Notes folder and extract the first image, saving it to the Desktop as 'extracted_image.png'.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/c2751594-0cd5-4088-be1b-b5f2f9ec97c4/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "--recursive-unlink",
+          "-xz",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird",
+    "libreoffice"
+  ],
+  "evaluator": {
+    "func": "check_extracted_image__938bcb9a",
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 -c \"import os, sys, subprocess, time, hashlib, glob, re; from PIL import Image; path='/home/user/Desktop/extracted_image.png'; exists=os.path.exists(path); size=os.path.getsize(path) if exists else 0; valid=False; dims='0x0'; img_hash=''; lowriter_used=False; thunderbird_used=False; word_attachment_found=False; notes_folder_accessed=False;\ntry:\n img=Image.open(path) if exists else None; valid=img is not None and img.format=='PNG'; dims=f'{img.width}x{img.height}' if valid else '0x0';\n if exists:\n  with open(path, 'rb') as f: img_hash=hashlib.md5(f.read()).hexdigest()[:8];\n recent_files=os.path.expanduser('~/.local/share/recently-used.xbel');\n if os.path.exists(recent_files):\n  mtime=os.path.getmtime(recent_files);\n  if time.time()-mtime<300:\n   with open(recent_files,'r',encoding='utf-8',errors='ignore') as rf:\n    content=rf.read();\n    lowriter_used='libreoffice' in content.lower() or 'writer' in content.lower() or '.doc' in content.lower();\n    thunderbird_used='thunderbird' in content.lower() or 'mail' in content.lower();\n tb_cache_base=os.path.expanduser('~/.cache/thunderbird');\n if os.path.exists(tb_cache_base):\n  for root,dirs,files in os.walk(tb_cache_base):\n   for f in files:\n    if f.endswith(('.doc','.docx')) and os.path.getmtime(os.path.join(root,f))>time.time()-600:\n     word_attachment_found=True; break\n   if word_attachment_found: break\n tb_profile_base=os.path.expanduser('~/.thunderbird');\n if os.path.exists(tb_profile_base):\n  for pref_file in glob.glob(os.path.join(tb_profile_base,'**/prefs.js'),recursive=True):\n   try:\n    with open(pref_file,'r',encoding='utf-8',errors='ignore') as pf:\n     pref_content=pf.read();\n     if 'Notes' in pref_content:\n      notes_folder_accessed=True;\n   except: pass\nexcept: pass\nprint(f'{exists}|{size}|{valid}|{dims}|{img_hash}|{lowriter_used}|{thunderbird_used}|{word_attachment_found}|{notes_folder_accessed}')\""
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_file_size": 1000,
+        "max_file_size": 50000000,
+        "must_be_valid_png": true,
+        "require_libreoffice_usage": true,
+        "require_thunderbird_usage": true,
+        "require_word_attachment": true,
+        "require_notes_folder_access": false
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires opening Thunderbird, finding email in Notes folder, opening Word attachment, extracting first image and saving it to Desktop. Evaluator uses PIL and file system checks to verify: (1) PNG file exists at correct location, (2) file is a valid PNG image that can be opened, (3) file size is reasonable (>=1KB, <=50MB), (4) image has valid dimensions, (5) LibreOffice Writer was used during execution (verified via recently-used.xbel), (6) Thunderbird was used during execution (verified via recently-used.xbel), (7) Word attachment was accessed (verified via Thunderbird cache for .doc/.docx files modified within last 10 minutes), (8) optionally checks Notes folder access (via Thunderbird profile prefs.js). This comprehensive multi-check approach with process and cache verification significantly reduces false positives from arbitrary files or shortcuts that bypass the required workflow.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_trainsub_verify_per10_1220/run_20251219_224035/tmp_funcs/c2751594-0cd5-4088-be1b-b5f2f9ec97c4_aug_8_task_verify_2/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "verification": "Verified that the evaluator checks for PNG image file at Desktop location",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Critical coverage gap - 'first image' requirement: Instruction explicitly requires extracting the FIRST image from the Word document, but evaluator cannot verify image order. It only confirms A valid PNG exists, not that it's specifically the first image.",
+        "Critical coverage gap - 'Notes folder' specificity: Instruction requires email from Notes folder, but evaluator cannot reliably verify this. The prefs.js check for 'Notes' string is indirect and may not confirm the email source was actually the Notes folder.",
+        "Coverage gap - Word attachment source verification: While LibreOffice and Thunderbird usage are verified, evaluator cannot confirm the specific Word attachment was opened. The .doc/.docx cache check only confirms SOME Word file was accessed recently, not necessarily the one from the email.",
+        "Reliability concerns - timing window dependencies: Recently-used.xbel checks use a 5-minute window and keyword searches. This may produce false negatives if timing expires or false positives if unrelated files match keywords.",
+        "Positive: Strong false positive mitigation via multi-app verification: The combination of PNG validation + LibreOffice usage + Thunderbird usage + Word attachment cache checks significantly reduces risk of accepting arbitrary files.",
+        "Positive: Metric logic is correct and robust: check_extracted_image__938bcb9a properly handles expected parameter, validates all PNG properties, file size constraints, dimensions, and application usage flags."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add image content verification: If the Word attachment content is known (deterministic data), verify the extracted PNG hash matches the expected hash of the actual first image. This would definitively confirm correct image extraction.",
+        "Add postconfig with state verification: Include postconfig to re-open Thunderbird, programmatically navigate to Notes folder, identify the specific email with Word attachment, and verify it was accessed (e.g., check message read status or access timestamp in Thunderbird's mbox/maildir).",
+        "Strengthen attachment source verification: Check Thunderbird's attachment cache metadata more specifically - verify the cached .doc/.docx file's parent email is from the Notes folder by parsing Thunderbird's mail database.",
+        "Add document-specific markers: If feasible, check LibreOffice recent documents list (via dconf or registrymodifications.xcu) to verify the exact Word attachment path was opened, not just any .doc file.",
+        "Alternative - simplify instruction: If deterministic verification is not possible with current data, consider simplifying the instruction to remove 'first image' and 'Notes folder' specificity, or clearly document these limitations in metadata."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

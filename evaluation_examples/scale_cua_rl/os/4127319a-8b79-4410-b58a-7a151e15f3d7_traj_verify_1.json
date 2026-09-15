@@ -1,0 +1,86 @@
+{
+  "id": "4127319a-8b79-4410-b58a-7a151e15f3d7",
+  "new_id": "4127319a-8b79-4410-b58a-7a151e15f3d7_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Use a terminal command to search all PHP files in ~/project recursively for lines containing 'class' and display the matching lines.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/4127319a-8b79-4410-b58a-7a151e15f3d7/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "bash ./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\nxdg-open /home/user/project",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "class User",
+          "class UserController"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_4127319a-8b79-4410-b58a-7a151e15f3d7_sid_1488256",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent opened terminal, ran find+wc command to count PHP lines in ~/project, got correct answer 54 in 4 turns.",
+    "capability_extraction": "Can open terminal, construct complex shell commands (find, wc, pipe, grep), navigate to correct directory",
+    "task_rationale": "Harder variation requiring grep/search within PHP files instead of simple line counting. Tests ability to combine find with grep to search file contents.",
+    "explanation": "Task requires searching PHP files for 'class' keyword. The setup creates User.php with 'class User' and UserController.php with 'class UserController'. Evaluator checks both class declarations appear in terminal output.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter vm_terminal_output correctly extracts terminal output, which is the right state for a terminal command task.",
+        "Metric check_include_exclude correctly checks that both 'class User' and 'class UserController' appear in terminal output via substring matching, verifying the grep/search command worked on PHP files.",
+        "Expected values match the known setup: setup.sh creates User.php with 'class User' and UserController.php with 'class UserController', so their presence in output confirms correct task completion.",
+        "Parameter handling is correct: check_include_exclude receives the rules dict directly (with 'include' and 'exclude' keys) as expected for type='rule'.",
+        "Minor concern: the evaluator does not verify that ONLY PHP files were searched (e.g., if 'class User' appeared in a non-PHP file, the check would still pass). However, since the setup controls the file structure, this is unlikely to cause false positives."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding an exclude pattern for non-PHP file extensions in the output to ensure only PHP files were searched, though this is a minor concern given the controlled setup environment."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

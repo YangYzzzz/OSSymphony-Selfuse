@@ -1,0 +1,91 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_39",
+  "snapshot": "multiapps",
+  "instruction": "Please add the unpacked Chrome extension from my Desktop directory to the browser. The extension folder is named helloExtension.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_ext_name__ca95b9f314589fd4b7b378e36374dfb0",
+    "result": {
+      "type": "find_installed_extension_name"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_name": "Hello Extensions"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 1: Changes evaluation from checking path to checking extension name. Uses existing getter get_find_installed_extension_name which returns list of extension names from Chrome Preferences. Custom metric checks if 'Hello Extensions' (from manifest.json) is in the installed extensions list.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_1/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts extension names from Chrome Preferences file (extensions.settings.{id}.manifest.name)",
+        "Metric function correctly handles expected parameter - uses expected.get('expected_name') which is correct for type='rule'",
+        "Verification logic is semantically sound: checks if expected extension name is in list of installed extensions",
+        "Data flow is correct: getter returns list of strings → metric checks if expected name is in list → returns 1.0 or 0.0",
+        "Evaluator properly verifies the instruction requirement: confirms the unpacked extension was successfully added to Chrome",
+        "Minor uncertainty: expected_name 'Hello Extensions' should match the actual name in manifest.json, but cannot verify without seeing the actual manifest file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

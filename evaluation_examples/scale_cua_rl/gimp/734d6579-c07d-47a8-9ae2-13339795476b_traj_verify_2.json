@@ -1,0 +1,138 @@
+{
+  "id": "734d6579-c07d-47a8-9ae2-13339795476b",
+  "new_id": "734d6579-c07d-47a8-9ae2-13339795476b_traj_verify_2",
+  "snapshot": "gimp",
+  "instruction": "Fill the background layer with blue color and resize the image to 500x500 pixels.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/734d6579-c07d-47a8-9ae2-13339795476b/white_background_with_object.xcf",
+            "path": "/home/user/Desktop/white_background_with_object.xcf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/gimp/734d6579-c07d-47a8-9ae2-13339795476b/white_background_with_object.png",
+            "path": "/home/user/Desktop/white_background_with_object.png"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "gimp",
+          "/home/user/Desktop/white_background_with_object.xcf"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.hotkey([\"shift\", \"ctrl\", \"e\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import time; import pyautogui; time.sleep(1);pyautogui.write(\"blue_resized_output\");time.sleep(1);pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 2
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; pyautogui.press([\"enter\"]);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 5
+        }
+      }
+    ],
+    "func": "check_color_and_size__043ea3777ab786b45abdbd440171ffc3",
+    "result": {
+      "type": "color_and_size_state__043ea3777ab786b45abdbd440171ffc3",
+      "result_path": "/home/user/Desktop/blue_resized_output.png",
+      "reference_path": "/home/user/Desktop/white_background_with_object.png"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "color": "blue",
+        "expected_width": 500,
+        "expected_height": 500
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_gimp_734d6579-c07d-47a8-9ae2-13339795476b_sid_1488333",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully filled the background layer with green color in GIMP. Steps: selected Background layer, opened foreground color dialog, set color to green, used Edit > Fill with FG Color, saved the file. Completed in 13 turns.",
+    "capability_extraction": "Can select layers in GIMP layers panel, change foreground color via color dialog, use Edit menu fill operations, save files with Ctrl+S",
+    "task_rationale": "Multi-step task combining both operations: color fill (blue) and resize (500x500). Harder than original since it requires two distinct GIMP operations. Tests model's ability to chain multiple editing steps.",
+    "explanation": "Task requires two operations: (1) fill background with blue, (2) resize to 500x500. Custom getter downloads result and reference images, extracts dimensions. Custom metric awards 0.5 for correct blue background (checked via corner/edge pixel sampling since reference is a different size after resize) and 0.5 for correct 500x500 dimensions.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_gimp_734d6579-c07d-47a8-9ae2-13339795476b_sid_1488333_traj_verify_2/getters/gimp.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_gimp_734d6579-c07d-47a8-9ae2-13339795476b_sid_1488333_traj_verify_2/metrics/gimp.py"
+    ],
+    "difficulty": "hard",
+    "estimated_steps": 8,
+    "scoring_breakdown": {
+      "background_color": "0.5 - Background pixels are blue (b > r and b > g)",
+      "image_size": "0.5 - Image dimensions are 500x500"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Both instruction requirements (blue background fill and 500x500 resize) are verified with appropriate partial credit (0.5 each)",
+        "Expected parameter handling is correct: metric receives rules dict directly and accesses 'color', 'expected_width', 'expected_height' via expected.get()",
+        "Getter correctly downloads result image from VM, extracts dimensions via PIL, and returns structured dict for the metric",
+        "Color verification via corner/edge pixel sampling (b > r and b > g) is a reasonable heuristic for detecting blue background",
+        "Size verification uses exact match on width and height, which is correct for this task",
+        "Minor: reference image is downloaded and opened by the metric but ref_pixels is never used in any comparison — wasteful but not incorrect",
+        "Minor: postconfig uses pyautogui.write() without first clearing the filename field in GIMP's Export As dialog, which could result in the wrong filename if the field is not auto-selected"
+      ],
+      "llm_judge_fix_suggestions": [
+        "In postconfig, add a Ctrl+A or triple-click before pyautogui.write() to ensure the existing filename is selected and replaced, not appended to",
+        "Remove unused reference image loading in the metric (ref_pixels is computed but never used) to simplify the code"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

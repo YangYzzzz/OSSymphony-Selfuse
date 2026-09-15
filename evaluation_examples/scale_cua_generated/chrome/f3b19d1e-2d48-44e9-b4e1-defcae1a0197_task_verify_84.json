@@ -1,0 +1,92 @@
+{
+  "id": "f3b19d1e-2d48-44e9-b4e1-defcae1a0197",
+  "new_id": "task_verify_84",
+  "snapshot": "chrome",
+  "instruction": "Navigate to the support page about accessibility services.",
+  "source": "test_task_0",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://premier.ticketek.com.au/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "is_expected_url_pattern_match",
+    "result": {
+      "type": "active_tab_info"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Accessibility|Access"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "This task requires the agent to navigate from the Ticketek homepage to the support page about accessibility services. The evaluator checks if the active tab URL contains 'Accessibility' or 'Access' pattern, using the existing is_expected_url_pattern_match metric with active_tab_info getter. This is similar to the original task but targets accessibility information.",
+    "augmentation_type": "update_evaluator",
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "new_functions_paths": [],
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Pattern matching is too broad and ambiguous: 'Accessibility|Access' will match many false positives (e.g., 'access-all-areas-concert', 'my-account/access', 'VIP-access') that are unrelated to accessibility services",
+        "Missing path/context verification: The evaluator doesn't verify the page is actually a support page - pattern doesn't check for 'support' in URL path",
+        "Pattern is overly generic: The word 'Access' appears in many contexts (account access, ticket access, venue access) completely unrelated to accessibility services",
+        "Case sensitivity issues: Pattern 'Accessibility|Access' is case-sensitive and may miss valid URLs with different casing",
+        "Instruction semantic mismatch: Instruction asks for 'support page about accessibility services' but evaluator only checks for keyword presence, not semantic context"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use more specific regex patterns that include path context: e.g., ['support.*accessibility', 'accessibility.*support', 'help.*accessibility'] to ensure it's actually a support/help page",
+        "Make pattern case-insensitive by using (?i) flag or lowercasing the URL before matching",
+        "Add multiple pattern requirements: require both 'support'/'help' AND 'accessibility' to appear in the URL to avoid false positives",
+        "Consider adding negative patterns to exclude false positives: exclude URLs containing 'ticket-access', 'vip-access', 'account/access', etc.",
+        "Alternative: Use a combination of URL pattern + page content verification to check that the page actually discusses accessibility services (not just mentions the word)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

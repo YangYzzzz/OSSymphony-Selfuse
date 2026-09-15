@@ -1,0 +1,104 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_47",
+  "snapshot": "thunderbird",
+  "instruction": "Make two local folders in the Thunderbird email client: SUPPORT and SALES.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bSUPPORT\\.msf\\b",
+          "\\bSUPPORT/?(?!\\.msf)",
+          "\\bSALES\\.msf\\b",
+          "\\bSALES/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating two local folders (SUPPORT and SALES) in Thunderbird. The evaluator reuses the existing check_list metric function to verify that both the folder files and .msf index files exist for both folders using regex patterns.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses postconfig to capture final state via 'ls -R' on Thunderbird's Local Folders directory",
+        "check_list metric properly receives rules dict via get_rule when expected.type='rule'",
+        "Regex patterns correctly verify both requirements: (1) SUPPORT.msf and SALES.msf index files, (2) SUPPORT/ and SALES/ folder directories",
+        "Negative lookahead pattern '\\bSUPPORT/?(?!\\.msf)' correctly matches folder name without matching the .msf file",
+        "Complete coverage: All instruction requirements verified (both SUPPORT and SALES folders)",
+        "Semantic correctness: Patterns match Thunderbird's folder structure (folder + .msf file per local folder)",
+        "Data flow correct: ls output -> cache file -> check_list -> regex matching on all 4 patterns"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

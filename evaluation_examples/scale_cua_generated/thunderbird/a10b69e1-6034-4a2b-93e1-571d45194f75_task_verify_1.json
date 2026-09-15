@@ -1,0 +1,103 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_1",
+  "snapshot": "thunderbird",
+  "instruction": "Add two new folders to Thunderbird locally: name one PROJECTS and the other PERSONAL.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bPROJECTS\\.msf\\b",
+          "\\bPROJECTS/?(?!\\.msf)",
+          "\\bPERSONAL\\.msf\\b",
+          "\\bPERSONAL/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "This task variation asks the user to create two local Thunderbird folders named PROJECTS and PERSONAL. The evaluator uses the existing check_list function to verify that both folders are created correctly by checking for the .msf index file and the folder file itself in the Local Folders directory. The regex patterns check for PROJECTS.msf, PROJECTS (folder file), PERSONAL.msf, and PERSONAL (folder file).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts state: The ls -R command on Thunderbird's Local Folders directory will capture both .msf index files and folder storage files created when local folders are created",
+        "Complete coverage: Verifies both required folders (PROJECTS and PERSONAL) by checking for their .msf metadata files and folder files",
+        "Regex patterns are semantically correct: The patterns \\bPROJECTS\\.msf\\b, \\bPROJECTS/?(?!\\.msf), \\bPERSONAL\\.msf\\b, and \\bPERSONAL/?(?!\\.msf) correctly match Thunderbird's file structure for local folders",
+        "Correct data flow: get_cache_file retrieves ls output -> check_list compiles regex patterns and verifies all expected patterns match -> returns 1.0 if both folders exist with correct files",
+        "No state timing issues: Created folders persist in the filesystem, no need for additional postconfig to refresh state",
+        "Metric logic is sound: check_list correctly implements the verification by ensuring all expected patterns match at least one line in the ls output"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "a10b69e1-6034-4a2b-93e1-571d45194f75_aug_15_task_verify_0.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

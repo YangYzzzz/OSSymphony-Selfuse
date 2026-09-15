@@ -1,0 +1,88 @@
+{
+  "id": "aad10cd7-9337-4b62-b704-a857848cedf2",
+  "new_id": "aad10cd7-9337-4b62-b704-a857848cedf2_traj_verify_2",
+  "snapshot": "chrome",
+  "instruction": "Download the HTML source of https://developer.apple.com/design/human-interface-guidelines/searching and save it as 'searching.html' on the Desktop.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_html_file_keywords__0312c898008bbe83c35bf8d3f0838a0a",
+    "result": {
+      "type": "html_file_content__0312c898008bbe83c35bf8d3f0838a0a",
+      "path": "/home/user/Desktop/searching.html"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_size": 1000,
+        "keywords": [
+          "searching",
+          "best practices",
+          "search field",
+          "systemwide search",
+          "platform considerations"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_aad10cd7-9337-4b62-b704-a857848cedf2_sid_1488382",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to Apple HIG searching page, scrolled to understand content structure, opened terminal, used curl to download HTML, installed python-docx and beautifulsoup4, wrote a Python script to extract content between 'Searching' and 'Resources' sections, created notes.docx on Desktop. File was created (36KB) but content/formatting did not match the gold standard docx.",
+    "capability_extraction": "Can navigate Chrome to specific URLs, scroll web pages, open terminal, use curl to download files, install pip packages, write and execute Python scripts, create files on Desktop",
+    "failure_analysis": "Model successfully created a docx file but the content extraction via regex and plain-text formatting did not match the gold standard document. The compare_docx_files evaluator found the documents too different despite fuzzy matching.",
+    "task_rationale": "Simplified the original task from content extraction + docx conversion to just downloading the raw HTML file. The model demonstrated it can use curl to download the page (it did this as an intermediate step). This tests a subset of the original capability without the complex content extraction.",
+    "explanation": "Task requires downloading the Apple HIG searching page as HTML to the Desktop. Custom getter reads the file from VM and extracts content. Custom metric checks: file exists (0.3), exceeds minimum size (0.2), and contains expected keywords (0.5 proportional).",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_aad10cd7-9337-4b62-b704-a857848cedf2_sid_1488382_traj_verify_2/getters/html_file.py",
+      "/home/lvbowen/project/AutoGen/results/test_skills_pipline_traj/run_20260226_231115/tmp_funcs/task_multi_apps_aad10cd7-9337-4b62-b704-a857848cedf2_sid_1488382_traj_verify_2/metrics/html_file.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "file_exists": "0.3 - File exists at /home/user/Desktop/searching.html",
+      "file_size": "0.2 - File size exceeds 1000 bytes",
+      "keywords": "0.5 - Content contains expected keywords (searching, best practices, search field, systemwide search, platform considerations)"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly reads file from /home/user/Desktop/searching.html via env.controller.get_file() and returns existence, size, and lowercased content",
+        "Metric correctly accesses expected parameter directly (expected.get('min_size'), expected.get('keywords')) — proper handling for type='rule' where get_rule returns rules dict",
+        "Scoring breakdown is reasonable: file exists (0.3), min size check (0.2), keyword proportion (0.5) = 1.0 max",
+        "Case-insensitive keyword matching (content lowered, keywords lowered in comparison) is appropriate for HTML content verification",
+        "Complete coverage: instruction requires download + save, evaluator verifies file existence, size, and content authenticity via keywords",
+        "Keywords ('searching', 'best practices', 'search field', 'systemwide search', 'platform considerations') are plausible for the Apple HIG searching page but cannot be definitively verified without live page access"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a check for HTML structure (e.g., presence of <html> or <!DOCTYPE> tags) to ensure the file is actual HTML rather than an error page or redirect",
+        "Keyword list accuracy depends on the actual page content at download time — if the page structure changes, some keywords may not be present"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

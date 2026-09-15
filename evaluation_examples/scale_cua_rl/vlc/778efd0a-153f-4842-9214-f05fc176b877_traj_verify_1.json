@@ -1,0 +1,114 @@
+{
+  "id": "778efd0a-153f-4842-9214-f05fc176b877",
+  "new_id": "778efd0a-153f-4842-9214-f05fc176b877_traj_verify_1",
+  "snapshot": "vlc",
+  "instruction": "Add a 'Fade' slide transition to the first slide of the open presentation in LibreOffice Impress.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/Minimalist_Business_Slides.pptx",
+            "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/778efd0a-153f-4842-9214-f05fc176b877/planet.mp4",
+            "path": "/home/user/Desktop/planet.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx"
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show /home/user/Desktop/planet.mp4",
+        "shell": true
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Minimalist_Business_Slides.pptx - LibreOffice Impress",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      }
+    ],
+    "func": "check_transition",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Minimalist_Business_Slides.pptx",
+      "dest": "Minimalist_Business_Slides_v1.pptx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "slide_idx": 0,
+        "transition_type": "fade"
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_778efd0a-153f-4842-9214-f05fc176b877_sid_1488189",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent opened terminal, found planet.mp4 on Desktop, successfully extracted audio to planet.wav using ffmpeg, then attempted to insert it into LibreOffice Impress as background music but inserted the video file instead and failed to configure audio playback across slides.",
+    "capability_extraction": "Can open terminal (Ctrl+Alt+T), use find/ffmpeg/ls commands, navigate between VLC and LibreOffice Impress, use Insert menu in Impress, navigate file browser dialogs, access View > Animation and Slide Show menus",
+    "failure_analysis": "Model successfully extracted audio but failed at the second part: inserting audio as background music. It inserted the video as a media object instead of properly embedding the WAV audio, then spent remaining turns trying to configure cross-slide playback without success.",
+    "task_rationale": "Model demonstrated ability to navigate LibreOffice Impress menus including View > Animation and Slide Show > Slide Show Settings. Adding a slide transition is a simpler Impress task within demonstrated navigation capability.",
+    "explanation": "Task requires adding a Fade transition to the first slide. Evaluator saves the file via postconfig, downloads the PPTX, and checks slide 1 XML for a <p:fade> transition element using the existing check_transition metric.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "scoring_breakdown": {
+      "transition_set": "1.0 - Fade transition applied to slide 1"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter (vm_file) correctly downloads the saved PPTX from the VM after postconfig saves it with Ctrl+S.",
+        "Metric check_transition correctly accesses rules['slide_idx']=0 to target slide1.xml (first slide) and rules['transition_type']='fade' to search for the <p:fade> XML element.",
+        "Parameter handling is correct: with expected.type='rule', the metric receives the rules dict directly and accesses keys without unwrapping.",
+        "Postconfig properly activates the Impress window and saves the file before the getter downloads it, ensuring fresh state.",
+        "Single instruction requirement (add Fade transition to first slide) is fully covered by the evaluator."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

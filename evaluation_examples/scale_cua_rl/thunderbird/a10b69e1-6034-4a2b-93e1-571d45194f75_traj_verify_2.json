@@ -1,0 +1,124 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "a10b69e1-6034-4a2b-93e1-571d45194f75_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Create a local folder named 'PROJECTS' in Thunderbird, then add two subfolders inside it: 'Active' and 'Archived'.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/2ad9387a-65d8-4e33-ad5b-7580065a27ca",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder-v2.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder-v2.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bPROJECTS\\.msf\\b",
+          "\\bPROJECTS/?(?!\\.msf)",
+          "\\bPROJECTS\\.sbd\\b",
+          "\\bActive\\.msf\\b",
+          "\\bActive/?(?!\\.msf)",
+          "\\bArchived\\.msf\\b",
+          "\\bArchived/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_a10b69e1-6034-4a2b-93e1-571d45194f75_sid_1488346",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully created two local folders (COMPANY, UNIVERSITY) by right-clicking Local Folders, selecting New Folder, typing name, and clicking Create Folder. Completed in 9 turns.",
+    "capability_extraction": "Can navigate Thunderbird sidebar, right-click context menus, create local folders via New Folder dialog, type folder names",
+    "task_rationale": "Combines parent folder creation with nested subfolder creation, testing hierarchical folder management which is a harder extension of the demonstrated flat folder creation",
+    "explanation": "Task requires creating a PROJECTS local folder plus two subfolders Active and Archived inside it. Evaluator checks: PROJECTS.msf and PROJECTS directory exist (parent folder), PROJECTS.sbd directory exists (holds subfolders), and Active/Archived entries exist within the .sbd directory.",
+    "new_functions_paths": [],
+    "difficulty": "hard",
+    "estimated_steps": 15,
+    "scoring_breakdown": {
+      "projects_msf": "0.14 - PROJECTS.msf exists",
+      "projects_dir": "0.14 - PROJECTS directory exists",
+      "projects_sbd": "0.15 - PROJECTS.sbd directory exists (has subfolders)",
+      "active_msf": "0.14 - Active.msf exists",
+      "active_dir": "0.14 - Active directory exists",
+      "archived_msf": "0.14 - Archived.msf exists",
+      "archived_dir": "0.15 - Archived directory exists"
+    },
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Evaluator correctly uses postconfig to run 'ls -R' on Thunderbird's Local Folders directory, capturing the full folder hierarchy.",
+        "The cache_file getter correctly reads the ls output, and check_list metric correctly applies regex patterns against file lines.",
+        "All key Thunderbird folder artifacts are checked: PROJECTS.msf, PROJECTS mbox, PROJECTS.sbd (subfolder container), Active.msf, Active mbox, Archived.msf, Archived mbox - covering all 7 filesystem artifacts expected for this folder structure.",
+        "Checking for PROJECTS.sbd confirms that PROJECTS has subfolders, which is correct Thunderbird behavior.",
+        "Minor issue: The Active/Archived regex patterns are not scoped to only match within the PROJECTS.sbd section of the ls -R output. If Active or Archived folders happened to exist at the top level of Local Folders, the evaluator would still pass. However, the clean test environment (freshly extracted profile) makes this unlikely in practice.",
+        "The check_list metric returns binary 1.0/0.0 (all patterns must match), so the scoring_breakdown in metadata describing per-pattern weights is aspirational rather than actual - the real scoring is all-or-nothing."
+      ],
+      "llm_judge_fix_suggestions": [
+        "To strengthen hierarchy verification, consider using regex patterns that anchor Active/Archived to appear after the PROJECTS.sbd section header in the ls -R output, e.g., using a multiline pattern or a custom metric that parses ls -R structure.",
+        "Note that check_list returns 1.0 or 0.0 (all-or-nothing), not partial credit as implied by the scoring_breakdown. If partial credit is desired, a custom metric would be needed."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

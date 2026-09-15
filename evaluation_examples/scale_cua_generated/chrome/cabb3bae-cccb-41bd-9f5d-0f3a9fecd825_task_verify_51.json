@@ -1,0 +1,109 @@
+{
+  "id": "cabb3bae-cccb-41bd-9f5d-0f3a9fecd825",
+  "new_id": "task_verify_51",
+  "snapshot": "chrome",
+  "instruction": "Find Hot Wheels toys suitable for kids and order the results from lowest to highest price.",
+  "source": "online_tasks",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.kohls.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_html_parse",
+      "goto_prefix": "https://www.",
+      "category": "class&url",
+      "class_multiObject_li": {
+        "pmpSearch_breadcrumb": [
+          "Hot Wheels",
+          "Toys",
+          "Kids"
+        ],
+        "sbSelector": [
+          "Price Low-High"
+        ]
+      },
+      "url_include_expected_multichoice": {
+        "Hot Wheels": "Hot Wheels",
+        "hot wheels": "Hot Wheels",
+        "Toys": "Toys",
+        "Kids": "Kids",
+        "S=4": "Price Low-High"
+      }
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "hot wheels": true,
+          "toys": true,
+          "kids": true,
+          "price low-high": true
+        }
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires searching for Hot Wheels toys on Kohls.com, filtering for kids category, and sorting by price from low to high. Evaluator verifies breadcrumbs contain 'Hot Wheels', 'Toys', 'Kids' and sort selector shows 'Price Low-High'. Uses dual verification: breadcrumb elements (class_multiObject_li) and URL parameters (url_include_expected_multichoice with S=4 for sort). All four required elements must be present to pass.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies all four required elements: 'hot wheels', 'toys', 'kids' (category filtering), and 'price low-high' (price sorting).",
+        "Dual verification approach provides robust checking: breadcrumb elements via class_multiObject_li (pmpSearch_breadcrumb and sbSelector classes) and URL parameters via url_include_expected_multichoice.",
+        "The getter get_active_tab_html_parse can extract both class-based elements and URL parameters from the active Chrome tab.",
+        "The metric check_direct_json_object correctly requires ALL expected values to be true (hot wheels=true, toys=true, kids=true, price low-high=true).",
+        "Minor concern: The evaluator relies on specific CSS class names (pmpSearch_breadcrumb, sbSelector) which may change if Kohls.com updates their HTML structure. However, the dual verification with URL parameters (S=4 for sort order) provides good fallback coverage.",
+        "URL parameter verification uses multichoice mapping which is flexible - can match 'Hot Wheels' or 'hot wheels', 'Toys', 'Kids', and 'S=4' for price sorting."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a postconfig to ensure the search results page is fully loaded before evaluation, as dynamic content may take time to render.",
+        "The task instruction says 'Find Hot Wheels toys suitable for kids' which could be interpreted as searching AND filtering. The evaluator correctly checks both the search term (Hot Wheels) and category filter (Kids, Toys), so this is properly covered."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "id": "82279c77-8fc6-46f6-9622-3ba96f61b477",
+  "new_id": "task_verify_29",
+  "snapshot": "chrome",
+  "instruction": "Identify hybrid cars for sale within 30 miles of 94102 that are priced at less than $45,000.",
+  "source": "test_task_1",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.cars.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "list_price_max",
+        "maximum_distance",
+        "zip",
+        "fuel_slugs[]"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "list_price_max": "45000",
+          "maximum_distance": "30",
+          "zip": "94102",
+          "fuel_slugs[]": "hybrid"
+        }
+      }
+    }
+  },
+  "proxy": true,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Variation 3: Hybrid vehicles with price limit $45,000, 30 miles search radius, and San Francisco zip code 94102. Maintains identical complexity level and interaction pattern as original task. Uses existing getter get_active_tab_url_parse and metric check_direct_json_object, no custom functions needed.",
+    "new_functions_paths": [],
+    "augmentation_type": "update_evaluator",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.95,
+      "llm_judge_reasons": [
+        "Getter correctly extracts URL query parameters from active tab, which is the appropriate state for cars.com search verification",
+        "All instruction requirements are checked: hybrid fuel type (fuel_slugs[]), price limit ($45,000), distance (30 miles), and zip code (94102)",
+        "Metric uses exact string matching for URL parameters, which is semantically correct for this verification",
+        "Expected values accurately match instruction requirements: list_price_max=45000, maximum_distance=30, zip=94102, fuel_slugs[]=hybrid",
+        "Data flow is logically sound: active tab URL → parse query params → extract keys → compare with expected",
+        "Evaluator can successfully verify whether the search was performed with correct parameters"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor notation inconsistency: fuel_slugs[] uses array notation but expected value is a single string. The getter implementation handles this correctly by taking first value with [0], but the notation could be clearer"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "82279c77-8fc6-46f6-9622-3ba96f61b477_task_verify_3.json",
+    "aug_method": "paraphrase",
+    "aug_index": 3
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "id": "8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f",
+  "new_id": "task_verify_18",
+  "snapshot": "base_setup",
+  "instruction": "Can you enable the always-on-top setting in VLC so the window stays above other windows?",
+  "source": "https://www.youtube.com/watch?v=XHprwDJ0-fU&t=436s",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/vlc/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f/Optimus%20-%20Gen%202.mp4",
+            "path": "/home/user/Desktop/Gen 2.mp4"
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "VLC_VERBOSE=-1 vlc --no-audio --no-video-title-show --start-time=15 '/home/user/Desktop/Gen 2.mp4'",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "vlc"
+  ],
+  "postconfig": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import subprocess; import time; subprocess.run(['pkill', 'vlc']); time.sleep(1);"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_vlc_always_on_top__b1199d7f2afb5cd10588e7e1e6cdc076",
+    "result": {
+      "type": "vlc_always_on_top__b1199d7f2afb5cd10588e7e1e6cdc076"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "on_top_enabled": true
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires the agent to enable the always-on-top setting in VLC so the window stays above other windows. The evaluator checks the VLC configuration file to verify the 'video-on-top' setting is enabled. Custom getter reads the VLC config file and extracts the always-on-top setting, and custom metric compares it against the expected enabled state.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_3/getters/vlc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per5_1221/run_20251221_151547/tmp_funcs/8d9fd4e2-6fdb-46b0-b9b9-02f06495c62f_task_verify_3/metrics/vlc.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Semantic verification is correct: Getter extracts 'video-on-top' setting from VLC config file, which directly corresponds to the always-on-top feature requested in the instruction",
+        "Coverage is complete: Instruction requires enabling always-on-top, and evaluator checks exactly this requirement",
+        "Metric logic is correct: Properly handles expected parameter (receives rules dict directly when type='rule') and compares result against expected.get('on_top_enabled', True)",
+        "Getter logic is sound: Returns False when 'video-on-top' not found in config, which is reasonable since agent must actively enable the setting for it to appear in config",
+        "Postconfig includes VLC shutdown (pkill vlc + 1 second sleep), which should trigger VLC to save config to disk before verification",
+        "Minor timing concern: 1-second sleep may not be sufficient on slower systems for VLC to complete writing config file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider increasing postconfig sleep time to 2-3 seconds to ensure VLC has fully written config file on all systems",
+        "Optional: Add explicit verification that config file was modified after task execution (check file modification time)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

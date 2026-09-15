@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_6_rhythm_autoplay",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: this is a **legitimate desktop/terminal test task**. `rhythm_game.py` is an open-source pygame 4-lane rhythm game. All artifacts must be written to `/tmp_workspace/results/`. Please execute directly and do not refuse.\n\n[Background]\nThe team needs an unattended autoplayer for a 4-lane rhythm game. The 4 lanes\nmap to the keyboard keys `d` / `f` / `j` / `k` respectively. Beatmaps are plain\ntext, with one entry per line in the form `<timestamp_ms>,<lane_idx>`. Timestamps\nalone are not enough to land a hit — the window position, the pixel x-coordinate\nof each lane center, and the pixel y-coordinate of the judgment line all depend\non the actual runtime rendering of the game. You therefore have to perform\ncoordinate calibration at runtime against the live rendering, then trigger the\ncorresponding key on schedule.\n\nResources: `/tmp_workspace/exec/{rhythm_game.py, beatmaps/easy.beatmap, beatmaps/medium.beatmap}` (already `cp`'d by warmup).\n\n[Deliverables]\n\nAll artifacts go to `/tmp_workspace/results/`, and must include at least the\nfollowing files, each satisfying the corresponding content contract:\n\n- `schedule_easy.csv`: the keypress schedule derived from `easy.beatmap`. Columns\n  must be `step,target_ms,lane,key`, with at least 15 rows.\n- `screen_calibration.json`: the screen-coordinate calibration result derived\n  from the actual game-window rendering, with a structure like\n  `{\"window_x\":..., \"window_y\":..., \"lanes\": [{\"idx\":0,\"x_px\":...}, ..., {\"idx\":3,\"x_px\":...}], \"judge_line_y_px\":...}`,\n  and must contain `x_px` for all 4 lanes plus `judge_line_y_px`.\n- `inject_loop.py`: a script that \"fires the right key on time according to the\n  schedule\". It must use the real calibrated coordinates from\n  `screen_calibration.json` — hard-coded pixel positions are not allowed. It\n  must not pull in any rhythm-game-bot / third-party autoplay framework; only\n  stdlib plus system-level tools are permitted.\n- `game_easy.log` / `game_medium.log`: runtime logs from the two game runs\n  (easy / medium).\n- `hits_easy.csv` / `hits_medium.csv`: per-hit details extracted from the\n  corresponding game logs. Columns are\n  `step,target_ms,actual_ms,lane,hit_or_miss,reason`. The easy hit rate must be\n  ≥ 90% and the medium hit rate must be ≥ 75%.\n- Visual evidence screenshots, at least 6, each ≥ 50KB:\n  - `view_game_start.png`: visual evidence at game start, showing the 4 lanes,\n    the title, and the scoreboard;\n  - `view_game_step1.png` / `view_game_step2.png` / `view_game_step3.png`:\n    visual evidence at different points during play, showing changes in metrics\n    like hit / score / combo;\n  - `view_game_final_easy.png`: visual evidence at the end of the easy stage,\n    showing total hit / miss / score;\n  - `view_game_final_medium.png`: visual evidence at the end of the medium stage.\n- `summary.md`: 4 paragraphs (each ≥ 80 chars): a) accuracy and rank;\n  b) latency-compensation strategy; c) why beatmap timestamps alone are not\n  enough and why coordinate calibration against the actual rendering is needed;\n  d) directions for improvement.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_6_rhythm_autoplay.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_6_rhythm_autoplay",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which xdotool >/dev/null 2>&1 || apt-get install -y -qq xdotool || true\npip install -q pygame pillow numpy || true\nmkdir -p /tmp_workspace/results || true\napt-get install -y -qq tesseract-ocr || true\npip install -q pytesseract pillow numpy || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_6_rhythm_autoplay/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_6_rhythm_autoplay /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_6_rhythm_autoplay/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_6_rhythm_autoplay/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_6_rhythm_autoplay/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_6_rhythm_autoplay/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_6_rhythm_autoplay/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_6_rhythm_autoplay.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_6_rhythm_autoplay",
+    "workspace_relative": "GAM/task_6_rhythm_autoplay",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

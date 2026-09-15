@@ -1,0 +1,107 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_49",
+  "snapshot": "os",
+  "instruction": "Create a bzip2 archive of all files in the \"/tmp/test_files\" directory tree that were last modified 30 days ago",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'if find /tmp -maxdepth 1 -name \"*.tar.bz2\" -type f | grep -q .; then if tar -tjf $(find /tmp -maxdepth 1 -name \"*.tar.bz2\" -type f | head -1) 2>/dev/null | grep -q \"old_file\"; then echo \"Success: Old files archived with bzip2\"; else echo \"Fail: Archive does not contain old files\"; fi; else echo \"Fail: No tar.bz2 archive found\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files archived with bzip2"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires archiving files modified 30 days ago into a tar.bz2 file. Uses command-line verification to check if a tar.bz2 archive exists in /tmp and contains the old files. No custom functions needed - reuses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Wrong verification scope: Searches for archive in /tmp only, not verifying it contains files specifically from /tmp/test_files directory tree",
+        "Incomplete temporal verification: Does not verify that archived files were actually modified 30 days ago - only checks if 'old_file' string exists in archive contents",
+        "Missing completeness check: Does not verify that ALL files from /tmp/test_files modified 30 days ago are included in the archive",
+        "Missing exclusivity check: Does not verify that ONLY files modified 30 days ago are archived (no newer or older files)",
+        "Fragile file name assumption: Relies on files containing 'old_file' in their name, which is not guaranteed by the instruction - this assumption may come from setup.sh but is not semantically verifying the actual requirement",
+        "Missing source directory validation: Does not verify the archive was created from the /tmp/test_files directory tree specifically"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Verify archive contains files from /tmp/test_files path structure (check tar listing output contains 'test_files' directory paths)",
+        "Add verification that checks the actual modification time of files in the archive against 30 days ago threshold",
+        "Verify completeness by counting expected files vs archived files, or by comparing against a known list from setup",
+        "Improve the grep pattern to check for actual file paths from /tmp/test_files, not just 'old_file' string",
+        "Consider using 'find /tmp/test_files -mtime 30' to generate expected file list, then verify all those files are in archive",
+        "Verify no unexpected files are in the archive by checking that all archived files match the 30-day modification criteria"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

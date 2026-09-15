@@ -1,0 +1,103 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_43",
+  "snapshot": "thunderbird",
+  "instruction": "Create local folders in Thunderbird for URGENT and FOLLOWUP.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bURGENT\\.msf\\b",
+          "\\bURGENT/?(?!\\.msf)",
+          "\\bFOLLOWUP\\.msf\\b",
+          "\\bFOLLOWUP/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating two local folders (URGENT and FOLLOWUP) in Thunderbird. The evaluator reuses the existing check_list metric function to verify that both the folder files and .msf index files exist for both folders using regex patterns.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly extracts state: ls -R on Thunderbird Local Folders directory captures both folder directories and .msf index files",
+        "Complete coverage: Checks all requirements - verifies both URGENT and FOLLOWUP folders with their corresponding .msf files (4 patterns total)",
+        "Regex patterns are semantically correct: Patterns distinguish between folder directories (URGENT/?) and .msf files (URGENT.msf) using word boundaries and negative lookahead",
+        "Appropriate metric function: check_list reads file line-by-line and verifies all expected regex patterns match, returning 1.0 only if all 4 patterns found",
+        "Correct data flow: Postconfig executes ls -R, saves to cache file, get_cache_file retrieves it, check_list validates patterns against rules",
+        "Postconfig is appropriate: Filesystem state is persistent after folder creation, no UI reopening needed"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

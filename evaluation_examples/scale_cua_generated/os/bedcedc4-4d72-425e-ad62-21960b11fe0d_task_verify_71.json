@@ -1,0 +1,90 @@
+{
+  "id": "bedcedc4-4d72-425e-ad62-21960b11fe0d",
+  "new_id": "task_verify_71",
+  "snapshot": "os",
+  "instruction": "Set the screen blank delay to 10 minutes in power settings.",
+  "source": "https://www.youtube.com/watch?v=D4WyNjt_hbQ&t=2s",
+  "trajectory": "trajectories/",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "gsettings",
+          "set",
+          "org.gnome.desktop.session",
+          "idle-delay",
+          "300"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5);"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "gsettings",
+        "get",
+        "org.gnome.desktop.session",
+        "idle-delay"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "uint32 600\n"
+      }
+    },
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.press('escape'); time.sleep(0.3); pyautogui.press('escape'); time.sleep(0.3);"
+          ]
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "explanation": "Task requires setting screen blank delay to 10 minutes (600 seconds) by changing idle-delay. The evaluator verifies the gsettings value is 'uint32 600'. Uses existing exact_match metric and vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic is correct: vm_command_line executes 'gsettings get org.gnome.desktop.session idle-delay' and returns stdout, which correctly extracts the screen blank delay setting",
+        "Metric logic is correct: exact_match performs exact string comparison (result == expected), which is appropriate for this verification",
+        "Expected value is semantically correct: 'uint32 600\\n' matches gsettings output format for 10 minutes (600 seconds), including the newline character",
+        "Complete coverage: The single requirement (set idle-delay to 10 minutes) is fully verified by checking the idle-delay value equals 'uint32 600\\n'",
+        "Data flow is correct: vm_command_line returns stdout string -> exact_match compares to rules['expected'] (framework calls get_rule which returns config['rules'])",
+        "State accessibility is correct: gsettings is a persistent system setting accessible via command-line without UI dependency. Postconfig appropriately closes any open dialogs",
+        "Practical feasibility verified: The command is valid on GNOME systems and will execute correctly at runtime"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

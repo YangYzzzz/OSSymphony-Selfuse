@@ -1,0 +1,100 @@
+{
+  "id": "4127319a-8b79-4410-b58a-7a151e15f3d7",
+  "new_id": "task_verify_20",
+  "snapshot": "os",
+  "instruction": "Execute a terminal command to count all lines in Go source files (.go) recursively in the current directory and show the total on the terminal",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/project/{models,controllers,views}",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cat > /home/user/project/main.go << 'EOF'\n// File: main.go\npackage main\n\nimport (\n\t\"fmt\"\n\t\"project/models\"\n\t\"project/controllers\"\n)\n\nfunc main() {\n\tfmt.Println(\"Application started\")\n}\nEOF",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cat > /home/user/project/models/user.go << 'EOF'\n// File: models/user.go\npackage models\n\ntype User struct {\n\tName  string\n\tEmail string\n}\n\n// Getter methods\nfunc (u *User) GetName() string {\n\treturn u.Name\n}\n\nfunc (u *User) GetEmail() string {\n\treturn u.Email\n}\nEOF",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cat > /home/user/project/controllers/user_controller.go << 'EOF'\n// File: controllers/user_controller.go\npackage controllers\n\nimport (\n\t\"fmt\"\n\t\"project/models\"\n)\n\nfunc CreateUser(name, email string) {\n\tuser := &models.User{Name: name, Email: email}\n\t// Save the user to a database (simulated)\n\tfmt.Printf(\"User %s created successfully\\n\", user.GetName())\n}\nEOF",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cat > /home/user/project/views/home.go << 'EOF'\n// File: views/home.go\npackage views\n\nfunc RenderHome() string {\n\treturn `<!DOCTYPE html>\n<html>\n<head>\n    <title>Home Page</title>\n</head>\n<body>\n    <h1>Welcome to our application!</h1>\n</body>\n</html>`\n}\nEOF",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "export DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus'\nxdg-open /home/user/project",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_terminal_output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "57"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires counting lines in all Go source files recursively. Created 4 Go files: main.go (12 lines), models/user.go (16 lines), controllers/user_controller.go (14 lines), views/home.go (15 lines). Verified with Python script: Total = 57 lines. Uses existing check_include_exclude metric from general.py to verify terminal output contains '57'.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly extracts terminal output using get_vm_terminal_output",
+        "Metric check_include_exclude appropriately verifies '57' appears in terminal output",
+        "Expected value '57' is correctly calculated from created Go files (12+16+14+15=57)",
+        "Data flow is correct: terminal output → inclusion check → pass/fail",
+        "Complete coverage: instruction requires showing total on terminal, evaluator checks terminal output for correct total",
+        "Minor weakness: checking only for presence of '57' could theoretically allow false positives (e.g., '157 lines', 'file57.go'), but this is acceptable for terminal command verification where output formats vary"
+      ],
+      "llm_judge_fix_suggestions": [
+        "For stricter verification, could use regex pattern to match only standalone '57' or '57 total' patterns",
+        "Could add exclude patterns to filter out common false positive patterns like '157', '257', etc."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

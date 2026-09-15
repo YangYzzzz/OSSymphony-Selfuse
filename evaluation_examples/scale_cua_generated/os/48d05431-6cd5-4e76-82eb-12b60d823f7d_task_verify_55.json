@@ -1,0 +1,93 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_55",
+  "snapshot": "os",
+  "instruction": "When I try to use 'll' command for detailed directory listings, I get \"command not found\". Could you set up this common alias for me so I can use 'll' as a shortcut for 'ls -alF'?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q \"alias ll='ls -alF'\" ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires adding the common 'll' alias to .bashrc. Evaluator checks if the alias line exists in .bashrc. Same pattern as original - adding shell configuration to fix a command not found error.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Getter correctly uses vm_command_line to execute a shell command that checks for the alias in ~/.bashrc",
+        "Command logic is sound: 'grep -q' searches for the exact alias definition, outputs '1\\n' on success, '0\\n' on failure",
+        "Metric exact_match correctly receives rules dict and compares result with rules['expected']",
+        "Expected value '1\\n' is semantically correct for the command's success output",
+        "Evaluator verifies the core requirement: adding 'alias ll=\\'ls -alF\\'' to .bashrc",
+        "Parameter handling is correct - metric receives rules dict directly (not wrapped in {'type': 'rule', 'rules': {...}})"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor consideration: The grep pattern uses single quotes in the alias definition. If user sets alias with double quotes (alias ll=\"ls -alF\"), verification would fail. However, single quotes are the standard convention for this alias.",
+        "Minor consideration: Alias could theoretically be defined in other files like ~/.bash_aliases or ~/.profile, but ~/.bashrc is the standard location for user-defined aliases in Ubuntu."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "id": "227d2f97-562b-4ccb-ae47-a5ec9e142fbb",
+  "new_id": "task_verify_43",
+  "snapshot": "gimp",
+  "instruction": "Open the .xcf file from the Desktop, copy it, and paste it into a new LibreOffice Writer document. Center the image horizontally on the page and save the document as 'centered_image.docx' on the Desktop.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "path": "/home/user/Desktop/QTdHniCqfJbBLJe3L3nijU-1200-80.xcf",
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/227d2f97-562b-4ccb-ae47-a5ec9e142fbb/QTdHniCqfJbBLJe3L3nijU-1200-80.xcf"
+          }
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_writer",
+    "gimp",
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "centered_image.docx - LibreOffice Writer",
+          "strict": false
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5);"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1.0
+        }
+      }
+    ],
+    "func": "compare_docx_images",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/centered_image.docx",
+      "dest": "centered_image.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "has_image": true
+      }
+    },
+    "options": {
+      "check_alignment": false
+    }
+  },
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "new_functions_paths": [],
+    "explanation": "Task requires copying image from GIMP and centering it in Writer. Uses existing compare_docx_images function which checks for image presence. Centering is difficult to verify automatically so we focus on image insertion.",
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.2,
+      "llm_judge_reasons": [
+        "Wrong metric function: compare_docx_images requires TWO file parameters (docx_file1, docx_file2) but only ONE file is provided via the getter",
+        "Missing reference file: The metric is a comparison function that needs a reference file to compare against, but evaluator only provides the result file",
+        "Wrong expected structure: Expected field has {\"type\": \"rule\", \"rules\": {\"has_image\": true}} but compare_docx_images doesn't accept rules - it compares two complete files and returns 0/1",
+        "Runtime failure guaranteed: Function will receive 1 argument when it expects 2, causing immediate failure",
+        "Incomplete coverage: Instruction requires centering the image, but evaluator explicitly disables alignment checking (check_alignment: false) and metadata admits it cannot verify centering",
+        "Semantic mismatch: Need a validation function like 'has_image(docx_file, rules)' not a comparison function like 'compare_docx_images(file1, file2)'"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Use a different metric function that validates single file for image presence, not compares two files",
+        "If using compare_docx_images, provide a reference file via get_cloud_file or create expected docx with image",
+        "Create new metric function like 'check_docx_has_image(docx_file, rules)' that validates image presence in single file",
+        "To verify centering: create metric function that checks image paragraph alignment == WD_PARAGRAPH_ALIGNMENT.CENTER",
+        "Fix expected structure to match the metric function's actual signature and behavior"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

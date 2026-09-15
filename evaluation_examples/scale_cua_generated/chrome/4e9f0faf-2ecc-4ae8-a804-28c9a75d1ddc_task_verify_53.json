@@ -1,0 +1,160 @@
+{
+  "id": "4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc",
+  "new_id": "task_verify_53",
+  "snapshot": "chrome",
+  "instruction": "Retrieve the invoice.pdf from Google Drive, extract the table with all services and costs, then create a spreadsheet 'invoice.xlsx' on the Desktop. Find the maximum unit price among all services and record it in cell D10.",
+  "source": "https://marketplace.uipath.com/listings/extract-data-from-a-new-invoice-file-in-google-drive-and-store-it-in-google-sheets4473",
+  "config": [
+    {
+      "type": "googledrive",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/googledrive/settings.yml",
+        "operation": [
+          "delete",
+          "upload"
+        ],
+        "args": [
+          {
+            "query": "title = 'invoice.pdf'",
+            "trash": false
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc/invoice.pdf",
+            "path": [
+              "invoice.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://news.google.com",
+          "https://x.com"
+        ]
+      }
+    },
+    {
+      "type": "login",
+      "parameters": {
+        "settings_file": "evaluation_examples/settings/google/settings.json",
+        "platform": "googledrive"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "libreoffice_calc",
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "invoice.xlsx"
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import pyautogui; import time; time.sleep(0.5); pyautogui.hotkey('ctrl', 's'); time.sleep(1)"
+          ]
+        }
+      }
+    ],
+    "func": "check_xlsx_combined__0678777a",
+    "result": {
+      "type": "xlsx_cell__0678777a",
+      "func": "get_xlsx_combined_data__0678777a",
+      "file_path": "/home/user/Desktop/invoice.xlsx",
+      "sheet": 0,
+      "cell": "D10"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "min_rows": 6,
+        "min_cols": 3,
+        "required_services": [
+          "web design",
+          "consulting",
+          "development",
+          "training"
+        ],
+        "cell_value": 500.0,
+        "tolerance": 0.01
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding the maximum unit price. Verified: Web Design Services at $500 is the highest. The evaluator uses a composite check: (1) verifies invoice.xlsx exists with complete table data including service names, and (2) checks cell D10 contains the correct maximum value 500.0.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_2/getters/calc.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/4e9f0faf-2ecc-4ae8-a804-28c9a75d1ddc_task_verify_2/metrics/calc.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "scoring_breakdown": "1.0 if BOTH conditions met: (1) invoice.xlsx exists on Desktop with ≥6 rows, ≥3 columns, and contains key service names from PDF; AND (2) cell D10 contains 500.0 (±0.01). 0.0 otherwise.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Incomplete verification coverage: Instruction requires multiple steps (retrieve PDF, extract table, create spreadsheet, find max, record in D10), but evaluator only verifies final value in cell D10",
+        "Missing verification: Does not check that invoice.xlsx file was actually created on Desktop",
+        "Missing verification: Does not verify that table data was extracted from invoice.pdf",
+        "Missing verification: Does not verify that all services and costs are present in the spreadsheet",
+        "Weak verification: Task could pass by simply typing 500 into cell D10 without actually completing the PDF extraction and table creation steps",
+        "Expected value is correct (500.0 is the maximum unit price according to metadata)",
+        "Getter logic is correct: properly extracts cell D10 value from invoice.xlsx using openpyxl with data_only=True",
+        "Metric logic is correct: properly compares numeric values with tolerance",
+        "Postconfig is appropriate: activates window and saves file to ensure state is accessible"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification for file existence: Check that /home/user/Desktop/invoice.xlsx exists",
+        "Add verification for table completeness: Check that spreadsheet contains expected number of rows/columns with service data",
+        "Add verification for data extraction: Verify that key services from the PDF are present in the spreadsheet (e.g., check for specific service names)",
+        "Consider adding checks for spreadsheet structure: Verify headers or column labels match expected invoice format",
+        "Alternative approach: Use multi-step evaluator with partial credit for each verified requirement"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  },
+  "proxy": true,
+  "fixed_ip": true,
+  "possibility_of_env_change": "low"
+}

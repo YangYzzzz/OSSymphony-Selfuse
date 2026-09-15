@@ -1,0 +1,108 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "37887e8c-da15-4192-923c-08fa390a176d_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Move all files from /tmp/test_files/new_files/ into /tmp/test_files/old_files/",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "ls",
+        "/tmp/test_files/old_files/"
+      ],
+      "shell": false
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "old_file1.txt",
+          "old_file2.txt",
+          "new_file1.txt",
+          "new_file2.txt"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_os_37887e8c-da15-4192-923c-08fa390a176d_sid_1488151",
+    "trajectory_success_score": 0.0,
+    "trajectory_summary": "Agent used find with -mtime 30 to locate old files, then used tar -czvf to create a single archive. The task expected individual file compression (gzip), not a tar bundle.",
+    "capability_extraction": "Can use terminal, find command with -mtime flag, tar, ls, redirect output, verify file existence",
+    "failure_analysis": "Model used tar -czvf to create a single archive instead of compressing each file individually with gzip. The evaluator expected individual .gz files in-place, not a tar.gz bundle.",
+    "task_rationale": "Tests basic file moving capability using mv command, which is simpler than compression and within model's demonstrated terminal skills",
+    "explanation": "Task requires moving files from new_files/ to old_files/ directory. Evaluator checks that old_files/ directory contains all 4 files (2 original + 2 moved) using check_include_exclude on ls output.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "scoring_breakdown": {
+      "files_moved": "1.0 - old_files directory contains all 4 files"
+    },
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.8,
+      "llm_judge_reasons": [
+        "Getter correctly runs 'ls /tmp/test_files/old_files/' to list destination directory contents",
+        "Metric check_include_exclude correctly verifies all 4 expected files (old_file1.txt, old_file2.txt, new_file1.txt, new_file2.txt) are present in ls output via substring matching",
+        "Parameter handling is correct: check_include_exclude receives the rules dict directly and accesses include/exclude keys properly",
+        "Minor coverage gap: evaluator does not verify that /tmp/test_files/new_files/ is empty after the move, so a copy (cp) operation would also pass the check instead of only a move (mv)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add a second evaluator step that checks /tmp/test_files/new_files/ is empty (e.g., ls output should not contain new_file1.txt or new_file2.txt) to distinguish move from copy"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

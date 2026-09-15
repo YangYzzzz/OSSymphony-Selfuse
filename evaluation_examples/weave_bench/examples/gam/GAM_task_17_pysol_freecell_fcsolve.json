@@ -1,0 +1,85 @@
+{
+  "id": "GAM_task_17_pysol_freecell_fcsolve",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: `/tmp_workspace/exec/deal_seed.txt` gives a fixed Microsoft FreeCell deal number,\nwith content `MS_DEAL_NUMBER=617`. The same deal number determines the 52-card layout for both the\nPySolFC FreeCell game and the solver input. The goal is to read this deal, generate and verify the\n8-column FreeCell initial board, confirm that the board shown in PySolFC matches the solver's board,\nproduce a structured solution, execute enough moves to win, and cross-check the whole process using\nPySolFC configuration, statistics files, and image evidence.\n\nWrite the following artifacts under `/tmp_workspace/results/`, preserving the field names and file names:\n\n- `deal_seed.json`: JSON object containing `ms_deal_number` and `source`; `ms_deal_number` should come from\n  `/tmp_workspace/exec/deal_seed.txt`, with value 617.\n- `board.txt`: 8 lines of FreeCell initial board text; 52 mutually distinct card tokens in total, in the format\n  `(A|2-9|T|J|Q|K)(C|D|H|S)`.\n- `board_verify.json`: JSON object containing `rows`, `tokens_total`, `is_full_deck`, `row_tokens`,\n  used to prove that `board.txt` is a complete deck.\n- `view_pysol_initial.png`: image evidence showing the initial PySolFC FreeCell deal #617; `FreeCell`\n  together with `617` or `#617` should be recognizable.\n- `pysol_options.json`: JSON object containing `options_path`, `last_gameid`,\n  `last_game_number`, `fc_game_id_known`; `last_game_number` should be 617.\n- `board_seen.json`: JSON object containing `cascades` and `ocr_confidence_per_card`; `cascades`\n  is a list of 8 lists, each column has roughly 6 to 8 cards, and card tokens use the same encoding as `board.txt`.\n- `board_match.json`: JSON object containing `total`, `matched`, `mismatched`; each `mismatched`\n  entry contains `row,col,solver,seen`. `matched / total` should be at least 0.85.\n- `solution.json`: JSON object containing `moves_total` and `moves`; `moves_total` at least 60.\n  Each `moves` entry contains `step,kind,from,to,card`; `kind` is one of\n  `stack_to_foundation`, `stack_to_freecell`, `freecell_to_foundation`, `stack_to_stack`,\n  `freecell_to_stack`.\n- `fcsolve_raw.log`: raw solver output log, at least 100 lines, containing text that proves a solution exists and the total move count.\n- `view_play_5.png`, `view_play_10.png`, `view_play_15.png`, `view_play_20.png`,\n  `view_play_25.png`: image evidence showing progress during execution of the first 25 steps.\n- `play_log.csv`: CSV with columns `step,from,to,card,pre_top,post_top,screenshot`; at least 25 rows.\n- `play_verify.json`: JSON object containing `steps_executed`, `expected_foundations`,\n  `observed_foundations`, `foundation_match`, `freecells_used_observed`; `foundation_match` should be true.\n- `view_pysol_won.png`: image evidence showing the won state; result text such as `won`, `congrat`, `king`,\n  `foundation`, `game won` or `you win` should be visible, or all four foundations completed.\n- `pysol_stats.json`: JSON object containing `stats_path`, `freecell_played`, `freecell_won`,\n  `delta_won_after_run`, `last_won_ts_iso`; `delta_won_after_run` should be at least 1.\n- `move_kind_histogram.json`: JSON object containing `stack_to_foundation`, `stack_to_freecell`,\n  `freecell_to_foundation`, `stack_to_stack`, `freecell_to_stack`, `total`; at least 3 move kinds should be non-zero.\n- `channels.json`: JSON object containing `switches` and `switch_count`; each `switches` entry contains\n  `step,channel,tool`; `switch_count` at least 5, and should reflect switching between at least two categories of evidence sources.\n- `report.json`: JSON object containing `ms_deal_number`, `moves_total`, `moves_executed`,\n  `ocr_match_ratio`, `screenshots`, `channels_used`; `screenshots` lists the initial, in-progress and winning image filenames.\n- `summary.md`: at least 10 lines of Markdown, containing the four keywords `deal 一致性校验`, `求解器输出`,\n  `拖拽执行`, `统计取证`.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_17_pysol_freecell_fcsolve.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_17_pysol_freecell_fcsolve",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "mkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/exec\nwhich tesseract || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq imagemagick tesseract-ocr python3-pil python3-pip) || true\ncommand -v fc-solve >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 install -y -qq freecell-solver-bin 2>/dev/null || true\nfor b in fc-solve make-microsoft-freecell-board; do\n  if [ -x \"/usr/games/$b\" ] && [ ! -e \"/usr/local/bin/$b\" ]; then\n    ln -sf \"/usr/games/$b\" \"/usr/local/bin/$b\" 2>/dev/null || true\n  fi\ndone\npip install -q pillow numpy pytesseract 2>/dev/null || pip3 install -q --break-system-packages pillow numpy pytesseract 2>/dev/null || true",
+        "timeout": 5400
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "gam"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/GAM_task_17_pysol_freecell_fcsolve/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/GAM_task_17_pysol_freecell_fcsolve /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_17_pysol_freecell_fcsolve/reward.py",
+              "path": "/opt/eval/weave_bench/GAM_task_17_pysol_freecell_fcsolve/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/gam/GAM_task_17_pysol_freecell_fcsolve/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/GAM_task_17_pysol_freecell_fcsolve/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/GAM_task_17_pysol_freecell_fcsolve/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/GAM/GAM_task_17_pysol_freecell_fcsolve.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/GAM/task_17_pysol_freecell_fcsolve",
+    "workspace_relative": "GAM/task_17_pysol_freecell_fcsolve",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

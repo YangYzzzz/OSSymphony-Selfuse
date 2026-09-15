@@ -1,0 +1,109 @@
+{
+  "id": "10a730d5-d414-4b40-b479-684bed1ae522",
+  "new_id": "10a730d5-d414-4b40-b479-684bed1ae522_traj_verify_2",
+  "snapshot": "thunderbird",
+  "instruction": "Switch Thunderbird's theme to the Light theme.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "extensions.activeThemeID": {
+            "method": "re",
+            "ref": "light"
+          }
+        }
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_thunderbird_10a730d5-d414-4b40-b479-684bed1ae522_sid_1488450",
+    "trajectory_success_score": 1.0,
+    "trajectory_summary": "Agent successfully enabled dark mode in Thunderbird by navigating hamburger menu -> Settings -> Add-ons and Themes -> Themes -> clicked Enable on Dark theme. Completed in 7 turns.",
+    "capability_extraction": "Can navigate Thunderbird menus, open Settings, browse Add-ons Manager, interact with UI buttons and checkboxes, scroll through settings pages",
+    "task_rationale": "Agent navigated to Add-ons Manager > Themes and enabled Dark theme. Enabling Light theme instead is a direct variation using the exact same navigation path but selecting a different option.",
+    "explanation": "Task requires switching to Light theme via Add-ons Manager > Themes. Evaluator checks prefs.js for extensions.activeThemeID matching 'light' via regex.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "variation_index": 2,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Instruction requires switching to Light theme; evaluator checks extensions.activeThemeID in prefs.js for regex match 'light' - correctly identifies the Light theme",
+        "Getter (get_vm_file) fetches the correct prefs.js file from the Thunderbird profile directory",
+        "Metric (check_thunderbird_prefs) correctly parses prefs.js line by line and matches preference keys against expected rules",
+        "Expected rules structure matches what check_thunderbird_prefs expects: metric receives rules dict directly (type='rule') and accesses rule.get('expect', {}) correctly",
+        "Postconfig closes Thunderbird window before reading prefs.js, ensuring preferences are flushed to disk",
+        "Single-step instruction with complete verification coverage"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

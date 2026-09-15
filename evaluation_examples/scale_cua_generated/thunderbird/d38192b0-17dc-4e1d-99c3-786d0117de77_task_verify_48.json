@@ -1,0 +1,177 @@
+{
+  "id": "d38192b0-17dc-4e1d-99c3-786d0117de77",
+  "new_id": "task_verify_48",
+  "snapshot": "thunderbird",
+  "instruction": "Add 'finance@outlook.com' as a CC recipient to the email draft and save it.",
+  "source": "https://support.mozilla.org/en-US/kb/compose-new-messages",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/invoice0123456789.pdf",
+            "path": "/home/user/aws-bill.pdf"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/d38192b0-17dc-4e1d-99c3-786d0117de77/New-month%20AWS%20Bill.html",
+            "path": "/home/user/.aws-bill-mail-body.html"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',to=assistant@outlook.com,subject='New-month AWS Bill',body='$(cat /home/user/.aws-bill-mail-body.html)'\"",
+        "shell": true
+      }
+    }
+  ],
+  "trajectory": "trajectories/d088f539-cab4-4f9a-ac92-9999fc3a656e",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "download",
+        "parameters": {
+          "files": [
+            {
+              "url": "https://files.pythonhosted.org/packages/ee/58/257350f7db99b4ae12b614a36256d9cc870d71d9e451e79c2dc3b23d7c3c/cssselect-1.3.0-py3-none-any.whl",
+              "path": "/home/user/cssselect-1.3.0-py3-none-any.whl"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "pip",
+            "install",
+            "/home/user/cssselect-1.3.0-py3-none-any.whl"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "sleep",
+            "2"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "xdotool",
+            "key",
+            "ctrl+s"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "sleep",
+            "3"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "xdotool",
+            "key",
+            "ctrl+w"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "sleep",
+            "5"
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python3",
+            "-c",
+            "import os; import re; import time; profile_dir = os.path.expanduser('~/.thunderbird'); profiles = [d for d in os.listdir(profile_dir) if d.endswith('.default')]; draft_file = os.path.join(profile_dir, profiles[0], 'ImapMail/outlook.office365.com/Drafts') if profiles else None; result = 'Profile not found'; \nif draft_file and os.path.exists(draft_file):\n    content = open(draft_file, 'r', errors='ignore').read()\n    if not content.strip():\n        result = 'Draft file empty - save may not have completed'\n    else:\n        cc_fields = re.findall(r'^Cc: (.+)$', content, re.MULTILINE)\n        if any('finance@outlook.com' in c for c in cc_fields):\n            result = 'CC added!'\n        else:\n            result = 'CC not added'\nelse:\n    result = 'Draft file not found'\nprint(result)"
+          ],
+          "stdout": "cc-check.output"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "cc-check.output"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "CC added!"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires adding a CC recipient to the email. Evaluator checks if 'finance@outlook.com' appears in the Cc field of the draft. Similar difficulty to original task (adding one field vs adding one attachment).",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Evaluator semantically checks the correct requirement: verifies that 'finance@outlook.com' appears in the CC field of the saved draft",
+        "Expected value is semantically correct: 'CC added!' confirms the CC field was properly added",
+        "Postconfig provides reasonable timing: 10 seconds total wait (2s after save + 3s + 5s) should handle most IMAP sync scenarios",
+        "Python script has basic error handling for missing files and empty content",
+        "MINOR CONCERN: Verification method relies on Thunderbird's internal IMAP mbox file format, which could change or have variable sync timing in edge cases",
+        "MINOR CONCERN: No explicit verification that Ctrl+S save operation succeeded before checking the draft file"
+      ],
+      "llm_judge_fix_suggestions": [
+        "OPTIONAL: Add file modification time check to verify that the draft file was recently updated before reading it",
+        "OPTIONAL: Add retry logic to the Python script to check multiple times with small delays if the file is empty",
+        "OPTIONAL: Consider using accessibility tree to verify CC field in the compose window before closing it as a primary check"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

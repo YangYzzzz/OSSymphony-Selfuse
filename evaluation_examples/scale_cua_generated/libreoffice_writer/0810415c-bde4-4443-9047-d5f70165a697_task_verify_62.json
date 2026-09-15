@@ -1,0 +1,98 @@
+{
+  "id": "0810415c-bde4-4443-9047-d5f70165a697",
+  "new_id": "task_verify_62",
+  "snapshot": "libreoffice_writer",
+  "instruction": "Center-align the second paragraph of the document",
+  "source": "https://www.youtube.com/watch?v=Q_AaL6ljudU",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_writer/0810415c-bde4-4443-9047-d5f70165a697/Novels_Intro_Packet.docx",
+            "path": "/home/user/Desktop/Novels_Intro_Packet.docx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Desktop/Novels_Intro_Packet.docx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_writer"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "Novels_Intro_Packet.docx - LibreOffice Writer",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; import time; pyautogui.hotkey('ctrl', 's'); time.sleep(0.5); "
+          ]
+        }
+      }
+    ],
+    "func": "check_para_alignment__35d261b0",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Desktop/Novels_Intro_Packet.docx",
+      "dest": "Novels_Intro_Packet.docx"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "para_index": 2,
+        "alignment": "CENTER"
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires center-aligning paragraph index 2 (second non-empty paragraph). Evaluator checks that paragraph alignment is set to CENTER using docx.enum.text.WD_PARAGRAPH_ALIGNMENT.CENTER.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1219/run_20251219_001840/tmp_funcs/0810415c-bde4-4443-9047-d5f70165a697_task_verify_2/metrics/docs.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "CRITICAL: Paragraph index mismatch - instruction says 'second paragraph' but evaluator uses para_index=2 (third paragraph in 0-based indexing)",
+        "The instruction requires checking the second paragraph (index 1), but expected.rules.para_index is set to 2, which is the third paragraph",
+        "The metadata explanation incorrectly claims 'paragraph index 2 (second non-empty paragraph)' but the code at docs.py:49 directly accesses doc.paragraphs[para_index] without any logic to skip empty paragraphs or count only non-empty ones",
+        "python-docx's doc.paragraphs includes ALL paragraphs (empty and non-empty), so index 2 is simply the third element in the list, not the 'second non-empty paragraph'",
+        "This semantic error will cause the evaluator to verify the wrong paragraph, making it unable to correctly determine if the task was completed"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected.rules.para_index from 2 to 1 to match 'second paragraph' in 0-based indexing",
+        "If the intention is truly to check the 'second non-empty paragraph', the metric function needs to be rewritten to filter out empty paragraphs before indexing (e.g., non_empty_paras = [p for p in doc.paragraphs if p.text.strip()]; then check non_empty_paras[1])",
+        "Update the metadata explanation to accurately reflect what the code actually does"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

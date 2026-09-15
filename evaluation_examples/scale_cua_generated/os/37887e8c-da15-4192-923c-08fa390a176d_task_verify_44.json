@@ -1,0 +1,104 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_44",
+  "snapshot": "os",
+  "instruction": "Rename all files in the \"/tmp/test_files\" directory tree that were last modified 30 days ago by adding a \".old\" suffix to their filenames",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/os/37887e8c-da15-4192-923c-08fa390a176d/setup.sh",
+            "path": "setup.sh"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "chmod +x setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "./setup.sh",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'OLD_WITH_SUFFIX=$(find /tmp/test_files/old_files -type f -name \"*.old\" 2>/dev/null | wc -l); OLD_WITHOUT=$(find /tmp/test_files/old_files -type f ! -name \"*.old\" 2>/dev/null | wc -l); NEW_WITHOUT=$(find /tmp/test_files/new_files -type f ! -name \"*.old\" 2>/dev/null | wc -l); if [ \"$OLD_WITH_SUFFIX\" -eq 2 ] && [ \"$OLD_WITHOUT\" -eq 0 ] && [ \"$NEW_WITHOUT\" -eq 2 ]; then echo \"Success: Old files renamed with .old suffix, new files unchanged\"; else echo \"Fail: OLD_WITH=$OLD_WITH_SUFFIX OLD_WITHOUT=$OLD_WITHOUT NEW=$NEW_WITHOUT\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: Old files renamed with .old suffix, new files unchanged"
+        ],
+        "exclude": [
+          "Fail:"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "explanation": "Task requires renaming old files (30+ days) by adding .old suffix while keeping new files unchanged. Verification checks that 2 files with .old suffix exist in old_files directory, 0 files without suffix in old_files, and 2 files without suffix in new_files. Uses existing check_include_exclude metric with vm_command_line getter.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.6,
+      "llm_judge_reasons": [
+        "Directory structure assumption not in instruction: evaluator assumes specific subdirectories (old_files/, new_files/) that are not mentioned in the instruction which only says '/tmp/test_files directory tree'",
+        "Hardcoded file counts: evaluator checks for exactly 2 old files and 2 new files, which is a hardcoded assumption about the test environment setup rather than general task verification",
+        "No verification of '30 days ago' criterion: evaluator does not verify that files were actually modified 30 days ago, only checks directory structure and file counts",
+        "Environment-specific verification: evaluator verifies setup script output rather than actual task completion logic - brittle and not semantically aligned with instruction",
+        "Positive: bash command syntax is correct and check_include_exclude metric is appropriate for checking command output"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Align evaluator with instruction: either update instruction to explicitly mention old_files/ and new_files/ subdirectories, or make evaluator check all files in /tmp/test_files recursively",
+        "Add verification of modification time: evaluator should verify that renamed files actually had modification times 30+ days ago, not just check directory structure",
+        "Make verification dynamic: instead of hardcoding counts (2 old, 2 new), verify that ALL files older than 30 days have .old suffix and ALL files newer than 30 days do not",
+        "Consider using find command with -mtime +30 to actually verify the 30-day criterion in the evaluator logic"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "aa3a8974-2e85-438b-b29e-a64df44deb4b",
+  "new_id": "task_verify_62",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Resize the cells in this attendance spreadsheet to make them fit onto one printed page, then convert to PDF. Use the original spreadsheet filename for the PDF and place it in /home/user/.",
+  "source": "https://www.quora.com/Libre-Office-Calc-How-do-I-resize-all-cells-in-a-sheet-to-make-them-fit-to-1-page-for-printing-and-exporting-as-PDF",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/aa3a8974-2e85-438b-b29e-a64df44deb4b/Resize_Cells_Fit_Page.xlsx",
+            "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/Resize_Cells_Fit_Page.xlsx"
+      }
+    }
+  ],
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "func": "check_pdf_pages",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/Resize_Cells_Fit_Page.pdf",
+      "dest": "Resize_Cells_Fit_Page.pdf"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "relation": "eq",
+        "ref_value": 1,
+        "verify_content": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Attendance-specific context mention. Single-page PDF requirement with size verification.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "hash_suffix": "6449eed7",
+    "verification_details": "Uses existing check_pdf_pages metric to verify: (1) PDF file exists at /home/user/Resize_Cells_Fit_Page.pdf, (2) PDF has exactly 1 page (relation=eq, ref_value=1), (3) PDF file size > 10KB (verify_content=True). No custom functions needed as check_pdf_pages is already available in desktop_env.evaluators.metrics.pdf.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Image verification logic is incorrect for spreadsheet-to-PDF conversion: check_pdf_pages with verify_content=true expects images in PDF (src/envs/osworld_env/desktop_env/evaluators/metrics/pdf.py:46-58), but LibreOffice Calc exports spreadsheets as text/vector graphics, not images",
+        "The evaluator will likely fail with false negatives: correctly generated PDFs from spreadsheets will return 0.0 because they lack images, even though they contain valid spreadsheet content",
+        "Page count verification (1 page) is correct and aligns with instruction requirement 'fit onto one printed page'",
+        "File path verification is correct: /home/user/Resize_Cells_Fit_Page.pdf matches expected filename derived from original .xlsx",
+        "File existence and size checks (>10KB) are appropriate, but insufficient due to incorrect image verification"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Remove verify_content flag or set to false, since the image check is inappropriate for spreadsheet PDFs",
+        "Alternative: Modify check_pdf_pages to verify text/vector content instead of images when verify_content=true, or add a new parameter like verify_content_type='text' or 'images'",
+        "Consider adding text extraction verification to ensure PDF contains actual spreadsheet content, not just checking for images",
+        "The core logic (1 page check + file existence) is sound, but the content verification method is semantically wrong for this use case"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_pdf_pages first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

@@ -1,0 +1,102 @@
+{
+  "id": "480bcfea-d68f-4aaa-a0a9-2589ef319381",
+  "new_id": "task_verify_55",
+  "snapshot": "chrome",
+  "instruction": "The smooth scrolling feature in Chrome makes me dizzy. Can you disable the smooth scrolling experiment for me?",
+  "source": "https://bugartisan.medium.com/disable-the-new-chrome-ui-round-in-2023-db168271f71e",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "check_enabled_experiments",
+    "result": {
+      "type": "enabled_experiments"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "type": "names",
+        "names": [
+          "smooth-scrolling"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires disabling the smooth scrolling experiment (smooth-scrolling) in Chrome flags. Uses existing evaluator infrastructure. Same difficulty as original - single experiment flag modification.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.0,
+      "llm_judge_reasons": [
+        "Critical semantic error: Expected value logic is inverted - instruction says 'DISABLE' the experiment but evaluator checks if 'smooth-scrolling' IS in the enabled list",
+        "When disabling an experiment, it should be REMOVED from enabled_labs_experiments list (expected should be empty list [] or explicitly exclude 'smooth-scrolling')",
+        "The metric check_enabled_experiments compares if enabled_experiments_names == ['smooth-scrolling'], which verifies the experiment IS enabled, not disabled",
+        "This evaluator will fail when the task is correctly completed (experiment disabled) and pass when the task fails (experiment still enabled)"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected.rules.names from ['smooth-scrolling'] to [] (empty list) to verify the experiment was removed from enabled list",
+        "Or modify the metric to check that 'smooth-scrolling' is NOT in the enabled_experiments_names list",
+        "Or change the instruction to say 'enable' instead of 'disable' to match the current expected value (but this would change the task semantics)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

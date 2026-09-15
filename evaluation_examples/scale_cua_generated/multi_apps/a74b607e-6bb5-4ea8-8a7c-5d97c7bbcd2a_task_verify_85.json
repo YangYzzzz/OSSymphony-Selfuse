@@ -1,0 +1,112 @@
+{
+  "id": "a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a",
+  "new_id": "task_verify_85",
+  "snapshot": "multiapps",
+  "instruction": "I have a zipped Chrome extension on the Desktop that needs to be installed. Please extract it and load the unpacked extension from the Desktop/helloExtension folder into Chrome.",
+  "source": "https://support.google.com/chrome/thread/205881926/it-s-possible-to-load-unpacked-extension-automatically-in-chrome?hl=en",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a/Hello%20Extension.zip",
+            "path": "/home/user/Desktop/helloExtension.zip"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt-get update -y && echo {CLIENT_PASSWORD} | sudo -S apt-get install unzip -y && unzip /home/user/Desktop/helloExtension.zip -d /home/user/Desktop/ && rm /home/user/Desktop/helloExtension.zip",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome",
+    "os"
+  ],
+  "evaluator": {
+    "func": "check_extension_folder_exists__ae6416e4",
+    "result": {
+      "type": "extension_folder_exists__ae6416e4",
+      "folder_path": "/home/user/Desktop/helloExtension"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "description": "Verifies both folder extraction and Chrome extension installation",
+        "required_checks": [
+          "folder_exists: Extension folder must exist at /home/user/Desktop/helloExtension",
+          "extension_installed: Extension must be loaded into Chrome (verified via Preferences file)"
+        ]
+      }
+    },
+    "postconfig": [
+      {
+        "type": "navigate_to_chrome_extensions",
+        "description": "Navigate to chrome://extensions to ensure UI is ready for verification",
+        "actions": [
+          {
+            "type": "open_url",
+            "url": "chrome://extensions"
+          }
+        ]
+      }
+    ]
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires extracting and installing an unpacked Chrome extension. The evaluator verifies that the extension folder exists at /home/user/Desktop/helloExtension. Custom getter checks folder existence using bash command on VM. Metric returns 1.0 if folder exists.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_9/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/a74b607e-6bb5-4ea8-8a7c-5d97c7bbcd2a_task_verify_9/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "Complete verification coverage: Evaluator correctly verifies BOTH requirements (1. folder extraction via folder_exists check, 2. Chrome extension installation via Preferences file check)",
+        "Correct getter logic: Getter checks folder existence using bash command AND verifies extension is loaded by reading Chrome Preferences file (/home/user/.config/google-chrome/Default/Preferences)",
+        "Correct metric logic: Metric returns 1.0 only when BOTH folder_exists=True AND extension_installed=True, correctly implementing conjunctive verification",
+        "Robust implementation: Getter handles different OS types (Windows, Darwin, Linux) with appropriate Preferences file paths",
+        "State accessibility: Chrome Preferences file is accessible post-task execution and reliably indicates extension installation status"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor optimization: The postconfig navigates to chrome://extensions but the getter doesn't use the page content (it reads Preferences file directly). The postconfig could be removed unless needed for other reasons.",
+        "Consider adding expected.rules.extension_name or extension_id to verify the correct extension was loaded (current implementation just checks if folder path appears in any extension)"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

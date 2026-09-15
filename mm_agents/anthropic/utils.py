@@ -143,22 +143,23 @@ def truncate_images_for_context(
 
 
 def _merge_thinking_and_text(blocks: list[dict]) -> str:
-    """将本轮 assistant 的 thinking + text block 合并为 <think>...</think> 包裹的字符串。"""
+    """Merge thinking summaries and text before the first tool call."""
     pieces: list[str] = []
     for b in blocks:
         if not isinstance(b, dict):
             continue
         b_type = b.get("type")
+        if b_type == "tool_use":
+            break
         if b_type == "thinking":
-            val = b.get("thinking") or ""
-            pieces.append(str(val))
+            val = str(b.get("thinking") or "").strip()
         elif b_type == "text":
-            val = b.get("text") or ""
-            pieces.append(str(val))
-    merged = "".join(pieces).strip()
-    if not merged:
-        return ""
-    return f"{merged}" # TODO: 是否添加 <think> tag 有待探究
+            val = str(b.get("text") or "").strip()
+        else:
+            continue
+        if val:
+            pieces.append(val)
+    return "\n".join(pieces).strip()
 
 def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any] | List[Dict[str, Any]]:
     """
@@ -180,6 +181,7 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
         scroll_direction = tool_input.get("scroll_direction")
         scroll_amount = tool_input.get("scroll_amount") or 0
         duration = tool_input.get("duration") or 0.5
+        repeat = max(1, int(tool_input.get("repeat") or 1))
 
         # 鼠标相关
         if action in {"left_press", "left_click"}:
@@ -246,6 +248,8 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
 
             if keys:
                 q_args["keys"] = keys
+                if repeat > 1:
+                    q_args = [deepcopy(q_args) for _ in range(repeat)]
 
         elif action in {"type"}:
             q_args["action"] = "type"
@@ -273,10 +277,8 @@ def _convert_claude_action_to_qwen(tool_name: str, tool_input: Dict[str, Any]) -
         elif action in {"wait"}:
             q_args["action"] = "wait"
             q_args["time"] = duration
-        # 非第一步的 screenshot 一律作为 wait 处理
         elif action in {"screenshot"}:
-            q_args["action"] = "wait"
-            q_args["time"] = 2
+            return []
         elif action in {"done"}:
             q_args["action"] = "terminate"
             q_args["status"] = "success"
@@ -403,27 +405,36 @@ def build_qwen_messages_from_claude(
                     continue
                 tool_id = str(b.get("id")) if b.get("id") is not None else None
                 tool_name = b.get("name", "")
-                tool_input = b.get("input") or {}
+                tool_input = deepcopy(b.get("input") or {})
 
-                if tool_input.get("coordinate"):
-                    tool_input["coordinate"] = scale_coordinate_to_1000(tool_input.get("coordinate"), screen_size)
-                if tool_input.get("start_coordinate"):
-                    tool_input["start_coordinate"] = scale_coordinate_to_1000(tool_input.get("start_coordinate"), screen_size)
-                    
-                converted_args = _convert_claude_action_to_qwen(tool_name, tool_input)
-                if not isinstance(converted_args, list):
-                    converted_args = [converted_args]
-                for arg in converted_args:
-                    payload = {
-                        "name": "custom_computer_use", # qwen3vl 固定为该一个工具, 下包含所有可用操作分支
-                        "arguments": arg,
-                    }
-                    qwen_messages.append(
-                        {
-                            "role": "tool_call",
-                            "content": json.dumps(payload, ensure_ascii=False),
+                tool_inputs = []
+                if tool_name == "computer" and isinstance(tool_input.get("actions"), list):
+                    for sub_input in tool_input.get("actions") or []:
+                        if isinstance(sub_input, dict) and sub_input.get("action") != "screenshot":
+                            tool_inputs.append(deepcopy(sub_input))
+                elif tool_input.get("action") != "screenshot":
+                    tool_inputs.append(tool_input)
+
+                for single_tool_input in tool_inputs:
+                    if single_tool_input.get("coordinate"):
+                        single_tool_input["coordinate"] = scale_coordinate_to_1000(single_tool_input.get("coordinate"), screen_size)
+                    if single_tool_input.get("start_coordinate"):
+                        single_tool_input["start_coordinate"] = scale_coordinate_to_1000(single_tool_input.get("start_coordinate"), screen_size)
+
+                    converted_args = _convert_claude_action_to_qwen(tool_name, single_tool_input)
+                    if not isinstance(converted_args, list):
+                        converted_args = [converted_args]
+                    for arg in converted_args:
+                        payload = {
+                            "name": "custom_computer_use", # qwen3vl 固定为该一个工具, 下包含所有可用操作分支
+                            "arguments": arg,
                         }
-                    )
+                        qwen_messages.append(
+                            {
+                                "role": "tool_call",
+                                "content": json.dumps(payload, ensure_ascii=False),
+                            }
+                        )
 
     return qwen_messages
 
@@ -432,7 +443,8 @@ def build_qwen_sft_sample(
     messages: list[BetaMessageParam],
     screen_size: tuple[int, int],
     image_hash_map: dict[str, str],
-    image_root_dir: Path
+    image_root_dir: Path,
+    max_history_images: int = 5,
 ) -> tuple[dict, dict[str, str]]:
     """构造单步 Qwen3VL SFT 训练样本。
     一个典型的Claude数据(messages)如下所示 (重要重要重要):
@@ -466,8 +478,13 @@ def build_qwen_sft_sample(
                 continue
             if b.get("type") != "tool_use":
                 continue
-            tool_name = b.get("input", {}).get("action", "")
-            if tool_name == "screenshot":
+            tool_input = b.get("input", {}) or {}
+            tool_name = tool_input.get("action", "")
+            batched_actions = tool_input.get("actions", [])
+            if tool_name == "screenshot" or any(
+                isinstance(a, dict) and a.get("action") == "screenshot"
+                for a in batched_actions
+            ):
                 exchange_flag = True
         if (
             exchange_flag
@@ -479,7 +496,7 @@ def build_qwen_sft_sample(
     # 后续逻辑都基于 processed_messages
 
     # 1) 截断图片上下文, 保留第一张初始状态图片(小巧思)
-    truncated_messages = truncate_images_for_context(processed_messages, max_images=4)
+    truncated_messages = truncate_images_for_context(processed_messages, max_images=max_history_images) # 调大一点
 
     # 2) 保存图片并拿到文件名列表
     images, image_hash_map = dedup_and_save_images_for_claude(
@@ -554,6 +571,7 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[(APIProvider, str), str] = {
     (APIProvider.ANTHROPIC, "claude-sonnet-4-7"): "claude-sonnet-4-7",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-7-aws"): "claude-sonnet-4-7-aws",
     (APIProvider.ANTHROPIC, "claude-sonnet-4-7-urg"): "claude-sonnet-4-7-urg",
+    (APIProvider.ANTHROPIC, "claude-opus-5"): "claude-opus-5",
 }
 
 
@@ -589,7 +607,6 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 * You are utilising an Ubuntu virtual machine using x86_64 architecture with internet access.
 * You can feel free to install Ubuntu applications with your bash tool. Use curl instead of wget.
 * To open browser, please just click on the Chrome icon.  Note, Chrome is what is installed on your system.
-* Using bash tool you can start GUI applications, but you need to set export DISPLAY=:1 and use a subshell. For example "(DISPLAY=:1 xterm &)". GUI apps run with bash tool will appear within your desktop environment, but they may take some time to appear. Take a screenshot to confirm it did.
 * When using your bash tool with commands that are expected to output very large quantities of text, redirect into a tmp file and use str_replace_editor or `grep -n -B <lines before> -A <lines after> <query> <filename>` to confirm output.
 * When viewing a page it can be helpful to zoom out so that you can see everything on the page.  Either that, or make sure you scroll down to see everything before deciding something isn't available.
 * DO NOT ask users for clarification during task execution. DO NOT stop to request more information from users. Always take action using available tools.
@@ -649,7 +666,7 @@ SYSTEM_PROMPT_WITH_CODE = f"""
 * Treat task completion as requiring explicit verification of the user-requested end state, not just a plausible intermediate state. Before calling DONE, verify the critical constraint fields that define success for this task.
 * If new evidence conflicts with your earlier belief that the task is completed, do not call DONE. Use the conflicting evidence to continue, repair, or re-check the task.
 * When using code to create or modify artifacts, verify not only that the artifact exists, but that its semantics match the instruction: the correct target object was changed, required formatting or values are correct, no obvious side effects were introduced, and the result is visible or effective in the target application when relevant.
-* DO NOT take any screenshot action, and DO NOT produce any reasoning or thought that attempts to obtain, request, or infer the current screen state. A screenshot is already provided to you at every single step — treat the provided image as the definitive and complete view of the current state. Any action or chain-of-thought that implies "let me take a screenshot to check..." or "I need to see the current state first..." is strictly forbidden.
+* A screenshot is already provided at every step. Use ordinary GUI actions directly when the next state is predictable. If you need an explicit fresh observation after a batched sequence, you may end that batch with a screenshot action; it is treated as an observation marker and does not change the desktop state.
 </IMPORTANT>
 """
 
@@ -969,35 +986,27 @@ logger = logging.getLogger("desktopenv.agent")
 def _response_to_params(
     response: BetaMessage,
 ) -> list[BetaContentBlockParam]:
-    res: list[BetaContentBlockParam] = []
-    if response.content:
-        for block in response.content:
-            if isinstance(block, BetaTextBlock):
-                if block.text:
-                    res.append(BetaTextBlockParam(type="text", text=block.text))
+    """Serialize assistant content for the next Messages API turn.
 
-            elif isinstance(block, BetaThinkingBlock) and getattr(block, "type", None) == "thinking":
-                logger.warning(f'出现 thinking block: {block}')
-                # Handle thinking blocks - include signature field
-                thinking_block = {
-                    "type": "thinking",
-                    "thinking": getattr(block, "thinking", None),
-                }
-                if hasattr(block, "signature"):
-                    thinking_block["signature"] = getattr(block, "signature", "[placeholder]")
-                
-                cast_thinking_block = cast(BetaThinkingBlock, thinking_block)
-                cast_thinking_block["signature"] = "[placeholder]" # TODO: 可能需要继续check下
-                logger.warning(f'Thinking block 处理后: {cast_thinking_block}')
-                res.append(cast_thinking_block)
-
-            else:
-                # Handle tool use blocks normally
-                res.append(cast(BetaToolUseBlockParam, block.model_dump()))
-        return res
-    else:
+    Echo every SDK content block back without reconstructing it. In particular,
+    extended/adaptive thinking requires the opaque ``signature`` (and any
+    ``redacted_thinking`` data) to be preserved byte-for-byte between tool-use
+    turns.
+    """
+    if not response.content:
         return []
-    
+
+    res: list[BetaContentBlockParam] = []
+    for block in response.content:
+        if isinstance(block, dict):
+            dumped = dict(block)
+        else:
+            try:
+                dumped = block.model_dump(mode="json", exclude_none=True)
+            except TypeError:
+                dumped = block.model_dump(exclude_none=True)
+        res.append(cast(BetaContentBlockParam, dumped))
+    return res
 
 def _normalize_messages_for_log(messages):
     """将 messages 中的图片内容替换为占位符，避免日志写入大量 base64 图片。"""

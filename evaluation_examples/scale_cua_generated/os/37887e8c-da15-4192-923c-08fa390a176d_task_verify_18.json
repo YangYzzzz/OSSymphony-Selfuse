@@ -1,0 +1,84 @@
+{
+  "id": "37887e8c-da15-4192-923c-08fa390a176d",
+  "new_id": "task_verify_18",
+  "snapshot": "os",
+  "instruction": "Transfer all files from '/tmp/test_files/source' modified in the past 7 days to '/tmp/test_files/recent'.",
+  "source": "NL2Bash",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /tmp/test_files/source /tmp/test_files/recent && touch /tmp/test_files/source/new_file1.txt /tmp/test_files/source/new_file2.log /tmp/test_files/source/old_file1.txt /tmp/test_files/source/old_file2.txt && find /tmp/test_files/source -name 'new_file*' -exec touch -d '5 days ago' {} \\; && find /tmp/test_files/source -name 'old_file*' -exec touch -d '20 days ago' {} \\;",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "os"
+  ],
+  "evaluator": {
+    "postconfig": [],
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": "bash -c 'BASE_DIR=\"/tmp/test_files\"; RECENT_FILES_MOVED=false; recent_count=$(find \"$BASE_DIR/recent\" -type f 2>/dev/null | wc -l); if [ \"$recent_count\" -ge 2 ]; then RECENT_FILES_MOVED=true; fi; OLD_FILES_KEPT=false; old_count=$(find \"$BASE_DIR/source\" -type f 2>/dev/null | wc -l); if [ \"$old_count\" -ge 2 ]; then OLD_FILES_KEPT=true; fi; if $RECENT_FILES_MOVED && $OLD_FILES_KEPT; then echo \"Success: The task was completed correctly.\"; else echo \"Failure: The task was not completed correctly.\"; fi'",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "Success: The task was completed correctly."
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task variation that requires moving files modified within last 7 days to a different directory. Setup creates source directory with new_file* (modified 5 days ago) and old_file* (modified 20 days ago). Evaluator verifies new files are in /recent directory and old files remain in /source directory.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 1,
+    "augmentation_type": "update_evaluator",
+    "verification_details": "The evaluation checks: (1) at least 2 files exist in /tmp/test_files/recent (the moved files), (2) at least 2 files remain in /tmp/test_files/source (the old files that shouldn't be moved). This ensures the agent correctly identified files by modification date and moved only recent ones.",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirements by checking both moved and retained files",
+        "The bash script logic correctly requires at least 2 files in /recent (the 2 new_file* modified 5 days ago) AND at least 2 files in /source (the 2 old_file* modified 20 days ago)",
+        "This logic correctly handles all edge cases: moving all files would fail (0 in source), moving none would fail (0 in recent), moving only some would fail (count < 2 in one directory)",
+        "The check_include_exclude metric correctly verifies the success message is included in the command output",
+        "Complete coverage: evaluator checks both aspects of the instruction (files moved AND files kept based on modification date)",
+        "The expected value structure is correct for type='rule' with include/exclude patterns"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    },
+    "augmented_from": "37887e8c-da15-4192-923c-08fa390a176d_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 1
+  }
+}

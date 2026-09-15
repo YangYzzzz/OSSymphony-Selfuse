@@ -1,0 +1,94 @@
+{
+  "id": "48d05431-6cd5-4e76-82eb-12b60d823f7d",
+  "new_id": "task_verify_46",
+  "snapshot": "os",
+  "instruction": "I ran \"goenv install 1.19.0\" in terminal and received \"goenv: command not found\". Could you help me resolve this so goenv works immediately?",
+  "source": "authors",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "python",
+          "-c",
+          "import pyautogui; import time; time.sleep(0.5); pyautogui.click({SCREEN_WIDTH_HALF}, {SCREEN_HEIGHT_HALF}); time.sleep(0.5); pyautogui.hotkey('ctrl', 'alt', 't'); time.sleep(0.5)"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Terminal"
+      }
+    }
+  ],
+  "trajectory": "trajectories/48d05431-6cd5-4e76-82eb-12b60d823f7d_task_verify_7",
+  "related_apps": [
+    "os",
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "exact_match",
+    "result": {
+      "type": "vm_command_line",
+      "command": "grep -q 'GOENV_ROOT' ~/.bashrc && echo 1 || echo 0",
+      "shell": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "1\n"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires fixing 'goenv: command not found' by adding goenv initialization to ~/.bashrc. Evaluator checks if 'GOENV_ROOT' is present in .bashrc, which indicates goenv has been properly configured. Similar pattern to original conda task.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "verification_notes": "Used existing exact_match metric and vm_command_line getter. Checked for GOENV_ROOT in .bashrc which is the standard goenv configuration pattern.",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.4,
+      "llm_judge_reasons": [
+        "Incomplete verification: Only checks if GOENV_ROOT exists in ~/.bashrc, but doesn't verify goenv is actually installed or working",
+        "Critical requirement not verified: Instruction explicitly requires goenv to 'work immediately', but evaluator doesn't check if goenv command is actually executable in current session",
+        "False positive scenario: Would pass if GOENV_ROOT is added to .bashrc without installing goenv or sourcing the file, leaving the command still broken",
+        "Missing PATH verification: Doesn't check if goenv binaries are in PATH or if the shell configuration has been sourced/reloaded"
+      ],
+      "llm_judge_fix_suggestions": [
+        "Add verification that goenv command is actually executable: use 'which goenv' or 'goenv --version' to confirm it works",
+        "Check if goenv installation exists: verify goenv binary/directory exists on the system",
+        "Verify immediate availability: test that goenv can be run in the current shell session, not just that config exists in .bashrc",
+        "Consider multi-step verification: (1) check goenv is installed, (2) check PATH includes goenv, (3) check current shell can execute goenv"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

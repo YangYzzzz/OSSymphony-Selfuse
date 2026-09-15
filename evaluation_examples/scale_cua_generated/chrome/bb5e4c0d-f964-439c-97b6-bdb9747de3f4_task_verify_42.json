@@ -1,0 +1,98 @@
+{
+  "id": "bb5e4c0d-f964-439c-97b6-bdb9747de3f4",
+  "new_id": "task_verify_42",
+  "snapshot": "chrome",
+  "instruction": "I need to change my browser's search engine to Yahoo. Can you help me set that up?",
+  "source": "https://support.google.com/chrome/answer/95426",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "match_in_list",
+    "result": {
+      "type": "default_search_engine"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": [
+          "Yahoo",
+          "Yahoo!"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires configuring Chrome to use Yahoo as the default search engine. Uses existing getter get_default_search_engine and metric match_in_list to verify the configuration. Accepts both 'Yahoo' and 'Yahoo!' as valid names.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "The getter correctly reads the default search engine from Chrome's Preferences file using the correct JSON path (default_search_provider_data.template_url_data.short_name)",
+        "The metric properly checks if the search engine name matches Yahoo using match_in_list, which handles both 'Yahoo' and 'Yahoo!' variants",
+        "Complete instruction coverage - verifies exactly what the instruction requires (changing browser search engine to Yahoo)",
+        "Postconfig is appropriate and necessary: kills and restarts Chrome to ensure settings are persisted to Preferences file before verification",
+        "Data flow is semantically correct: getter returns string (e.g., 'Yahoo') -> metric compares against list ['Yahoo', 'Yahoo!'] -> returns 1.0 on match",
+        "Expected values are correct and account for common Yahoo name variations in Chrome",
+        "No logic errors, edge cases are handled appropriately (default fallback to 'Google' if setting not found)"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

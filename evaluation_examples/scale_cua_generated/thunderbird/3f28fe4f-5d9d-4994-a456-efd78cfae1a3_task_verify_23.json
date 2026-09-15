@@ -1,0 +1,116 @@
+{
+  "id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+  "new_id": "task_verify_23",
+  "snapshot": "thunderbird",
+  "instruction": "Set up a plain text signature for Thunderbird with your name \"Michael Brown\" and email \"mbrown@company.com\" on separate lines.",
+  "source": "https://www.adsigner.com/user-manual/signatures/setup-email-client-thunderbird/#:~:text=is%20probably%20hidden.-,Right%20click%20on%20the%20empty%20space%20at%20the%20top%20of,signature%20from%20a%20file%20instead.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.htmlSigText": {
+            "method": "re.S",
+            "ref": "Michael Brown\\nmbrown@company.com"
+          }
+        }
+      }
+    },
+    "func": "check_thunderbird_prefs"
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "augmentation_type": "update_evaluator",
+    "original_task_id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+    "variation_index": 2,
+    "explanation": "Signature with email address. Maintains same difficulty level - simple two-line plain text setup.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "verification": "Reuses existing check_thunderbird_prefs metric. Signature text verified to match regex escape requirements for special characters (dots, plus signs).",
+    "validation": {
+      "llm_judge_passed": false,
+      "llm_judge_score": 0.3,
+      "llm_judge_reasons": [
+        "Critical: Incorrect regex escape pattern in expected value. Pattern uses double-escaped newline '\\\\n' but after JSON parsing by check_thunderbird_prefs (line 60: json.loads), the actual stored value will have single newline '\\n'. This mismatch will cause evaluator to always fail even when task is completed correctly.",
+        "Moderate concern: Preference key 'mail.identity.id1.htmlSigText' is typically for HTML signatures, not plain text signatures. The instruction specifically asks for 'plain text signature'. While this may work in some Thunderbird configurations, it's semantically inconsistent with the task requirement.",
+        "Minor: The instruction requests 'on separate lines' which implies a newline character, but the verification pattern semantics don't align with how Thunderbird stores multi-line signatures in prefs.js after the JSON parsing step."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Change expected regex pattern from 'Michael Brown\\\\nmbrown@company.com' to 'Michael Brown\\nmbrown@company.com' (single escaped newline) to match the JSON-parsed value from prefs.js",
+        "Consider verifying the correct Thunderbird preference key for plain text signatures - may need to check if 'htmlSigText' is used for both HTML and plain text, or if a different key like 'sig_file' should be used",
+        "Test the evaluator against an actual Thunderbird prefs.js file to verify the exact format of stored signature values after completing the task"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

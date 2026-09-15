@@ -1,0 +1,126 @@
+{
+  "id": "3299584d-8f11-4457-bf4c-ce98f7600250",
+  "new_id": "task_verify_31",
+  "snapshot": "chrome",
+  "instruction": "There's a home button showing in my Chrome toolbar that I never use and it's taking up space. I want to hide it but I can't figure out how. Can you help?",
+  "source": "https://www.reddit.com/r/techsupport/comments/12zwymy/comment/jhtri65/?utm_source=share&utm_medium=web2x&context=3",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "cd /home/user/.config/google-chrome/Default && jq '. + {\"browser\":{\"show_home_button\": true}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 1
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "socat",
+            "tcp-listen:9222,fork",
+            "tcp:localhost:1337"
+          ]
+        }
+      }
+    ],
+    "func": "check_home_button_disabled__aa9af3d4",
+    "result": {
+      "type": "chrome_show_home_button__aa9af3d4"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected_value": false
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires user to hide the home button from Chrome toolbar. The evaluator checks that show_home_button in browser preferences is set to false. Verified by analyzing Chrome preferences browser settings.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_3/getters/chrome.py",
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/3299584d-8f11-4457-bf4c-ce98f7600250_task_verify_3/metrics/chrome.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true,
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator logic correctly verifies the instruction requirement to hide Chrome home button",
+        "Getter function properly extracts browser.show_home_button setting from Chrome preferences file with correct OS-specific paths",
+        "Metric function correctly handles expected parameter when type='rule' by directly accessing expected.get('expected_value') without incorrectly trying expected.get('rules')",
+        "Expected value (false) is semantically correct - instruction asks to hide button, and false means button is hidden",
+        "Data flow is correct: getter returns boolean -> get_rule returns rules dict -> metric compares result_state with expected.get('expected_value')",
+        "Postconfig appropriately restarts Chrome to ensure preferences are persisted and readable for verification",
+        "Complete coverage: single requirement (hide home button) is fully verified by checking show_home_button setting",
+        "Edge case handling is reasonable: getter defaults to True on error, which matches Chrome's default behavior"
+      ],
+      "llm_judge_fix_suggestions": []
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low"
+}

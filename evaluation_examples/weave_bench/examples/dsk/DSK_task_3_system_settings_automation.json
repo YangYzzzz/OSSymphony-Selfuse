@@ -1,0 +1,85 @@
+{
+  "id": "DSK_task_3_system_settings_automation",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Sandbox note**: the current OSWorld desktop uses fluxbox as its WM, with no gnome-shell daemon running. `gnome-control-center` works, but panels like Online Accounts / Bluetooth / Wi-Fi / the Display \"Keep Resolution\" countdown dialog / the Sound live-device list will segfault or fail to load data without the shell daemon. This task only covers panels that are **actually usable** in the current sandbox.\n\nBackground: you have a clean Ubuntu/GNOME desktop and need to adjust system preferences according to an operations checklist, leaving an auditable trail of evidence.\n\nGoal: complete 10 system-setting adjustments (region & language, input method, Night Light, power, privacy diagnostics, default browser/mail, touchpad, accessibility high contrast, About panel browsing, wallpaper change), export a schema dump, and produce process screenshots as deliverables.\n\n### Hard constraints for the primary deliverable `/tmp_workspace/gsettings_dump.txt`\n- The file must exist and be non-empty.\n- Its contents must cover the schema key/value pairs corresponding to the adjustments made, with the key fields keyword-matchable in the dump (including but not limited to: pinyin input method, night-light enabled, default browser/mail strings, etc.).\n- Recommended one-shot export: `gsettings list-recursively > /tmp_workspace/gsettings_dump.txt` (this read-only command is allowed).\n\n### Supplementary deliverables (under /tmp_workspace/)\n\n| File | Requirements |\n|---|---|\n| `setting_1.png` … `setting_8.png` | 8 process screenshots, one per item from the first 8 entries of the task list, captured when the adjustment completes in the GNOME Settings window; each ≥ 8 KB, resolution ≥ 1024×600, all md5-distinct from each other |\n| `about.png` | Screenshot of the About / System Details panel, ≥ 8 KB; the grader runs OCR, so the image must clearly contain \"about / system\" type text |\n| `background.png` | Screenshot of the Background / Wallpaper panel (including the wallpaper thumbnail picker), ≥ 8 KB; the grader runs OCR, so the image must clearly contain \"wallpaper / background\" type text |\n\n### Task list (10 items)\n\n1. **Region & Language**: switch from English (US) → Chinese (Simplified); timezone Shanghai.\n2. **Keyboard**: add the \"Pinyin\" input method; set the toggle shortcut to `Super+Space`.\n3. **Display → Night Light**: enable, schedule 22:00 to 07:00, color temperature 4000K.\n4. **Power**: screen blank time 15 minutes.\n5. **Privacy → Diagnostics**: disable \"Send technical problem reports\" (report-technical-problems = false).\n6. **Default Applications**: Web → Firefox; Mail → Thunderbird.\n7. **Mouse & Touchpad**: enable tap-to-click + natural scroll.\n8. **Accessibility**: enable high contrast (High Contrast theme).\n9. **About → System Details**: capture `about.png`.\n10. **Background**: change the wallpaper (pick any built-in option from Settings), capture `background.png` (must include the wallpaper thumbnail picker).\n\n### Anti-cheat clause\n`actions.log` must not contain direct CLI-edit commands such as `gsettings set` / `dconf write` / `xdg-mime default`. All setting changes must go through the GUI / normal interaction channels; using read-only commands like `gsettings list-recursively` to export the dump at the end is allowed.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_3_system_settings_automation.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_3_system_settings_automation",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "which gnome-control-center >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gnome-control-center gsettings-desktop-schemas) || true\nwhich ibus >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ibus ibus-pinyin || true\nwhich firefox >/dev/null 2>&1 || which firefox-esr >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq firefox-esr || true\nwhich thunderbird >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq thunderbird || true\nwhich tesseract >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tesseract-ocr tesseract-ocr-chi-sim || true\npython3 -c \"import pytesseract\" 2>/dev/null || pip3 install --quiet pytesseract Pillow || true\nmkdir -p /tmp_workspace",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "dsk"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DSK_task_3_system_settings_automation/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": false,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DSK_task_3_system_settings_automation /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_3_system_settings_automation/reward.py",
+              "path": "/opt/eval/weave_bench/DSK_task_3_system_settings_automation/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/dsk/DSK_task_3_system_settings_automation/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DSK_task_3_system_settings_automation/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DSK_task_3_system_settings_automation/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DSK/DSK_task_3_system_settings_automation.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DSK/task_3_system_settings_automation",
+    "workspace_relative": "DSK/task_3_system_settings_automation",
+    "uses_vlm_helper": false,
+    "has_gt": true
+  }
+}

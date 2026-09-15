@@ -1,0 +1,121 @@
+{
+  "id": "08c73485-7c6d-4681-999d-919f5c32dcfa",
+  "new_id": "task_verify_39",
+  "snapshot": "thunderbird",
+  "instruction": "When I compose emails, I prefer to have my replies appear above the quoted text rather than below. Can you change the reply position setting to put my responses on top?",
+  "source": "https://superuser.com/questions/544480/how-to-apply-automatic-message-filters-to-subfolders-too?noredirect=1&lq=1",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "check_thunderbird_prefs",
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.reply_on_top": {
+            "method": "eq",
+            "ref": 1
+          }
+        },
+        "unexpect": {
+          "mail.identity.id1.reply_on_top": {
+            "method": "eq",
+            "ref": 0
+          }
+        }
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires changing the reply position setting in Thunderbird. The evaluator checks that mail.identity.id1.reply_on_top is set to 1 (reply on top) and ensures it's not set to 0 (reply below). This matches the actual preference key used in this Thunderbird profile. Uses existing check_thunderbird_prefs metric function.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "similarity_to_original": "high - same application, single configuration change with verification",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly checks 'mail.identity.id1.reply_on_top' preference key which matches the Thunderbird profile being used",
+        "Expected value of 1 correctly represents 'reply on top' setting as required by the instruction",
+        "Unexpect rule correctly ensures the setting is not 0 (reply below), preventing false positives from partial completion",
+        "Postconfig appropriately closes Thunderbird window to ensure preferences are written to prefs.js before verification",
+        "Getter (get_vm_file) correctly extracts prefs.js from VM to local cache for metric analysis",
+        "Metric (check_thunderbird_prefs) correctly parses Thunderbird preference format and validates both expect and unexpect rules",
+        "Complete coverage of instruction requirements - single setting change is fully verified",
+        "Static type warning about Union return type is not a semantic issue - metric correctly handles both string path and None cases"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

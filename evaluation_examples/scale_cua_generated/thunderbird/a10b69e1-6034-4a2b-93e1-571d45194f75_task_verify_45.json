@@ -1,0 +1,103 @@
+{
+  "id": "a10b69e1-6034-4a2b-93e1-571d45194f75",
+  "new_id": "task_verify_45",
+  "snapshot": "thunderbird",
+  "instruction": "Set up a local folder in Thunderbird with the name DRAFTS-OLD.",
+  "source": "https://support.mozilla.org/bm/questions/1027435",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "ls",
+            "-R",
+            "/home/user/.thunderbird/t5q2a5hp.default-release/Mail/Local Folders"
+          ],
+          "stdout": "thunder-local-folder.ls"
+        }
+      }
+    ],
+    "func": "check_list",
+    "result": {
+      "type": "cache_file",
+      "path": "thunder-local-folder.ls"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": [
+          "\\bDRAFTS-OLD\\.msf\\b",
+          "\\bDRAFTS-OLD/?(?!\\.msf)"
+        ]
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires creating one local folder (DRAFTS-OLD) in Thunderbird. The evaluator reuses the existing check_list metric function to verify that both the folder file and .msf index file exist using regex patterns. Note: The hyphen in the folder name should work correctly with regex pattern matching.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 2,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Evaluator correctly verifies the instruction requirement to create a local folder named 'DRAFTS-OLD' in Thunderbird",
+        "Postconfig appropriately uses 'ls -R' to list the Thunderbird Local Folders directory and captures output to cache file",
+        "Getter logic correctly uses get_cache_file to read the ls output",
+        "Metric check_list correctly searches for regex patterns line-by-line in the output",
+        "Expected regex patterns are semantically correct: Pattern 1 '\\bDRAFTS-OLD\\.msf\\b' matches the .msf index file, Pattern 2 '\\bDRAFTS-OLD/?(?!\\.msf)' matches the folder file itself while excluding the .msf file using negative lookahead",
+        "Complete coverage: Evaluator checks both required components of a Thunderbird local folder (the folder file and the .msf index file)",
+        "Data flow is correct: ls output -> cache file -> check_list -> regex matching against expected patterns",
+        "No logical edge case issues: The regex patterns will correctly distinguish between the folder file and index file"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

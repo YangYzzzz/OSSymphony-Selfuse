@@ -1,0 +1,114 @@
+{
+  "id": "9656a811-9b5b-4ddf-99c7-5117bcef0626",
+  "new_id": "task_verify_49",
+  "snapshot": "chrome",
+  "instruction": "For testing purposes, I need to disable JavaScript execution in Chrome. Can you turn off JavaScript in the browser settings?",
+  "source": "https://support.google.com/chrome/answer/114662",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "echo {CLIENT_PASSWORD} | sudo -S apt update -y && echo {CLIENT_PASSWORD} | sudo -S apt install jq -y",
+        "shell": true
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": "mkdir -p /home/user/.config/google-chrome/Default && if [ ! -f /home/user/.config/google-chrome/Default/Preferences ]; then echo '{}' > /home/user/.config/google-chrome/Default/Preferences; fi && cd /home/user/.config/google-chrome/Default && jq '. + {\"profile\":{\"default_content_settings\":{\"javascript\":1}}}' Preferences > temp && mv temp Preferences",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "pkill",
+            "chrome"
+          ]
+        }
+      },
+      {
+        "type": "launch",
+        "parameters": {
+          "command": [
+            "google-chrome",
+            "--remote-debugging-port=1337"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 3
+        }
+      }
+    ],
+    "func": "exact_match",
+    "result": {
+      "type": "javascript_enabled__980fd38b"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "false"
+      }
+    }
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires user to disable JavaScript in Chrome. The evaluator checks profile.default_content_settings.javascript (1=allow, 2=block). Initial state: 1 (JS enabled). Expected state: 2 (JS disabled). Getter returns 'false' when JS is blocked to match expected 'false'.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_verify_per10_1220/run_20251219_222753/tmp_funcs/9656a811-9b5b-4ddf-99c7-5117bcef0626_task_verify_8/getters/chrome.py"
+    ],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly extracts JavaScript setting from Chrome preferences file at profile.default_content_settings.javascript",
+        "Getter correctly maps Chrome's internal values (1=allow, 2=block) to semantic boolean strings ('true'/'false')",
+        "Metric exact_match correctly compares getter result with expected value 'false'",
+        "Expected value 'false' correctly represents the disabled state required by the instruction",
+        "Postconfig appropriately restarts Chrome to ensure preferences file reflects user changes",
+        "Complete coverage: evaluator checks the single requirement (JavaScript disabled)",
+        "Data flow is logically sound: reads preference → converts to boolean string → exact comparison"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

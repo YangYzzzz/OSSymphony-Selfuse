@@ -1,0 +1,140 @@
+{
+  "id": "f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "new_id": "task_verify_45",
+  "snapshot": "thunderbird",
+  "instruction": "From the payment record, identify all students whose email addresses begin with letters a through d and add these addresses to the recipient field of your email draft.",
+  "source": "authors",
+  "config": [
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "mkdir",
+          "-p",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    },
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/Payment%20Reminder.html",
+            "path": "/home/user/.payment-reminder-mail-body.html"
+          },
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/multi_apps/f5c13cdd-205c-4719-a562-348ae5cd1d91/tuition.xlsx",
+            "path": "/home/user/Documents/Departments/finance/tuition_payment.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": "/usr/bin/thunderbird -compose \"from='Anonym Tester <anonym-x2024@outlook.com>',subject='Reminder of Payment',body='$(cat /home/user/.payment-reminder-mail-body.html)'\"",
+        "shell": true
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "nautilus",
+          "/home/user/Documents/Departments/finance"
+        ]
+      }
+    }
+  ],
+  "trajectory": "trajectories/f5c13cdd-205c-4719-a562-348ae5cd1d91",
+  "related_apps": [
+    "thunderbird",
+    "os",
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 10
+        }
+      }
+    ],
+    "func": "check_accessibility_tree",
+    "result": {
+      "type": "accessibility_tree"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": [
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"alice@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"bob@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"carol@someuniversity.edu\"]"
+          ]
+        },
+        {
+          "selectors": [
+            "tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]>label[attr|class=\"pill-label\"][name*=\"dave@someuniversity.edu\"]"
+          ]
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires finding students whose email addresses start with letters a-d. Verified with Python: 4 students match (Alice with alice@, Bob with bob@, Carol with carol@, Dave with dave@).",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 4,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.85,
+      "llm_judge_reasons": [
+        "Getter 'get_accessibility_tree' correctly extracts the Thunderbird UI state from the accessibility tree",
+        "Metric 'check_accessibility_tree' correctly uses CSS selectors to verify presence of email address pills in the To field",
+        "All 4 required email addresses (alice@, bob@, carol@, dave@) are individually verified with appropriate selectors targeting 'tool-bar[attr|id=MsgHeadersToolbar] label[name=To]~[attr|class=\"address-pill\"]'",
+        "Expected values are semantically correct - alice@, bob@, carol@, dave@ all have local parts starting with letters a-d as required",
+        "Postconfig includes sleep 10 seconds to allow Thunderbird compose window to fully load before verification",
+        "Minor semantic gap: Evaluator only checks for presence of the 4 required emails, but does not verify exclusivity (i.e., that NO extra emails outside the a-d range were incorrectly added). If agent added extra emails starting with e-z, evaluator would still pass."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider adding a count verification to ensure EXACTLY 4 address pills are present in the To field, preventing false positives from extra emails being added",
+        "Alternatively, could add negative rules to explicitly check that no emails starting with letters e-z are present in the To field"
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "id": "51719eea-10bc-4246-a428-ac7c433dd4b3",
+  "new_id": "task_verify_56",
+  "snapshot": "libreoffice_calc",
+  "instruction": "Create a 'Transaction Count' column and summarize the dataset by counting Wholesale versus Retail transactions.",
+  "source": "SheetCopilot@7",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/libreoffice_calc/51719eea-10bc-4246-a428-ac7c433dd4b3/BoomerangSales.xlsx",
+            "path": "/home/user/BoomerangSales.xlsx"
+          }
+        ]
+      }
+    },
+    {
+      "type": "open",
+      "parameters": {
+        "path": "/home/user/BoomerangSales.xlsx"
+      }
+    }
+  ],
+  "trajectory": "trajectories/51719eea-10bc-4246-a428-ac7c433dd4b3",
+  "related_apps": [
+    "libreoffice_calc"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "activate_window",
+        "parameters": {
+          "window_name": "BoomerangSales.xlsx - LibreOffice Calc",
+          "strict": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "python",
+            "-c",
+            "import pyautogui; pyautogui.hotkey(\"ctrl\", \"s\");"
+          ]
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "func": "multi_evaluator",
+    "expected": {
+      "type": "rule",
+      "rules": {}
+    },
+    "result": {
+      "type": "multi_result",
+      "path": "/home/user/BoomerangSales.xlsx"
+    },
+    "options": {
+      "checks": [
+        {
+          "func": "check_xlsx_transaction_count_column__a4ad1864c41840759745faec6be09f6a",
+          "result": {
+            "type": "xlsx_transaction_count_column__a4ad1864c41840759745faec6be09f6a",
+            "path": "/home/user/BoomerangSales.xlsx",
+            "dest": "BoomerangSales.xlsx"
+          },
+          "expected": {
+            "type": "rule",
+            "rules": {}
+          },
+          "weight": 0.3
+        },
+        {
+          "func": "check_xlsx_type_counts__a4ad1864c41840759745faec6be09f6a",
+          "result": {
+            "type": "xlsx_type_counts__a4ad1864c41840759745faec6be09f6a",
+            "path": "/home/user/BoomerangSales.xlsx",
+            "dest": "BoomerangSales.xlsx"
+          },
+          "expected": {
+            "type": "rule",
+            "rules": {
+              "type_counts": {
+                "Wholesale": 13,
+                "Retail": 22
+              }
+            }
+          },
+          "weight": 0.7
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires (1) adding a 'Transaction Count' column and (2) creating a summary of transaction type counts. Multi-step evaluator with weights: 30% for Transaction Count column existence/content, 70% for transaction type counts (Wholesale=13, Retail=22). Custom getters extract column info and count types from column D.",
+    "new_functions_paths": [
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/51719eea-10bc-4246-a428-ac7c433dd4b3_aug_7_task_verify_1/getters/xlsx.py",
+      "/home/lvbowen/project/AutoGen/results/task_transubsub2_verify_per5_1222/run_20251221_230427/tmp_funcs/51719eea-10bc-4246-a428-ac7c433dd4b3_aug_7_task_verify_1/metrics/xlsx.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.75,
+      "llm_judge_reasons": [
+        "Coverage is complete: The evaluator verifies both instruction requirements: (1) Transaction Count column existence (30% weight) via check_xlsx_transaction_count_column__a4ad1864c41840759745faec6be09f6a, and (2) transaction type counts (70% weight) via check_xlsx_type_counts__a4ad1864c41840759745faec6be09f6a.",
+        "Getter logic is semantically correct: get_xlsx_transaction_count_column properly searches for 'Transaction Count' header in row 1 and extracts column values; get_xlsx_type_counts correctly reads column D (Type column, index 3) and counts transaction types.",
+        "Metric comparison logic is correct: check_xlsx_type_counts compares actual counts vs expected counts (Wholesale=13, Retail=22) with exact matching; check_xlsx_transaction_count_column verifies column exists and contains non-null values.",
+        "Parameter handling is correct: multi_evaluator line 65 correctly passes expected_value directly to metric functions without incorrectly extracting 'rules', which aligns with guidance section 5.1.",
+        "Expected values are semantically correct: Wholesale=13, Retail=22 match the actual transaction type distribution in the dataset based on metadata explanation.",
+        "Postconfig properly saves file with Ctrl+S to ensure changes are persisted before verification.",
+        "Minor semantic gap: check_xlsx_transaction_count_column only verifies the column exists with non-null values, but does NOT verify that values are sequential counts (1, 2, 3, ..., N). The instruction 'Add a Transaction Count column' implies sequential numbering, but evaluator accepts any non-null values.",
+        "Minor coverage gap: The instruction says 'create a summary showing how many Wholesale transactions...' which suggests creating a visible summary (perhaps in cells or a table). The evaluator only verifies the data counts are correct, not whether a user-visible summary was actually created/displayed."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Consider enhancing check_xlsx_transaction_count_column to verify that the Transaction Count column contains sequential values (e.g., 1, 2, 3, ..., N) rather than just any non-null values. This would better match the semantic intent of 'Transaction Count'.",
+        "Consider adding verification that a visible summary was created (e.g., check for specific cells containing 'Wholesale: 13' and 'Retail: 22' or similar summary text), not just that the counts exist in the data."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric multi_evaluator first parameter type (Any) may not match getter get_multi_result return type (Dict)"
+        },
+        {
+          "level": "warn",
+          "msg": "metric multi_evaluator second parameter type (Any) may not match expected.rules type (Dict)"
+        }
+      ],
+      "validation_passed": true
+    },
+    "augmented_from": "51719eea-10bc-4246-a428-ac7c433dd4b3_aug_7_task_verify_1.json",
+    "aug_method": "paraphrase",
+    "aug_index": 2
+  }
+}

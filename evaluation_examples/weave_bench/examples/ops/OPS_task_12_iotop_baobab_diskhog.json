@@ -1,0 +1,85 @@
+{
+  "id": "OPS_task_12_iotop_baobab_diskhog",
+  "snapshot": "weave_bench",
+  "instruction": "Background: An on-call teammate pings you in chat: \"The `/tmp_workspace/varlog` mount has gone from 12% to 71% in the last 30 minutes — if it keeps climbing, staging is going to page. `du -sh` is slow and doesn't show me which subdirectory is growing. Please locate the current writer (a process writing one log file at a sustained ~6 MiB/s) and the exact hog file path, stop it, then write up a report I can drop in the post-mortem channel.\"\n\nEnvironment already prepared: warmup has launched a three-thread Python background process `log_burst.py`; one of its threads is the runaway writer, and its pid is recorded in `/tmp_workspace/state/log_burst.pid` (fallback reference only when things go wrong — not the answer).\n\nTask objective: use two independent evidence chains — structured (CLI / `/proc` / iotop / lsof) and visual (a directory-size visualization scan such as GNOME baobab or an equivalent tree-map) — to locate the hog process and the file it is writing to, stop the bleeding and rescan, then write an incident report suitable for the post-mortem channel. All deliverables go under `/tmp_workspace/results/`.\n\n### Hard constraints on the main deliverable `diagnosis.json`\n\n- Must contain 7 self-consistent fields: `top_io_pid` (int), `top_io_cmd` (str, must contain the substring `log_burst.py`), `largest_dir_path`, `largest_file_path` (must contain both the directory name `report_renderer` and the suffix `.frames.log`), `write_mibps_observed` (float ≥ 3.0, consistent with the actually observed rate), `remediation_taken` (str), `post_remediation_iostat_w_mibps` (float).\n- Anti-cheat: `top_io_pid` / `top_io_cmd` must be obtained from live per-process I/O observation plus the real `ps` cmdline; `actions.log` must not contain literals such as `cat /tmp_workspace/state/log_burst.pid` or `pgrep log_burst` that shortcut by reading the pidfile.\n- The contender process (`log_burst.py`) must remain running until `iostat_after.txt` sampling begins, otherwise the before/after comparison is invalid.\n\n### Supporting deliverables (located in `/tmp_workspace/results/`)\n\n| File | Requirement |\n|---|---|\n| `df_before.txt` | Capacity / inode snapshot of the `/tmp_workspace/varlog` mount (must contain `%` or the path); non-empty |\n| `iostat_before.txt` | Steady-state disk I/O snapshot, ≥ 2 sampling blocks, containing one of the column headers `wMB/s` / `kB_wrtn` / `w/s` |\n| `iotop_top.txt` | Per-process aggregated write-rate snapshot, containing one of `DISK WRITE` / `kB_wr/s` / `Total DISK WRITE` (or a semantically equivalent fallback such as `pidstat -d`); the hog cmdline and rate value must be readable from it |\n| `lsof_hog.txt` | Reverse lookup of \"who has the hog file open\", containing a `PID` column + `COMMAND` column + the real `.frames.log` file name |\n| `ps_hog.txt` | Process details of the hog PID, containing the real `log_burst.py` cmdline |\n| `proc_fd.txt` | fd-table listing of the hog PID; the hog file name must appear in the fd list |\n| `remediation.sh` | List of remediation commands (each annotated with `# what`). Must try SIGTERM first before considering SIGKILL; must clear the file with `truncate -s 0` rather than `rm` (preserving the inode); `rm -rf /tmp_workspace/varlog` is **forbidden** |\n| `iostat_after.txt` | iostat resampled after remediation; the steady-state write rate must be ≤ 1/5 of the steady-state value in `iostat_before.txt` |\n| `postmortem.md` | Post-mortem of ≥ 600 characters; must contain the 4 section headings `## 时间线`, `## 根因`, `## 止血与彻底修复建议`, `## 跨通道证据链`; terminology hits among `rotation/frames/renderer/iotop/baobab/lsof` ≥ 4/6 |\n| `cross_channel.json` | `{\"switches\": <int ≥ 5>, \"trace\": [...]}`; `trace` must have ≥ 5 items with ≥ 2 STRUCT and ≥ 2 VISUAL each; every item must have a corresponding file-evidence artifact |\n\n### 4 work-in-progress screenshots (fixed file names, PNG, ≥ 800×600, each ≥ 40 KB)\n\n- `view_baobab_overview.png`: overall view of a directory-size visualization scan over `/tmp_workspace/varlog` (folder list + ring chart or tree-map).\n- `view_baobab_treemap_hover.png`: in tree-map view, **the largest rectangle (occupying ≥ 60% of the canvas)** is shown in hover/tooltip state, with the tooltip displaying the full path and a human-readable size.\n- `view_files_highlighted.png`: a file-manager view drilling from the visualization down to the specific hog file, with **the target `.frames.log` file highlighted/selected**.\n- `view_baobab_after.png`: tree-map view after remediation and rescan; **no single rectangle dominates the canvas anymore**.\n\nGrading performs OCR keyword checks and VLM visual scoring on the screenshots, which must be real windows rather than placeholders or collages; STRUCT textual evidence and VISUAL screenshot evidence must corroborate each other on PID and file path.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_12_iotop_baobab_diskhog.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_12_iotop_baobab_diskhog",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "set +e\nexport DEBIAN_FRONTEND=noninteractive\nmkdir -p /tmp_workspace/results /tmp_workspace/state /tmp_workspace/varlog /opt/ops12_gt\nfor i in $(seq 1 30); do [ -d /tmp_workspace/exec ] && break; sleep 1; done\nwhich iostat >/dev/null 2>&1 || timeout 120 apt-get -o Acquire::Retries=10 update -qq || true\nwhich iostat >/dev/null 2>&1 || timeout 300 apt-get -o Acquire::Retries=10 install -y -qq --no-install-recommends sysstat lsof procps psmisc python3 python3-pip coreutils util-linux || true\npython3 -c \"import matplotlib, squarify, PIL, numpy\" >/dev/null 2>&1 || timeout 300 pip install --quiet matplotlib squarify pillow numpy || true\nchmod +x /tmp_workspace/exec/start_services.sh 2>/dev/null || true\nnohup bash /tmp_workspace/exec/start_services.sh /tmp_workspace/varlog >/tmp_workspace/state/log_burst.out 2>&1 &\ndisown || true\nsleep 2\necho \"[warmup] log_burst running at pid $(cat /tmp_workspace/state/log_burst.pid 2>/dev/null || echo ?)\"\n# Move expected.json (contains hog_*_substring/path/service answer hints\n# + postmortem keyword set) to root-only /opt/ops12_gt.\nif [ -f /tmp_workspace/gt/expected.json ]; then\n  mv /tmp_workspace/gt/expected.json /opt/ops12_gt/expected.json 2>/dev/null || true\n  chown -R root:root /opt/ops12_gt 2>/dev/null || true\n  chmod 700 /opt/ops12_gt 2>/dev/null || true\n  chmod 600 /opt/ops12_gt/expected.json 2>/dev/null || true\n  rmdir /tmp_workspace/gt 2>/dev/null || true\nfi",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "ops"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/OPS_task_12_iotop_baobab_diskhog/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/OPS_task_12_iotop_baobab_diskhog /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_12_iotop_baobab_diskhog/reward.py",
+              "path": "/opt/eval/weave_bench/OPS_task_12_iotop_baobab_diskhog/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/ops/OPS_task_12_iotop_baobab_diskhog/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/OPS_task_12_iotop_baobab_diskhog/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/OPS_task_12_iotop_baobab_diskhog/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/OPS/OPS_task_12_iotop_baobab_diskhog.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/OPS/task_12_iotop_baobab_diskhog",
+    "workspace_relative": "OPS/task_12_iotop_baobab_diskhog",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

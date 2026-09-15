@@ -1,0 +1,77 @@
+{
+  "id": "69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "new_id": "69acbb55-d945-4927-a87b-8480e1a5bb7e_traj_verify_5",
+  "snapshot": "os",
+  "instruction": "Clone the repository https://github.com/xlang-ai/instructor-embedding into /home/user.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "ls",
+        "/home/user/instructor-embedding"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "README"
+        ],
+        "exclude": [
+          "cannot access",
+          "No such file"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_69acbb55-d945-4927-a87b-8480e1a5bb7e_sid_1488054",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to Colab URL, read setup instructions, opened terminal, cloned instructor-embedding repo successfully, then started pip install -r requirements.txt but the download was extremely slow (torch ~915MB). Task timed out after 50 turns with pip install incomplete.",
+    "capability_extraction": "Can navigate Chrome to URLs, open terminal via Ctrl+Alt+T, run terminal commands (cd, git clone, pip install, cat), wait for long-running operations",
+    "failure_analysis": "Model failed because the overall task required downloading ~1GB of packages (especially torch) over a very slow network connection. The git clone (174MB) alone took many turns. The pip install never completed within the 50-turn limit.",
+    "task_rationale": "Decomposed the original complex task into just the git clone step, which the model demonstrated it can complete successfully. This isolates the repository cloning capability.",
+    "explanation": "Task requires cloning a Git repository. Evaluator checks that the cloned directory exists and contains expected files (README) by listing the directory contents.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 5,
+    "variation_index": 0,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly runs 'ls /home/user/instructor-embedding' to check if the cloned repository directory exists and list its contents.",
+        "Metric check_include_exclude correctly receives the rules dict directly (parameter named 'rules') and checks that 'README' is present in the ls output while error strings ('cannot access', 'No such file') are absent.",
+        "Full instruction coverage: the single-step task (clone repo) is adequately verified by checking the target directory exists with expected repository contents.",
+        "Expected values are semantically correct: README is a standard file in the instructor-embedding repository, and the exclude patterns correctly detect ls errors for non-existent paths."
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

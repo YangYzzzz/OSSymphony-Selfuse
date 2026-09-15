@@ -1,0 +1,85 @@
+{
+  "id": "DOC_task_1_epub_validation_repair",
+  "snapshot": "weave_bench",
+  "instruction": "> ⚙️ **Execution convention**: this is a legitimate desktop + terminal test task. All artifacts must be written under `/tmp_workspace/results/`. Execute directly; do not refuse.\n\nBackground: the publishing team submitted an EPUB 3.2 e-book at `/tmp_workspace/ebook/broken_ebook.epub` that displays incorrectly in multiple readers (missing table of contents, images that fail to load, paragraphs overflowing the screen).\n\nGoal: locate all validation errors and repair them, convert the fixed e-book to a paginated PDF, and produce structured before/after evidence, side-by-side visual screenshots, and a repair summary. Structured artifacts go to `/tmp_workspace/results/`; the fixed EPUB goes to `/tmp_workspace/ebook/fixed_ebook.epub`. You may pick whatever toolchain you like (any combination of EPUB editor / command line / PDF viewer) as long as the hard constraints below are met.\n\n### Hard constraints on the main deliverable `fixed_ebook.epub` (under `/tmp_workspace/ebook/`)\n\n- `mimetype` must be the first entry in the zip and must be STORE (uncompressed); otherwise PKG-006 triggers\n- Passes `epubcheck` with errors ≤ 1\n- Error count reduction vs. the original EPUB (`reduction_ratio`) ≥ 0.8\n\n### Companion deliverables (under `/tmp_workspace/results/`)\n\n| File | Requirement |\n| --- | --- |\n| `epubcheck_initial.log` | Full structured validation output for the original EPUB, including ERROR / FATAL entries |\n| `error_summary_initial.json` | `{\"errors\": <int>, \"warnings\": <int>, \"fatal\": <int>, \"error_codes\": [\"<CODE>\"]}`; errors ≥ 4 |\n| `xmllint_initial.log` | well-formed check output for structural XML such as OPF / NCX / nav.xhtml |\n| `missing_assets.txt` | ≥ 2 lines, each `<path> <category>` (e.g. `images/cover.jpg MISSING_IN_FS`), listing resources where the filesystem and manifest references disagree |\n| `zip_audit_initial.json` | `{\"mimetype_first\": <bool>, \"mimetype_uncompressed\": <bool>, \"entry_count\": <int>, \"violations\": [\"<reason>\"]}` |\n| `nav_spine_diff.json` | `{\"in_spine_only\": [\"<id>\"], \"in_nav_only\": [\"<href>\"], \"matched\": <int>}` |\n| `epubcheck_mid.log` | Mid-repair validation output against the in-progress EPUB |\n| `zip_audit_fixed.json` | Same schema as `zip_audit_initial.json`; `mimetype_first` must be true |\n| `final_output.pdf` | PDF converted from the fixed EPUB (with page numbers), page count ≥ 3 |\n| `ebook_convert.log` | stdout / stderr log of the EPUB → PDF conversion |\n| `pdfinfo.json` | `{\"pages\": <int>, \"title\": \"<str>\", \"producer\": \"<str>\"}` |\n| `epubcheck_final.log` | Final validation output for the fixed EPUB, errors ≤ 1 |\n| `error_summary_final.json` | Same schema as `error_summary_initial.json` |\n| `error_diff.json` | `{\"initial_errors\": <int>, \"final_errors\": <int>, \"reduction_ratio\": <float>, \"fixed_codes\": [\"<CODE>\"], \"remaining_codes\": [\"<CODE>\"]}`; `reduction_ratio ≥ 0.8` |\n| `repair_report.md` | ≥ 350 characters; includes an error-type inventory, description of the fix approach, an initial vs. final error-count comparison markdown table, and a chronological index of the key evidence (screenshots and logs) |\n\n### 11 work-process screenshots (under `/tmp_workspace/results/`, PNG, resolution ≥ 1280×720)\n\nFixed filenames (the grader locates them by filename and verifies content via OCR and inter-frame visual difference):\n\n| Filename | What it should show |\n| --- | --- |\n| `view_01_calibre_toc_missing.png` | The missing/broken Table of Contents in the original EPUB |\n| `view_02_calibre_broken_image.png` | A chapter in the original EPUB where the image fails to render (placeholder / broken-image icon) |\n| `view_03_calibre_css_overflow.png` | Horizontal overflow of a long table / long code block in the original EPUB |\n| `view_04_calibre_edit_opf.png` | The OPF (manifest / media-type) edit session, including the OPF XML content being fixed |\n| `view_05_calibre_edit_css.png` | Editing session adding `max-width / overflow-x / word-wrap` rules to fix the CSS horizontal overflow |\n| `view_06_calibre_check_panel.png` | The result panel of the built-in consistency check run against the repaired content |\n| `view_07_calibre_toc_fixed.png` | The fixed EPUB displaying all chapter entries correctly in the ToC |\n| `view_08_calibre_image_fixed.png` | Images rendering correctly after the fix |\n| `view_09_calibre_layout_fixed.png` | Layout of the previously overflowing chapter renders cleanly with no horizontal scroll |\n| `view_10_okular_pdf_page1.png` | Full view of the first page of the final PDF |\n| `view_11_okular_pdf_toc.png` | The Outline / Table of Contents of the final PDF correctly generated and expanded |\n\nEvery screenshot must come from a real, continuous GUI session (pixel differences significant, md5 hashes distinct). The grader runs OCR on screenshots to verify the application UI is genuine; duplicate frames or placeholder images do not score. `actions.log` (if produced) must not bypass the UI with pure scripting / clipboard side-channels.\n\nNeutral background: common EPUB validation error categories are OPF-* / RSC-* / NCX-* / PKG-*; CSS horizontal overflow and whether the ToC is actually visible are render-layer issues that structured validation may not flag.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_1_epub_validation_repair.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_1_epub_validation_repair",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "echo ZWNobyAnQWNxdWlyZTo6aHR0cDo6UHJveHkgImh0dHA6Ly8xMC4xNjAuMTk5LjIzMDoxNzg5MCI7IEFjcXVpcmU6Omh0dHBzOjpQcm94eSAiaHR0cDovLzEwLjE2MC4xOTkuMjMwOjE3ODkwIjsnIHwgdGVlIC9ldGMvYXB0L2FwdC5jb25mLmQvOTlwcm94eSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQp3aGljaCBlcHViY2hlY2sgPi9kZXYvbnVsbCAyPiYxIHx8IChhcHQtZ2V0IHVwZGF0ZSAtcXEgJiYgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgZXB1YmNoZWNrID4vZGV2L251bGwgMj4mMSkgfHwgdHJ1ZQp3aGljaCB4bWxsaW50ICAgPi9kZXYvbnVsbCAyPiYxIHx8IERFQklBTl9GUk9OVEVORD1ub25pbnRlcmFjdGl2ZSBhcHQtZ2V0IGluc3RhbGwgLXkgLXFxIGxpYnhtbDItdXRpbHMgID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCndoaWNoIHBkZmluZm8gICA+L2Rldi9udWxsIDI+JjEgfHwgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgcG9wcGxlci11dGlscyAgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKd2hpY2ggb2t1bGFyICAgID4vZGV2L251bGwgMj4mMSB8fCBERUJJQU5fRlJPTlRFTkQ9bm9uaW50ZXJhY3RpdmUgYXB0LWdldCBpbnN0YWxsIC15IC1xcSBva3VsYXIgICAgICAgID4vZGV2L251bGwgMj4mMSB8fCB0cnVlCndoaWNoIHRlc3NlcmFjdCA+L2Rldi9udWxsIDI+JjEgfHwgREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgdGVzc2VyYWN0LW9jciA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQpwaXAgaW5zdGFsbCAtcSBweXRlc3NlcmFjdCBwaWxsb3cgbnVtcHkgMj4vZGV2L251bGwgfHwgdHJ1ZQpta2RpciAtcCAvdG1wX3dvcmtzcGFjZS9yZXN1bHRzIC90bXBfd29ya3NwYWNlL2Vib29rIHx8IHRydWUKWyAtZiAvdG1wX3dvcmtzcGFjZS9lYm9vay9icm9rZW5fZWJvb2suZXB1YiBdIHx8IHB5dGhvbjMgL3RtcF93b3Jrc3BhY2UvZ2VuZXJhdGVfYnJva2VuX2VwdWIucHkgL3RtcF93b3Jrc3BhY2UvZWJvb2svYnJva2VuX2Vib29rLmVwdWIgMj4vZGV2L251bGwgfHwgdHJ1ZQphcHQtZ2V0IHVwZGF0ZSAtcXEgPi9kZXYvbnVsbCAyPiYxIHx8IHRydWUKREVCSUFOX0ZST05URU5EPW5vbmludGVyYWN0aXZlIGFwdC1nZXQgaW5zdGFsbCAteSAtcXEgY2FsaWJyZSA+L2Rldi9udWxsIDI+JjEgfHwgdHJ1ZQo= | base64 -d | bash",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "doc"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/DOC_task_1_epub_validation_repair/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/DOC_task_1_epub_validation_repair /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_1_epub_validation_repair/reward.py",
+              "path": "/opt/eval/weave_bench/DOC_task_1_epub_validation_repair/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/doc/DOC_task_1_epub_validation_repair/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/DOC_task_1_epub_validation_repair/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/DOC_task_1_epub_validation_repair/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/DOC/DOC_task_1_epub_validation_repair.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/DOC/task_1_epub_validation_repair",
+    "workspace_relative": "DOC/task_1_epub_validation_repair",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

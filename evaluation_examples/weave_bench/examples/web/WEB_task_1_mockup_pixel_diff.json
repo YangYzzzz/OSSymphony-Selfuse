@@ -1,0 +1,85 @@
+{
+  "id": "WEB_task_1_mockup_pixel_diff",
+  "snapshot": "weave_bench",
+  "instruction": "Task background: The designer has delivered 4 mockup PNGs, located at `/tmp_workspace/design/{home,pricing,about,contact}.png`.\nThe junior developer's implementation lives in `/tmp_workspace/app/`, a static site (4 HTML pages: `index.html` / `pricing.html` / `about.html` / `contact.html` plus a single `styles.css`).\nThe mockups and the implementation share the same HTML structure and viewport (1440×900), so **any visual difference must come from CSS**.\n\nTask goals:\n\n1. Identify every visual deviation between the implementation and the mockups (hex colors, border-radius, shadows, padding, font sizes, alignment, border colors, widths, etc.).\n2. Fix `/tmp_workspace/app/styles.css` so that each page, rendered at 1440×900, matches the corresponding mockup visually.\n3. Produce a 1440×900 full-page render of each fixed page, plus a list of deviations.\n\nCore constraints:\n\n- **Only `/tmp_workspace/app/styles.css` may be modified**; do not change the HTML and do not add new dependencies.\n- The rendering viewport is fixed at 1440×900 (width=1440, height unconstrained).\n\nDeliverables:\n\n- `/tmp_workspace/results/diffs.json` — list of deviations, at least 10 entries, each with 5 fields:\n  ```json\n  [\n    {\"page\": \"home|pricing|about|contact\",\n     \"element\": \"CSS-selector-or-component-name\",\n     \"property\": \"background|font-size|...\",\n     \"expected\": \"value seen in mockup\",\n     \"actual\":   \"value originally rendered by the broken implementation\"}\n  ]\n  ```\n- `/tmp_workspace/results/after/{home,pricing,about,contact}.png` — the 4 post-fix 1440×N (full-page) renders.",
+  "source": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_1_mockup_pixel_diff.md",
+  "config": [
+    {
+      "type": "weavebench",
+      "parameters": {
+        "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_1_mockup_pixel_diff",
+        "env": "OPENROUTER_BASE_URL\nOPENROUTER_API_KEY\nJUDGE_MODEL\nWEAVEBENCH_JUDGE_PROTOCOL",
+        "warmup": "# Chromium / PIL / numpy 在 v3_eyeson_apps_20260424 镜像里已 baked,这里仅做 sanity probe.\ncommand -v google-chrome >/dev/null 2>&1 || command -v chromium >/dev/null 2>&1 || command -v chromium-browser >/dev/null 2>&1 || true\npython3 -c \"import PIL\" >/dev/null 2>&1 || true\npython3 -c \"import numpy\" >/dev/null 2>&1 || true\nsha256sum /tmp_workspace/app/styles.css | awk '{print $1}' > /tmp_workspace/.app_styles.sha256 || true\nbash /tmp_workspace/tmp/render_mockups.sh || true\nrm -rf /tmp_workspace/tmp || true\nmkdir -p /tmp_workspace/results/after || true\nchown -R user:user /tmp_workspace || true\n# Disable openclaw's `image` tool so CLI-mode agents cannot use a\n# secondary VLM to describe images for them. The agent must see images\n# directly (GUI mode native CUA) or extract pixel data with PIL/numpy\n# (CLI mode); no proxying allowed.\n# Clear any stale openclaw session lock left over from VM image\n# bake or a previous crashed run.\nrm -f /home/user/.openclaw/agents/main/sessions/*.lock 2>/dev/null || true\nopenclaw config unset agents.defaults.imageModel >/dev/null 2>&1 || true\nopenclaw config set agents.defaults.sandbox.imageModel.primary \"\" >/dev/null 2>&1 || true",
+        "timeout": 1800
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "web"
+  ],
+  "evaluator": {
+    "func": "parse_cua_gym_reward",
+    "conj": "avg",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "/bin/bash",
+        "-lc",
+        "set -a; [ -f /tmp/openclaw_task_env.sh ] && . /tmp/openclaw_task_env.sh; set +a; python3 /opt/eval/weave_bench/WEB_task_1_mockup_pixel_diff/reward.py"
+      ]
+    },
+    "need_rule_judge": true,
+    "need_vlm_judge": true,
+    "desc": "Run the WeaveBench rule-based grade() inside the VM and parse its REWARD score.",
+    "postconfig": [
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "mkdir -p /opt/eval/weave_bench/WEB_task_1_mockup_pixel_diff /tmp_workspace/gt"
+          ]
+        }
+      },
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_1_mockup_pixel_diff/reward.py",
+              "path": "/opt/eval/weave_bench/WEB_task_1_mockup_pixel_diff/reward.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/_judge_helper.py",
+              "path": "/opt/eval/_judge_helper.py"
+            },
+            {
+              "local_path": "evaluation_examples/weave_bench/assets/web/WEB_task_1_mockup_pixel_diff/gt.tar.gz",
+              "path": "/opt/eval/weave_bench/WEB_task_1_mockup_pixel_diff/gt.tar.gz"
+            }
+          ]
+        }
+      },
+      {
+        "type": "execute",
+        "parameters": {
+          "command": [
+            "/bin/bash",
+            "-lc",
+            "rm -rf /tmp_workspace/gt && mkdir -p /tmp_workspace/gt && tar xzf /opt/eval/weave_bench/WEB_task_1_mockup_pixel_diff/gt.tar.gz -C /tmp_workspace/gt"
+          ]
+        }
+      }
+    ]
+  },
+  "platform": "desktop",
+  "weave_bench_source": {
+    "task_md": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/WEB/WEB_task_1_mockup_pixel_diff.md",
+    "workspace_path": "/nvme/yangbowen/yangbowen/WeaveBench/cache/tasks/workspace/WEB/task_1_mockup_pixel_diff",
+    "workspace_relative": "WEB/task_1_mockup_pixel_diff",
+    "uses_vlm_helper": true,
+    "has_gt": true
+  }
+}

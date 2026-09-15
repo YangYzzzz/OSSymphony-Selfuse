@@ -1,0 +1,76 @@
+{
+  "id": "69acbb55-d945-4927-a87b-8480e1a5bb7e",
+  "new_id": "69acbb55-d945-4927-a87b-8480e1a5bb7e_traj_verify_1",
+  "snapshot": "os",
+  "instruction": "Open the instructor-embedding GitHub page at https://github.com/xlang-ai/instructor-embedding in Chrome.",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    }
+  ],
+  "evaluator": {
+    "func": "check_include_exclude",
+    "result": {
+      "type": "vm_command_line",
+      "command": [
+        "curl",
+        "-s",
+        "http://localhost:9222/json"
+      ]
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "include": [
+          "xlang-ai/instructor-embedding"
+        ],
+        "exclude": []
+      }
+    }
+  },
+  "metadata": {
+    "augmentation_type": "traj_verify",
+    "source_trajectory": "task_multi_apps_69acbb55-d945-4927-a87b-8480e1a5bb7e_sid_1488054",
+    "trajectory_success_score": -0.2,
+    "trajectory_summary": "Agent navigated to Colab URL, read setup instructions, opened terminal, cloned instructor-embedding repo successfully, then started pip install -r requirements.txt but the download was extremely slow (torch ~915MB). Task timed out after 50 turns with pip install incomplete.",
+    "capability_extraction": "Can navigate Chrome to URLs, open terminal via Ctrl+Alt+T, run terminal commands (cd, git clone, pip install, cat), wait for long-running operations",
+    "failure_analysis": "Model failed because the overall task required downloading ~1GB of packages (especially torch) over a very slow network connection. The git clone (174MB) alone took many turns. The pip install never completed within the 50-turn limit.",
+    "task_rationale": "Simplified to just Chrome URL navigation, which the model demonstrated early in the trajectory when it successfully navigated to the Colab URL. This tests basic browser navigation capability.",
+    "explanation": "Task requires navigating Chrome to a specific GitHub URL. Evaluator uses Chrome DevTools protocol (port 9222 via socat) to query open tabs and checks that the URL contains the expected repository path.",
+    "new_functions_paths": [],
+    "difficulty": "easy",
+    "estimated_steps": 3,
+    "variation_index": 1,
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter correctly uses Chrome DevTools Protocol (curl localhost:9222/json) to retrieve open tab information including URLs",
+        "Metric check_include_exclude correctly checks if the result string contains 'xlang-ai/instructor-embedding', which will appear in the DevTools JSON if the GitHub page is open",
+        "Expected value 'xlang-ai/instructor-embedding' is the correct repository path substring that uniquely identifies the target URL",
+        "Config properly launches Chrome with remote debugging port and socat forwarding, enabling the DevTools query",
+        "Single-step instruction is fully covered by the single evaluator check"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}

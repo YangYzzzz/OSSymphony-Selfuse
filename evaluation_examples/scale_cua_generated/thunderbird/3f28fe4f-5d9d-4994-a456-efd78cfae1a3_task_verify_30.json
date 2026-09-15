@@ -1,0 +1,115 @@
+{
+  "id": "3f28fe4f-5d9d-4994-a456-efd78cfae1a3",
+  "new_id": "task_verify_30",
+  "snapshot": "thunderbird",
+  "instruction": "Configure an email signature in Thunderbird with your name \"David Thompson\" on the first line, followed by \"Customer Support Specialist\" on the second line.",
+  "source": "https://www.adsigner.com/user-manual/signatures/setup-email-client-thunderbird/#:~:text=is%20probably%20hidden.-,Right%20click%20on%20the%20empty%20space%20at%20the%20top%20of,signature%20from%20a%20file%20instead.",
+  "config": [
+    {
+      "type": "download",
+      "parameters": {
+        "files": [
+          {
+            "url": "https://huggingface.co/datasets/xlangai/ubuntu_osworld_file_cache/resolve/main/thunderbird/dd84e895-72fd-4023-a336-97689ded257c/thunderbird-profile.tar.gz",
+            "path": "/home/user/thunderbird-profile.tar.gz"
+          }
+        ]
+      }
+    },
+    {
+      "type": "execute",
+      "parameters": {
+        "command": [
+          "tar",
+          "-xzv",
+          "--recursive-unlink",
+          "-f",
+          "/home/user/thunderbird-profile.tar.gz",
+          "-C",
+          "/home/user/"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "/usr/bin/thunderbird"
+        ]
+      }
+    }
+  ],
+  "related_apps": [
+    "thunderbird"
+  ],
+  "evaluator": {
+    "postconfig": [
+      {
+        "type": "close_window",
+        "parameters": {
+          "window_name": "Mail.thunderbird",
+          "strict": true,
+          "by_class": true
+        }
+      },
+      {
+        "type": "sleep",
+        "parameters": {
+          "seconds": 0.5
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_file",
+      "path": "/home/user/.thunderbird/t5q2a5hp.default-release/prefs.js",
+      "dest": "thunder-prefs.js"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expect": {
+          "mail.identity.id1.htmlSigText": {
+            "method": "re.S",
+            "ref": "David Thompson\\nCustomer Support Specialist"
+          }
+        }
+      }
+    },
+    "func": "check_thunderbird_prefs"
+  },
+  "proxy": false,
+  "fixed_ip": false,
+  "possibility_of_env_change": "low",
+  "metadata": {
+    "explanation": "Task requires setting up a two-line signature in Thunderbird. The evaluator checks if mail.identity.id1.htmlSigText contains 'David Thompson' and 'Customer Support Specialist' on separate lines. Uses regex with re.S flag to match the pattern.",
+    "new_functions_paths": [],
+    "difficulty": "medium",
+    "estimated_steps": 3,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 1.0,
+      "llm_judge_reasons": [
+        "Getter logic correctly extracts prefs.js file from VM using get_vm_file",
+        "Metric function check_thunderbird_prefs correctly parses Thunderbird preference file format",
+        "Expected value uses correct preference key 'mail.identity.id1.htmlSigText' for signature text",
+        "Pattern 'David Thompson\\\\nCustomer Support Specialist' correctly represents two-line signature with newline",
+        "Method 're.S' enables proper regex matching for the pattern",
+        "Postconfig appropriately closes Thunderbird and waits 0.5s to ensure prefs.js is flushed to disk",
+        "Complete coverage: evaluator verifies both required lines in correct order",
+        "Parameter handling is correct: function parameter 'rule' receives rules dict directly (not 'expected')",
+        "Edge cases handled: returns 0.0 if file is None or missing"
+      ],
+      "llm_judge_fix_suggestions": [],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [
+        {
+          "level": "warn",
+          "msg": "metric check_thunderbird_prefs first parameter type (str) may not match getter get_vm_file return type (Union)"
+        }
+      ],
+      "validation_passed": true
+    }
+  }
+}

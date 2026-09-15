@@ -1,0 +1,96 @@
+{
+  "id": "f5d96daf-83a8-4c86-9686-bada31fc66ab",
+  "new_id": "task_verify_50",
+  "snapshot": "chrome",
+  "instruction": "Compare iPhone 15 Pro and iPhone 14 Pro specifications",
+  "source": "Mind2Web",
+  "config": [
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "google-chrome",
+          "--remote-debugging-port=1337"
+        ]
+      }
+    },
+    {
+      "type": "launch",
+      "parameters": {
+        "command": [
+          "socat",
+          "tcp-listen:9222,fork",
+          "tcp:localhost:1337"
+        ]
+      }
+    },
+    {
+      "type": "chrome_open_tabs",
+      "parameters": {
+        "urls_to_open": [
+          "https://www.apple.com/"
+        ]
+      }
+    },
+    {
+      "type": "activate_window",
+      "parameters": {
+        "window_name": "Google Chrome"
+      }
+    }
+  ],
+  "trajectory": "trajectories/",
+  "related_apps": [
+    "chrome"
+  ],
+  "evaluator": {
+    "func": "check_direct_json_object",
+    "result": {
+      "type": "active_tab_url_parse",
+      "goto_prefix": "https://www.",
+      "parse_keys": [
+        "modelList"
+      ],
+      "split_list": true
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": {
+          "modelList": [
+            "iphone-15-pro",
+            "iphone-14-pro"
+          ]
+        },
+        "ignore_list_order": true
+      }
+    }
+  },
+  "metadata": {
+    "explanation": "Task requires navigating to Apple.com and comparing two iPhone Pro models: iPhone 15 Pro and iPhone 14 Pro. The evaluator checks the URL query parameters to verify the modelList contains the expected two models. Uses fixed check_direct_json_object metric (corrected ignore_list_order parameter lookup) and get_active_tab_url_parse getter.",
+    "new_functions_paths": [
+      "tmp_funcs/f5d96daf-83a8-4c86-9686-bada31fc66ab_aug_11_task_verify_1/metrics/general.py"
+    ],
+    "difficulty": "medium",
+    "estimated_steps": 5,
+    "augmentation_type": "update_evaluator",
+    "validation": {
+      "llm_judge_passed": true,
+      "llm_judge_score": 0.9,
+      "llm_judge_reasons": [
+        "CORRECTED JUDGMENT: The new metric function (in tmp_funcs) correctly handles the 'ignore_list_order' parameter. At line 57, it correctly accesses 'rules.get(\"ignore_list_order\", False)' instead of 'expected_json.get(\"ignore_list_order\", False)'. This is the proper way to handle parameters when expected.type='rule', as get_rule() returns the rules dict directly.",
+        "Semantic verification is sound: The evaluator will correctly perform order-independent comparison of the modelList. If the URL contains 'modelList=iphone-14-pro,iphone-15-pro' or 'modelList=iphone-15-pro,iphone-14-pro', both will pass verification since the lists are sorted before comparison.",
+        "Coverage is appropriate: The instruction asks to 'Compare iPhone 15 Pro and iPhone 14 Pro specifications'. While the evaluator only checks URL parameters rather than actual page content, this is reasonable for Apple.com's comparison tool where the modelList parameter reliably indicates which models are being compared.",
+        "State extraction is feasible: The getter uses get_active_tab_url_parse which reads from the active tab's URL via accessibility tree, then parses query parameters. The 'split_list' parameter correctly splits comma-separated values into a list."
+      ],
+      "llm_judge_fix_suggestions": [
+        "Minor: Consider adding validation in get_active_tab_url_parse to check that modelList is not empty before returning, to catch cases where the URL parameter exists but has no value.",
+        "Minor: The getter could benefit from adding 'modelList' to optional_keys if the parameter might be absent in edge cases, though for this specific task it should always be present if the comparison was performed."
+      ],
+      "rule_validation_passed": true,
+      "rule_validation_status": "pass",
+      "rule_validation_issues": [],
+      "validation_passed": true
+    }
+  }
+}
